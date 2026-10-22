@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ERD - Modul Expense Report Project</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f0f2f5;
+        color: #333;
+        padding: 20px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .header {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+      }
+      .header h1 { font-size: 22px; margin-bottom: 8px; }
+      .header p { color: #94a3b8; font-size: 14px; }
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+      }
+      .info-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px 15px;
+        border-radius: 8px;
+      }
+      .info-item label { font-size: 11px; color: #94a3b8; display: block; }
+      .info-item span { font-size: 14px; font-weight: 600; color: #e2e8f0; }
+      .nav-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .nav-bar h3 { font-size: 14px; color: #475569; margin-bottom: 10px; }
+      .nav-links { display: flex; flex-wrap: wrap; gap: 6px; }
+      .nav-links a {
+        display: inline-block;
+        padding: 5px 12px;
+        background: #f1f5f9;
+        color: #475569;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 12px;
+        transition: all 0.2s;
+      }
+      .nav-links a:hover { background: #1e293b; color: white; }
+      .nav-links a.cat-transaksi { background: #dbeafe; color: #1d4ed8; }
+      .nav-links a.cat-related { background: #d1fae5; color: #065f46; }
+      .section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .section h2 { font-size: 17px; color: #1e293b; margin-bottom: 5px; }
+      .section h3 { font-size: 14px; color: #475569; margin: 15px 0 8px; }
+      .section p.desc { color: #64748b; font-size: 13px; margin-bottom: 12px; }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .badge-pk { background: #dbeafe; color: #1d4ed8; }
+      .badge-fk { background: #fef3c7; color: #92400e; }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        table-layout: fixed;
+      }
+      table th {
+        background: #f8fafc;
+        padding: 8px 10px;
+        text-align: left;
+        font-weight: 600;
+        color: #475569;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      table td {
+        padding: 7px 10px;
+        border-bottom: 1px solid #f1f5f9;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+      table tr:hover td { background: #f8fafc; }
+      table code {
+        background: #f1f5f9;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 11px;
+        color: #e11d48;
+      }
+      table th:nth-child(1), table td:nth-child(1) { width: 22%; }
+      table th:nth-child(2), table td:nth-child(2) { width: 16%; }
+      table th:nth-child(3), table td:nth-child(3) { width: 6%; }
+      table th:nth-child(4), table td:nth-child(4) { width: 8%; }
+      table th:nth-child(5), table td:nth-child(5) { width: 10%; }
+      table th:nth-child(6), table td:nth-child(6) { width: 38%; }
+      .mermaid-wrap {
+        background: #fafbfc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 10px 0;
+      }
+      .mermaid { text-align: center; }
+      .mermaid svg { max-width: 100%; height: auto; }
+      .flow-diagram {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .approval-flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin: 12px 0;
+      }
+      .approval-step {
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: center;
+      }
+      .approval-arrow { font-size: 18px; color: #94a3b8; }
+      .step-draft { background: #f1f5f9; color: #475569; }
+      .step-pending { background: #fef3c7; color: #92400e; }
+      .step-approved { background: #d1fae5; color: #065f46; }
+      .step-rejected { background: #fee2e2; color: #991b1b; }
+      .notes {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 15px 20px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+      }
+      .notes h4 { color: #92400e; margin-bottom: 8px; font-size: 13px; }
+      .notes ul { margin-left: 18px; font-size: 12px; color: #78350f; }
+      .notes li { margin-bottom: 5px; }
+      .back-top {
+        display: block;
+        text-align: center;
+        padding: 8px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      .back-top:hover { color: #1e293b; }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <div class="header" id="top">
+      <h1>&#128202; ERD Database - Modul Expense Report Project</h1>
+      <p>Dokumentasi struktur database untuk modul Expense Report Project</p>
+      <div class="info-grid">
+        <div class="info-item"><label>Host</label><span>mysql8 (Docker)</span></div>
+        <div class="info-item"><label>Port</label><span>3307</span></div>
+        <div class="info-item"><label>Database</label><span>db_consultant_new</span></div>
+        <div class="info-item"><label>Driver</label><span>mysqli</span></div>
+        <div class="info-item"><label>Total Tabel</label><span>4 tabel utama</span></div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-bar">
+      <h3>Navigasi Tabel</h3>
+      <div class="nav-links">
+        <a href="#diagram">ERD Diagram</a>
+        <a href="#relasi">Relasi</a>
+        <a href="#tbl-1" class="cat-transaksi">expense_header</a>
+        <a href="#tbl-2" class="cat-transaksi">expense_detail</a>
+        <a href="#tbl-3" class="cat-transaksi">bukti_penggunaan</a>
+        <a href="#tbl-4" class="cat-transaksi">bukti_pengembalian</a>
+        <a href="#tbl-related" class="cat-related">Related Tables</a>
+        <a href="#catatan" class="cat-related">Catatan</a>
+      </div>
+    </div>
+
+    <!-- ERD Diagram -->
+    <div class="section" id="diagram">
+      <h2>ERD Diagram</h2>
+      <p class="desc">Diagram relasi antar tabel modul Expense Report Project (Entity Relationship Diagram)</p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+          erDiagram
+          kons_tr_kasbon_project_header ||--o{ kons_tr_expense_report_project_header : "id_header"
+          kons_tr_expense_report_project_header ||--o{ kons_tr_expense_report_project_detail : "id_header_expense"
+          kons_tr_expense_report_project_header ||--o{ kons_tr_bukti_penggunaan_expense : "id_header_expense"
+          kons_tr_expense_report_project_header ||--o{ kons_tr_expense_report_bukti_pengembalian : "id_header_expense"
+          
+          kons_tr_kasbon_project_header ||--o{ kons_tr_expense_report_project_detail : "id_header_kasbon"
+          kons_tr_spk_budgeting ||--o{ kons_tr_expense_report_project_detail : "id_spk_budgeting"
+
+          ms_bank ||--o{ kons_tr_expense_report_project_header : "Cross-DB Ref (id_bank)"
+        </div>
+      </div>
+    </div>
+
+    <!-- Penjelasan Relasi -->
+    <div class="section" id="relasi">
+      <h2>Penjelasan Relasi</h2>
+      <h3>A. Expense Report Project (Flow Utama)</h3>
+      <div class="flow-diagram">
+kons_tr_kasbon_project_header (1) ──── (N) kons_tr_expense_report_project_header
+                                              │
+                                              ├── (N) kons_tr_expense_report_project_detail
+                                              ├── (N) kons_tr_bukti_penggunaan_expense
+                                              └── (N) kons_tr_expense_report_bukti_pengembalian
+
+[DB: gl_sendigs] ms_bank (1) ─────────────────(N) (Referensi Profil Rekening Bank)
+      </div>
+    </div>
+
+    <!-- Tabel 1 -->
+    <div class="section" id="tbl-1">
+      <h2>1. kons_tr_expense_report_project_header</h2>
+      <p class="desc">Header Expense Report Project — Menyimpan rangkuman total expense dan perhitungan selisih dengan kasbon awal.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>varchar(100)</td><td>NO</td><td><span class="badge badge-pk">PRI</span></td><td>NULL</td><td>PK</td></tr>
+          <tr><td><code>id_header</code></td><td>varchar(100)</td><td>NO</td><td><span class="badge badge-fk">FK</span></td><td>NULL</td><td>FK ke kons_tr_kasbon_project_header</td></tr>
+          <tr><td><code>total_expense_report</code></td><td>decimal(20,2)</td><td>NO</td><td></td><td>0.00</td><td>Total pemakaian expense</td></tr>
+          <tr><td><code>total_kasbon</code></td><td>decimal(20,2)</td><td>NO</td><td></td><td>0.00</td><td>Total nilai kasbon awal</td></tr>
+          <tr><td><code>selisih</code></td><td>decimal(20,2)</td><td>NO</td><td></td><td>0.00</td><td>Selisih (kasbon - expense)</td></tr>
+          <tr><td><code>tipe</code></td><td>varchar(100)</td><td>YES</td><td></td><td>NULL</td><td>Tipe expense</td></tr>
+          <tr><td><code>document_link</code></td><td>text</td><td>YES</td><td></td><td>NULL</td><td>Link dokumen pendukung utama</td></tr>
+          <tr><td><code>id_bank</code></td><td>varchar(20)</td><td>YES</td><td></td><td>NULL</td><td>ID Bank internal (Cross-DB)</td></tr>
+          <tr><td><code>sts</code></td><td>varchar(5)</td><td>YES</td><td></td><td>NULL</td><td>Status utama expense</td></tr>
+          <tr><td><code>keterangan_kurang_bayar</code></td><td>text</td><td>YES</td><td></td><td>NULL</td><td>Keterangan reimburse jika expense > kasbon</td></tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">↑ Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 2 -->
+    <div class="section" id="tbl-2">
+      <h2>2. kons_tr_expense_report_project_detail</h2>
+      <p class="desc">Detail Expense Report Project — Menyimpan rincian pemakaian untuk tiap item kasbon.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>int</td><td>NO</td><td><span class="badge badge-pk">PRI</span></td><td>NULL</td><td>Auto increment</td></tr>
+          <tr><td><code>id_header_expense</code></td><td>varchar(100)</td><td>YES</td><td><span class="badge badge-fk">FK</span></td><td>NULL</td><td>FK ke header expense</td></tr>
+          <tr><td><code>id_header_kasbon</code></td><td>varchar(100)</td><td>YES</td><td><span class="badge badge-fk">FK</span></td><td>NULL</td><td>FK ke header kasbon</td></tr>
+          <tr><td><code>id_spk_budgeting</code></td><td>varchar(100)</td><td>YES</td><td><span class="badge badge-fk">FK</span></td><td>NULL</td><td>FK ke budgeting project</td></tr>
+          <tr><td><code>id_detail_kasbon</code></td><td>varchar(100)</td><td>YES</td><td><span class="badge badge-fk">FK</span></td><td>NULL</td><td>FK ke baris id pada tabel detail kasbon terkait</td></tr>
+          <tr><td><code>tipe</code></td><td>varchar(100)</td><td>YES</td><td></td><td>NULL</td><td>Penanda tipe (akomodasi, lab, others, dll)</td></tr>
+          <tr><td><code>qty_expense</code></td><td>decimal(20,2)</td><td>NO</td><td></td><td>0.00</td><td>Qty pemakaian aktual</td></tr>
+          <tr><td><code>nominal_expense</code></td><td>decimal(20,2)</td><td>NO</td><td></td><td>0.00</td><td>Harga aktual pemakaian per qty</td></tr>
+          <tr><td><code>keterangan</code></td><td>text</td><td>YES</td><td></td><td>NULL</td><td>Catatan pemakaian</td></tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">↑ Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 3 -->
+    <div class="section" id="tbl-3">
+      <h2>3. kons_tr_bukti_penggunaan_expense</h2>
+      <p class="desc">Bukti Penggunaan Expense — Berisi attachment upload file pemakaian aktual expense.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>int</td><td>NO</td><td><span class="badge badge-pk">PRI</span></td><td>NULL</td><td>Auto increment</td></tr>
+          <tr><td><code>id_header_expense</code></td><td>varchar(255)</td><td>NO</td><td><span class="badge badge-fk">FK</span></td><td>NULL</td><td>FK ke header expense</td></tr>
+          <tr><td><code>upload_file</code></td><td>text</td><td>NO</td><td></td><td>NULL</td><td>Path file / Nama file bukti pemakaian</td></tr>
+          <tr><td><code>created_by</code></td><td>varchar(10)</td><td>NO</td><td></td><td>NULL</td><td>User pengupload</td></tr>
+          <tr><td><code>created_date</code></td><td>datetime</td><td>NO</td><td></td><td>NULL</td><td>Waktu upload</td></tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">↑ Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 4 -->
+    <div class="section" id="tbl-4">
+      <h2>4. kons_tr_expense_report_bukti_pengembalian</h2>
+      <p class="desc">Bukti Pengembalian Expense — Berisi dokumen bukti transfer pengembalian sisa dana kasbon.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>int</td><td>NO</td><td><span class="badge badge-pk">PRI</span></td><td>NULL</td><td>Auto increment</td></tr>
+          <tr><td><code>id_header_expense</code></td><td>varchar(100)</td><td>YES</td><td><span class="badge badge-fk">FK</span></td><td>NULL</td><td>FK ke header expense</td></tr>
+          <tr><td><code>document_link</code></td><td>text</td><td>YES</td><td></td><td>NULL</td><td>Path / URL file bukti transfer refund</td></tr>
+          <tr><td><code>created_by</code></td><td>varchar(100)</td><td>YES</td><td></td><td>NULL</td><td>User pengupload</td></tr>
+          <tr><td><code>created_date</code></td><td>datetime</td><td>YES</td><td></td><td>NULL</td><td>Waktu upload</td></tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">↑ Kembali ke atas</a>
+    </div>
+
+    <!-- Related Tables -->
+    <div class="section" id="tbl-related">
+      <h2>Related Tables (Ringkasan)</h2>
+      
+      <h3>kons_tr_kasbon_project_header</h3>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Type</th><th>Key</th><th>Keterangan</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>varchar(100)</td><td><span class="badge badge-pk">PRI</span></td><td>Primary key</td></tr>
+          <tr><td><code>id_spk_budgeting</code></td><td>varchar(100)</td><td><span class="badge badge-fk">FK</span></td><td>FK ke SPK Budgeting</td></tr>
+          <tr><td><code>grand_total</code></td><td>decimal(20,2)</td><td></td><td>Total pencairan uang muka</td></tr>
+        </tbody>
+      </table>
+
+      <h3>ms_bank (Cross-Database Ringkasan)</h3>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Type</th><th>Key</th><th>Keterangan</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>varchar(20)</td><td><span class="badge badge-pk">PRI</span></td><td>Primary key</td></tr>
+          <tr><td><code>nm_bank</code></td><td>varchar(100)</td><td></td><td>Nama bank resmi</td></tr>
+          <tr><td colspan="4" style="color:#d97706;"><em>* Berada di eksternal database `gl_sendigs`</em></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Catatan -->
+    <div class="section" id="catatan">
+      <h2>Catatan Teknis</h2>
+      <div class="notes">
+        <h4>&#9888; Penting untuk Developer</h4>
+        <ul>
+          <li><strong>Relasi Polymorphic Manual:</strong> Pada tabel detail, field <code>id_detail_kasbon</code> mengacu pada baris (ID) dari tabel detail kasbon, dan direferensikan berdasarkan nilai pada field <code>tipe</code>.</li>
+          <li><strong>Cross-Database Interface:</strong> Untuk referensi akun bank, aplikasi terhubung dengan `ms_bank` dari database eksternal. (DB `gl_sendigs` / `sendigs_finance`).</li>
+          <li><strong>File Uploads:</strong> Bukti nota disimpan secara riil di folder upload, dan DB hanya mencatat URL / path foldernya saja.</li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>

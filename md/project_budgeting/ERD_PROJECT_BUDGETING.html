@@ -1,0 +1,2181 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ERD - Modul Project Budgeting</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f0f2f5;
+        color: #333;
+        padding: 20px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .header {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+      }
+      .header h1 {
+        font-size: 22px;
+        margin-bottom: 8px;
+      }
+      .header p {
+        color: #94a3b8;
+        font-size: 14px;
+      }
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+      }
+      .info-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px 15px;
+        border-radius: 8px;
+      }
+      .info-item label {
+        font-size: 11px;
+        color: #94a3b8;
+        display: block;
+      }
+      .info-item span {
+        font-size: 14px;
+        font-weight: 600;
+        color: #e2e8f0;
+      }
+      .nav-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .nav-bar h3 {
+        font-size: 14px;
+        color: #475569;
+        margin-bottom: 10px;
+      }
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .nav-links a {
+        display: inline-block;
+        padding: 5px 12px;
+        background: #f1f5f9;
+        color: #475569;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 12px;
+        transition: all 0.2s;
+      }
+      .nav-links a:hover {
+        background: #1e293b;
+        color: white;
+      }
+      .nav-links a.cat-transaksi {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .nav-links a.cat-related {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .section h2 {
+        font-size: 17px;
+        color: #1e293b;
+        margin-bottom: 5px;
+      }
+      .section h3 {
+        font-size: 14px;
+        color: #475569;
+        margin: 15px 0 8px;
+      }
+      .section p.desc {
+        color: #64748b;
+        font-size: 13px;
+        margin-bottom: 12px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .badge-pk {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .badge-fk {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        table-layout: fixed;
+      }
+      table th {
+        background: #f8fafc;
+        padding: 8px 10px;
+        text-align: left;
+        font-weight: 600;
+        color: #475569;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      table td {
+        padding: 7px 10px;
+        border-bottom: 1px solid #f1f5f9;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+      table tr:hover td {
+        background: #f8fafc;
+      }
+      table code {
+        background: #f1f5f9;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 11px;
+        color: #e11d48;
+      }
+      table th:nth-child(1),
+      table td:nth-child(1) {
+        width: 22%;
+      }
+      table th:nth-child(2),
+      table td:nth-child(2) {
+        width: 16%;
+      }
+      table th:nth-child(3),
+      table td:nth-child(3) {
+        width: 6%;
+      }
+      table th:nth-child(4),
+      table td:nth-child(4) {
+        width: 8%;
+      }
+      table th:nth-child(5),
+      table td:nth-child(5) {
+        width: 10%;
+      }
+      table th:nth-child(6),
+      table td:nth-child(6) {
+        width: 38%;
+      }
+      .mermaid-wrap {
+        background: #fafbfc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 10px 0;
+      }
+      .mermaid {
+        text-align: center;
+      }
+      .mermaid svg {
+        max-width: 100%;
+        height: auto;
+      }
+      .flow-diagram {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .approval-flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin: 12px 0;
+      }
+      .approval-step {
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: center;
+      }
+      .approval-arrow {
+        font-size: 18px;
+        color: #94a3b8;
+      }
+      .step-draft {
+        background: #f1f5f9;
+        color: #475569;
+      }
+      .step-pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .step-approved {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .step-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .notes {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 15px 20px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+      }
+      .notes h4 {
+        color: #92400e;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+      .notes ul {
+        margin-left: 18px;
+        font-size: 12px;
+        color: #78350f;
+      }
+      .notes li {
+        margin-bottom: 5px;
+      }
+      .back-top {
+        display: block;
+        text-align: center;
+        padding: 8px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      .back-top:hover {
+        color: #1e293b;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <div class="header" id="top">
+      <h1>&#128202; ERD Database - Modul Project Budgeting</h1>
+      <p>Dokumentasi struktur database untuk modul Project Budgeting</p>
+      <div class="info-grid">
+        <div class="info-item">
+          <label>Host</label><span>mysql8 (Docker)</span>
+        </div>
+        <div class="info-item"><label>Port</label><span>3307</span></div>
+        <div class="info-item">
+          <label>Database</label><span>db_consultant_new</span>
+        </div>
+        <div class="info-item"><label>Driver</label><span>mysqli</span></div>
+        <div class="info-item">
+          <label>Total Tabel</label><span>7 tabel</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-bar">
+      <h3>Navigasi Tabel</h3>
+      <div class="nav-links">
+        <a href="#diagram">ERD Diagram</a>
+        <a href="#relasi">Relasi</a>
+        <a href="#approval-flow">Approval Flow</a>
+        <a href="#tbl-1" class="cat-transaksi">spk_budgeting</a>
+        <a href="#tbl-2" class="cat-transaksi">budgeting_aktifitas</a>
+        <a href="#tbl-3" class="cat-transaksi">budgeting_akomodasi</a>
+        <a href="#tbl-4" class="cat-transaksi">budgeting_others</a>
+        <a href="#tbl-5" class="cat-transaksi">budgeting_lab</a>
+        <a href="#tbl-6" class="cat-transaksi">budgeting_subcont_ta</a>
+        <a href="#tbl-7" class="cat-transaksi">budgeting_subcont_pr</a>
+        <a href="#tbl-related" class="cat-related">Related Tables</a>
+        <a href="#catatan">Catatan</a>
+      </div>
+    </div>
+
+    <!-- ERD Diagram -->
+    <div class="section" id="diagram">
+      <h2>ERD Diagram</h2>
+      <p class="desc">
+        Diagram relasi antar tabel modul Project Budgeting (Entity Relationship
+        Diagram)
+      </p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+          erDiagram kons_tr_spk_penawaran ||--|| kons_tr_spk_budgeting :
+          "id_spk_penawaran" kons_tr_penawaran ||--|| kons_tr_spk_budgeting :
+          "id_penawaran" customer ||--o{ kons_tr_spk_budgeting : "id_customer"
+          kons_tr_spk_budgeting ||--o{ kons_tr_spk_budgeting_aktifitas :
+          "id_spk_budgeting" kons_tr_spk_budgeting ||--o{
+          kons_tr_spk_budgeting_akomodasi : "id_spk_budgeting"
+          kons_tr_spk_budgeting ||--o{ kons_tr_spk_budgeting_others :
+          "id_spk_budgeting" kons_tr_spk_budgeting ||--o{
+          kons_tr_spk_budgeting_lab : "id_spk_budgeting" kons_tr_spk_budgeting
+          ||--o{ kons_tr_spk_budgeting_subcont_tenaga_ahli : "id_spk_budgeting"
+          kons_tr_spk_budgeting ||--o{ kons_tr_spk_budgeting_subcont_perusahaan
+          : "id_spk_budgeting" kons_tr_spk_penawaran { varchar id_spk_penawaran
+          PK varchar id_penawaran FK varchar id_customer FK decimal
+          nilai_kontrak varchar sts_spk int total_mandays } kons_tr_penawaran {
+          varchar id_quotation PK varchar id_customer FK decimal grand_total
+          varchar sts_quot } customer { varchar id_customer PK varchar
+          nm_customer enum deleted } kons_tr_spk_budgeting { varchar
+          id_spk_budgeting PK varchar id_spk_penawaran FK varchar id_penawaran
+          FK varchar id_customer FK decimal nilai_kontrak_bersih decimal
+          grand_total int sts } kons_tr_spk_budgeting_aktifitas { int id PK
+          varchar id_spk_budgeting FK decimal total_aktifitas_estimasi decimal
+          total_aktifitas_final } kons_tr_spk_budgeting_akomodasi { int id PK
+          varchar id_spk_budgeting FK decimal total_estimasi decimal total_final
+          } kons_tr_spk_budgeting_others { int id PK varchar id_spk_budgeting FK
+          decimal total_estimasi decimal total_final } kons_tr_spk_budgeting_lab
+          { int id PK varchar id_spk_budgeting FK decimal total_estimasi decimal
+          total_final } kons_tr_spk_budgeting_subcont_tenaga_ahli { int id PK
+          varchar id_spk_budgeting FK decimal total_estimasi decimal total_final
+          } kons_tr_spk_budgeting_subcont_perusahaan { int id PK varchar
+          id_spk_budgeting FK decimal total_estimasi decimal total_final }
+        </div>
+      </div>
+    </div>
+
+    <!-- Penjelasan Relasi -->
+    <div class="section" id="relasi">
+      <h2>Penjelasan Relasi</h2>
+      <h3>A. Project Budgeting (Flow Utama)</h3>
+      <div class="flow-diagram">
+        kons_tr_spk_penawaran (1) ──── (1) kons_tr_spk_budgeting
+        kons_tr_penawaran (1) ─────────────┘ customer (1)
+        ──────────────────────(N)┘ │ ├── (N) kons_tr_spk_budgeting_aktifitas ├──
+        (N) kons_tr_spk_budgeting_akomodasi ├── (N) kons_tr_spk_budgeting_others
+        ├── (N) kons_tr_spk_budgeting_lab ├── (N)
+        kons_tr_spk_budgeting_subcont_tenaga_ahli └── (N)
+        kons_tr_spk_budgeting_subcont_perusahaan
+      </div>
+      <h3>B. Hubungan dengan Modul SPK Penawaran</h3>
+      <div class="flow-diagram">
+        kons_tr_spk_penawaran.id_spk_penawaran →
+        kons_tr_spk_budgeting.id_spk_penawaran │ └── 1 SPK Penawaran
+        menghasilkan 1 Project Budgeting (data estimasi di-copy ke kolom
+        _estimasi/_before)
+      </div>
+    </div>
+
+    <!-- Approval Flow -->
+    <div class="section" id="approval-flow">
+      <h2>Alur Proses Approval Budgeting (Single-level)</h2>
+      <p class="desc">
+        Flow approval Project Budgeting — sederhana, hanya 1 level approval
+      </p>
+      <div class="approval-flow">
+        <div class="approval-step step-draft">
+          Draft<br /><small>sts = 0</small>
+        </div>
+        <span class="approval-arrow">&#8594;</span>
+        <div class="approval-step step-pending">
+          Pending Approval<br /><small>sts = 0</small>
+        </div>
+        <span class="approval-arrow">&#8594;</span>
+        <div class="approval-step step-approved">
+          Approved<br /><small>sts = 1</small>
+        </div>
+      </div>
+      <div class="approval-flow">
+        <div class="approval-step step-pending">Pending</div>
+        <span class="approval-arrow">&#8594;</span>
+        <div class="approval-step step-rejected">
+          Rejected<br /><small>sts = 2, reject_reason terisi</small>
+        </div>
+      </div>
+      <p class="desc" style="margin-top: 12px">
+        <em
+          >Approval mengisi field approved_by &amp; approved_date. Reject
+          mengisi reject_reason.</em
+        >
+      </p>
+    </div>
+
+    <!-- Tabel 1 -->
+    <div class="section" id="tbl-1">
+      <h2>1. kons_tr_spk_budgeting</h2>
+      <p class="desc">
+        Header Project Budgeting — Tabel utama menyimpan data budgeting project
+        konsultasi.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id_spk_budgeting</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>PK, format: SPK-BUDGET/YY/MM/XXX</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_customer</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke customer</td>
+          </tr>
+          <tr>
+            <td><code>nm_customer</code></td>
+            <td>varchar(255)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama customer (denormalized)</td>
+          </tr>
+          <tr>
+            <td><code>alamat</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Alamat</td>
+          </tr>
+          <tr>
+            <td><code>no_npwp</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>NPWP customer</td>
+          </tr>
+          <tr>
+            <td><code>id_pic</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID PIC</td>
+          </tr>
+          <tr>
+            <td><code>nm_pic</code></td>
+            <td>varchar(255)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama PIC</td>
+          </tr>
+          <tr>
+            <td><code>jabatan_pic</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Jabatan PIC</td>
+          </tr>
+          <tr>
+            <td><code>kontak_pic</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Kontak PIC</td>
+          </tr>
+          <tr>
+            <td><code>id_project</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID project</td>
+          </tr>
+          <tr>
+            <td><code>nm_project</code></td>
+            <td>varchar(255)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama project</td>
+          </tr>
+          <tr>
+            <td><code>id_project_leader</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID project leader</td>
+          </tr>
+          <tr>
+            <td><code>nm_project_leader</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama project leader</td>
+          </tr>
+          <tr>
+            <td><code>id_konsultan_1</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID konsultan 1</td>
+          </tr>
+          <tr>
+            <td><code>nm_konsultan_1</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama konsultan 1</td>
+          </tr>
+          <tr>
+            <td><code>id_konsultan_2</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID konsultan 2</td>
+          </tr>
+          <tr>
+            <td><code>nm_konsultan_2</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama konsultan 2</td>
+          </tr>
+          <tr>
+            <td><code>total_mandays</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Total mandays</td>
+          </tr>
+          <tr>
+            <td><code>mandays_internal</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays internal</td>
+          </tr>
+          <tr>
+            <td><code>mandays_tandem</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays tandem</td>
+          </tr>
+          <tr>
+            <td><code>mandays_subcont</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays subcont</td>
+          </tr>
+          <tr>
+            <td><code>biaya_konsultasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya konsultasi</td>
+          </tr>
+          <tr>
+            <td><code>biaya_tandem</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya tandem</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont</td>
+          </tr>
+          <tr>
+            <td><code>biaya_akomodasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya akomodasi</td>
+          </tr>
+          <tr>
+            <td><code>biaya_others</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya lain-lain</td>
+          </tr>
+          <tr>
+            <td><code>biaya_lab</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya lab</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_tenaga_ahli</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont tenaga ahli</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_perusahaan</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont perusahaan</td>
+          </tr>
+          <tr>
+            <td><code>nilai_kontrak_bersih</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Nilai kontrak bersih</td>
+          </tr>
+          <tr>
+            <td><code>mandays_rate</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Rate mandays</td>
+          </tr>
+          <tr>
+            <td><code>ppn</code></td>
+            <td>int</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>PPN flag</td>
+          </tr>
+          <tr>
+            <td><code>persen_ppn</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Persentase PPN</td>
+          </tr>
+          <tr>
+            <td><code>nilai_ppn</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nilai PPN</td>
+          </tr>
+          <tr>
+            <td><code>grand_total</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Grand total</td>
+          </tr>
+          <tr>
+            <td><code>mandays_subcont_before</code></td>
+            <td>int</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Mandays subcont (before/penawaran)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_before</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont (before)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_akomodasi_before</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya akomodasi (before)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_others_before</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya others (before)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_lab_before</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya lab (before)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_tenaga_ahli_before</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont TA (before)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_perusahaan_before</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont PR (before)</td>
+          </tr>
+          <tr>
+            <td><code>mandays_subcont_after</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td></td>
+            <td>0</td>
+            <td>Mandays subcont (after/budgeting)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_after</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont (after)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_akomodasi_after</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya akomodasi (after)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_others_after</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya others (after)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_lab_after</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya lab (after)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_tenaga_ahli_after</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont TA (after)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_perusahaan_after</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont PR (after)</td>
+          </tr>
+          <tr>
+            <td><code>mandays_subcont_result</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td></td>
+            <td>0</td>
+            <td>Mandays subcont (result/selisih)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_result</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont (result)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_akomodasi_result</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya akomodasi (result)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_others_result</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya others (result)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_lab_result</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya lab (result)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_tenaga_ahli_result</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont TA (result)</td>
+          </tr>
+          <tr>
+            <td><code>biaya_subcont_perusahaan_result</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Biaya subcont PR (result)</td>
+          </tr>
+          <tr>
+            <td><code>sts</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td></td>
+            <td>0</td>
+            <td>Status (0=pending, 1=approved, 2=rejected)</td>
+          </tr>
+          <tr>
+            <td><code>reject_reason</code></td>
+            <td>text</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Alasan reject</td>
+          </tr>
+          <tr>
+            <td><code>create_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User input</td>
+          </tr>
+          <tr>
+            <td><code>create_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal input</td>
+          </tr>
+          <tr>
+            <td><code>update_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User update</td>
+          </tr>
+          <tr>
+            <td><code>update_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal update</td>
+          </tr>
+          <tr>
+            <td><code>delete_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User delete</td>
+          </tr>
+          <tr>
+            <td><code>delete_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal delete</td>
+          </tr>
+          <tr>
+            <td><code>approved_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User approval</td>
+          </tr>
+          <tr>
+            <td><code>approved_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal approval</td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 2 -->
+    <div class="section" id="tbl-2">
+      <h2>2. kons_tr_spk_budgeting_aktifitas</h2>
+      <p class="desc">
+        Detail Aktifitas Budgeting — Menyimpan detail aktifitas dengan pola
+        estimasi vs final.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Auto increment</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_budgeting</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_budgeting</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_aktifitas</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID master aktifitas</td>
+          </tr>
+          <tr>
+            <td><code>nm_aktifitas</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama aktifitas</td>
+          </tr>
+          <tr>
+            <td><code>mandays_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays estimasi (dari penawaran)</td>
+          </tr>
+          <tr>
+            <td><code>mandays_rate_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Rate mandays estimasi</td>
+          </tr>
+          <tr>
+            <td><code>mandays_tandem_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays tandem estimasi</td>
+          </tr>
+          <tr>
+            <td><code>mandays_rate_tandem_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Rate tandem estimasi</td>
+          </tr>
+          <tr>
+            <td><code>mandays_subcont_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays subcont estimasi</td>
+          </tr>
+          <tr>
+            <td><code>mandays_rate_subcont_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Rate subcont estimasi</td>
+          </tr>
+          <tr>
+            <td><code>total_aktifitas_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Total aktifitas estimasi</td>
+          </tr>
+          <tr>
+            <td><code>mandays_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays final (budgeting)</td>
+          </tr>
+          <tr>
+            <td><code>mandays_rate_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Rate mandays final</td>
+          </tr>
+          <tr>
+            <td><code>mandays_tandem_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays tandem final</td>
+          </tr>
+          <tr>
+            <td><code>mandays_rate_tandem_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Rate tandem final</td>
+          </tr>
+          <tr>
+            <td><code>mandays_subcont_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Mandays subcont final</td>
+          </tr>
+          <tr>
+            <td><code>mandays_rate_subcont_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Rate subcont final</td>
+          </tr>
+          <tr>
+            <td><code>total_aktifitas_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>YES</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Total aktifitas final</td>
+          </tr>
+          <tr>
+            <td><code>create_by</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User input</td>
+          </tr>
+          <tr>
+            <td><code>create_date</code></td>
+            <td>datetime</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal input</td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 3 -->
+    <div class="section" id="tbl-3">
+      <h2>3. kons_tr_spk_budgeting_akomodasi</h2>
+      <p class="desc">
+        Detail Akomodasi Budgeting — Menyimpan detail biaya akomodasi dengan
+        pola estimasi vs final.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Auto increment</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_budgeting</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_budgeting</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_akomodasi</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID referensi akomodasi original</td>
+          </tr>
+          <tr>
+            <td><code>id_item</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID item</td>
+          </tr>
+          <tr>
+            <td><code>nm_item</code></td>
+            <td>text</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama item</td>
+          </tr>
+          <tr>
+            <td><code>qty_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty estimasi (dari penawaran)</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan estimasi</td>
+          </tr>
+          <tr>
+            <td><code>total_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Total estimasi</td>
+          </tr>
+          <tr>
+            <td><code>qty_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty final (budgeting)</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan final</td>
+          </tr>
+          <tr>
+            <td><code>total_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Total final</td>
+          </tr>
+          <tr>
+            <td><code>keterangan</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Keterangan</td>
+          </tr>
+          <tr>
+            <td><code>create_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User input</td>
+          </tr>
+          <tr>
+            <td><code>create_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal input</td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 4 -->
+    <div class="section" id="tbl-4">
+      <h2>4. kons_tr_spk_budgeting_others</h2>
+      <p class="desc">
+        Detail Biaya Lain-lain Budgeting — Menyimpan detail biaya others dengan
+        pola estimasi vs final.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Auto increment</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_budgeting</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_budgeting</td>
+          </tr>
+          <tr>
+            <td><code>id_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_others</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID referensi others original</td>
+          </tr>
+          <tr>
+            <td><code>id_item</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID item</td>
+          </tr>
+          <tr>
+            <td><code>nm_item</code></td>
+            <td>text</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama item</td>
+          </tr>
+          <tr>
+            <td><code>qty_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty estimasi</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan estimasi</td>
+          </tr>
+          <tr>
+            <td><code>total_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Total estimasi</td>
+          </tr>
+          <tr>
+            <td><code>qty_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty final</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan final</td>
+          </tr>
+          <tr>
+            <td><code>total_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Total final</td>
+          </tr>
+          <tr>
+            <td><code>keterangan</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Keterangan</td>
+          </tr>
+          <tr>
+            <td><code>create_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User input</td>
+          </tr>
+          <tr>
+            <td><code>create_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal input</td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 5 -->
+    <div class="section" id="tbl-5">
+      <h2>5. kons_tr_spk_budgeting_lab</h2>
+      <p class="desc">
+        Detail Biaya Lab Budgeting — Menyimpan detail biaya lab dengan pola
+        estimasi vs final.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Auto increment</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_budgeting</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_budgeting</td>
+          </tr>
+          <tr>
+            <td><code>id_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_lab</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID referensi lab original</td>
+          </tr>
+          <tr>
+            <td><code>id_item</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID item</td>
+          </tr>
+          <tr>
+            <td><code>nm_item</code></td>
+            <td>text</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama item</td>
+          </tr>
+          <tr>
+            <td><code>qty_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty estimasi</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan estimasi</td>
+          </tr>
+          <tr>
+            <td><code>total_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Total estimasi</td>
+          </tr>
+          <tr>
+            <td><code>qty_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty final</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan final</td>
+          </tr>
+          <tr>
+            <td><code>total_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Total final</td>
+          </tr>
+          <tr>
+            <td><code>keterangan</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Keterangan</td>
+          </tr>
+          <tr>
+            <td><code>create_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User input</td>
+          </tr>
+          <tr>
+            <td><code>create_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal input</td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 6 -->
+    <div class="section" id="tbl-6">
+      <h2>6. kons_tr_spk_budgeting_subcont_tenaga_ahli</h2>
+      <p class="desc">
+        Detail Subcont Tenaga Ahli Budgeting — Menyimpan detail biaya subcont
+        tenaga ahli dengan pola estimasi vs final.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Auto increment</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_budgeting</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_budgeting</td>
+          </tr>
+          <tr>
+            <td><code>id_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_subcont</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID referensi subcont original</td>
+          </tr>
+          <tr>
+            <td><code>id_item</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID item</td>
+          </tr>
+          <tr>
+            <td><code>nm_item</code></td>
+            <td>text</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama item</td>
+          </tr>
+          <tr>
+            <td><code>qty_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty estimasi</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan estimasi</td>
+          </tr>
+          <tr>
+            <td><code>total_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Total estimasi</td>
+          </tr>
+          <tr>
+            <td><code>qty_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty final</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan final</td>
+          </tr>
+          <tr>
+            <td><code>total_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Total final</td>
+          </tr>
+          <tr>
+            <td><code>keterangan</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Keterangan</td>
+          </tr>
+          <tr>
+            <td><code>create_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User input</td>
+          </tr>
+          <tr>
+            <td><code>create_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal input</td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 7 -->
+    <div class="section" id="tbl-7">
+      <h2>7. kons_tr_spk_budgeting_subcont_perusahaan</h2>
+      <p class="desc">
+        Detail Subcont Perusahaan Budgeting — Menyimpan detail biaya subcont
+        perusahaan dengan pola estimasi vs final.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id</code></td>
+            <td>int</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Auto increment</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_spk_budgeting</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_spk_budgeting</td>
+          </tr>
+          <tr>
+            <td><code>id_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_subcont</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID referensi subcont original</td>
+          </tr>
+          <tr>
+            <td><code>id_item</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>ID item</td>
+          </tr>
+          <tr>
+            <td><code>nm_item</code></td>
+            <td>text</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama item</td>
+          </tr>
+          <tr>
+            <td><code>qty_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty estimasi</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan estimasi</td>
+          </tr>
+          <tr>
+            <td><code>total_estimasi</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Total estimasi</td>
+          </tr>
+          <tr>
+            <td><code>qty_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Qty final</td>
+          </tr>
+          <tr>
+            <td><code>price_unit_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Harga satuan final</td>
+          </tr>
+          <tr>
+            <td><code>total_final</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Total final</td>
+          </tr>
+          <tr>
+            <td><code>keterangan</code></td>
+            <td>text</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Keterangan</td>
+          </tr>
+          <tr>
+            <td><code>create_by</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>User input</td>
+          </tr>
+          <tr>
+            <td><code>create_date</code></td>
+            <td>datetime</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Tanggal input</td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Related Tables -->
+    <div class="section" id="tbl-related">
+      <h2>Related Tables</h2>
+      <p class="desc">
+        Tabel dari modul lain yang berelasi dengan Project Budgeting
+      </p>
+      <h3>kons_tr_spk_penawaran (Ringkasan)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id_spk_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Primary key</td>
+          </tr>
+          <tr>
+            <td><code>id_penawaran</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke kons_tr_penawaran</td>
+          </tr>
+          <tr>
+            <td><code>id_customer</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke customer</td>
+          </tr>
+          <tr>
+            <td><code>nilai_kontrak</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Nilai kontrak</td>
+          </tr>
+          <tr>
+            <td><code>sts_spk</code></td>
+            <td>varchar(5)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Status SPK</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>kons_tr_penawaran (Ringkasan)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id_quotation</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Primary key</td>
+          </tr>
+          <tr>
+            <td><code>id_customer</code></td>
+            <td>varchar(100)</td>
+            <td>YES</td>
+            <td><span class="badge badge-fk">FK</span></td>
+            <td>NULL</td>
+            <td>FK ke customer</td>
+          </tr>
+          <tr>
+            <td><code>grand_total</code></td>
+            <td>decimal(20,2)</td>
+            <td>NO</td>
+            <td></td>
+            <td>0.00</td>
+            <td>Grand total penawaran</td>
+          </tr>
+          <tr>
+            <td><code>sts_quot</code></td>
+            <td>varchar(10)</td>
+            <td>YES</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Status quotation</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>customer (Ringkasan)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Null</th>
+            <th>Key</th>
+            <th>Default</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>id_customer</code></td>
+            <td>varchar(100)</td>
+            <td>NO</td>
+            <td><span class="badge badge-pk">PRI</span></td>
+            <td>NULL</td>
+            <td>Primary key</td>
+          </tr>
+          <tr>
+            <td><code>nm_customer</code></td>
+            <td>varchar(255)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Nama customer</td>
+          </tr>
+          <tr>
+            <td><code>alamat</code></td>
+            <td>varchar(255)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>Alamat</td>
+          </tr>
+          <tr>
+            <td><code>npwp</code></td>
+            <td>varchar(25)</td>
+            <td>NO</td>
+            <td></td>
+            <td>NULL</td>
+            <td>NPWP</td>
+          </tr>
+          <tr>
+            <td><code>deleted</code></td>
+            <td>enum(Y,N)</td>
+            <td>YES</td>
+            <td></td>
+            <td>N</td>
+            <td>Soft delete flag</td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Catatan Teknis -->
+    <div class="section" id="catatan">
+      <h2>Catatan Teknis</h2>
+      <div class="notes">
+        <h4>&#9888;&#65039; Penting untuk Developer</h4>
+        <ul>
+          <li>
+            <strong>Format ID SPK Budgeting</strong> —
+            <code>SPK-BUDGET/YY/MM/XXX</code> (contoh: SPK-BUDGET/24/07/001)
+          </li>
+          <li>
+            <strong>Estimasi vs Final Pattern</strong> — Detail tables memiliki
+            dual columns: <code>_estimasi</code> (dari penawaran/SPK original)
+            dan <code>_final</code> (actual budgeting values). Memungkinkan
+            perbandingan antara estimasi awal dan budget akhir.
+          </li>
+          <li>
+            <strong>Before/After/Result Pattern</strong> — Header table memiliki
+            triple columns: <code>_before</code> (original dari SPK),
+            <code>_after</code> (final budget), dan
+            <code>_result</code> (selisih/difference).
+          </li>
+          <li>
+            <strong>Denormalisasi</strong> — Field nama (nm_customer,
+            nm_project_leader, dll) disimpan langsung di tabel transaksi untuk
+            menghindari JOIN berlebihan saat reporting.
+          </li>
+          <li>
+            <strong>Soft Delete</strong> — Pola <code>delete_by</code> +
+            <code>delete_date</code>. NULL = aktif, terisi = dihapus.
+          </li>
+          <li>
+            <strong>Dual Database</strong> — Data employee dari database
+            <code>hr_sentral</code> (koneksi <code>dbhr</code>), bukan dari
+            <code>db_consultant_new</code>.
+          </li>
+          <li>
+            <strong>Related to SPK Penawaran &amp; Penawaran</strong> —
+            Budgeting terhubung ke kedua tabel induk melalui
+            <code>id_spk_penawaran</code> dan <code>id_penawaran</code>.
+          </li>
+          <li>
+            <strong>No History Tables</strong> — Modul budgeting lebih sederhana
+            dari SPK penawaran, tidak memiliki tabel history terpisah.
+          </li>
+          <li>
+            <strong>Single-level Approval</strong> — Hanya 1 level approval
+            (langsung approve/reject), berbeda dengan SPK penawaran yang 6
+            level.
+          </li>
+          <li>
+            <strong>Nilai Kontrak Bersih</strong> — Dari SPK Penawaran,
+            dihitung: nilai_kontrak - biaya_subcont - biaya_akomodasi -
+            biaya_others - biaya_tandem - biaya_lab - biaya_subcont_tenaga_ahli
+            - biaya_subcont_perusahaan.
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "default",
+        er: { useMaxWidth: true },
+      });
+    </script>
+  </body>
+</html>

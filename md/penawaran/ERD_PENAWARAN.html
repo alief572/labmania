@@ -1,0 +1,2433 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ERD - Modul Penawaran & Approval Penawaran</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f0f2f5;
+        color: #333;
+        padding: 20px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .header {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+      }
+      .header h1 {
+        font-size: 22px;
+        margin-bottom: 8px;
+      }
+      .header p {
+        color: #94a3b8;
+        font-size: 14px;
+      }
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+      }
+      .info-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px 15px;
+        border-radius: 8px;
+      }
+      .info-item label {
+        font-size: 11px;
+        color: #94a3b8;
+        display: block;
+      }
+      .info-item span {
+        font-size: 14px;
+        font-weight: 600;
+        color: #e2e8f0;
+      }
+      /* Navigation */
+      .nav-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .nav-bar h3 {
+        font-size: 14px;
+        color: #475569;
+        margin-bottom: 10px;
+      }
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .nav-links a {
+        display: inline-block;
+        padding: 5px 12px;
+        background: #f1f5f9;
+        color: #475569;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 12px;
+        transition: all 0.2s;
+      }
+      .nav-links a:hover {
+        background: #1e293b;
+        color: white;
+      }
+      .nav-links a.cat-master {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .nav-links a.cat-history {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      /* Sections */
+      .section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .section h2 {
+        font-size: 17px;
+        color: #1e293b;
+        margin-bottom: 5px;
+      }
+      .section h3 {
+        font-size: 14px;
+        color: #475569;
+        margin: 15px 0 8px;
+      }
+      .section p.desc {
+        color: #64748b;
+        font-size: 13px;
+        margin-bottom: 12px;
+      }
+
+      /* Badges */
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .badge-pk {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .badge-fk {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      /* Tables - responsive vertical */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        table-layout: fixed;
+      }
+      table th {
+        background: #f8fafc;
+        padding: 8px 10px;
+        text-align: left;
+        font-weight: 600;
+        color: #475569;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      table td {
+        padding: 7px 10px;
+        border-bottom: 1px solid #f1f5f9;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+      table tr:hover td {
+        background: #f8fafc;
+      }
+      table code {
+        background: #f1f5f9;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 11px;
+        color: #e11d48;
+      }
+      /* Column widths */
+      table th:nth-child(1),
+      table td:nth-child(1) {
+        width: 22%;
+      }
+      table th:nth-child(2),
+      table td:nth-child(2) {
+        width: 16%;
+      }
+      table th:nth-child(3),
+      table td:nth-child(3) {
+        width: 6%;
+      }
+      table th:nth-child(4),
+      table td:nth-child(4) {
+        width: 8%;
+      }
+      table th:nth-child(5),
+      table td:nth-child(5) {
+        width: 10%;
+      }
+      table th:nth-child(6),
+      table td:nth-child(6) {
+        width: 38%;
+      }
+
+      /* Mermaid */
+      .mermaid-wrap {
+        background: #fafbfc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 10px 0;
+      }
+      .mermaid {
+        text-align: center;
+      }
+      .mermaid svg {
+        max-width: 100%;
+        height: auto;
+      }
+
+      /* Flow diagram */
+      .flow-diagram {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      /* Approval flow */
+      .approval-flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin: 12px 0;
+      }
+      .approval-step {
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: center;
+      }
+      .approval-arrow {
+        font-size: 18px;
+        color: #94a3b8;
+      }
+      .step-draft {
+        background: #f1f5f9;
+        color: #475569;
+      }
+      .step-pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .step-approved {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .step-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .step-deal {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+
+      /* Notes */
+      .notes {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 15px 20px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+      }
+      .notes h4 {
+        color: #92400e;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+      .notes ul {
+        margin-left: 18px;
+        font-size: 12px;
+        color: #78350f;
+      }
+      .notes li {
+        margin-bottom: 5px;
+      }
+
+      /* Back to top */
+      .back-top {
+        display: block;
+        text-align: center;
+        padding: 8px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      .back-top:hover {
+        color: #1e293b;
+      }
+    </style>
+  </head>
+  <body></body>
+</html>
+<!-- Header -->
+<div class="header" id="top">
+  <h1>&#128202; ERD Database - Modul Penawaran & Approval Penawaran</h1>
+  <p>
+    Dokumentasi struktur database untuk modul penawaran konsultasi dan
+    non-konsultasi
+  </p>
+  <div class="info-grid">
+    <div class="info-item"><label>Host</label><span>mysql8 (Docker)</span></div>
+    <div class="info-item"><label>Port</label><span>3307</span></div>
+    <div class="info-item">
+      <label>Database</label><span>db_consultant_new</span>
+    </div>
+    <div class="info-item"><label>Driver</label><span>mysqli</span></div>
+    <div class="info-item"><label>Total Tabel</label><span>18 tabel</span></div>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav-bar">
+  <h3>Navigasi Tabel</h3>
+  <div class="nav-links">
+    <a href="#diagram">ERD Diagram</a>
+    <a href="#relasi">Relasi</a>
+    <a href="#approval-flow">Approval Flow</a>
+    <a href="#tbl-1">penawaran</a>
+    <a href="#tbl-2">penawaran_non</a>
+    <a href="#tbl-3">detail_non</a>
+    <a href="#tbl-4">aktifitas</a>
+    <a href="#tbl-5">akomodasi</a>
+    <a href="#tbl-6">others</a>
+    <a href="#tbl-7">lab</a>
+    <a href="#tbl-8">subcont_ta</a>
+    <a href="#tbl-9">subcont_pr</a>
+    <a href="#tbl-10" class="cat-history">history</a>
+    <a href="#tbl-11" class="cat-history">akt_hist</a>
+    <a href="#tbl-12" class="cat-history">ako_hist</a>
+    <a href="#tbl-13" class="cat-history">oth_hist</a>
+    <a href="#tbl-14" class="cat-history">lab_hist</a>
+    <a href="#tbl-15" class="cat-history">sta_hist</a>
+    <a href="#tbl-16" class="cat-history">spr_hist</a>
+    <a href="#tbl-17" class="cat-master">customer</a>
+    <a href="#tbl-18" class="cat-master">company</a>
+    <a href="#catatan">Catatan</a>
+  </div>
+</div>
+
+<!-- ERD Diagram -->
+<div class="section" id="diagram">
+  <h2>ERD Diagram</h2>
+  <p class="desc">Diagram relasi antar tabel (Entity Relationship Diagram)</p>
+  <div class="mermaid-wrap">
+    <div class="mermaid">
+      erDiagram customer ||--o{ kons_tr_penawaran : "id_customer" customer
+      ||--o{ kons_tr_penawaran_non_konsultasi : "id_customer" kons_tr_company
+      ||--o{ kons_tr_penawaran_non_konsultasi : "id_company" kons_tr_penawaran
+      ||--o{ kons_tr_penawaran_aktifitas : "id_penawaran" kons_tr_penawaran
+      ||--o{ kons_tr_penawaran_akomodasi : "id_penawaran" kons_tr_penawaran
+      ||--o{ kons_tr_penawaran_others : "id_penawaran" kons_tr_penawaran ||--o{
+      kons_tr_penawaran_lab : "id_penawaran" kons_tr_penawaran ||--o{
+      kons_tr_penawaran_subcont_tenaga_ahli : "id_penawaran" kons_tr_penawaran
+      ||--o{ kons_tr_penawaran_subcont_perusahaan : "id_penawaran"
+      kons_tr_penawaran_non_konsultasi ||--o{
+      kons_tr_detail_penawaran_non_konsultasi : "id_header" kons_tr_penawaran
+      ||--o{ kons_tr_penawaran_history : "id_quotation"
+      kons_tr_penawaran_history ||--o{ kons_tr_penawaran_aktifitas_history :
+      "id_history" kons_tr_penawaran_history ||--o{
+      kons_tr_penawaran_akomodasi_history : "id_history"
+      kons_tr_penawaran_history ||--o{ kons_tr_penawaran_others_history :
+      "id_history" kons_tr_penawaran_history ||--o{
+      kons_tr_penawaran_lab_history : "id_history" kons_tr_penawaran_history
+      ||--o{ kons_tr_penawaran_subcont_tenaga_ahli_history : "id_history"
+      kons_tr_penawaran_history ||--o{
+      kons_tr_penawaran_subcont_perusahaan_history : "id_history" customer {
+      varchar id_customer PK varchar nm_customer enum deleted } kons_tr_company
+      { int id PK varchar nm_company } kons_tr_penawaran { varchar id_quotation
+      PK varchar id_customer FK decimal grand_total varchar sts_quot int revisi
+      } kons_tr_penawaran_non_konsultasi { varchar id_penawaran PK varchar
+      id_customer FK varchar id_company FK decimal grand_total }
+      kons_tr_detail_penawaran_non_konsultasi { int id PK varchar id_header FK
+      decimal total } kons_tr_penawaran_aktifitas { int id PK varchar
+      id_penawaran FK decimal total_aktifitas } kons_tr_penawaran_akomodasi {
+      int id PK varchar id_penawaran FK decimal total } kons_tr_penawaran_others
+      { int id PK varchar id_penawaran FK decimal total } kons_tr_penawaran_lab
+      { int id PK varchar id_penawaran FK decimal total }
+      kons_tr_penawaran_subcont_tenaga_ahli { int id PK varchar id_penawaran FK
+      decimal total } kons_tr_penawaran_subcont_perusahaan { int id PK varchar
+      id_penawaran FK decimal total } kons_tr_penawaran_history { varchar
+      id_history PK varchar id_quotation FK int revisi }
+      kons_tr_penawaran_aktifitas_history { int id PK varchar id_history FK }
+      kons_tr_penawaran_akomodasi_history { int id PK varchar id_history FK }
+      kons_tr_penawaran_others_history { int id PK varchar id_history FK }
+      kons_tr_penawaran_lab_history { int id PK varchar id_history FK }
+      kons_tr_penawaran_subcont_tenaga_ahli_history { int id PK varchar
+      id_history FK } kons_tr_penawaran_subcont_perusahaan_history { int id PK
+      varchar id_history FK }
+    </div>
+  </div>
+</div>
+<!-- Penjelasan Relasi -->
+<div class="section" id="relasi">
+  <h2>Penjelasan Relasi</h2>
+  <h3>A. Penawaran Konsultasi (Flow Utama)</h3>
+  <div class="flow-diagram">
+    customer (1) ──── (N) kons_tr_penawaran │ ├── (N)
+    kons_tr_penawaran_aktifitas ├── (N) kons_tr_penawaran_akomodasi ├── (N)
+    kons_tr_penawaran_others ├── (N) kons_tr_penawaran_lab ├── (N)
+    kons_tr_penawaran_subcont_tenaga_ahli ├── (N)
+    kons_tr_penawaran_subcont_perusahaan │ └── (N) kons_tr_penawaran_history │
+    ├── (N) aktifitas_history ├── (N) akomodasi_history ├── (N) others_history
+    ├── (N) lab_history ├── (N) subcont_tenaga_ahli_history └── (N)
+    subcont_perusahaan_history
+  </div>
+  <h3>B. Penawaran Non-Konsultasi</h3>
+  <div class="flow-diagram">
+    customer (1) ────── (N) kons_tr_penawaran_non_konsultasi │ kons_tr_company
+    (1) ────────────────┘ │ └── (N) kons_tr_detail_penawaran_non_konsultasi
+  </div>
+</div>
+
+<!-- Approval Flow -->
+<div class="section" id="approval-flow">
+  <h2>Alur Proses Approval</h2>
+  <p class="desc">Flow status penawaran dari input sampai deal/reject</p>
+  <div class="approval-flow">
+    <div class="approval-step step-draft">
+      Draft<br /><small>sts_quot = NULL</small>
+    </div>
+    <span class="approval-arrow">&#8594;</span>
+    <div class="approval-step step-pending">
+      Pending<br /><small>sts_quot = 'P'</small>
+    </div>
+    <span class="approval-arrow">&#8594;</span>
+    <div class="approval-step step-approved">
+      Approved<br /><small>sts_quot = 'A'</small>
+    </div>
+    <span class="approval-arrow">&#8594;</span>
+    <div class="approval-step step-deal">
+      Deal<br /><small>sts_deal = 'Y'</small>
+    </div>
+  </div>
+  <div class="approval-flow">
+    <div class="approval-step step-pending">Pending</div>
+    <span class="approval-arrow">&#8594;</span>
+    <div class="approval-step step-rejected">
+      Rejected<br /><small>sts_reject = 'Y'</small>
+    </div>
+    <span class="approval-arrow">&#8594;</span>
+    <div class="approval-step step-draft">
+      Revisi<br /><small>revisi++, snapshot history</small>
+    </div>
+    <span class="approval-arrow">&#8594;</span>
+    <div class="approval-step step-pending">Re-submit</div>
+  </div>
+</div>
+<!-- Tabel 1 -->
+<div class="section" id="tbl-1">
+  <h2>1. kons_tr_penawaran</h2>
+  <p class="desc">
+    Header penawaran konsultasi - Tabel utama untuk menyimpan data penawaran
+    jasa konsultasi.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id_quotation</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Primary key, ID quotation</td>
+      </tr>
+      <tr>
+        <td><code>tipe_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tipe penawaran</td>
+      </tr>
+      <tr>
+        <td><code>tgl_quotation</code></td>
+        <td>date</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal quotation</td>
+      </tr>
+      <tr>
+        <td><code>id_customer</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke tabel customer</td>
+      </tr>
+      <tr>
+        <td><code>nm_customer</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama customer (denormalized)</td>
+      </tr>
+      <tr>
+        <td><code>id_marketing</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID marketing/sales</td>
+      </tr>
+      <tr>
+        <td><code>nm_marketing</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama marketing</td>
+      </tr>
+      <tr>
+        <td><code>id_pic</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID PIC</td>
+      </tr>
+      <tr>
+        <td><code>nm_pic</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama PIC</td>
+      </tr>
+      <tr>
+        <td><code>address</code></td>
+        <td>text</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Alamat</td>
+      </tr>
+      <tr>
+        <td><code>id_paket</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID paket konsultasi</td>
+      </tr>
+      <tr>
+        <td><code>nm_paket</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama paket</td>
+      </tr>
+      <tr>
+        <td><code>id_divisi</code></td>
+        <td>varchar(45)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID divisi</td>
+      </tr>
+      <tr>
+        <td><code>nm_divisi</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama divisi</td>
+      </tr>
+      <tr>
+        <td><code>upload_proposal</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Path file proposal</td>
+      </tr>
+      <tr>
+        <td><code>upload_tahapan</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Path file tahapan</td>
+      </tr>
+      <tr>
+        <td><code>upload_po</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Path file PO</td>
+      </tr>
+      <tr>
+        <td><code>grand_total</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total keseluruhan</td>
+      </tr>
+      <tr>
+        <td><code>sts_cust</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status customer</td>
+      </tr>
+      <tr>
+        <td><code>sts_quot</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status quotation (approval)</td>
+      </tr>
+      <tr>
+        <td><code>ppn</code></td>
+        <td>int</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>PPN percentage</td>
+      </tr>
+      <tr>
+        <td><code>persen_disc</code></td>
+        <td>decimal(20,2)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Persentase diskon</td>
+      </tr>
+      <tr>
+        <td><code>nilai_disc</code></td>
+        <td>decimal(20,2)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nilai diskon</td>
+      </tr>
+      <tr>
+        <td><code>tipe_informasi_awal</code></td>
+        <td>varchar(45)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tipe informasi awal</td>
+      </tr>
+      <tr>
+        <td><code>detail_informasi_awal</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Detail informasi awal</td>
+      </tr>
+      <tr>
+        <td><code>total_mandays</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total mandays</td>
+      </tr>
+      <tr>
+        <td><code>mandays_subcont</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Mandays subcont</td>
+      </tr>
+      <tr>
+        <td><code>mandays_tandem</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Mandays tandem</td>
+      </tr>
+      <tr>
+        <td><code>mandays_internal</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Mandays internal</td>
+      </tr>
+      <tr>
+        <td><code>mandays_rate</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Rate per mandays</td>
+      </tr>
+      <tr>
+        <td><code>sts_reject</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status reject</td>
+      </tr>
+      <tr>
+        <td><code>reject_reason</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Alasan reject</td>
+      </tr>
+      <tr>
+        <td><code>sts_deal</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status deal</td>
+      </tr>
+      <tr>
+        <td><code>revisi</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td></td>
+        <td>0</td>
+        <td>Nomor revisi</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+      <tr>
+        <td><code>updated_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User update</td>
+      </tr>
+      <tr>
+        <td><code>updated_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal update</td>
+      </tr>
+      <tr>
+        <td><code>deleted_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User delete (soft delete)</td>
+      </tr>
+      <tr>
+        <td><code>deleted_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal delete</td>
+      </tr>
+      <tr>
+        <td><code>id_spk_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID SPK terkait</td>
+      </tr>
+      <tr>
+        <td><code>company</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>Kode company</td>
+      </tr>
+      <tr>
+        <td><code>nm_company</code></td>
+        <td>varchar(255)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama company</td>
+      </tr>
+      <tr>
+        <td><code>approved_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User approval</td>
+      </tr>
+      <tr>
+        <td><code>approved_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal approval</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+<!-- Tabel 2 -->
+<div class="section" id="tbl-2">
+  <h2>2. kons_tr_penawaran_non_konsultasi</h2>
+  <p class="desc">
+    Header penawaran non-konsultasi - Data penawaran non-jasa (barang/produk).
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Primary key</td>
+      </tr>
+      <tr>
+        <td><code>tgl_quotation</code></td>
+        <td>date</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal quotation</td>
+      </tr>
+      <tr>
+        <td><code>id_customer</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke tabel customer</td>
+      </tr>
+      <tr>
+        <td><code>nm_customer</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama customer</td>
+      </tr>
+      <tr>
+        <td><code>pic</code></td>
+        <td>varchar(255)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>PIC customer</td>
+      </tr>
+      <tr>
+        <td><code>nm_pic_penawaran</code></td>
+        <td>varchar(255)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama PIC penawaran</td>
+      </tr>
+      <tr>
+        <td><code>id_divisi</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID divisi</td>
+      </tr>
+      <tr>
+        <td><code>nm_divisi</code></td>
+        <td>text</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama divisi</td>
+      </tr>
+      <tr>
+        <td><code>id_company</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke kons_tr_company</td>
+      </tr>
+      <tr>
+        <td><code>nm_company</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama company</td>
+      </tr>
+      <tr>
+        <td><code>address</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Alamat</td>
+      </tr>
+      <tr>
+        <td><code>pic_penawaran</code></td>
+        <td>varchar(255)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>PIC penawaran</td>
+      </tr>
+      <tr>
+        <td><code>tipe_informasi_awal</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tipe informasi awal</td>
+      </tr>
+      <tr>
+        <td><code>detail_informasi_awal</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Detail informasi awal</td>
+      </tr>
+      <tr>
+        <td><code>keterangan_penawaran</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Keterangan penawaran</td>
+      </tr>
+      <tr>
+        <td><code>subtotal</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Subtotal</td>
+      </tr>
+      <tr>
+        <td><code>ppn</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Nilai PPN</td>
+      </tr>
+      <tr>
+        <td><code>grand_total</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Grand total</td>
+      </tr>
+      <tr>
+        <td><code>dokumen_pendukung</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Path dokumen pendukung</td>
+      </tr>
+      <tr>
+        <td><code>sts_quot</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status quotation</td>
+      </tr>
+      <tr>
+        <td><code>reject_reason</code></td>
+        <td>text</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Alasan reject</td>
+      </tr>
+      <tr>
+        <td><code>sts_deal</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status deal</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+      <tr>
+        <td><code>updated_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User update</td>
+      </tr>
+      <tr>
+        <td><code>updated_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal update</td>
+      </tr>
+      <tr>
+        <td><code>approved_by</code></td>
+        <td>varchar(50)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User approval</td>
+      </tr>
+      <tr>
+        <td><code>approved_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal approval</td>
+      </tr>
+      <tr>
+        <td><code>deleted_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User delete</td>
+      </tr>
+      <tr>
+        <td><code>deleted_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal delete</td>
+      </tr>
+      <tr>
+        <td><code>biaya_kirim</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Biaya kirim</td>
+      </tr>
+      <tr>
+        <td><code>nominal_disc</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Nominal diskon</td>
+      </tr>
+      <tr>
+        <td><code>persen_disc</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Persentase diskon</td>
+      </tr>
+      <tr>
+        <td><code>persen_ppn</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Persentase PPN</td>
+      </tr>
+      <tr>
+        <td><code>sts_close</code></td>
+        <td>enum('0','1')</td>
+        <td>NO</td>
+        <td></td>
+        <td>0</td>
+        <td>Status close</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<!-- Tabel 3 -->
+<div class="section" id="tbl-3">
+  <h2>3. kons_tr_detail_penawaran_non_konsultasi</h2>
+  <p class="desc">Detail item-item penawaran non-konsultasi.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Auto increment</td>
+      </tr>
+      <tr>
+        <td><code>id_header</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke penawaran_non_konsultasi</td>
+      </tr>
+      <tr>
+        <td><code>nm_item</code></td>
+        <td>text</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama item</td>
+      </tr>
+      <tr>
+        <td><code>qty</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Quantity</td>
+      </tr>
+      <tr>
+        <td><code>harga</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga satuan</td>
+      </tr>
+      <tr>
+        <td><code>total</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total (qty x harga)</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_at</code></td>
+        <td>datetime</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+<!-- Tabel 4 -->
+<div class="section" id="tbl-4">
+  <h2>4. kons_tr_penawaran_aktifitas</h2>
+  <p class="desc">
+    Detail aktifitas/kegiatan yang ditawarkan dalam penawaran konsultasi.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Auto increment</td>
+      </tr>
+      <tr>
+        <td><code>id_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke kons_tr_penawaran</td>
+      </tr>
+      <tr>
+        <td><code>id_aktifitas</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID master aktifitas</td>
+      </tr>
+      <tr>
+        <td><code>nm_aktifitas</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama aktifitas</td>
+      </tr>
+      <tr>
+        <td><code>bobot</code></td>
+        <td>decimal(20,2)</td>
+        <td>YES</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Bobot aktifitas (%)</td>
+      </tr>
+      <tr>
+        <td><code>mandays</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Jumlah mandays</td>
+      </tr>
+      <tr>
+        <td><code>mandays_rate</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Rate mandays internal</td>
+      </tr>
+      <tr>
+        <td><code>mandays_subcont</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Mandays subcont</td>
+      </tr>
+      <tr>
+        <td><code>mandays_rate_subcont</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Rate mandays subcont</td>
+      </tr>
+      <tr>
+        <td><code>mandays_tandem</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Mandays tandem</td>
+      </tr>
+      <tr>
+        <td><code>mandays_rate_tandem</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Rate mandays tandem</td>
+      </tr>
+      <tr>
+        <td><code>harga_aktifitas</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga aktifitas</td>
+      </tr>
+      <tr>
+        <td><code>total_aktifitas</code></td>
+        <td>decimal(20,2)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Total aktifitas</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<!-- Tabel 5 -->
+<div class="section" id="tbl-5">
+  <h2>5. kons_tr_penawaran_akomodasi</h2>
+  <p class="desc">Detail biaya akomodasi (transport, hotel, dll).</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Auto increment</td>
+      </tr>
+      <tr>
+        <td><code>id_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke kons_tr_penawaran</td>
+      </tr>
+      <tr>
+        <td><code>id_item</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID item akomodasi</td>
+      </tr>
+      <tr>
+        <td><code>nm_item</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama item</td>
+      </tr>
+      <tr>
+        <td><code>qty</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Quantity</td>
+      </tr>
+      <tr>
+        <td><code>price_unit</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga satuan</td>
+      </tr>
+      <tr>
+        <td><code>total</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total</td>
+      </tr>
+      <tr>
+        <td><code>keterangan</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Keterangan</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<!-- Tabel 6-9: Others, Lab, Subcont TA, Subcont PR (same structure) -->
+<div class="section" id="tbl-6">
+  <h2>6. kons_tr_penawaran_others</h2>
+  <p class="desc">
+    Detail biaya lain-lain. Memiliki dual pricing (penawaran vs budget
+    internal).
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Auto increment</td>
+      </tr>
+      <tr>
+        <td><code>id_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke kons_tr_penawaran</td>
+      </tr>
+      <tr>
+        <td><code>id_item</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID item</td>
+      </tr>
+      <tr>
+        <td><code>nm_item</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama item</td>
+      </tr>
+      <tr>
+        <td><code>qty</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Quantity</td>
+      </tr>
+      <tr>
+        <td><code>price_unit</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga satuan (penawaran)</td>
+      </tr>
+      <tr>
+        <td><code>total</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total (penawaran)</td>
+      </tr>
+      <tr>
+        <td><code>price_unit_budget</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga satuan (budget)</td>
+      </tr>
+      <tr>
+        <td><code>total_budget</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total (budget)</td>
+      </tr>
+      <tr>
+        <td><code>keterangan</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Keterangan</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<div class="section" id="tbl-7">
+  <h2>7. kons_tr_penawaran_lab</h2>
+  <p class="desc">
+    Detail biaya laboratorium/pengujian. Struktur sama dengan tabel others (dual
+    pricing).
+  </p>
+  <p class="desc">
+    <em>Struktur kolom identik dengan tabel #6 (others) di atas.</em>
+  </p>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<div class="section" id="tbl-8">
+  <h2>8. kons_tr_penawaran_subcont_tenaga_ahli</h2>
+  <p class="desc">
+    Detail biaya subkontrak tenaga ahli individual. Struktur sama dengan tabel
+    others (dual pricing).
+  </p>
+  <p class="desc">
+    <em>Struktur kolom identik dengan tabel #6 (others) di atas.</em>
+  </p>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<div class="section" id="tbl-9">
+  <h2>9. kons_tr_penawaran_subcont_perusahaan</h2>
+  <p class="desc">
+    Detail biaya subkontrak perusahaan/vendor. Struktur sama dengan tabel others
+    (dual pricing).
+  </p>
+  <p class="desc">
+    <em>Struktur kolom identik dengan tabel #6 (others) di atas.</em>
+  </p>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+<!-- Tabel 10: History -->
+<div class="section" id="tbl-10">
+  <h2>10. kons_tr_penawaran_history</h2>
+  <p class="desc">
+    Snapshot data penawaran setiap revisi. ID format: HST-YYYYMM-XXXXX
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id_history</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>PK format HST-YYYYMM-XXXXX</td>
+      </tr>
+      <tr>
+        <td><code>id_quotation</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke kons_tr_penawaran</td>
+      </tr>
+      <tr>
+        <td><code>tipe_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tipe penawaran</td>
+      </tr>
+      <tr>
+        <td><code>tgl_quotation</code></td>
+        <td>date</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal quotation</td>
+      </tr>
+      <tr>
+        <td><code>id_customer</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID customer</td>
+      </tr>
+      <tr>
+        <td><code>nm_customer</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama customer</td>
+      </tr>
+      <tr>
+        <td><code>id_marketing</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID marketing</td>
+      </tr>
+      <tr>
+        <td><code>nm_marketing</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama marketing</td>
+      </tr>
+      <tr>
+        <td><code>id_pic</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID PIC</td>
+      </tr>
+      <tr>
+        <td><code>nm_pic</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama PIC</td>
+      </tr>
+      <tr>
+        <td><code>address</code></td>
+        <td>text</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Alamat</td>
+      </tr>
+      <tr>
+        <td><code>id_paket</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID paket</td>
+      </tr>
+      <tr>
+        <td><code>nm_paket</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama paket</td>
+      </tr>
+      <tr>
+        <td><code>id_divisi</code></td>
+        <td>varchar(45)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID divisi</td>
+      </tr>
+      <tr>
+        <td><code>nm_divisi</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama divisi</td>
+      </tr>
+      <tr>
+        <td><code>grand_total</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Grand total</td>
+      </tr>
+      <tr>
+        <td><code>sts_quot</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status quotation</td>
+      </tr>
+      <tr>
+        <td><code>ppn</code></td>
+        <td>int</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>PPN</td>
+      </tr>
+      <tr>
+        <td><code>persen_disc</code></td>
+        <td>decimal(20,2)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Persentase diskon</td>
+      </tr>
+      <tr>
+        <td><code>nilai_disc</code></td>
+        <td>decimal(20,2)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nilai diskon</td>
+      </tr>
+      <tr>
+        <td><code>total_mandays</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total mandays</td>
+      </tr>
+      <tr>
+        <td><code>mandays_subcont</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Mandays subcont</td>
+      </tr>
+      <tr>
+        <td><code>mandays_tandem</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Mandays tandem</td>
+      </tr>
+      <tr>
+        <td><code>mandays_internal</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Mandays internal</td>
+      </tr>
+      <tr>
+        <td><code>mandays_rate</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Rate mandays</td>
+      </tr>
+      <tr>
+        <td><code>sts_reject</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status reject</td>
+      </tr>
+      <tr>
+        <td><code>reject_reason</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Alasan reject</td>
+      </tr>
+      <tr>
+        <td><code>sts_deal</code></td>
+        <td>varchar(5)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Status deal</td>
+      </tr>
+      <tr>
+        <td><code>revisi</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td></td>
+        <td>0</td>
+        <td>Nomor revisi</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+      <tr>
+        <td><code>company</code></td>
+        <td>varchar(10)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Kode company</td>
+      </tr>
+      <tr>
+        <td><code>nm_company</code></td>
+        <td>varchar(255)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama company</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<!-- Tabel 11-16: History detail tables -->
+<div class="section" id="tbl-11">
+  <h2>11. kons_tr_penawaran_aktifitas_history</h2>
+  <p class="desc">
+    History aktifitas - Snapshot detail aktifitas saat revisi. FK: id_history ke
+    tabel #10.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Auto increment</td>
+      </tr>
+      <tr>
+        <td><code>id_history</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke penawaran_history</td>
+      </tr>
+      <tr>
+        <td><code>id_penawaran_aktifitas</code></td>
+        <td>int</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID ref aktifitas original</td>
+      </tr>
+      <tr>
+        <td><code>id_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID penawaran</td>
+      </tr>
+      <tr>
+        <td><code>id_aktifitas</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID aktifitas</td>
+      </tr>
+      <tr>
+        <td><code>nm_aktifitas</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama aktifitas</td>
+      </tr>
+      <tr>
+        <td><code>bobot</code></td>
+        <td>decimal(20,2)</td>
+        <td>YES</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Bobot</td>
+      </tr>
+      <tr>
+        <td><code>mandays</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Mandays</td>
+      </tr>
+      <tr>
+        <td><code>mandays_rate</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Rate mandays</td>
+      </tr>
+      <tr>
+        <td><code>mandays_subcont</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Mandays subcont</td>
+      </tr>
+      <tr>
+        <td><code>mandays_rate_subcont</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Rate subcont</td>
+      </tr>
+      <tr>
+        <td><code>mandays_tandem</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Mandays tandem</td>
+      </tr>
+      <tr>
+        <td><code>mandays_rate_tandem</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Rate tandem</td>
+      </tr>
+      <tr>
+        <td><code>harga_aktifitas</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga aktifitas</td>
+      </tr>
+      <tr>
+        <td><code>total_aktifitas</code></td>
+        <td>decimal(20,2)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Total aktifitas</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+<div class="section" id="tbl-12">
+  <h2>12. kons_tr_penawaran_akomodasi_history</h2>
+  <p class="desc">History akomodasi. FK: id_history ke tabel #10.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Auto increment</td>
+      </tr>
+      <tr>
+        <td><code>id_history</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke penawaran_history</td>
+      </tr>
+      <tr>
+        <td><code>id_akomodasi</code></td>
+        <td>int</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID ref akomodasi original</td>
+      </tr>
+      <tr>
+        <td><code>id_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID penawaran</td>
+      </tr>
+      <tr>
+        <td><code>id_item</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID item</td>
+      </tr>
+      <tr>
+        <td><code>nm_item</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama item</td>
+      </tr>
+      <tr>
+        <td><code>qty</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Quantity</td>
+      </tr>
+      <tr>
+        <td><code>price_unit</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga satuan</td>
+      </tr>
+      <tr>
+        <td><code>total</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total</td>
+      </tr>
+      <tr>
+        <td><code>keterangan</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Keterangan</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<div class="section" id="tbl-13">
+  <h2>13. kons_tr_penawaran_others_history</h2>
+  <p class="desc">
+    History biaya lain-lain (dual pricing). FK: id_history ke tabel #10.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Null</th>
+        <th>Key</th>
+        <th>Default</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id</code></td>
+        <td>int</td>
+        <td>NO</td>
+        <td><span class="badge badge-pk">PRI</span></td>
+        <td>NULL</td>
+        <td>Auto increment</td>
+      </tr>
+      <tr>
+        <td><code>id_history</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td><span class="badge badge-fk">FK</span></td>
+        <td>NULL</td>
+        <td>FK ke penawaran_history</td>
+      </tr>
+      <tr>
+        <td><code>id_others_penawaran</code></td>
+        <td>int</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID ref others original</td>
+      </tr>
+      <tr>
+        <td><code>id_penawaran</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID penawaran</td>
+      </tr>
+      <tr>
+        <td><code>id_item</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>ID item</td>
+      </tr>
+      <tr>
+        <td><code>nm_item</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Nama item</td>
+      </tr>
+      <tr>
+        <td><code>qty</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Quantity</td>
+      </tr>
+      <tr>
+        <td><code>price_unit</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga satuan</td>
+      </tr>
+      <tr>
+        <td><code>total</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total</td>
+      </tr>
+      <tr>
+        <td><code>price_unit_budget</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Harga satuan budget</td>
+      </tr>
+      <tr>
+        <td><code>total_budget</code></td>
+        <td>decimal(20,2)</td>
+        <td>NO</td>
+        <td></td>
+        <td>0.00</td>
+        <td>Total budget</td>
+      </tr>
+      <tr>
+        <td><code>keterangan</code></td>
+        <td>text</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Keterangan</td>
+      </tr>
+      <tr>
+        <td><code>input_by</code></td>
+        <td>varchar(100)</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>User input</td>
+      </tr>
+      <tr>
+        <td><code>input_date</code></td>
+        <td>datetime</td>
+        <td>YES</td>
+        <td></td>
+        <td>NULL</td>
+        <td>Tanggal input</td>
+      </tr>
+    </tbody>
+  </table>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<div class="section" id="tbl-14">
+  <h2>14. kons_tr_penawaran_lab_history</h2>
+  <p class="desc">
+    History biaya lab. Struktur identik dengan tabel #13 (others_history).
+  </p>
+  <p class="desc">
+    <em
+      >Kolom identik: id, id_history(FK), id_lab_penawaran, id_penawaran,
+      id_item, nm_item, qty, price_unit, total, price_unit_budget, total_budget,
+      keterangan, input_by, input_date.</em
+    >
+  </p>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<div class="section" id="tbl-15">
+  <h2>15. kons_tr_penawaran_subcont_tenaga_ahli_history</h2>
+  <p class="desc">
+    History subcont tenaga ahli. Struktur identik dengan tabel #13
+    (others_history).
+  </p>
+  <p class="desc">
+    <em
+      >Kolom identik: id, id_history(FK), id_lab_penawaran, id_penawaran,
+      id_item, nm_item, qty, price_unit, total, price_unit_budget, total_budget,
+      keterangan, input_by, input_date.</em
+    >
+  </p>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+
+<div class="section" id="tbl-16">
+  <h2>16. kons_tr_penawaran_subcont_perusahaan_history</h2>
+  <p class="desc">
+    History subcont perusahaan. Struktur identik dengan tabel #13
+    (others_history).
+  </p>
+  <p class="desc">
+    <em
+      >Kolom identik: id, id_history(FK), id_lab_penawaran, id_penawaran,
+      id_item, nm_item, qty, price_unit, total, price_unit_budget, total_budget,
+      keterangan, input_by, input_date.</em
+    >
+  </p>
+  <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+</div>
+    <!-- Tabel 17: customer -->
+    <div class="section" id="tbl-17">
+        <h2>17. customer</h2>
+        <p class="desc">Master data customer - Tabel referensi data pelanggan.</p>
+        <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Null</th><th>Key</th><th>Default</th><th>Keterangan</th></tr></thead>
+            <tbody>
+                <tr><td><code>id_customer</code></td><td>varchar(20)</td><td>NO</td><td><span class="badge badge-pk">PRI</span></td><td>NULL</td><td>Primary key</td></tr>
+                <tr><td><code>nm_customer</code></td><td>varchar(100)</td><td>NO</td><td></td><td>NULL</td><td>Nama customer</td></tr>
+                <tr><td><code>kdcab</code></td><td>varchar(5)</td><td>YES</td><td></td><td>100</td><td>Kode cabang</td></tr>
+                <tr><td><code>bidang_usaha</code></td><td>varchar(100)</td><td>NO</td><td></td><td>NULL</td><td>Bidang usaha</td></tr>
+                <tr><td><code>produk_jual</code></td><td>varchar(100)</td><td>NO</td><td></td><td>NULL</td><td>Produk yang dijual</td></tr>
+                <tr><td><code>kredibilitas</code></td><td>enum(A,B,C,D)</td><td>NO</td><td></td><td>NULL</td><td>Rating kredibilitas</td></tr>
+                <tr><td><code>alamat</code></td><td>varchar(255)</td><td>NO</td><td></td><td>NULL</td><td>Alamat</td></tr>
+                <tr><td><code>country_code</code></td><td>varchar(4)</td><td>YES</td><td></td><td>NULL</td><td>Kode negara</td></tr>
+                <tr><td><code>provinsi</code></td><td>varchar(50)</td><td>NO</td><td></td><td>NULL</td><td>Provinsi</td></tr>
+                <tr><td><code>kota</code></td><td>varchar(50)</td><td>NO</td><td></td><td>NULL</td><td>Kota</td></tr>
+                <tr><td><code>kode_pos</code></td><td>varchar(20)</td><td>NO</td><td></td><td>NULL</td><td>Kode pos</td></tr>
+                <tr><td><code>telpon</code></td><td>varchar(20)</td><td>NO</td><td></td><td>NULL</td><td>Telepon</td></tr>
+                <tr><td><code>email</code></td><td>varchar(100)</td><td>YES</td><td></td><td>NULL</td><td>Email</td></tr>
+                <tr><td><code>npwp</code></td><td>varchar(25)</td><td>NO</td><td></td><td>NULL</td><td>NPWP</td></tr>
+                <tr><td><code>id_pic</code></td><td>char(11)</td><td>YES</td><td></td><td>NULL</td><td>PIC customer</td></tr>
+                <tr><td><code>id_marketing</code></td><td>int</td><td>YES</td><td>MUL</td><td>NULL</td><td>ID marketing assigned</td></tr>
+                <tr><td><code>deleted</code></td><td>enum(Y,N)</td><td>YES</td><td></td><td>N</td><td>Soft delete flag</td></tr>
+            </tbody>
+        </table>
+        <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Tabel 18: kons_tr_company -->
+    <div class="section" id="tbl-18">
+        <h2>18. kons_tr_company</h2>
+        <p class="desc">Master data company/perusahaan.</p>
+        <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Null</th><th>Key</th><th>Default</th><th>Keterangan</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>int</td><td>NO</td><td><span class="badge badge-pk">PRI</span></td><td>NULL</td><td>Auto increment</td></tr>
+                <tr><td><code>nm_company</code></td><td>varchar(255)</td><td>NO</td><td></td><td>NULL</td><td>Nama company</td></tr>
+            </tbody>
+        </table>
+        <a href="#top" class="back-top">&#8593; Kembali ke atas</a>
+    </div>
+
+    <!-- Catatan Teknis -->
+    <div class="section" id="catatan">
+        <h2>Catatan Teknis</h2>
+        <div class="notes">
+            <h4>&#9888;&#65039; Penting untuk Developer</h4>
+            <ul>
+                <li><strong>Denormalisasi</strong> — Field nama (nm_customer, nm_divisi, dll) disimpan langsung di tabel transaksi untuk menghindari JOIN berlebihan saat reporting.</li>
+                <li><strong>Soft Delete</strong> — Pola <code>deleted_by</code> + <code>deleted_date</code>. NULL = aktif, terisi = dihapus.</li>
+                <li><strong>History/Audit Trail</strong> — Setiap revisi menghasilkan snapshot lengkap di tabel <code>_history</code> dengan ID format <code>HST-YYYYMM-XXXXX</code>.</li>
+                <li><strong>Dual Database</strong> — Data employee dan divisi dari database <code>hr_sentral</code> (koneksi <code>dbhr</code>), bukan dari <code>db_consultant_new</code>.</li>
+                <li><strong>Budget vs Penawaran</strong> — Tabel others, lab, subcont_tenaga_ahli, dan subcont_perusahaan memiliki dual pricing: <code>price_unit</code> (ke customer) dan <code>price_unit_budget</code> (budget internal).</li>
+                <li><strong>Approval</strong> — Dikendalikan oleh <code>sts_quot</code> (NULL=draft, P=pending, A=approved), <code>sts_reject</code>, dan <code>sts_deal</code>.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default', er: { useMaxWidth: true } });
+    </script>
+</body>
+</html>

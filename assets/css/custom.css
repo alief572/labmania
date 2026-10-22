@@ -1,0 +1,77 @@
+.semi-bold {
+    font-weight: 600;
+}
+
+.box {
+    border-radius: 1rem;
+}
+
+.custom-table {
+    border-radius: 10px;
+    /* Set your desired border-radius */
+    overflow: hidden;
+    /* Ensure child elements respect the border-radius */
+}
+
+.custom-table th,
+.custom-table td {
+    border: 1px solid #ddd;
+    /* Border for cells */
+}
+
+/* Optional: You can style the table header to differentiate it */
+.custom-table thead th {
+    background-color: #f5f5f5;
+    /* Light background for header */
+}
+
+.custom-table thead {
+    background-color: #ccc;
+}
+
+.custom-table tfoot {
+    background-color: #d9d9d9;
+}
+
+.custom-table-no {
+    border-radius: 10px;
+    /* Set your desired border-radius */
+    overflow: hidden;
+    /* Ensure child elements respect the border-radius */
+    border: none;
+}
+
+.custom-table-no th,
+.custom-table-no td {
+    border: 1px solid #ddd;
+    /* Border for cells */
+}
+
+/* Optional: You can style the table header to differentiate it */
+.custom-table-no thead th {
+    border: none;
+    background-color: #f5f5f5;
+    /* Light background for header */
+}
+
+.custom-table-no thead {
+    border: none;
+    background-color: #ccc;
+}
+
+.custom-table-no tfoot {
+    border: none;
+    background-color: #d9d9d9;
+}
+
+.custom-table-no tr{
+    border: none;
+}
+
+.custom-table-no td{
+    border: none;
+}
+
+.d-none {
+    display: none;
+}
