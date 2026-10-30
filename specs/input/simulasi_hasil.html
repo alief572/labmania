@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulasi Hasil</title>
+<style>
+:root{
+  --ink:#16243a; --muted:#5d6b7e; --line:#dfe5ee; --bg:#f5f7fa; --card:#fff;
+  --harga:#2f5d9e; --harga-bg:#eaf1fb;
+  --bep:#b7791f; --bep-bg:#fdf3df;
+  --ok:#1b7a4b; --ok-bg:#e6f4ec;
+  --bad:#b42318; --bad-bg:#fdecea;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--muted);margin:0 0 18px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.panel h2{font-size:16px;margin:0 0 12px}
+.inputs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;background:#fff8e6;border-color:#ecd9a0}
+.inputs label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.inputs input{width:100%;padding:9px 10px;border:1px solid #d8c48a;border-radius:6px;font:inherit;background:#fff}
+.inputs input:focus-visible{outline:2px solid var(--harga);outline-offset:1px}
+.inputs .hint{grid-column:1/-1;font-size:13px;color:var(--muted);margin:0}
+
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.box{border-radius:10px;padding:14px 16px;border:1px solid var(--line);border-top-width:4px;background:var(--card)}
+.box .tag{font-size:13px;font-weight:700}
+.box .big{font-size:28px;font-weight:700;line-height:1.2;margin:6px 0 4px}
+.box .big small{font-size:14px;font-weight:600;color:var(--muted)}
+.box p{margin:0;font-size:13px;color:var(--muted)}
+.harga{border-top-color:var(--harga);background:var(--harga-bg)} .harga .tag{color:var(--harga)}
+.bep{border-top-color:var(--bep);background:var(--bep-bg)} .bep .tag{color:var(--bep)}
+.profit.ok{border-top-color:var(--ok);background:var(--ok-bg)} .profit.ok .tag,.profit.ok .big{color:var(--ok)}
+.profit.bad{border-top-color:var(--bad);background:var(--bad-bg)} .profit.bad .tag,.profit.bad .big{color:var(--bad)}
+
+.duo{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.panel h2.gap{margin-top:22px}
+.rowdesc{margin:-6px 0 12px;font-size:13px;color:var(--muted)}
+.biaya{border-top-color:#6b7788;background:#f1f3f6} .biaya .tag{color:#4a5565}
+.target{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:14px;border:1px solid var(--line);background:#fff}
+.target.ok{border-color:#b7dcc6;background:var(--ok-bg)} .target.bad{border-color:#f2b8b2;background:var(--bad-bg)}
+
+.scale{position:relative;margin:44px 6px 56px}
+.bar{display:flex;height:22px;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%}
+.z-rugi{background:#f4b6b0}.z-kuning{background:#f6dc9c}.z-hijau{background:#9fd2b3}
+.mk{position:absolute;transform:translateX(-50%);text-align:center;font-size:12px;font-weight:700;white-space:nowrap}
+.mk.top{bottom:30px}.mk.bot{top:30px}
+.mk::after{content:"";position:absolute;left:50%;width:2px;background:var(--ink);transform:translateX(-50%)}
+.mk.top::after{top:100%;height:10px}.mk.bot::after{bottom:100%;height:10px}
+.mk.m-bep{color:var(--bep)}.mk.m-tp{color:#6b4e9b}.mk.m-plan{color:var(--harga)}
+.axis{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend .a::before{background:#f4b6b0}.legend .b::before{background:#f6dc9c}.legend .c::before{background:#9fd2b3}
+
+details summary{cursor:pointer;font-weight:600}
+details summary:focus-visible{outline:2px solid var(--harga);outline-offset:2px}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+th{background:#eef2f8;font-weight:600}
+td.n,th.n{text-align:right;white-space:nowrap}
+td.how{color:var(--muted);font-size:13px}
+tr.sum td{font-weight:700;background:#f3f6fb}
+
+@media (max-width:760px){
+  .inputs,.trio{grid-template-columns:1fr 1fr}
+  .duo{grid-template-columns:1fr}
+}
+@media (max-width:480px){
+  .inputs,.trio{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Simulasi Hasil</h1>
+  <p class="sub">Ubah angka di kotak kuning, hasil di bawah ikut berubah.</p>
+
+  <section class="panel inputs" aria-label="Input simulasi">
+    <div><label for="hari">Durasi (hari)</label><input id="hari" type="number" min="1" value="1"></div>
+    <div><label for="peserta">Rencana peserta</label><input id="peserta" type="number" min="1" value="20"></div>
+    <div><label for="harga">Rencana harga jual / peserta (Rp)</label><input id="harga" type="number" min="0" value="500000"></div>
+    <div><label for="tp">Target profit, opsional (Rp)</label><input id="tp" type="number" min="0" value="3000000"></div>
+    <p class="hint">Biaya fixed dan variable diambil dari bagian 2 dan 3 (Fixed Cost, Variable Cost).</p>
+  </section>
+
+  <section class="panel" aria-label="Hasil simulasi">
+    <h2>Titik impas (BEP)</h2>
+    <p class="rowdesc">Batas minimal supaya tidak rugi. Tidak tergantung rencana, hanya tergantung biaya.</p>
+    <div class="duo">
+      <div class="box bep">
+        <div class="tag">BEP jumlah peserta</div>
+        <div class="big" id="o-bep"></div>
+        <p id="o-bep-sub"></p>
+      </div>
+      <div class="box bep">
+        <div class="tag">BEP harga jual</div>
+        <div class="big" id="o-bepharga"></div>
+        <p id="o-bepharga-sub"></p>
+      </div>
+    </div>
+
+    <h2 class="gap">Hasil rencana simulasi</h2>
+    <p class="rowdesc" id="o-rencana"></p>
+    <div class="trio">
+      <div class="box harga">
+        <div class="tag">Pendapatan</div>
+        <div class="big" id="o-pend"></div>
+        <p id="o-pend-sub"></p>
+      </div>
+      <div class="box biaya">
+        <div class="tag">Biaya (HPP)</div>
+        <div class="big" id="o-hpp"></div>
+        <p id="o-hpp-sub"></p>
+      </div>
+      <div class="box profit" id="box-profit">
+        <div class="tag" id="o-profit-tag">Profit</div>
+        <div class="big" id="o-profit"></div>
+        <p id="o-profit-sub"></p>
+      </div>
+    </div>
+    <div class="target" id="o-target"></div>
+  </section>
+
+  <section class="panel" aria-label="Skala peserta">
+    <h2>Posisi di skala jumlah peserta</h2>
+    <div class="scale" id="scale">
+      <div class="bar" id="bar"></div>
+    </div>
+    <div class="legend">
+      <span class="a">Rugi (di bawah BEP)</span>
+      <span class="b">Untung, belum capai target profit</span>
+      <span class="c">Target profit tercapai</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <details>
+      <summary>Rincian perhitungan</summary>
+      <table>
+        <thead><tr><th>Komponen</th><th>Cara hitung</th><th class="n">Nilai</th></tr></thead>
+        <tbody id="rincian"></tbody>
+      </table>
+      <table>
+        <thead><tr><th>Peserta</th><th class="n">Pendapatan</th><th class="n">Biaya (HPP)</th><th class="n">Profit</th><th>Status</th></tr></thead>
+        <tbody id="tabel-peserta"></tbody>
+      </table>
+    </details>
+  </section>
+</div>
+
+<script>
+/* Biaya dari bagian 2 (Fixed) dan 3 (Variable). IT: ganti dengan data dari costing. */
+const COST = { fixedEvent: 4075000, fixedDay: 515000, varEvent: 0, varDay: 0 };
+
+const $ = id => document.getElementById(id);
+const rp = n => (n < 0 ? "-" : "") + "Rp " + Math.abs(Math.round(n)).toLocaleString("id-ID");
+const num = id => Math.max(0, parseFloat($(id).value) || 0);
+
+function hitung(){
+  const hari = Math.max(1, num("hari")), peserta = num("peserta"), harga = num("harga"), tp = num("tp");
+
+  const fixed = COST.fixedEvent + COST.fixedDay * hari;
+  const varPer = COST.varEvent + COST.varDay * hari;
+  const variable = varPer * peserta;
+  const hpp = fixed + variable;
+  const pendapatan = harga * peserta;
+  const profit = pendapatan - hpp;
+  const margin = pendapatan > 0 ? profit / pendapatan : 0;
+  const selisih = harga - varPer;                       // sumbangan tiap peserta untuk menutup fixed cost
+
+  const bepPeserta = selisih > 0 ? Math.ceil(fixed / selisih) : null;
+  const bepHarga = peserta > 0 ? hpp / peserta : null;
+  const tpPeserta = (tp > 0 && selisih > 0) ? Math.ceil((fixed + tp) / selisih) : null;
+
+  // Baris 1: BEP
+  if (bepPeserta === null){
+    $("o-bep").textContent = "Tidak tercapai";
+    $("o-bep-sub").textContent = "Harga jual tidak melebihi biaya variable per peserta.";
+  } else {
+    $("o-bep").innerHTML = bepPeserta + " <small>peserta</small>";
+    const aman = peserta - bepPeserta;
+    $("o-bep-sub").textContent = "Dengan harga " + rp(harga) + ". Di bawah " + bepPeserta + " peserta rugi. " +
+      (aman >= 0 ? "Rencana " + peserta + " peserta, aman (lebih " + aman + ")." : "Rencana " + peserta + " peserta, kurang " + (-aman) + ".");
+  }
+  if (bepHarga === null){
+    $("o-bepharga").textContent = "-";
+    $("o-bepharga-sub").textContent = "Isi rencana peserta.";
+  } else {
+    $("o-bepharga").innerHTML = rp(bepHarga) + " <small>/ peserta</small>";
+    const lebih = harga - bepHarga;
+    $("o-bepharga-sub").textContent = "Dengan " + peserta + " peserta. Di bawah harga ini rugi. Harga rencana " + rp(harga) +
+      (lebih >= 0 ? ", lebih " + rp(lebih) + "." : ", kurang " + rp(-lebih) + ".");
+  }
+
+  // Baris 2: rencana simulasi
+  $("o-rencana").textContent = "Dihitung dari rencana: " + hari + " hari, " + peserta + " peserta, harga " + rp(harga) + " / peserta.";
+  $("o-pend").textContent = rp(pendapatan);
+  $("o-pend-sub").textContent = peserta + " peserta x " + rp(harga);
+  $("o-hpp").textContent = rp(hpp);
+  $("o-hpp-sub").textContent = "Fixed " + rp(fixed) + " + variable " + rp(variable);
+  const untung = profit >= 0;
+  $("box-profit").className = "box profit " + (untung ? "ok" : "bad");
+  $("o-profit-tag").textContent = untung ? "Profit (untung)" : "Profit (rugi)";
+  $("o-profit").textContent = rp(profit);
+  $("o-profit-sub").textContent = "Margin " + (margin * 100).toFixed(1).replace(".", ",") + "% dari pendapatan (pendapatan - biaya).";
+
+  // Target profit
+  const t = $("o-target");
+  if (tp === 0){ t.className = "target"; t.textContent = "Target profit tidak diisi."; }
+  else if (profit >= tp){
+    t.className = "target ok";
+    t.textContent = "Target profit " + rp(tp) + " tercapai, lebih " + rp(profit - tp) + (tpPeserta ? ". Minimal " + tpPeserta + " peserta untuk capai target." : ".");
+  } else {
+    t.className = "target bad";
+    t.textContent = "Target profit " + rp(tp) + " belum tercapai, kurang " + rp(tp - profit) + (tpPeserta ? ". Perlu minimal " + tpPeserta + " peserta pada harga ini." : ".");
+  }
+
+  // Skala peserta
+  const maxX = Math.max(10, Math.ceil(Math.max(peserta, tpPeserta || 0, bepPeserta || 0) * 1.2));
+  const pct = v => (v / maxX * 100);
+  const b = bepPeserta === null ? maxX : Math.min(bepPeserta, maxX);
+  const g = tpPeserta ? Math.min(Math.max(tpPeserta, b), maxX) : b;
+  $("bar").innerHTML = '<i class="z-rugi" style="width:' + pct(b) + '%"></i>' +
+    '<i class="z-kuning" style="width:' + pct(g - b) + '%"></i>' +
+    '<i class="z-hijau" style="width:' + pct(maxX - g) + '%"></i>';
+  document.querySelectorAll("#scale .mk,#scale .axis").forEach(e => e.remove());
+  const mk = (v, label, cls, pos) => {
+    const d = document.createElement("div");
+    d.className = "mk " + cls + " " + pos; d.style.left = pct(Math.min(v, maxX)) + "%"; d.textContent = label;
+    $("scale").appendChild(d);
+  };
+  if (bepPeserta !== null) mk(bepPeserta, "BEP " + bepPeserta, "m-bep", "top");
+  if (tpPeserta) mk(tpPeserta, "Target profit " + tpPeserta, "m-tp", "top");
+  mk(peserta, "Rencana " + peserta, "m-plan", "bot");
+  const ax = document.createElement("div"); ax.className = "axis";
+  ax.innerHTML = "<span>0 peserta</span><span>" + maxX + " peserta</span>"; $("scale").appendChild(ax);
+
+  // Rincian
+  const rows = [
+    ["Fixed cost", "per event " + rp(COST.fixedEvent) + " + per hari " + rp(COST.fixedDay) + " x " + hari + " hari", fixed],
+    ["Variable cost per peserta", "per event " + rp(COST.varEvent) + " + per hari " + rp(COST.varDay) + " x " + hari + " hari", varPer],
+    ["Variable cost", rp(varPer) + " x " + peserta + " peserta", variable],
+    ["Biaya total (HPP)", "Fixed cost + Variable cost", hpp, 1],
+    ["Pendapatan", rp(harga) + " x " + peserta + " peserta", pendapatan],
+    ["Profit", "Pendapatan - Biaya total", profit, 1],
+    ["Sumbangan per peserta", "Harga jual - variable cost per peserta (menutup fixed cost)", selisih],
+    ["BEP peserta", "Fixed cost / sumbangan per peserta, dibulatkan ke atas", bepPeserta === null ? "-" : bepPeserta + " peserta"],
+    ["Harga minimal (BEP harga)", "Biaya total / " + peserta + " peserta", bepHarga === null ? "-" : bepHarga],
+  ];
+  $("rincian").innerHTML = rows.map(r => '<tr' + (r[3] ? ' class="sum"' : '') + '><td>' + r[0] + '</td><td class="how">' + r[1] +
+    '</td><td class="n">' + (typeof r[2] === "number" ? rp(r[2]) : r[2]) + '</td></tr>').join("");
+
+  // Tabel profit menurut jumlah peserta (sekitar BEP dan rencana)
+  const set = new Set([peserta]);
+  if (bepPeserta !== null){ [bepPeserta - 2, bepPeserta - 1, bepPeserta, bepPeserta + 1].forEach(v => v > 0 && set.add(v)); }
+  const list = [...set].sort((a, b) => a - b);
+  $("tabel-peserta").innerHTML = list.map(n => {
+    const rev = harga * n, cost = fixed + varPer * n, p = rev - cost;
+    const label = n === bepPeserta ? " (BEP)" : n === peserta ? " (rencana)" : "";
+    return '<tr><td>' + n + label + '</td><td class="n">' + rp(rev) + '</td><td class="n">' + rp(cost) + '</td><td class="n">' + rp(p) + '</td><td>' + (p >= 0 ? "Untung" : "Rugi") + '</td></tr>';
+  }).join("");
+}
+["hari","peserta","harga","tp"].forEach(id => $(id).addEventListener("input", hitung));
+hitung();
+</script>
+</body>
+</html>

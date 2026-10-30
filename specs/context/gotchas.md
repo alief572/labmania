@@ -122,4 +122,63 @@ gives the age. Past roughly a dozen entries, or a month, it is worth a pass.
 
 ## Entries
 
-_Empty. Append below._
+## Workbook memakai kolom Sub Modul di luar konvensi
+
+- **type:** convention
+- **date:** 2026-10-23
+
+Sejak draf 3, sheet *UC BPMN* dan *UC Non-BPMN* di `docs/workbook.xlsx` punya kolom `Sub Modul` setelah `Modul`. Sheet *Modules* dan *Entities* juga punya kolom `Sub Modul`, dan *Entities* punya kolom `Tabel ERD`. Semua UC ber-`Modul` = Master Data (`input/Master - Buat Program/2026-10-23-review-mockup-master-data/`).
+
+**Why:** user meminta satu modul "Master Data" dengan sub modul. Tanpa kolom Sub Modul, pengelompokan ERD dan menu per sub modul hilang dari workbook. `workbook-conventions.md` belum menyebut kolom ini.
+**How to apply:** saat distill, putuskan apakah `Sub Modul` menjadi kolom resmi di `workbook-conventions.md`. Script yang membaca workbook menurut posisi kolom (bukan nama header) perlu disesuaikan.
+
+## draw.io CLI tidak terpasang di mesin ini
+
+- **type:** tooling
+- **date:** 2026-10-23
+
+`C:\Program Files\draw.io\draw.io.exe` (yang disebut `drawio-general-guide.md`) tidak ada, dan `where draw.io.exe` tidak menemukan apa-apa. `python` di PATH hanya stub Microsoft Store, sedangkan `py` (Python 3.14) bisa dipakai. `openpyxl` dipasang dengan `py -m pip install --user openpyxl`.
+
+**Why:** langkah 3 workflow wajib draw.io (export PNG lalu lihat hasilnya) tidak bisa dijalankan. ERD `docs/diagrams/erd.drawio` dibuat dari script generator dengan pengecekan bentrok jalur garis, tetapi belum dilihat hasil render-nya.
+**How to apply:** pasang draw.io Desktop atau buka file secara manual, lalu render dan periksa ERD sebelum dianggap final.
+
+## Mockup HTML bisa diuji dengan Chrome headless
+
+- **type:** tooling
+- **date:** 2026-10-23
+
+`C:\Program Files\Google\Chrome\Application\chrome.exe` (dan Edge) tersedia. Mockup `ui-mockup/produk/` diuji dengan harness di scratchpad: salinan `index.html` yang memuat `app.js` lewat `file:///` plus `test.js` yang mengklik tombol `[data-act]`, lalu `--headless=new --allow-file-access-from-files --dump-dom` (hasil test ditulis ke `<pre>`), dan `--screenshot` + `--window-size=1440,1100` dengan hash URL untuk memilih layar. `py -I` tidak melihat paket `--user` (openpyxl) — pakai `py -E -P`. Heredoc berisi tanda kutip di tool Bash sering gagal ("unexpected EOF"); tulis file lewat tool Write.
+
+**Why:** mockup bergantung pada perilaku JS (simulasi costing, transisi status) yang tidak terlihat dari membaca kode; draw.io CLI tidak ada, tetapi browser ada.
+**How to apply:** setelah mengubah `app.js`, jalankan `node --check` lalu harness Chrome headless sebelum melapor selesai.
+
+## Master Company diusulkan memakai tabel existing `customer`
+
+- **type:** decision
+- **date:** 2026-10-23
+- **issue:** UC-11
+
+ERD draf 4 menggambar Company sebagai tabel existing `customer` (+ kolom baru `jenis_instansi`), bukan tabel baru. Kolomnya sudah ada di `application/modules/customer/controllers/Customer.php` (nm_customer, alamat, provinsi, kota, telepon, email, npwp, pic_*, aktif). Belum dikonfirmasi — Q-20 di `docs/fr-nfr.md`.
+
+**Why:** menghindari dua tabel customer; Sales Order setelah Deal B2B kemungkinan juga memakai `customer`.
+**How to apply:** jika Q-20 dijawab "tabel baru", ganti `customer` di ERD kedua halaman, workbook Entities, dan catatan ERD.
+
+## Render .drawio tanpa draw.io CLI: viewer-static di Chrome headless; lane wajib punya y eksplisit
+
+- **type:** tooling
+- **date:** 2026-10-27
+
+File `.drawio` bisa dirender dengan HTML berisi `<div class="mxgraph" data-mxgraph='{"xml":..., "page":n}'>` + `https://viewer.diagrams.net/js/viewer-static.min.js`, lalu `chrome.exe --headless=new --virtual-time-budget=15000 --screenshot`. Viewer **tidak** menjalankan `childLayout=stackLayout` pada Pool, sehingga Lane tanpa `y` menumpuk di y=0 (lane ke-2 menimpa lane ke-1).
+
+**Why:** render pertama Level 1 Master Program/Penjualan Program terlihat kacau padahal XML benar; halaman *Product Combine* lama juga tidak memberi `y` pada lane.
+**How to apply:** beri setiap Lane `y` eksplisit (20, 20+tinggi lane 1, ...) walau `bpmn-conventions.md` bilang cukup `height`; verifikasi dengan viewer di atas.
+
+## BPMN: pool = aktor yang menjalankan proses; tidak ada lane "Sistem"
+
+- **type:** decision
+- **date:** 2026-10-27
+
+Arahan user 27-10-2026: setiap pool adalah milik user (aktor) yang menjalankan proses. Langkah yang dikerjakan aktor **memakai sistem** digambar sebagai **User task** (ikon orang); langkah **manual tanpa sistem** sebagai **Manual task** (ikon tangan). Pekerjaan otomatis sistem (hitung simulasi, validasi, penomoran, write_log) tidak digambar sebagai lane/Service task terpisah, melainkan ditulis di catatan halaman sebagai bagian dari User task-nya. `docs/diagrams/bpmn-to-be.drawio` (Level 1 Master Program, Level 1 Penjualan Program, Product Combine) sudah digambar ulang begitu.
+
+**Why:** lane "Sistem (ERP)" dengan Service/Business Rule task dianggap salah oleh user; `bpmn-conventions.md` masih menawarkan Service task sebagai pilihan umum.
+**How to apply:** untuk diagram proses di proyek ini, jangan buat pool/lane "Sistem"; pilih `taskMarker=user` atau `taskMarker=manual` saja. Lanskap Level 0 tetap memakai lane kategori proses (Manajerial/Utama/Pendukung). Saat distill, pertimbangkan menurunkan aturan ini ke `bpmn-conventions.md`.
