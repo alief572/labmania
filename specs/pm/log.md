@@ -43,6 +43,58 @@ One `-` bullet per event, newest first:
 
 ---
 
+- **2026-11-02** `[DECISION]` **Format nomor Penawaran `LMI/PW/MM/yy-zzz` dan Invoice `LMI/INV/MM/yy-zzz`.**
+  `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/`. Menggantikan nomor template
+  `LM-I/AM/PW/MM/YY-XXX` (segmen AM dibuang) dan usulan invoice `NNN/LMI/YYYY`. Quotation draf 10 (QTN-FR-04,
+  Q-QTN-01), Invoice draf 2f (IVC-FR-05, IVC-NFR-03, Q-IVC-04). Mockup: satu fungsi `lmiNo(kode, tanggal)` dipakai
+  quotation & invoice; diuji jsdom (form quotation baru `LMI/PW/11/26-001`, invoice contoh `LMI/INV/10/26-001`).
+  `[TODO]` Konfirmasi klien: `MM/yy` dari tanggal dokumen dan urutan reset tiap bulan masih `[USULAN]`.
+  `specs/final/` (paket final Quotation) belum disinkronkan.
+- **2026-10-30** `[DECISION]` **Invoice draf 2e: Print Invoice dengan template usulan analis.**
+  `input/Invoice & Pengajuan/2026-10-30-print-invoice/`. Aksi Print Invoice di tab Invoiced dan di Lihat Invoice (IVC-FR-15,
+  IVC-NFR-07). Format usulan: kop dan kaki halaman sama dengan Penawaran, data invoice + No. Program, rincian, DPP/PPN, baris
+  WAPU/KB, Jumlah yang harus dibayar + terbilang, blok rekening, tanda tangan Finance. Q-IVC-10 menjadi daftar isian dari klien
+  (rekening, penanda tangan, jatuh tempo, kode dokumen). Mockup draf 13f: render dicek lewat screenshot; uji jsdom end-to-end 71 cek
+  (termasuk isi cetak WAPU & B2B per peserta). Test case Excel v2 (35 TC) di
+  `input/Invoice & Pengajuan/test_case_master_program_sampai_invoice_v2_30-10-2026.xlsx` — v1 sedang terbuka sehingga tidak ditimpa.
+  Backup `input/backup/fr-nfr-invoice_draf2d_30-10-2026.md`, `input/backup/app_sebelum-print-invoice_30-10-2026.js`.
+- **2026-10-30** `[DECISION]` **Invoice draf 2d: menu Report Jurnal Invoice dan Report Uninvoiced & Piutang ditunda.**
+  `input/Invoice & Pengajuan/2026-10-30-tanpa-report-invoice/`. Modul Invoice hanya menu Invoicing; IVC-FR-14 dan UC-42 ditandai
+  ditunda (rancangan tetap disimpan). Mockup draf 13e: menu dan kode kedua report dihapus, diuji jsdom 58 cek. Backup
+  `input/backup/fr-nfr-invoice_draf2c_30-10-2026.md`, `input/backup/app_sebelum-hapus-report-invoice_30-10-2026.js` (berisi kode report).
+- **2026-10-30** `[DECISION]` **Invoice draf 2c: Add Invoicing halaman penuh, bukan pop up.**
+  `input/Invoice & Pengajuan/2026-10-30-add-invoice-halaman-penuh/`. Lima bagian bernomor (Data Invoice, Cara Tagih B2B,
+  Rincian, Perhitungan, Jurnal), tombol Back/Save tetap di bawah; Lihat Invoice dan Bukti Setor tetap pop up. Mockup draf 13d
+  diuji jsdom 64 cek. Render dicek lewat screenshot Chrome headless: kolom Debit/Credit jurnal sempat terdorong keluar,
+  diperbaiki dengan lebar kolom tetap. Backup `input/backup/fr-nfr-invoice_draf2b_30-10-2026.md`,
+  `input/backup/app_sebelum-add-invoice-halaman_30-10-2026.js`.
+- **2026-10-30** `[DECISION]` **Invoice draf 2b: status Uninvoiced/Invoiced saja, tab Invoiced, Public/B2B lewat filter.**
+  `input/Invoice & Pengajuan/2026-10-30-tab-invoiced-filter-jenis/`. Status "Sebagian" (usulan analis) dihapus: B2B per peserta
+  tetap Uninvoiced sampai semua peserta ditagih. Tab Program Public/B2B (`[IPQ-2]`) diganti tab Uninvoiced (per quotation)
+  dan Invoiced (per invoice, usulan); Public/B2B lewat filter jenis. Mockup draf 13c diuji jsdom 59 cek. Backup
+  `input/backup/fr-nfr-invoice_draf2a_30-10-2026.md`, `input/backup/app_sebelum-tab-invoiced_30-10-2026.js`.
+- **2026-10-30** `[DECISION]` **Invoice draf 2a: invoice B2B mengikuti skema quotation.**
+  `input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/`. B2B all-in ke company = 1 invoice; B2B per peserta =
+  quotation pecah = 1 invoice per peserta Deal (harga − diskon). Pilihan manual di form invoice dihapus. Ditolak: memecah
+  all-in ÷ peserta (`[BAD-2]`, kini digantikan). Q-IVC-15 terjawab. Spec Quotation draf 9d diselaraskan (tabel Public vs B2B,
+  Q-QTN-16). Mockup draf 13b (seed program B2B per peserta), diuji jsdom 67 cek. Backup
+  `input/backup/fr-nfr-invoice_draf2_30-10-2026.md`, `input/backup/fr-nfr-quotation_draf9c_30-10-2026.md`.
+- **2026-10-30** `[DECISION]` **Invoice draf 2: satu quotation Deal = satu invoice, tab Public/B2B, kolom No. Program.**
+  `input/Invoice & Pengajuan/2026-10-30-invoice-per-quotation-tab/`. Quotation Deal dalam satu program tidak digabung
+  (10 Deal → 10 invoice). Daftar Invoicing dipisah tab Program Public / Program B2B. No. Program ada di daftar, form,
+  jurnal, Lihat Invoice, kedua report, dan filter program. Q-IVC-03 terjawab. Q-IVC-15 baru: pecah B2B per peserta tetap
+  dipertahankan sebagai pengecualian sampai dijawab. Mockup draf 13a (seed: 3 quotation Deal di satu program Public), diuji jsdom
+  70 cek. Backup `input/backup/fr-nfr-invoice_draf1_30-10-2026.md`, `input/backup/app_sebelum-invoice-tab_30-10-2026.js`.
+- **2026-10-30** `[DECISION]` **Invoice draf 1: konsep Invoicing konsultasi dipetakan ke Quotation Deal.**
+  `input/Invoice & Pengajuan/2026-10-30-invoice-consulting/` (`Invoice Consulting.xlsx` + `.html`). Spec baru
+  `docs/fr-nfr-invoice.md` (IVC-FR-01 – -14, IVC-NFR-01 – -06, UC-40 – UC-42, Q-IVC-01 – -14). Rumus, perlakuan PPN
+  (PKP/WAPU/Kawasan Berikat), jurnal + Balancing, COA Penjualan, dan pembalikan PPN WAPU diambil dari acuan. SPK/TOP
+  diganti dengan unit tagih tanpa termin (usulan): satu invoice per quotation, B2B dapat per peserta (`[B2B-5]`, `[BAD-2]`).
+  Ditolak: menyalin termin/plan tagih, karena Quotation Labmania tidak punya pilihan pembayaran. Field baru **Perlakuan PPN** di
+  Master Company (usulan, belum masuk `fr-nfr.md` FR-31). Mockup draf 13 (menu Invoice: Invoicing, Report Jurnal,
+  Report Uninvoiced & Piutang; aksi "Buat Invoice" di quotation Deal). Diuji jsdom 56 cek; rumus cocok dengan sheet Test Case
+  (WAPU, PKP, KB). Backup `input/backup/*_sebelum-invoice_30-10-2026*`. `[TODO]` ERD invoice menunggu Q-IVC-01 (aplikasi
+  sudah punya `invoicing`/`tr_invoice_*`/`jurnal`); UC-40 – UC-42 belum masuk workbook; render mockup belum dicek visual.
 - **2026-10-30** `[DECISION]` **Activity Log: tanpa login/logout, simpan 60 hari, akses Manajemen & Admin Developer.**
   `input/Master - Buat Program/2026-10-30-activity-log-akses-retensi/`. Spec activity log draf 2 (LOG-FR-09, LOG-NFR-06 baru);
   group akses baru **Admin Developer** (`fr-nfr.md` draf 11q, FR-36). Kolom Dibuat/Diubah tetap terlihat semua pengguna (usulan).
@@ -138,8 +190,8 @@ One `-` bullet per event, newest first:
   PDF/Quotation/Master/Trainer) dan halaman Penawaran dirender Chrome headless ke PDF.
 
 - **2026-10-29** `[DECISION]` **Cetak Quotation = satu PDF: Penawaran + Syarat & Ketentuan + Formulir Konfirmasi.**
-  `input/Master - Buat Program/2026-10-29-cetak-quotation-snk-konfirmasi/` (template `input/Template Penawaran Labmania.pdf`,
-  `input/SYARAT & KETENTUAN KEBIJAKAN LAYANAN PEMBELAJARAN.pdf`, `input/Tamplate Formulir Konfirmasi Workshop.doc` —
+  `input/Master - Buat Program/2026-10-29-cetak-quotation-snk-konfirmasi/` (template `input/Master - Buat Program/Template Penawaran Labmania.pdf`,
+  `input/Master - Buat Program/SYARAT & KETENTUAN KEBIJAKAN LAYANAN PEMBELAJARAN.pdf`, `input/Master - Buat Program/Tamplate Formulir Konfirmasi Workshop.doc` —
   .doc dibaca lewat konversi Word read-only ke scratchpad). Nomor quotation kini `LM-I/AM/PW/MM/YY-XXX`; field baru
   Pembayaran, Catatan (maks. 3), Biaya Lain-lain; Formulir Konfirmasi satu halaman per peserta, terisi dari Master
   Peserta (NIK, Jabatan, Masa Pengalaman kosong); Confirmation Letter memakai format formulir ini untuk peserta Deal.
@@ -150,7 +202,7 @@ One `-` bullet per event, newest first:
   "Confirmation Letter: surat kehadiran + denda" di skrip uji sudah tidak berlaku (format diganti).
 
 - **2026-10-29** `[DECISION]` **Master Trainer baru (format CV Excel); Trainer dipilih di Penjualan Program.**
-  `input/Master - Buat Program/2026-10-29-master-trainer/` (sumber `input/Master Trainer Ivan Sarifudin.xlsx`, 5 sheet).
+  `input/Master - Buat Program/2026-10-29-master-trainer/` (sumber `input/Master - Buat Program/Master Trainer Ivan Sarifudin.xlsx`, 5 sheet).
   Master Data › Trainer: daftar, form bertab (Identitas + Pelatihan & Seminar, Pengalaman Kerja, Pengalaman Mengajar,
   Lampiran Dokumen), Lihat CV, Aktifkan/Nonaktifkan tanpa hapus. Penjualan Program memilih satu trainer aktif
   (1 event = 1 trainer, `[K3M-1]`), opsional (usulan). Usulan lain: tempat/tanggal lahir dipecah, keahlian satu per
@@ -176,7 +228,7 @@ One `-` bullet per event, newest first:
   tidak terpasang); UC-04 di `docs/workbook.xlsx` belum ditandai dihapus.
 
 - **2026-10-29** `[DECISION]` **Paket Produk dapat diedit; "Jenis Sertifikat"; dropdown Product Combine dapat dicari.**
-  `input/Master - Buat Program/2026-10-29-edit-master-sertifikat-cari/`. "Hanya ada Hapus" merujuk `input/labmania.html`
+  `input/Master - Buat Program/2026-10-29-edit-master-sertifikat-cari/`. "Hanya ada Hapus" merujuk `input/Master - Buat Program/labmania.html`
   (tidak diubah — sumber `input/`); master atribut di mockup kita sudah Edit + Nonaktifkan, yang baru Edit Paket Produk
   (FR-43, Q-14 terjawab; field & efek ke Master Program usulan). Label master menjadi Jenis Sertifikat / kolom
   Sertifikat; nilai Jenis Produk "Sertifikasi" dan tabel ERD `ms_jenis_sertifikasi` tetap. Dropdown dengan kolom cari
@@ -187,7 +239,7 @@ One `-` bullet per event, newest first:
 - **2026-10-29** `[DECISION]` **Quotation draf 2: Personal banyak peserta, diskon Rupiah, index per program, 4 aksi.**
   `input/Master - Buat Program/2026-10-29-quotation-diskon-aksi/`. Personal boleh banyak peserta; peserta baru diisi di
   form quotation dan langsung tersimpan di Master Peserta; company peserta ikut tampil. Diskon Rupiah per peserta
-  (usulan, Q-QTN-06). Index dikelompokkan per Penjualan Program mengikuti `input/labmania.html`. Aksi Kirim dan
+  (usulan, Q-QTN-06). Index dikelompokkan per Penjualan Program mengikuti `input/Master - Buat Program/labmania.html`. Aksi Kirim dan
   Cetak / Deal / Batalkan / Confirmation Letter; status Draft → Terkirim → Deal / Batal (Selesai & Hapus dihapus).
   Deal membuka centang peserta (default semua) agar Deal/Batal per peserta `[JPP-15]` tetap ada — usulan, Q-QTN-07.
   B2B satu quotation aktif (usulan, Q-QTN-08). Spec `docs/fr-nfr-quotation.md` draf 2, `docs/fr-nfr.md` draf 11i;
@@ -195,14 +247,14 @@ One `-` bullet per event, newest first:
   Letter menyusul (Q-QTN-05); ERD quotation belum (Q-QTN-04); render mockup belum dicek visual.
 
 - **2026-10-28** `[DECISION]` **Public & B2B Final masuk ke modul Quotation (ke Company atau Personal).**
-  `input/Master - Buat Program/2026-10-28-quotation-company-personal/` (acuan `input/labmania.html`). Quotation ke Company memilih
+  `input/Master - Buat Program/2026-10-28-quotation-company-personal/` (acuan `input/Master - Buat Program/labmania.html`). Quotation ke Company memilih
   peserta yang terdaftar di company itu, jadi Master Peserta diberi field Company opsional (usulan). Personal = satu
   peserta (usulan). Harga dari Penjualan Program, tanpa diskon, PPN 11% opsional. Status Draft → Terkirim → Selesai,
   Deal/Batal per peserta (`[JPP-15]`). Spec baru `docs/fr-nfr-quotation.md` draf 1; PJ draf 10, Master Data draf 11h;
   mockup draf 11l diuji jsdom + screenshot. `notes.md` intake menulis "spec belum ditulis" — sudah ditulis di entri ini.
   `[TODO]` Sales Order dipertahankan atau tidak (Q-QTN-03); ERD tabel quotation + `ms_peserta.id_customer` (Q-QTN-04).
 - **2026-10-28** `[DECISION]` **Master User ditambahkan ke Master Data (sub modul Pengguna).**
-  `input/Master - Buat Program/2026-10-28-master-user/` (gambar `input/Master User.png`). Form mengikuti gambar; ditambah
+  `input/Master - Buat Program/2026-10-28-master-user/` (gambar `input/Master - Buat Program/Master User.png`). Form mengikuti gambar; ditambah
   bagian Akun Login (username, password, group akses), daftar, filter, Aktifkan/Nonaktifkan tanpa hapus,
   Reset Password — usulan. Diusulkan memakai tabel existing `employees` + `users`/`groups` (Q-25).
   FR-36 – FR-39, UC-32 di `docs/fr-nfr.md` draf 11; mockup draf 11d diuji jsdom. `[TODO]` ERD belum
