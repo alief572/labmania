@@ -21,7 +21,7 @@ class Users extends Front_Controller
     {
         if ($this->auth->is_login()) {
             history("Login");
-            redirect('/');
+            redirect('dashboard_labmania');
         }
 
         //$identitas = $this->identitas_model->find(1); => ERROR variable nama_program not define krn ga ada fieldnya di tabel identitas
@@ -216,7 +216,7 @@ class Users extends Front_Controller
 
         if ($checkResult) {
             $this->session->set_userdata('2fa_verified', true);
-            redirect('dashboard');
+            redirect('dashboard_labmania');
         } else {
             // Jika verifikasi gagal, tampilkan pesan error
             $this->session->set_userdata('2fa_verified', false);

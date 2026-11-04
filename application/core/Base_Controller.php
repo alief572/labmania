@@ -1,5 +1,6 @@
 <?php defined('BASEPATH') || exit('No direct script access allowed');
 
+#[\AllowDynamicProperties]
 class Base_Controller extends MX_Controller
 {
     protected $previous_page;
@@ -35,7 +36,7 @@ class Base_Controller extends MX_Controller
         if (empty($uri)) {
             // Try to get the current URL through PATH INFO.
             $path = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : @getenv('PATH_INFO');
-            if (trim($path, '/') != '' && $path != '/' . SELF) {
+            if ($path !== null && trim($path, '/') != '' && $path != '/' . SELF) {
                 $uri = $path;
             }
         }
@@ -43,7 +44,7 @@ class Base_Controller extends MX_Controller
         if (empty($uri)) {
             // Finally, try the query string.
             $path =  isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : @getenv('QUERY_STRING');
-            if (trim($path, '/') != '') {
+            if ($path !== null && trim($path, '/') != '') {
                 $uri = $path;
             }
         }

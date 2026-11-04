@@ -241,7 +241,7 @@ class CI_DB_mysqli_driver extends CI_DB {
 	 */
 	public function reconnect()
 	{
-		if ($this->conn_id !== FALSE && $this->conn_id->ping() === FALSE)
+		if ($this->conn_id instanceof \mysqli && @$this->conn_id->query('SELECT 1') === FALSE)
 		{
 			$this->conn_id = FALSE;
 		}
@@ -398,7 +398,9 @@ class CI_DB_mysqli_driver extends CI_DB {
 	 */
 	protected function _escape_str($str)
 	{
-		return $this->conn_id->real_escape_string($str);
+		return ($this->conn_id instanceof \mysqli)
+			? $this->conn_id->real_escape_string($str)
+			: addslashes($str);
 	}
 
 	// --------------------------------------------------------------------

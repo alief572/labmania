@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title><?= isset($idt->nm_perusahaan) ? $idt->nm_perusahaan : 'not-set'; ?><?= isset($template['title']) ? ' | ' . $template['title'] : ''; ?></title>
+  <title><?= (!empty($idt->nm_perusahaan) && $idt->nm_perusahaan !== 'not-set' && $idt->nm_perusahaan !== 'CONSULTANT') ? $idt->nm_perusahaan : 'Labmania'; ?><?= isset($template['title']) ? ' | ' . $template['title'] : ''; ?></title>
   <link rel="shortcut icon" href="<?php echo base_url('assets/'); ?>images/importa.png" />
   <!-- Tell the browser to be responsive to screen width -->
   <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">

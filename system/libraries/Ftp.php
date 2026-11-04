@@ -47,7 +47,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @author		EllisLab Dev Team
  * @link		https://codeigniter.com/userguide3/libraries/ftp.html
  */
-class CI_FTP {
+#[\AllowDynamicProperties]
+class CI_Ftp {
 
 	/**
 	 * FTP Server hostname

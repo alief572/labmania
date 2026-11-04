@@ -27,6 +27,7 @@ application/config/constants.php
 docker-compose.yml
 application/config/config.php
 /.kiro
+/.artifacts/
 /tests/*
 !/tests/ExpenseReportJournalRepairTest.php
 Dockerfile

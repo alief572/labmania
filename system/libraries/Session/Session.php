@@ -389,6 +389,11 @@ class CI_Session {
 	 */
 	protected function _configure_sid_length()
 	{
+		if (PHP_VERSION_ID >= 80400)
+		{
+			$this->_sid_regexp = '[0-9a-zA-Z,-]{32,256}';
+			return;
+		}
 		if (PHP_VERSION_ID < 70100)
 		{
 			$hash_function = ini_get('session.hash_function');

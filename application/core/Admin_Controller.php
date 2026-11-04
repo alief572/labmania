@@ -1,5 +1,6 @@
 <?php defined('BASEPATH') || exit('No direct script access allowed');
 
+#[\AllowDynamicProperties]
 class Admin_Controller extends Base_Controller
 {
     protected $pager;
@@ -21,7 +22,8 @@ class Admin_Controller extends Base_Controller
             redirect('login');
         }
 
-        if ($this->auth->userdata()->ga_secret && !$this->session->userdata('2fa_verified')) {
+        $userData = $this->auth->userdata();
+        if ($userData && !empty($userData->ga_secret) && !$this->session->userdata('2fa_verified')) {
             $this->session->set_flashdata('2FA belum diverifikasi. Silakan verifikasi terlebih dahulu.', 'danger');
             redirect('users/verify_2fa');
         } else if (!$this->session->userdata('2fa_verified')) {
