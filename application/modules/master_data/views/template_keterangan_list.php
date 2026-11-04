@@ -33,7 +33,7 @@ $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
   </div>
 
   <div class="table-wrap">
-    <table class="table" id="data-table" data-dt data-search-cols="[1,2,3]">
+    <table class="table" id="data-table" data-dt data-ajax="<?= site_url('master_data/template_keterangan_data'); ?>" data-filter="#status-filter,#kat-filter" data-filter-name="status,kategori">
       <thead>
         <tr>
           <th style="width: 50px;">No</th>
@@ -47,31 +47,7 @@ $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
           <th style="width: 80px;" class="act">Action</th>
         </tr>
       </thead>
-      <tbody>
-        <?php if (!empty($items)): foreach ($items as $k): ?>
-          <tr data-id="<?= (int)$k['id']; ?>" data-kat="<?= $e($k['kategori']); ?>" data-aktif="<?= $k['aktif'] ? 1 : 0; ?>" class="<?= $k['aktif'] ? '' : 'is-off'; ?>" data-json='<?= $e(json_encode($k)); ?>'>
-            <td></td>
-            <td><span class="code"><?= $e($k['kode']); ?></span></td>
-            <td class="nowrap"><?= $e($KAT[$k['kategori']] ?? $k['kategori']); ?></td>
-            <td class="title"><?= $e($k['teks']); ?></td>
-            <td class="nowrap"><?= $k['berlaku_untuk'] === 'semua' ? 'Semua' : '<span class="tag tag-' . $e($k['berlaku_untuk']) . '">' . $e($BERLAKU[$k['berlaku_untuk']] ?? $k['berlaku_untuk']) . '</span>'; ?></td>
-            <td class="nowrap"><?= $k['is_default'] ? '<b>Ya</b>' : '<span class="muted">Tidak</span>'; ?></td>
-            <td class="nowrap"><span class="badge <?= $k['aktif'] ? 'on' : 'off'; ?>"><?= $k['aktif'] ? 'Aktif' : 'Nonaktif'; ?></span></td>
-            <td class="hist"><?= hist_cell($k); ?></td>
-            <td class="act">
-              <button type="button" class="gear" data-gear aria-haspopup="menu" aria-label="Opsi"></button>
-              <span class="gear-src" hidden>
-              <?php if (lm_can('master_data.template_keterangan', 'ubah')): ?><button class="icon-btn" onclick="editKet(this)" title="Edit">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              </button><?php endif; ?>
-              <?php if (lm_can('master_data.template_keterangan', 'aktif')): ?><button class="icon-btn" onclick="toggleKet(<?= (int)$k['id']; ?>)" title="<?= $k['aktif'] ? 'Nonaktifkan' : 'Aktifkan'; ?>">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-              </button><?php endif; ?>
-              <?= riwayat_btn('ms_template_keterangan', $k['kode']); ?></span>
-            </td>
-          </tr>
-        <?php endforeach; endif; ?>
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
 </div>
@@ -82,16 +58,6 @@ var BERLAKU = <?= json_encode($BERLAKU); ?>;
 var ERR_FIELD = { kategori: 'k-kategori', teks: 'k-teks', berlaku_untuk: 'k-berlaku' };
 
 function esc(v) { return $('<div>').text(v == null ? '' : v).html().replace(/"/g, '&quot;'); }
-
-// Filter kategori & status (client-side; jumlah butir kecil): memakai atribut data-kat / data-aktif di baris.
-$.fn.dataTable.ext.search.push(function (settings, data, idx) {
-  if (settings.nTable.id !== 'data-table') return true;
-  var tr = settings.aoData[idx].nTr, st = $('#status-filter').val(), kat = $('#kat-filter').val();
-  if (kat !== 'all' && tr.getAttribute('data-kat') !== kat) return false;
-  if (st !== 'all' && tr.getAttribute('data-aktif') !== (st === 'on' ? '1' : '0')) return false;
-  return true;
-});
-$('#status-filter, #kat-filter').on('change', function () { $('#data-table').DataTable().draw(); });
 
 function fieldHtml(label, control, cls) {
   return '<div class="field ' + (cls || '') + '"><label>' + label + '</label>' + control + '<div class="err" style="display:none;"></div></div>';

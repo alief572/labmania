@@ -17,6 +17,7 @@ class Master_data extends Labmania_Controller
         'attr_data' => ['master_data.{seg3}', 'lihat', true],
         'attr_next_code' => ['master_data.{seg3}', 'tambah', true],
         'paket_produk' => ['master_data.paket_produk', 'lihat'],
+        'paket_data' => ['master_data.paket_produk', 'lihat', true],
         'combine' => ['master_data.paket_produk', 'tambah'],
         'save_combine' => ['master_data.paket_produk', 'tambah', true],
         'update_paket' => ['master_data.paket_produk', 'ubah', true],
@@ -34,19 +35,23 @@ class Master_data extends Labmania_Controller
         'save_company' => ['master_data.company', 'simpan', true],
         'delete_company' => ['master_data.company', 'hapus', true],
         'rate' => ['master_data.rate', 'lihat'],
+        'rate_data' => ['master_data.rate', 'lihat', true],
         'rate_next_code' => ['master_data.rate', 'tambah', true],
         'save_rate' => ['master_data.rate', 'simpan', true],
         'toggle_rate' => ['master_data.rate', 'aktif', true],
         'template_keterangan' => ['master_data.template_keterangan', 'lihat'],
+        'template_keterangan_data' => ['master_data.template_keterangan', 'lihat', true],
         'template_keterangan_next_code' => ['master_data.template_keterangan', 'tambah', true],
         'save_template_keterangan' => ['master_data.template_keterangan', 'simpan', true],
         'toggle_template_keterangan' => ['master_data.template_keterangan', 'aktif', true],
         'template_konfirmasi' => ['master_data.template_konfirmasi', 'lihat'],
+        'template_konfirmasi_data' => ['master_data.template_konfirmasi', 'lihat', true],
         'template_konfirmasi_next_code' => ['master_data.template_konfirmasi', 'tambah', true],
         'template_konfirmasi_contoh' => ['master_data.template_konfirmasi', 'lihat', true],
         'save_template_konfirmasi' => ['master_data.template_konfirmasi', 'simpan', true],
         'toggle_template_konfirmasi' => ['master_data.template_konfirmasi', 'aktif', true],
         'users' => ['master_data.users', 'lihat'],
+        'users_data' => ['master_data.users', 'lihat', true],
         'save_user' => ['master_data.users', 'simpan', true],
         'toggle_user' => ['master_data.users', 'aktif', true],
         'reset_password_user' => ['master_data.users', 'ubah', true],
@@ -111,6 +116,229 @@ class Master_data extends Labmania_Controller
         return $this->output->set_content_type('application/json')->set_output(json_encode([
             'draw' => (int)$this->input->post_get('draw'), 'recordsTotal' => $total, 'recordsFiltered' => $filtered, 'data' => $data,
         ]));
+    }
+
+    // ---- Helper server-side DataTables (Product Combine, Rate, Template, User) ----
+    private function ssp_params() { return $this->input->post() ?: $this->input->get(); }
+
+    private function ssp_out($total, $filtered, $data)
+    {
+        return $this->output->set_content_type('application/json')->set_output(json_encode([
+            'draw' => (int)$this->input->post_get('draw'), 'recordsTotal' => $total, 'recordsFiltered' => $filtered, 'data' => $data,
+        ], JSON_PARTIAL_OUTPUT_ON_ERROR));
+    }
+
+    /** Baris DataTables: sel indeks 0..n + atribut tr (data-id, data-json dibaca tombol Edit) + redup bila nonaktif. */
+    private function ssp_row($cells, $r, $withJson = true)
+    {
+        $cells['DT_RowAttr'] = ['data-id' => (int)$r['id']] + ($withJson ? ['data-json' => json_encode($r, JSON_PARTIAL_OUTPUT_ON_ERROR)] : []);
+        if (isset($r['aktif']) && !$r['aktif']) $cells['DT_RowClass'] = 'is-off';
+        return $cells;
+    }
+
+    private function ibtn($onclick, $title, $path)
+    {
+        return '<button class="icon-btn" onclick="' . $onclick . '" title="' . $title . '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' . $path . '</svg></button>';
+    }
+
+    private function gear_cell($buttons)
+    {
+        return '<button type="button" class="gear" data-gear aria-haspopup="menu" aria-label="Opsi"></button><span class="gear-src" hidden>' . $buttons . '</span>';
+    }
+
+    private function badge_aktif($on)
+    {
+        return '<span class="badge ' . ($on ? 'on' : 'off') . '">' . ($on ? 'Aktif' : 'Nonaktif') . '</span>';
+    }
+
+    private static $P_EDIT = '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>';
+    private static $P_POWER = '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>';
+    private static $P_EYE = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+
+    /** Data tabel Product Combine (server-side). */
+    public function paket_data()
+    {
+        list($t, $f, $rows) = $this->md_model->ssp_datatable('paket_produk', 'pp', $this->ssp_params(), [
+            'select' => 'pp.*, jp.nama as nama_produk, js.nama as nama_sertifikasi, jb.nama as nama_bidang',
+            'join'   => [['ms_jenis_produk jp', 'pp.id_jenis_produk = jp.id'], ['ms_jenis_sertifikasi js', 'pp.id_jenis_sertifikasi = js.id'], ['ms_jenis_bidang jb', 'pp.id_jenis_bidang = jb.id']],
+            'search' => ['pp.nomor', 'pp.judul', 'jp.nama', 'jb.nama', 'js.nama'],
+            'order'  => [1 => 'pp.nomor', 2 => 'pp.judul', 3 => 'jp.nama', 4 => 'jb.nama', 5 => 'js.nama', 6 => 'pp.aktif'],
+            'default' => 'pp.id', 'kode' => 'nomor',
+        ]);
+        $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+        $data = [];
+        foreach ($rows as $i => $r) {
+            $id = (int)$r['id'];
+            $data[] = $this->ssp_row([
+                $i + 1,
+                '<span class="code">' . $e($r['nomor']) . '</span>',
+                '<b>' . $e($r['judul']) . '</b>',
+                '<span class="tag tag-public">' . $e($r['nama_produk'] ?? '—') . '</span>',
+                $e($r['nama_bidang'] ?? '—'),
+                '<span class="tag tag-b2b">' . $e($r['nama_sertifikasi'] ?? '—') . '</span>',
+                $this->badge_aktif($r['aktif']),
+                hist_cell($r),
+                $this->gear_cell(
+                    (lm_can('master_data.paket_produk', 'ubah') ? $this->ibtn('openEditPaketModal(' . $id . ', \'' . $e(addslashes($r['judul'])) . '\', \'' . $e($r['nomor']) . '\')', 'Edit Judul', self::$P_EDIT) : '')
+                    . (lm_can('master_data.paket_produk', 'aktif') ? $this->ibtn('togglePaket(' . $id . ')', $r['aktif'] ? 'Nonaktifkan' : 'Aktifkan', self::$P_POWER) : '')
+                    . riwayat_btn('paket_produk', $r['nomor'])
+                ),
+            ], $r, false);
+        }
+        return $this->ssp_out($t, $f, $data);
+    }
+
+    /** Data tabel Master Rate per tab fixed|variable (server-side). */
+    public function rate_data($tab = 'fixed')
+    {
+        $tab = in_array($tab, ['fixed', 'variable'], true) ? $tab : 'fixed';
+        list($t, $f, $rows) = $this->md_model->ssp_datatable('ms_rate', 'r', $this->ssp_params(), [
+            'select' => 'r.*, s.nama as nama_satuan, s.code as kode_satuan',
+            'join'   => [['ms_satuan s', 'r.id_satuan = s.id']],
+            'where'  => ['r.tipe' => $tab],
+            'status' => 'r.aktif',
+            'search' => ['r.kode', 'r.item', 'r.keterangan'],
+            'order'  => [1 => 'r.kode', 2 => 'r.item', 3 => 's.nama', 4 => 'r.default_cost', 5 => 'r.aktif'],
+            'default' => 'r.id',
+        ]);
+        $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+        $data = [];
+        foreach ($rows as $i => $r) {
+            $id = (int)$r['id'];
+            $data[] = $this->ssp_row([
+                $i + 1,
+                '<span class="code">' . $e($r['kode']) . '</span>',
+                $e($r['item']) . (trim((string)$r['keterangan']) !== '' ? '<br><span class="muted">' . $e($r['keterangan']) . '</span>' : ''),
+                $e($r['nama_satuan'] ?? '—'),
+                'Rp ' . number_format((float)$r['default_cost'], 0, ',', '.'),
+                $this->badge_aktif($r['aktif']),
+                hist_cell($r),
+                $this->gear_cell(
+                    (lm_can('master_data.rate', 'ubah') ? $this->ibtn('editRate(this)', 'Edit', self::$P_EDIT) : '')
+                    . (lm_can('master_data.rate', 'aktif') ? $this->ibtn('toggleRate(' . $id . ')', $r['aktif'] ? 'Nonaktifkan' : 'Aktifkan', self::$P_POWER) : '')
+                    . riwayat_btn('ms_rate', $r['kode'])
+                ),
+            ], $r);
+        }
+        return $this->ssp_out($t, $f, $data);
+    }
+
+    /** Data tabel Template Keterangan Quotation (server-side). */
+    public function template_keterangan_data()
+    {
+        $KAT = ['syarat' => 'Syarat keikutsertaan', 'termasuk' => 'Termasuk', 'tidak' => 'Tidak termasuk', 'dokumen' => 'Dokumen persyaratan', 'klausul' => 'Klausul tanda tangan'];
+        $BERLAKU = ['semua' => 'Semua', 'public' => 'Public', 'b2b' => 'B2B'];
+        list($t, $f, $rows) = $this->md_model->ssp_datatable('ms_template_keterangan', 'k', $this->ssp_params(), [
+            'status'  => 'k.aktif',
+            'filters' => ['kategori' => 'k.kategori'],
+            'search'  => ['k.kode', 'k.teks'],
+            'order'   => [1 => 'k.kode', 2 => 'k.kategori', 3 => 'k.teks', 4 => 'k.berlaku_untuk', 5 => 'k.is_default', 6 => 'k.aktif'],
+            'default' => "FIELD(k.kategori, 'syarat', 'termasuk', 'tidak', 'dokumen', 'klausul'), k.id",
+        ]);
+        $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+        $data = [];
+        foreach ($rows as $i => $r) {
+            $id = (int)$r['id'];
+            $data[] = $this->ssp_row([
+                $i + 1,
+                '<span class="code">' . $e($r['kode']) . '</span>',
+                $e($KAT[$r['kategori']] ?? $r['kategori']),
+                $e($r['teks']),
+                $r['berlaku_untuk'] === 'semua' ? 'Semua' : '<span class="tag tag-' . $e($r['berlaku_untuk']) . '">' . $e($BERLAKU[$r['berlaku_untuk']] ?? $r['berlaku_untuk']) . '</span>',
+                $r['is_default'] ? '<b>Ya</b>' : '<span class="muted">Tidak</span>',
+                $this->badge_aktif($r['aktif']),
+                hist_cell($r),
+                $this->gear_cell(
+                    (lm_can('master_data.template_keterangan', 'ubah') ? $this->ibtn('editKet(this)', 'Edit', self::$P_EDIT) : '')
+                    . (lm_can('master_data.template_keterangan', 'aktif') ? $this->ibtn('toggleKet(' . $id . ')', $r['aktif'] ? 'Nonaktifkan' : 'Aktifkan', self::$P_POWER) : '')
+                    . riwayat_btn('ms_template_keterangan', $r['kode'])
+                ),
+            ], $r);
+        }
+        return $this->ssp_out($t, $f, $data);
+    }
+
+    /** Data tabel Template Formulir Konfirmasi (server-side). */
+    public function template_konfirmasi_data()
+    {
+        list($t, $f, $rows) = $this->md_model->ssp_datatable('ms_template_konfirmasi', 'k', $this->ssp_params(), [
+            'select' => 'k.*, jp.nama as nama_produk',
+            'join'   => [['ms_jenis_produk jp', 'k.id_jenis_produk = jp.id']],
+            'status' => 'k.aktif',
+            'search' => ['k.kode', 'k.nama'],
+            'order'  => [1 => 'k.kode', 2 => 'k.nama', 3 => 'jp.nama', 6 => 'k.aktif'],
+            'default' => 'k.id',
+            'audit'  => 'ms_template_konfirmasi',
+        ]);
+        $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+        $mark = function ($s) use ($e) { return preg_replace('/\*\*(.+?)\*\*/', '<b>$1</b>', $e($s)); };
+        $STD = ['nama', 'nik', 'jabatan', 'instansi', 'alamat', 'email']; // isian umum; selain ini tampil sebagai chip
+        $data = [];
+        foreach ($rows as $i => $r) {
+            $id = (int)$r['id'];
+            $isian = json_decode($r['isian'] ?? '[]', true) ?: [];
+            $chips = '';
+            foreach ($isian as $k) if (!in_array($k, $STD, true) && isset(Master_data_model::KF_FIELDS[$k])) $chips .= '<span class="ps-chip">' . $e(Master_data_model::KF_FIELDS[$k]) . '</span> ';
+            $p = (string)$r['pernyataan'];
+            $data[] = $this->ssp_row([
+                $i + 1,
+                '<span class="code">' . $e($r['kode']) . '</span>',
+                '<b>' . $e($r['nama']) . '</b><br><span class="muted">subject: kegiatan ' . $e($r['label_kegiatan']) . '</span>',
+                !empty($r['nama_produk']) ? $e($r['nama_produk']) : '<span class="muted">— (pilih manual)</span>',
+                '<b>' . count($isian) . '</b> <span class="muted">isian</span><br>' . $chips,
+                '<span class="muted">' . $mark(mb_strlen($p) > 110 ? mb_substr($p, 0, 110) . '…' : $p) . '</span>',
+                $this->badge_aktif($r['aktif']),
+                hist_cell($r),
+                $this->gear_cell(
+                    (lm_can('master_data.template_konfirmasi', 'ubah') ? $this->ibtn('editKf(this)', 'Edit', self::$P_EDIT) : '')
+                    . $this->ibtn('contohKf(' . $id . ')', 'Lihat contoh', self::$P_EYE)
+                    . (lm_can('master_data.template_konfirmasi', 'aktif') ? $this->ibtn('toggleKf(' . $id . ')', $r['aktif'] ? 'Nonaktifkan' : 'Aktifkan', self::$P_POWER) : '')
+                    . riwayat_btn('ms_template_konfirmasi', $r['kode'])
+                ),
+            ], $r);
+        }
+        return $this->ssp_out($t, $f, $data);
+    }
+
+    /** Data tabel Master User (server-side). Menu gear teks + template, ikon gear diisi klien (lihat user_list). */
+    public function users_data()
+    {
+        list($t, $f, $rows) = $this->md_model->ssp_datatable('ms_user_karyawan', 'e', $this->ssp_params(), [
+            'select'  => 'e.*, u.username, g.id_group, g.nm_group',
+            'join'    => [['users u', 'u.id_user = e.id_user AND IFNULL(u.deleted, 0) = 0', false],
+                          ['(SELECT id_user, MIN(id_group) AS id_group FROM user_groups GROUP BY id_user) ug', 'ug.id_user = u.id_user', false],
+                          ['`groups` g', 'g.id_group = ug.id_group', false]],
+            'status'  => 'e.aktif',
+            'filters' => ['dept' => 'e.department'],
+            'search'  => ['e.kode', 'e.nama', 'e.email', 'e.telp', 'u.username'],
+            'order'   => [1 => 'e.kode', 2 => 'e.nama', 3 => 'e.department', 4 => 'e.jabatan', 5 => 'u.username', 6 => 'e.aktif'],
+            'default' => 'e.id',
+        ]);
+        $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+        $ubah = lm_can('master_data.users', 'ubah');
+        $log = can_view_activity_log();
+        $data = [];
+        foreach ($rows as $i => $r) {
+            $id = (int)$r['id'];
+            $on = (int)$r['aktif'] === 1;
+            $mi = function ($act, $label) use ($id) { return '<button class="menu-item" role="menuitem" data-uact="' . $act . '" data-id="' . $id . '">' . $label . '</button>'; };
+            $menu = ($ubah ? $mi('edit', 'Edit') : '')
+                . (lm_can('master_data.users', 'aktif') ? $mi('toggle', $on ? 'Nonaktifkan' : 'Aktifkan') : '')
+                . ($ubah && $r['id_user'] ? $mi('reset', 'Reset Password') : '')
+                . ($log && $r['kode'] ? $mi('hist', 'Lihat Riwayat') : '');
+            $data[] = $this->ssp_row([
+                $i + 1,
+                '<span class="code">' . $e($r['kode'] ?: '—') . '</span>',
+                $e($r['nama']) . '<br><span class="muted">' . $e($r['email'] ?: $r['telp']) . '</span>',
+                $e($r['department'] ?: '—') . '<br><span class="muted">' . $e($r['division']) . '</span>',
+                $e($r['jabatan'] ?: '—') . '<br><span class="muted">' . $e($r['tipe']) . '</span>',
+                $r['id_user'] ? '<span class="code">' . $e($r['username']) . '</span><br><span class="muted">' . $e($r['nm_group']) . '</span>' : '<span class="muted">Tanpa akun</span>',
+                $this->badge_aktif($on),
+                hist_cell($r),
+                $menu ? '<button class="gear" data-uact="gear" aria-haspopup="menu" aria-label="Opsi"></button><template>' . $menu . '</template>' : '',
+            ], $r);
+        }
+        return $this->ssp_out($t, $f, $data);
     }
 
     /** Pratinjau kode berikutnya untuk modal Tambah (kode final dibuat saat simpan). */
@@ -215,10 +443,7 @@ class Master_data extends Labmania_Controller
         $this->template->title('Product Combine');
         $this->template->set('breadcrumbs', 'Master Data / <b>Product Combine</b>');
 
-        $data = [
-            'pakets' => $this->md_model->with_audit($this->md_model->get_paket_produk(), 'paket_produk', 'nomor')
-        ];
-        $this->template->render('paket_list', $data);
+        $this->template->render('paket_list', []); // daftar diisi paket_data (server-side)
     }
 
     public function combine()
@@ -432,7 +657,6 @@ class Master_data extends Labmania_Controller
             'tab'         => $tab,
             'titles'      => Master_data_model::RATE_TITLE,
             'counts'      => ['fixed' => $this->md_model->count_rates('fixed'), 'variable' => $this->md_model->count_rates('variable')],
-            'rates'       => $this->md_model->with_audit($this->md_model->get_rates($tab), 'ms_rate'),
             'satuan_tabs' => ['fixed' => $this->md_model->get_satuans_by_tipe('fixed'), 'variable' => $this->md_model->get_satuans_by_tipe('variable')],
             'coa'         => $this->md_model->get_coa_options()
         ];
@@ -469,10 +693,7 @@ class Master_data extends Labmania_Controller
         $this->template->title('Template Keterangan Quotation');
         $this->template->set('breadcrumbs', 'Master Data / <b>Template Keterangan Quotation</b>');
 
-        $data = [
-            'items' => $this->md_model->with_audit($this->md_model->get_template_keterangan(), 'ms_template_keterangan')
-        ];
-        $this->template->render('template_keterangan_list', $data);
+        $this->template->render('template_keterangan_list', []); // daftar diisi template_keterangan_data
     }
 
     public function template_keterangan_next_code()
@@ -501,7 +722,6 @@ class Master_data extends Labmania_Controller
         $this->template->set('breadcrumbs', 'Master Data / <b>Template Formulir Konfirmasi</b>');
 
         $data = [
-            'items'        => $this->md_model->with_audit($this->md_model->get_template_konfirmasi(), 'ms_template_konfirmasi'),
             'jenis_produk' => $this->md_model->get_master_attr('ms_jenis_produk'),
             'kf_fields'    => Master_data_model::KF_FIELDS
         ];
@@ -557,7 +777,6 @@ class Master_data extends Labmania_Controller
 
         $m = $this->md_model;
         $data = [
-            'users'      => $m->with_audit($m->get_users(), 'ms_user_karyawan'),
             'groups'     => $m->get_groups(),
             'department' => $m->user_department,
             'jabatan'    => $m->user_jabatan,

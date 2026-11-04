@@ -30,7 +30,6 @@
 </div>
 
 <script>
-var USERS = <?= json_encode($users, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_PARTIAL_OUTPUT_ON_ERROR); ?>;
 var GROUPS = <?= json_encode($groups); ?>;
 var DEPARTMENT = <?= json_encode($department); ?>;
 var JABATAN = <?= json_encode($jabatan); ?>;
@@ -60,48 +59,23 @@ function histCell(r) {
   var diubah = !!r._diubah_pada;
   return '<span class="hist-l">' + (diubah ? 'Diubah' : 'Dibuat') + ' <b>' + esc((diubah ? r._diubah_oleh : r._dibuat_oleh) || '—') + '</b><br>' + fmtWaktu(diubah ? r._diubah_pada : r._dibuat_pada) + '</span>';
 }
-function findUser(id) { return USERS.filter(function (u) { return String(u.id) === String(id); })[0]; }
+// Data baris dibaca dari atribut data-json yang dikirim server (data-id = id baris).
+function findUser(id) { return JSON.parse($('#data-table tr[data-id="' + id + '"]').attr('data-json')); }
 function opts(list, sel) { return list.map(function (x) { return '<option' + (x === sel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); }
 function field(label, control, cls) { return '<div class="field ' + (cls || '') + '"><label>' + label + '</label>' + control + '</div>'; }
 
 // ---------- Daftar ----------
 var USER_DT = null;
 
-function userRow(r) {
-  var on = r.aktif == 1;
-  var menu = (CAN_UBAH ? '<button class="menu-item" role="menuitem" data-uact="edit" data-id="' + r.id + '">Edit</button>' : '') +
-    (CAN_AKTIF ? '<button class="menu-item" role="menuitem" data-uact="toggle" data-id="' + r.id + '">' + (on ? 'Nonaktifkan' : 'Aktifkan') + '</button>' : '') +
-    (CAN_UBAH && r.id_user ? '<button class="menu-item" role="menuitem" data-uact="reset" data-id="' + r.id + '">Reset Password</button>' : '') +
-    (CAN_LOG && r.kode ? '<button class="menu-item" role="menuitem" data-uact="hist" data-id="' + r.id + '">Lihat Riwayat</button>' : '');
-  return '<tr class="' + (on ? '' : 'is-off') + '" data-on="' + (on ? 1 : 0) + '" data-dept="' + esc(r.department || '') + '">' +
-    '<td class="num"></td>' +
-    '<td class="nowrap"><span class="code">' + esc(r.kode || '—') + '</span></td>' +
-    '<td>' + esc(r.nama) + '<br><span class="muted">' + esc(r.email || r.telp || '') + '</span></td>' +
-    '<td>' + esc(r.department || '—') + '<br><span class="muted">' + esc(r.division || '') + '</span></td>' +
-    '<td>' + esc(r.jabatan || '—') + '<br><span class="muted">' + esc(r.tipe || '') + '</span></td>' +
-    '<td>' + (r.id_user ? '<span class="code">' + esc(r.username) + '</span><br><span class="muted">' + esc(r.nm_group || '') + '</span>' : '<span class="muted">Tanpa akun</span>') + '</td>' +
-    '<td class="nowrap"><span class="badge ' + (on ? 'on' : 'off') + '">' + (on ? 'Aktif' : 'Nonaktif') + '</span></td>' +
-    '<td class="hist">' + histCell(r) + '</td>' +
-    '<td class="act">' + (menu ? '<button class="gear" data-uact="gear" aria-haspopup="menu" aria-label="Opsi">' + GEAR + '</button><template>' + menu + '</template>' : '') + '</td>' +
-  '</tr>';
-}
-
-// Daftar memakai DataTables (pencarian, urutan, paginasi); filter Status & Department ikut menyaring.
+// Daftar memakai DataTables server-side (users_data); filter Status & Department ikut dikirim ke server.
 function renderUsers() {
   document.getElementById('u-list').innerHTML =
-    '<div class="table-wrap"><table class="table" id="data-table"><thead><tr>' +
+    '<div class="table-wrap"><table class="table" id="data-table" data-filter="#u-status,#u-dept" data-filter-name="status,dept"><thead><tr>' +
       '<th class="num">No</th><th class="nowrap">Employee ID</th><th>Nama</th><th>Department / Division</th><th>Jabatan</th><th>Akun login</th><th class="nowrap">Status</th><th class="hist">Dibuat / Diubah</th><th class="act">Action</th>' +
-    '</tr></thead><tbody>' + USERS.map(userRow).join('') + '</tbody></table></div>';
-
-  $.fn.dataTable.ext.search.push(function (settings, data, idx) {
-    if (settings.nTable.id !== 'data-table') return true;
-    var tr = settings.aoData[idx].nTr;
-    var st = document.getElementById('u-status').value, dp = document.getElementById('u-dept').value;
-    if (st !== 'all' && (st === 'on') !== (tr.getAttribute('data-on') === '1')) return false;
-    if (dp !== 'all' && tr.getAttribute('data-dept') !== dp) return false;
-    return true;
-  });
-  USER_DT = lmDataTable('#data-table', { search: '#u-q', searchCols: [1, 2, 5] });
+    '</tr></thead><tbody></tbody></table></div>';
+  // Ikon gear diisi klien setelah tiap draw (server hanya mengirim tombolnya).
+  $('#data-table').on('draw.dt', function () { $('#data-table .gear[data-uact="gear"]:empty').html(GEAR); });
+  USER_DT = lmDataTable('#data-table', { search: '#u-q', ajax: <?= json_encode(site_url('master_data/users_data')); ?> });
 }
 
 // ---------- Menu gear ----------
@@ -136,8 +110,6 @@ document.addEventListener('click', function (e) {
 });
 window.addEventListener('scroll', closeGear, true);
 
-document.getElementById('u-status').addEventListener('change', function () { if (USER_DT) USER_DT.draw(); });
-document.getElementById('u-dept').addEventListener('change', function () { if (USER_DT) USER_DT.draw(); });
 
 // ---------- Modal (markup sesuai mockup) ----------
 function showModal(o) {

@@ -17,7 +17,7 @@
   </div>
 
   <div class="table-wrap">
-    <table class="table" id="data-table" data-dt>
+    <table class="table" id="data-table" data-dt data-ajax="<?= site_url('master_data/paket_data'); ?>">
       <thead>
         <tr>
           <th style="width: 50px;">No</th>
@@ -31,37 +31,7 @@
           <th style="width: 80px;" class="act">Aksi</th>
         </tr>
       </thead>
-      <tbody>
-        <?php if (!empty($pakets)): $no = 1; foreach ($pakets as $p): ?>
-          <tr data-id="<?= $p['id']; ?>">
-            <td><?= $no++; ?></td>
-            <td><span class="code"><?= htmlspecialchars($p['nomor']); ?></span></td>
-            <td><b><?= htmlspecialchars($p['judul']); ?></b></td>
-            <td><span class="tag tag-public"><?= htmlspecialchars($p['nama_produk'] ?? '—'); ?></span></td>
-            <td><?= htmlspecialchars($p['nama_bidang'] ?? '—'); ?></td>
-            <td><span class="tag tag-b2b"><?= htmlspecialchars($p['nama_sertifikasi'] ?? '—'); ?></span></td>
-            <td>
-              <span class="badge <?= $p['aktif'] ? 'on' : 'off'; ?>">
-                <?= $p['aktif'] ? 'Aktif' : 'Nonaktif'; ?>
-              </span>
-            </td>
-            <td class="hist"><?= hist_cell($p); ?></td>
-            <td class="act">
-              <button type="button" class="gear" data-gear aria-haspopup="menu" aria-label="Opsi"></button>
-              <span class="gear-src" hidden>
-              <?php if (lm_can('master_data.paket_produk', 'ubah')): ?><button class="icon-btn" onclick="openEditPaketModal(<?= $p['id']; ?>, '<?= htmlspecialchars(addslashes($p['judul'])); ?>', '<?= htmlspecialchars($p['nomor']); ?>')" title="Edit Judul">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              </button><?php endif; ?>
-              <?php if (lm_can('master_data.paket_produk', 'aktif')): ?><button class="icon-btn" onclick="togglePaket(<?= $p['id']; ?>)" title="<?= $p['aktif'] ? 'Nonaktifkan' : 'Aktifkan'; ?>">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-              </button><?php endif; ?>
-            <?= riwayat_btn('paket_produk', $p['nomor']); ?></span>
-            </td>
-          </tr>
-        <?php endforeach; else: ?>
-          <tr><td colspan="9" class="empty">Belum ada data paket produk. Silakan susun melalui menu Tambah Product.</td></tr>
-        <?php endif; ?>
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
 </div>

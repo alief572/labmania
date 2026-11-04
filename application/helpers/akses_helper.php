@@ -113,7 +113,8 @@ if (!function_exists('lm_menu_counts')) {
         ];
         $ci = &get_instance();
         $parts = [];
-        foreach ($map as $kode => $tbl) $parts[] = "SELECT '$kode' k, COUNT(*) n FROM `$tbl`"; // kode & tabel konstanta di atas, bukan input
+        $soft = ['ms_peserta', 'master_customer']; // soft delete: sama dengan total di halaman index
+        foreach ($map as $kode => $tbl) $parts[] = "SELECT '$kode' k, COUNT(*) n FROM `$tbl`" . (in_array($tbl, $soft) ? ' WHERE deleted_date IS NULL' : ''); // kode & tabel konstanta di atas, bukan input
         $q = @$ci->db->query(implode(' UNION ALL ', $parts));
         $cache = [];
         // shortcut: COUNT(*) tiap muat halaman; satu tabel hilang membuat semua badge kosong. Cache bila logs sangat besar.

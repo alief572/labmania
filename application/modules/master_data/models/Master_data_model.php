@@ -115,6 +115,54 @@ class Master_data_model extends CI_Model
         return [$total, $filtered, $this->with_audit($rows, $table)];
     }
 
+    /**
+     * Server-side DataTables generik. $cfg: select, join [[tabel, kondisi, escape?]], where [kol => nilai],
+     * status (kolom aktif untuk filter on/off), filters [param => kolom], search [kolom], order [indeks kolom => ekspresi],
+     * default (urutan awal), audit (tabel jejak audit), kode (kolom kode untuk audit). Semua nilai $cfg konstanta di controller.
+     * Kembalian: [total, filtered, rows].
+     */
+    public function ssp_datatable($table, $alias, $p, $cfg)
+    {
+        $base = function ($join) use ($table, $alias, $cfg) {
+            $this->db->from("$table $alias");
+            if ($join) foreach ($cfg['join'] ?? [] as $j) $this->db->join($j[0], $j[1], 'left', $j[2] ?? null);
+            foreach ($cfg['where'] ?? [] as $k => $v) $this->db->where($k, $v);
+        };
+        $search = trim($p['search']['value'] ?? '');
+        $filter = function () use ($p, $cfg, $search) {
+            $st = $p['status'] ?? 'all';
+            if (isset($cfg['status']) && ($st === 'on' || $st === 'off')) $this->db->where($cfg['status'], $st === 'on' ? 1 : 0);
+            foreach ($cfg['filters'] ?? [] as $name => $col) {
+                $v = $p[$name] ?? 'all';
+                if ($v !== 'all' && $v !== '') $this->db->where($col, $v);
+            }
+            if ($search !== '') {
+                $this->db->group_start();
+                foreach ($cfg['search'] as $c) $this->db->or_like($c, $search);
+                $this->db->group_end();
+            }
+        };
+
+        $base(false);
+        $total = $this->db->count_all_results();
+        $base(true);
+        $filter();
+        $filtered = $this->db->count_all_results();
+
+        $ord  = $p['order'][0] ?? [];
+        $expr = $cfg['order'][(int)($ord['column'] ?? -1)] ?? $cfg['default'];
+        $dir  = strtolower($ord['dir'] ?? '') === 'desc' ? 'DESC' : 'ASC';
+
+        $base(true);
+        $filter();
+        $this->db->select($cfg['select'] ?? "$alias.*", false)->order_by($expr, $dir, false);
+        $len = (int)($p['length'] ?? 10);
+        if ($len > 0) $this->db->limit(min($len, 1000), max(0, (int)($p['start'] ?? 0)));
+        $rows = $this->db->get()->result_array();
+
+        return [$total, $filtered, $this->with_audit($rows, $cfg['audit'] ?? $table, $cfg['kode'] ?? 'kode')];
+    }
+
     public function generate_code($table, $prefix, $field = 'kode')
     {
         $this->db->select($field);

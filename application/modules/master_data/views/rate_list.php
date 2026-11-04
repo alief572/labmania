@@ -36,43 +36,20 @@ $ref = $tab === 'fixed' ? 'FR-18 · FR-20 · FR-33' : 'FR-18 · FR-19 · FR-33';
   </div>
 
   <div class="table-wrap">
-    <table class="table" id="data-table" data-dt data-search-cols="[1,2,3]">
+    <table class="table" id="data-table" data-dt data-ajax="<?= site_url('master_data/rate_data/' . $tab); ?>" data-filter="#status-filter">
       <thead>
         <tr>
           <th style="width: 50px;">No</th>
-          <th style="width: 130px;">Kode <?= $e($title); ?></th>
+          <th style="width: 130px;" class="nowrap">Kode <?= $e($title); ?></th>
           <th>Item</th>
-          <th>Satuan</th>
+          <th class="nowrap">Satuan</th>
           <th class="money" style="width: 150px;">Default Cost</th>
-          <th style="width: 110px;">Status</th>
+          <th style="width: 110px;" class="nowrap">Status</th>
           <th style="width: 160px;" class="hist">Dibuat / Diubah</th>
           <th style="width: 80px;" class="act">Action</th>
         </tr>
       </thead>
-      <tbody>
-        <?php if (!empty($rates)): foreach ($rates as $r): ?>
-          <tr data-id="<?= (int)$r['id']; ?>" data-aktif="<?= $r['aktif'] ? 1 : 0; ?>" class="<?= $r['aktif'] ? '' : 'is-off'; ?>" data-json='<?= $e(json_encode($r)); ?>'>
-            <td></td>
-            <td class="nowrap"><span class="code"><?= $e($r['kode']); ?></span></td>
-            <td><?= $e($r['item']); ?><?php if (trim((string)$r['keterangan']) !== ''): ?><br><span class="muted"><?= $e($r['keterangan']); ?></span><?php endif; ?></td>
-            <td class="nowrap"><?= $e($r['nama_satuan'] ?? '—'); ?></td>
-            <td class="money">Rp <?= number_format((float)$r['default_cost'], 0, ',', '.'); ?></td>
-            <td class="nowrap"><span class="badge <?= $r['aktif'] ? 'on' : 'off'; ?>"><?= $r['aktif'] ? 'Aktif' : 'Nonaktif'; ?></span></td>
-            <td class="hist"><?= hist_cell($r); ?></td>
-            <td class="act">
-              <button type="button" class="gear" data-gear aria-haspopup="menu" aria-label="Opsi"></button>
-              <span class="gear-src" hidden>
-              <?php if (lm_can('master_data.rate', 'ubah')): ?><button class="icon-btn" onclick="editRate(this)" title="Edit">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              </button><?php endif; ?>
-              <?php if (lm_can('master_data.rate', 'aktif')): ?><button class="icon-btn" onclick="toggleRate(<?= (int)$r['id']; ?>)" title="<?= $r['aktif'] ? 'Nonaktifkan' : 'Aktifkan'; ?>">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-              </button><?php endif; ?>
-              <?= riwayat_btn('ms_rate', $r['kode']); ?></span>
-            </td>
-          </tr>
-        <?php endforeach; endif; ?>
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
 </div>
@@ -85,15 +62,6 @@ var COA = <?= json_encode($coa); ?>;
 var ERR_FIELD = { tipe: 'r-kategori', id_satuan: 'r-satuan', item: 'r-item', default_cost: 'r-cost', keterangan: 'r-ket', coa: 'r-coa' };
 
 function esc(v) { return $('<div>').text(v == null ? '' : v).html().replace(/"/g, '&quot;'); }
-
-// Filter status (client-side): memakai atribut data-aktif di baris.
-$.fn.dataTable.ext.search.push(function (settings, data, idx) {
-  if (settings.nTable.id !== 'data-table') return true;
-  var v = $('#status-filter').val();
-  if (v === 'all') return true;
-  return settings.aoData[idx].nTr.getAttribute('data-aktif') === (v === 'on' ? '1' : '0');
-});
-$('#status-filter').on('change', function () { $('#data-table').DataTable().draw(); });
 
 function fieldHtml(label, control, cls) {
   return '<div class="field ' + (cls || '') + '"><label>' + label + '</label>' + control + '<div class="err" style="display:none;"></div></div>';

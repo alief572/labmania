@@ -29,7 +29,7 @@ $STD = ['nama', 'nik', 'jabatan', 'instansi', 'alamat', 'email']; // isian umum;
   </div>
 
   <div class="table-wrap">
-    <table class="table" id="data-table" data-dt data-search-cols="[1,2]">
+    <table class="table" id="data-table" data-dt data-ajax="<?= site_url('master_data/template_konfirmasi_data'); ?>" data-filter="#status-filter">
       <thead>
         <tr>
           <th style="width: 50px;">No</th>
@@ -43,39 +43,7 @@ $STD = ['nama', 'nik', 'jabatan', 'instansi', 'alamat', 'email']; // isian umum;
           <th style="width: 80px;" class="act">Action</th>
         </tr>
       </thead>
-      <tbody>
-        <?php if (!empty($items)): foreach ($items as $kf):
-          $isian = json_decode($kf['isian'] ?? '[]', true) ?: [];
-          $p = (string)$kf['pernyataan'];
-          $ring = mb_strlen($p) > 110 ? mb_substr($p, 0, 110) . '…' : $p;
-        ?>
-          <tr data-id="<?= (int)$kf['id']; ?>" data-aktif="<?= $kf['aktif'] ? 1 : 0; ?>" class="<?= $kf['aktif'] ? '' : 'is-off'; ?>" data-json='<?= $e(json_encode($kf)); ?>'>
-            <td></td>
-            <td><span class="code"><?= $e($kf['kode']); ?></span></td>
-            <td><b><?= $e($kf['nama']); ?></b><br><span class="muted">subject: kegiatan <?= $e($kf['label_kegiatan']); ?></span></td>
-            <td><?= !empty($kf['nama_produk']) ? $e($kf['nama_produk']) : '<span class="muted">— (pilih manual)</span>'; ?></td>
-            <td><b><?= count($isian); ?></b> <span class="muted">isian</span><br>
-              <?php foreach ($isian as $k): if (in_array($k, $STD, true) || !isset($kf_fields[$k])) continue; ?><span class="ps-chip"><?= $e($kf_fields[$k]); ?></span> <?php endforeach; ?></td>
-            <td class="title"><span class="muted"><?= $mark($ring); ?></span></td>
-            <td class="nowrap"><span class="badge <?= $kf['aktif'] ? 'on' : 'off'; ?>"><?= $kf['aktif'] ? 'Aktif' : 'Nonaktif'; ?></span></td>
-            <td class="hist"><?= hist_cell($kf); ?></td>
-            <td class="act">
-              <button type="button" class="gear" data-gear aria-haspopup="menu" aria-label="Opsi"></button>
-              <span class="gear-src" hidden>
-              <?php if (lm_can('master_data.template_konfirmasi', 'ubah')): ?><button class="icon-btn" onclick="editKf(this)" title="Edit">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              </button><?php endif; ?>
-              <button class="icon-btn" onclick="contohKf(<?= (int)$kf['id']; ?>)" title="Lihat contoh">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
-              <?php if (lm_can('master_data.template_konfirmasi', 'aktif')): ?><button class="icon-btn" onclick="toggleKf(<?= (int)$kf['id']; ?>)" title="<?= $kf['aktif'] ? 'Nonaktifkan' : 'Aktifkan'; ?>">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-              </button><?php endif; ?>
-              <?= riwayat_btn('ms_template_konfirmasi', $kf['kode']); ?></span>
-            </td>
-          </tr>
-        <?php endforeach; endif; ?>
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
 </div>
@@ -99,15 +67,6 @@ var KF_DEFAULT = {
 var ERR_FIELD = { nama: 'kf-nama', label_kegiatan: 'kf-label', id_jenis_produk: 'kf-jp', pernyataan: 'kf-pernyataan' };
 
 function esc(v) { return $('<div>').text(v == null ? '' : v).html().replace(/"/g, '&quot;'); }
-
-// Filter status (client-side; jumlah template kecil): memakai atribut data-aktif di baris.
-$.fn.dataTable.ext.search.push(function (settings, data, idx) {
-  if (settings.nTable.id !== 'data-table') return true;
-  var v = $('#status-filter').val();
-  if (v === 'all') return true;
-  return settings.aoData[idx].nTr.getAttribute('data-aktif') === (v === 'on' ? '1' : '0');
-});
-$('#status-filter').on('change', function () { $('#data-table').DataTable().draw(); });
 
 function fieldHtml(label, control, cls) {
   return '<div class="field ' + (cls || '') + '"><label>' + label + '</label>' + control + '<div class="err" style="display:none;"></div></div>';

@@ -6,6 +6,7 @@ class Master_trainer extends Labmania_Controller
     // Hak akses per method (lihat Labmania_Controller::enforce)
     protected $perm_map = [
         'index' => ['master_trainer', 'lihat'],
+        'data' => ['master_trainer', 'lihat', true],
         'add' => ['master_trainer', 'tambah'],
         'edit' => ['master_trainer', 'ubah'],
         'save' => ['master_trainer', 'simpan'],
@@ -26,10 +27,54 @@ class Master_trainer extends Labmania_Controller
         $this->template->title('Master Trainer');
         $this->template->set('breadcrumbs', 'Master Data / <b>Master Trainer</b>');
 
-        $data = [
-            'trainers' => $this->md_model->with_audit($this->trainer_model->get_trainers(), 'ms_trainer')
-        ];
-        $this->template->render('index', $data);
+        $this->template->render('index', []); // daftar diisi data() (server-side)
+    }
+
+    /** Data tabel Master Trainer (server-side DataTables). */
+    public function data()
+    {
+        $n = function ($t) { return "(SELECT COUNT(*) FROM $t x WHERE x.id_trainer = t.id)"; };
+        list($total, $filtered, $rows) = $this->md_model->ssp_datatable('ms_trainer', 't', $this->input->post() ?: $this->input->get(), [
+            'select' => 't.*, ' . $n('ms_trainer_pelatihan') . ' AS n_pelatihan, ' . $n('ms_trainer_pengalaman_kerja') . ' AS n_kerja, '
+                . $n('ms_trainer_pengalaman_mengajar') . ' AS n_mengajar, ' . $n('ms_trainer_lampiran') . ' AS n_lampiran, '
+                . '(SELECT COUNT(*) FROM penjualan_program pj WHERE pj.id_trainer = t.id) AS n_penjualan',
+            'status'  => 't.aktif',
+            'search'  => ['t.kode', 't.nama', 't.bidang_keahlian'],
+            'order'   => [1 => 't.kode', 2 => 't.nama', 3 => 't.bidang_keahlian', 5 => 'n_penjualan', 6 => 't.aktif'],
+            'default' => 't.id',
+        ]);
+        $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+        $data = [];
+        foreach ($rows as $i => $t) {
+            $id = (int)$t['id'];
+            $keahlian = Master_trainer_model::split_keahlian($t['bidang_keahlian'] ?? '');
+            $chips = '';
+            foreach (array_slice($keahlian, 0, 2) as $k) $chips .= '<span class="ps-chip">' . $e($k) . '</span> ';
+            if (count($keahlian) > 2) $chips .= '<span class="muted">+' . (count($keahlian) - 2) . '</span>';
+            if (!$keahlian) $chips = '—';
+            $row = [
+                $i + 1,
+                '<span class="code">' . $e($t['kode']) . '</span>',
+                $e($t['nama']) . '<br><span class="muted">' . $e($t['no_telp'] ?: '—') . '</span>',
+                $chips,
+                '<span class="muted">' . (int)$t['n_pelatihan'] . ' pelatihan &amp; seminar<br>' . (int)$t['n_kerja'] . ' pengalaman kerja<br>'
+                    . (int)$t['n_mengajar'] . ' pengalaman mengajar<br>' . (int)$t['n_lampiran'] . ' lampiran dokumen</span>',
+                (int)$t['n_penjualan'],
+                '<span class="badge ' . ($t['aktif'] ? 'on' : 'off') . '">' . ($t['aktif'] ? 'Aktif' : 'Nonaktif') . '</span>',
+                hist_cell($t),
+                '<button type="button" class="gear" data-gear aria-haspopup="menu" aria-label="Opsi"></button><span class="gear-src" hidden>'
+                . (lm_can('master_trainer', 'ubah') ? '<a href="' . site_url('master_trainer/edit/' . $id) . '" title="Edit"></a>' : '')
+                . '<a href="' . site_url('master_trainer/cv/' . $id) . '" title="Lihat CV"></a>'
+                . (lm_can('master_trainer', 'aktif') ? '<button type="button" class="icon-btn" onclick="toggleTrainer(' . $id . ')" title="' . ($t['aktif'] ? 'Nonaktifkan' : 'Aktifkan') . '"></button>' : '')
+                . riwayat_btn('ms_trainer', $t['kode']) . '</span>',
+                'DT_RowAttr' => ['data-id' => $id],
+            ];
+            if (!$t['aktif']) $row['DT_RowClass'] = 'is-off';
+            $data[] = $row;
+        }
+        return $this->output->set_content_type('application/json')->set_output(json_encode([
+            'draw' => (int)$this->input->post_get('draw'), 'recordsTotal' => $total, 'recordsFiltered' => $filtered, 'data' => $data,
+        ], JSON_PARTIAL_OUTPUT_ON_ERROR));
     }
 
     public function add()
