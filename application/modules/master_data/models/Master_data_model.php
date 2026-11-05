@@ -183,6 +183,15 @@ class Master_data_model extends CI_Model
     {
         $userId = $this->session->userdata('app_session')['id_user'] ?? 1;
 
+        // shortcut: case-insensitivity bergantung collation kolom (default *_ci); tidak ada unique index DB
+        $this->db->where('nama', trim($nama));
+        if ($id) {
+            $this->db->where('id !=', $id);
+        }
+        if ($this->db->count_all_results($table) > 0) {
+            return ['status' => 0, 'msg' => $moduleName . ' "' . trim($nama) . '" sudah ada'];
+        }
+
         if ($id) {
             $old = $this->db->get_where($table, ['id' => $id])->row_array();
             $data = [
@@ -314,20 +323,34 @@ class Master_data_model extends CI_Model
         return ['status' => 1, 'msg' => count($nomors) . ' paket produk tersimpan: ' . implode(', ', $nomors), 'nomor' => $nomors];
     }
 
-    public function update_paket($id, $judul)
+    /** Edit judul + 3 atribut (FR-43); keunikan kombinasi FR-22 tanpa paket itu sendiri. $ids = [produk, bidang, sertifikasi]. */
+    public function update_paket($id, $judul, array $ids)
     {
         $old = $this->db->get_where('paket_produk', ['id' => $id])->row_array();
         if (!$old) return ['status' => 0, 'msg' => 'Data tidak ditemukan'];
 
+        $labels = ['produk' => 'Produk', 'bidang' => 'Bidang', 'sertifikasi' => 'Sertifikat'];
+        $ids = array_map('intval', $ids);
+        foreach ($labels as $f => $l) {
+            if (empty($ids[$f])) return ['status' => 0, 'msg' => $l . ' wajib dipilih'];
+        }
+        $dup = $this->db->where('id !=', $id)->get_where('paket_produk', [
+            'id_jenis_produk' => $ids['produk'], 'id_jenis_sertifikasi' => $ids['sertifikasi'], 'id_jenis_bidang' => $ids['bidang'],
+        ])->row_array();
+        if ($dup) return ['status' => 0, 'msg' => 'Kombinasi sama persis dengan paket ' . $dup['nomor'] . ' — ' . $dup['judul']];
+
         $userId = $this->session->userdata('app_session')['id_user'] ?? 1;
         $data = [
-            'judul'        => trim($judul),
+            'judul'                => trim($judul),
+            'id_jenis_produk'      => $ids['produk'],
+            'id_jenis_sertifikasi' => $ids['sertifikasi'],
+            'id_jenis_bidang'      => $ids['bidang'],
             'updated_by'   => $userId,
             'updated_date' => date('Y-m-d H:i:s')
         ];
         $this->db->where('id', $id)->update('paket_produk', $data);
 
-        write_log('Master Produk', 'Edit', 'Update judul Paket Produk ' . $old['nomor'], [
+        write_log('Master Produk', 'Edit', 'Update Paket Produk ' . $old['nomor'], [
             'old' => $old,
             'new' => array_merge($old, $data)
         ], 'paket_produk', $id, $old['nomor']);

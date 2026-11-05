@@ -21,6 +21,7 @@ class Master_data extends Labmania_Controller
         'combine' => ['master_data.paket_produk', 'tambah'],
         'save_combine' => ['master_data.paket_produk', 'tambah', true],
         'update_paket' => ['master_data.paket_produk', 'ubah', true],
+        'paket_detail' => ['master_data.paket_produk', 'ubah', true],
         'toggle_paket' => ['master_data.paket_produk', 'aktif', true],
         'katalog' => ['master_data.katalog', 'lihat'],
         'peserta' => ['master_data.peserta', 'lihat'],
@@ -179,7 +180,7 @@ class Master_data extends Labmania_Controller
                 $this->badge_aktif($r['aktif']),
                 hist_cell($r),
                 $this->gear_cell(
-                    (lm_can('master_data.paket_produk', 'ubah') ? $this->ibtn('openEditPaketModal(' . $id . ', \'' . $e(addslashes($r['judul'])) . '\', \'' . $e($r['nomor']) . '\')', 'Edit Judul', self::$P_EDIT) : '')
+                    (lm_can('master_data.paket_produk', 'ubah') ? $this->ibtn('openEditPaketModal(' . $id . ')', 'Edit', self::$P_EDIT) : '')
                     . (lm_can('master_data.paket_produk', 'aktif') ? $this->ibtn('togglePaket(' . $id . ')', $r['aktif'] ? 'Nonaktifkan' : 'Aktifkan', self::$P_POWER) : '')
                     . riwayat_btn('paket_produk', $r['nomor'])
                 ),
@@ -443,7 +444,11 @@ class Master_data extends Labmania_Controller
         $this->template->title('Product Combine');
         $this->template->set('breadcrumbs', 'Master Data / <b>Product Combine</b>');
 
-        $this->template->render('paket_list', []); // daftar diisi paket_data (server-side)
+        $this->template->render('paket_list', [ // daftar diisi paket_data (server-side)
+            'jenis_produk'      => $this->md_model->get_master_attr('ms_jenis_produk'),
+            'jenis_bidang'      => $this->md_model->get_master_attr('ms_jenis_bidang'),
+            'jenis_sertifikasi' => $this->md_model->get_master_attr('ms_jenis_sertifikasi'),
+        ]);
     }
 
     public function combine()
@@ -482,8 +487,18 @@ class Master_data extends Labmania_Controller
         if (empty(trim($judul))) {
             return $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 0, 'msg' => 'Judul wajib diisi']));
         }
-        $res = $this->md_model->update_paket($id, $judul);
+        $res = $this->md_model->update_paket($id, $judul, [
+            'produk' => $this->input->post('produk'), 'bidang' => $this->input->post('bidang'), 'sertifikasi' => $this->input->post('sertifikasi'),
+        ]);
         return $this->output->set_content_type('application/json')->set_output(json_encode($res));
+    }
+
+    /** Data satu paket + jumlah Master Program pemakai, untuk modal Edit Paket Produk. */
+    public function paket_detail($id)
+    {
+        $r = $this->db->get_where('paket_produk', ['id' => (int)$id])->row_array();
+        if ($r) $r['dipakai'] = $this->db->where('id_paket_produk', (int)$id)->count_all_results('master_program');
+        return $this->output->set_content_type('application/json')->set_output(json_encode($r ? ['status' => 1, 'data' => $r] : ['status' => 0, 'msg' => 'Data tidak ditemukan']));
     }
 
     public function toggle_paket($id)
