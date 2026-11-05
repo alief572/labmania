@@ -1,27 +1,30 @@
 # FR & NFR Master - Quotation — Labmania
 
-- **Isi:** gabungan lima dokumen FR & NFR, urut alur: Master Data → Master Program → Penjualan Program → Quotation, ditambah Jejak Data & Activity Log (lintas modul)
-- **Tanggal salinan:** 30-10-2026
-- **Sumber kerja (yang tetap diperbarui):** `specs/docs/fr-nfr.md`, `fr-nfr-master-program.md`, `fr-nfr-penjualan-program.md`, `fr-nfr-quotation.md`, `fr-nfr-activity-log.md`. Dokumen ini salinan final; perubahan berikutnya dibuat di file sumber lalu salinan dibuat ulang.
+- **Isi:** gabungan delapan dokumen FR & NFR, urut alur: Master Data → Master Program → Penjualan Program → Quotation → Invoice → Manage Peserta → Pengajuan Biaya, ditambah Jejak Data & Activity Log (lintas modul)
+- **Tanggal salinan:** 05-11-2026 (salinan sebelumnya 30-10-2026, lima bagian: `input/backup/final-master-quotation_sebelum-update_05-11-2026/`)
+- **Sumber kerja (yang tetap diperbarui):** `specs/docs/fr-nfr.md`, `fr-nfr-master-program.md`, `fr-nfr-penjualan-program.md`, `fr-nfr-quotation.md`, `fr-nfr-invoice.md`, `fr-nfr-manage-peserta.md`, `fr-nfr-pengajuan-biaya.md`, `fr-nfr-activity-log.md`. Dokumen ini salinan final; perubahan berikutnya dibuat di file sumber lalu salinan dibuat ulang.
 - **Pasangan final:** `ERD Master - Quotation.drawio`, `Flow Process Master - Quotation.drawio`, `Use Case Master - Quotation.xlsx`, `Mock Up Master - Quotation/index.html`
 
 ## Daftar isi
 
 | Bagian | Modul | Versi | Awalan kode | File sumber |
 |---|---|---|---|---|
-| Bagian 1 | Modul Master Data Labmania | draf 11q — 30-10-2026 | FR- / NFR- / Q- | `docs/fr-nfr.md` |
-| Bagian 2 | Modul Master Program Labmania | draf 11b — 30-10-2026 | MP- | `docs/fr-nfr-master-program.md` |
-| Bagian 3 | Modul Penjualan Program Labmania | draf 12b — 30-10-2026 | PJ- | `docs/fr-nfr-penjualan-program.md` |
-| Bagian 4 | Modul Quotation Labmania | draf 9c — 30-10-2026 | QTN- | `docs/fr-nfr-quotation.md` |
-| Bagian 5 | Jejak Data & Modul Activity Log Labmania | draf 2 — 30-10-2026 | LOG- | `docs/fr-nfr-activity-log.md` |
+| Bagian 1 | Modul Master Data | draf 11x — 05-11-2026 | FR- / NFR- / Q- | `docs/fr-nfr.md` |
+| Bagian 2 | Modul Master Program | draf 11b — 30-10-2026 | MP- / Q-MP- | `docs/fr-nfr-master-program.md` |
+| Bagian 3 | Modul Penjualan Program | draf 12b — 30-10-2026 | PJ- | `docs/fr-nfr-penjualan-program.md` |
+| Bagian 4 | Modul Quotation | draf 10a — 03-11-2026 | QTN- | `docs/fr-nfr-quotation.md` |
+| Bagian 5 | Modul Invoice | draf 2i — 03-11-2026 | IVC- | `docs/fr-nfr-invoice.md` |
+| Bagian 6 | Modul Manage Peserta | draf 1 — 04-11-2026 | MP- / Q-MPS- (lihat catatan) | `docs/fr-nfr-manage-peserta.md` |
+| Bagian 7 | Modul Pengajuan Biaya | draf 4a — 05-11-2026 | PB- | `docs/fr-nfr-pengajuan-biaya.md` |
+| Bagian 8 | Jejak Data & Modul Activity Log | draf 2b — 05-11-2026 | LOG- | `docs/fr-nfr-activity-log.md` |
 
-Penomoran FR/NFR, UC, dan pertanyaan terbuka (Q-…) tetap milik masing-masing bagian. Penanda sumber (`[…]`) dan rujukan `input/…` dibaca relatif terhadap folder `specs/`.
+Penomoran FR/NFR, UC, dan pertanyaan terbuka (Q-…) tetap milik masing-masing bagian. Penanda sumber (`[…]`) dan rujukan `input/…` dibaca relatif terhadap folder `specs/`. Catatan: Bagian 2 (Master Program) dan Bagian 6 (Manage Peserta) sama-sama memakai awalan **MP-FR / MP-NFR**; sebut bagiannya saat merujuk kode tersebut. Pertanyaan Manage Peserta memakai **Q-MPS-**.
 
 ---
 
 # Bagian 1 — Modul Master Data Labmania
 
-- **Versi:** draf 11q — 30-10-2026
+- **Versi:** draf 11x — 05-11-2026
 - **Sumber:** `input/Product - Labmania.xlsx` (sheet *Master Data*, *Data Mentah Struktur Product*), `input/Master - Buat Program/2026-10-22-klarifikasi-produk/`, `input/Master - Buat Program/2026-10-23-review-mockup-master-data/`, `input/Master - Buat Program/2026-10-23-requirements-program/` (*Product rev (1)* sheet *Requirements Product*; *Program* sheet *Cost Master*), `input/Master - Buat Program/2026-10-23-klarifikasi-program/`, `input/Master - Buat Program/2026-10-23-requirements-3-modul/` (*Master Data - Labmania.xlsx*), `input/Master - Buat Program/2026-10-23-konfirmasi-3-modul/`, `input/Master - Buat Program/2026-10-23-arah-penjualan-program/`, `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/`
 - **Status:** DRAF — sebagian pertanyaan terbuka masih menunggu Labmania (bagian 6)
 - **Modul lain:** Master Program → `docs/fr-nfr-master-program.md` (memakai Paket Produk dan Master Rate); Penjualan Program → `docs/fr-nfr-penjualan-program.md` (memakai Master Rate); Master Company dipakai Penjualan Program B2B dan Quotation; Master Peserta dipakai modul Quotation → `docs/fr-nfr-quotation.md`
@@ -51,13 +54,18 @@ Konvensi penanda sumber di setiap butir:
 | `[ARH-n]` | Arah modul 23-10-2026, `input/Master - Buat Program/2026-10-23-arah-penjualan-program/` — butir verbatim n |
 | `[JLR-n]` | Jalur Public vs B2B 25-10-2026, `input/Master - Buat Program/2026-10-25-jalur-public-b2b/` — pesan n |
 | `[JPP-n]` | jawaban pertanyaan Program 28-10-2026, `input/Master - Buat Program/2026-10-28-jawaban-pertanyaan-program/` — butir n |
-| `[USR-1]` | format form Master User, `input/Master - Buat Program/2026-10-28-master-user/` (`input/Master User.png`) |
+| `[USR-1]` | format form Master User, `input/Master - Buat Program/2026-10-28-master-user/` (`input/Master - Buat Program/Master User.png`) |
 | `[GMP-1]` | gabung menu Master Program & Penjualan Program, `input/Master - Buat Program/2026-10-28-gabung-menu-penjualan-program/` |
 | `[SBL-1]` | sidebar tanpa label sub modul, `input/Master - Buat Program/2026-10-28-sidebar-tanpa-label/` |
 | `[DSH-1]` | permintaan dashboard halaman depan, `input/Master - Buat Program/2026-10-28-dashboard-depan/` — isi usulan analis |
 | `[DSH-2]` | dashboard dirampingkan, `input/Master - Buat Program/2026-10-28-dashboard-ringkas/` |
 | `[DSH-3]` | jadwal hanya Final, KPI total, `input/Master - Buat Program/2026-10-28-dashboard-jadwal-final/` |
 | `[DSH-4]` | rincian kartu KPI, `input/Master - Buat Program/2026-10-28-dashboard-rincian-kartu/` |
+| `[MAM]` | permintaan Matrix Akses Menu 04-11-2026, `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/` (jawaban PB-01, PB-07) |
+| `[MAM2]` | jawaban 04-11-2026 kedua, `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya-2/`: Superadmin (developer) & Admin (user Labmania, dapat dibatasi); akun login trainer disetujui |
+| `[RNP]` | Role & Permission 04-11-2026, `input/Invoice & Pengajuan/2026-11-04-role-permission/` (chat + video `input/Invoice & Pengajuan/Role & Permission.mp4`): role terbentuk dari Division + Jabatan akun user, diatur di menu Role & Permission; Department dihapus dari Master User |
+| `[RNP2]` | jawaban 04-11-2026, `input/Invoice & Pengajuan/2026-11-04-jawaban-role-permission/`: Superadmin role bawaan sistem (dibuat dari awal, tidak dapat ditambah); role tanpa user boleh dihapus; Manajemen sementara jabatan Direktur |
+| `[MRO]` | permintaan 05-11-2026, `input/Invoice & Pengajuan/2026-11-05-master-role-override/`: field Division dan Position (Jabatan) di Master User diganti satu field **Role**; Role dikelola di **Master Role** (input manual) dan jadi sumber pilihan di Master User dan Role & Permission; **Override Permission** di Master User memberi akses menu tambahan ke satu user di luar permission role-nya |
 | `[STD]` | Standar proyek di `AGENTS.md` root repository |
 | `[USULAN]` | Usulan analis, **belum** dinyatakan klien — wajib dikonfirmasi sebelum dikodekan |
 
@@ -107,7 +115,7 @@ Menu modul Master Data dikelompokkan per sub modul `[RMD-1]`:
 | Master Data | Biaya | Master Rate | Master Program, Penjualan Program |
 | Master Data | Trainer | Master Trainer | Penjualan Program (pilih trainer) `input/Master - Buat Program/2026-10-29-master-trainer/` |
 | Master Data | Dokumen | Template Keterangan Quotation, Template Formulir Konfirmasi | Quotation (blok Keterangan Penawaran; Formulir Konfirmasi) `input/Master - Buat Program/2026-10-29-keterangan-quotation-default/` |
-| Master Data | Pengguna | Master User | Login & hak akses seluruh modul (Q-25) |
+| Master Data | Pengguna | Master User, Master Role, Role & Permission | Login & hak akses seluruh modul (Q-25); Role dipilih dari **Master Role** (input manual, FR-64), hak menu per Role (FR-54 – FR-58) dan **Override Permission** per user (FR-65) `[MRO]` `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/` |
 
 Nama sub modul masih usulan analis (Q-18). Draf 3 memakai satu sub modul *Peserta & Rate*;
 sejak Master Company masuk, sub modul itu dipecah menjadi *Customer* dan *Biaya*. Kolom
@@ -121,7 +129,7 @@ sejak Master Company masuk, sub modul itu dipecah menjadi *Customer* dan *Biaya*
 |---|---|
 | Master Jenis Produk, Jenis Sertifikat, Jenis Bidang | Master Program (costing baseline) → `fr-nfr-master-program.md` |
 | Product Combine → Paket Produk (status aktif/nonaktif) | Penjualan Program → `fr-nfr-penjualan-program.md`; Quotation & Sales Order (ditunda) |
-| Katalog Produk (ditunda sampai format tersedia) | Modul Promosi |
+| Katalog Produk — filter Bidang & Sertifikat, cetak PDF katalog | Modul Promosi |
 | Master Peserta, Master Company | |
 | Master Rate — item Fixed Cost & Variable Cost dengan Default Cost | |
 | Data awal dari sheet *Data Mentah* dan *Cost Master* | |
@@ -163,13 +171,15 @@ di satu layar, tanpa serah-terima ke aktor lain.
 | UC-03 | Mencatat Jenis Bidang | Manajemen | Master Data | Atribut Produk | Nama Jenis Bidang | Sama dengan UC-01 untuk master Jenis Bidang. Jenis Bidang juga menjadi pilihan Bidang pada Master Peserta. | Data Jenis Bidang tersimpan dengan kode otomatis dan status | Jenis Bidang | FR-03, FR-06, FR-08, FR-09, FR-21 |
 | UC-04 | ~~Mencatat Varian Pelaksanaan~~ **Dihapus** `input/Master - Buat Program/2026-10-29-npwp-instansi-hapus-varian/` | Manajemen | Master Data | Atribut Produk | Nama Varian | Sama dengan UC-01 untuk master Varian Pelaksanaan. | Data Varian Pelaksanaan tersimpan dengan kode otomatis dan status | Varian Pelaksanaan | FR-03, FR-07, FR-08, FR-09, FR-21 |
 | UC-05 | Menyusun Product Combine | Manajemen | Master Data | Produk | Judul; satu atau lebih baris kombinasi Produk + Bidang + Sertifikat | Aktor mengisi Judul secara manual, menambah baris kombinasi, memilih keempat atribut aktif per baris, menghapus baris yang tidak perlu, lalu menyimpan. Sistem menolak kombinasi yang keempat atributnya sama persis dengan paket lain atau baris lain. Setiap baris disimpan sebagai satu Paket Produk dengan Nomor Product Combine sendiri. | Satu Paket Produk per baris, berstatus aktif, tampil di daftar | Paket Produk, Jenis Produk, Jenis Sertifikat, Jenis Bidang, Varian Pelaksanaan | FR-01, FR-02, FR-10 – FR-13, FR-22 – FR-24 |
-| UC-06 | Menghasilkan Katalog Produk | *TBD (Q-06)* | Master Data | Produk | Paket Produk aktif | **Ditunda** — format katalog belum ada. Sistem menyusun katalog dari Paket Produk. | Katalog Produk | Paket Produk, Katalog Produk | FR-14 |
+| UC-06 | Menghasilkan Katalog Produk | *TBD (Q-06)* | Master Data | Produk | Paket Produk aktif; filter Bidang, Sertifikat, kata kunci (opsional) | Aktor membuka Katalog Produk, menyaring menurut Bidang dan/atau Sertifikat, lalu mencetak hasilnya. Sistem menyusun katalog dari Paket Produk aktif, dikelompokkan per Bidang, dan menghasilkan PDF katalog (sampul, daftar isi, isi, sampul belakang). | Tampilan katalog dan PDF Katalog Produk | Paket Produk, Jenis Produk, Jenis Bidang, Jenis Sertifikat | FR-14, FR-60 – FR-63 |
 | UC-07 | Mencatat Peserta | *TBD (Q-06)* | Master Data | Customer | Nama, Gender, Instansi, Bidang, Provinsi, Kota/Kabupaten, No Telp/WA, Email (semua wajib); NPWP Instansi opsional | Aktor menambah peserta lewat form (Kota/Kabupaten tersaring menurut Provinsi), mengubah, atau menghapus peserta dari daftar. Peserta menjadi customer penjualan Public dan dipilih di modul Quotation (ditunda). | Data Peserta tersimpan dengan Kode Peserta | Peserta, Jenis Bidang, Provinsi, Kota/Kabupaten | FR-15 – FR-17 |
 | UC-08 | Mencatat Item Variable Cost | *TBD (Q-06)* | Master Data | Biaya | Item, Kategori (Variable), Satuan (Peserta/Event atau Peserta/Day), Default Cost, Keterangan, COA | Aktor membuka tab Variable Cost pada Master Rate, menambah item (kode dibuat sistem), mengubah, atau mengaktifkan/menonaktifkan item. Item tidak dapat dihapus. Pilihan Satuan hanya Peserta/Event dan Peserta/Day. | Item Variable Cost tersimpan dengan kode otomatis, Default Cost, dan status | Rate Variable Cost, Satuan, COA | FR-18, FR-19, FR-25, FR-33 – FR-35 |
 | UC-09 | Mencatat Item Fixed Cost | *TBD (Q-06)* | Master Data | Biaya | Item, Kategori (Fixed), Satuan (Event atau Day), Default Cost, Keterangan, COA | Sama dengan UC-08 pada tab Fixed Cost. Pilihan Satuan hanya Event dan Day. | Item Fixed Cost tersimpan dengan kode otomatis, Default Cost, dan status | Rate Fixed Cost, Satuan, COA | FR-18, FR-20, FR-25, FR-33 – FR-35 |
 | UC-10 | Mengedit, Mengaktifkan / Menonaktifkan Paket Produk | Manajemen | Master Data | Produk | Paket Produk terpilih | Aktor memilih paket pada daftar lalu mengedit judul/atributnya (FR-43) atau mengubah statusnya menjadi aktif atau nonaktif. | Status Paket Produk berubah | Paket Produk | FR-10, FR-23 |
 | UC-11 | Mencatat Company | *TBD (Q-06)* | Master Data | Customer | Nama, Jenis Instansi, Alamat, Provinsi, Kota, Telepon & Email kantor, PIC (Nama, Jabatan, Telp/WA, Email) — semua wajib; NPWP Instansi opsional | Aktor menambah company lewat form, mengubah, atau menghapus company dari daftar. Company menjadi customer penjualan B2B dan dipilih saat membuat Penjualan Program B2B. | Data Company tersimpan dengan Kode Company | Company, Provinsi, Kota/Kabupaten | FR-30 – FR-32 |
-| UC-32 | Mencatat User | Manajemen | Master Data | Pengguna | Employee ID, Employee Name, Department, Division, Jabatan, Gender, Phone Number, Employee Type, Status (wajib); NIK, Birth Place/Date, Religion, Email, Address, NPWP, Join Date, Job Desc. (opsional); akun login: Username, Password, Group Akses | Aktor menambah user lewat form, mengubah, mengaktifkan/menonaktifkan, dan me-reset password. User yang diberi akun login dapat masuk ke sistem sesuai Group Akses; user nonaktif tidak dapat login. | Data user tersimpan; akun login aktif bila diberi | User (employees), Akun (users), Group Akses, Department, Division, Jabatan | FR-36 – FR-39 |
+| UC-32 | Mencatat User | Manajemen | Master Data | Pengguna | Employee ID, Employee Name, **Role**, Gender, Phone Number, Employee Type, Status (wajib); NIK, Birth Place/Date, Religion, Email, Address, NPWP, Join Date, Job Desc. (opsional); akun login: Username, Password, Override Permission (opsional) | Aktor menambah user lewat form, memilih **Role** dari Master Role, mengubah, mengaktifkan/menonaktifkan, dan me-reset password. User yang diberi akun login dapat masuk ke sistem sesuai hak role-nya ditambah **Override Permission** bila diberi; user nonaktif tidak dapat login. | Data user tersimpan; akun login aktif bila diberi | User (employees), Akun (users), Role, Override Permission | FR-36 – FR-39, FR-65 |
+| UC-49 | Mengatur Role & Permission | Superadmin, Admin (bila diberi hak) | Master Data | Pengguna | Role (dari Master Role); centang View / Add / Manage / Delete per menu | Aktor membuka Role & Permission, memilih **Atur Akses** pada sebuah role, mencentang hak setiap menu (dikelompokkan per modul; Pilih Semua per menu / semua modul, Kosongkan, cari), lalu Simpan. Role Superadmin selalu punya semua akses dan tidak dapat diubah; role Admin dapat dibatasi. Sidebar dan tombol aksi user dengan role itu mengikuti hak yang disimpan. | Hak akses role tersimpan | Role & Permission, Role, Master Role | FR-54 – FR-58 |
+| UC-55 | Mencatat Role | Superadmin, Admin (bila diberi hak) | Master Data | Pengguna | Nama Role (wajib, unik) | Aktor menambah role baru, mengubah nama role, atau menghapus role yang tidak dipakai user. Role baru belum punya hak sampai diatur di Role & Permission. Role Superadmin terkunci. | Role tersimpan; tampil sebagai pilihan di Master User dan baris di Role & Permission | Role (groups) | FR-64 |
 | UC-38 | Mencatat Trainer | Manajemen *(sementara, Q-26)* | Master Data | Trainer | Identitas (Nama lengkap wajib), pendidikan formal, bidang keahlian, pengesahan CV; daftar Pelatihan & Seminar, Pengalaman Kerja, Pengalaman Mengajar, Lampiran Dokumen | Aktor menambah/mengubah trainer lewat form bertab, melihat CV, atau menonaktifkan trainer. Trainer aktif dipilih di Penjualan Program. | Data Trainer tersimpan dengan ID Trainer | Trainer, Riwayat Trainer | FR-44 – FR-47 |
 | UC-39 | Mencatat Template Keterangan Quotation | Manajemen *(sementara)* | Master Data | Dokumen | Kategori, Teks, Berlaku untuk, Default | Aktor menambah/mengubah butir keterangan per kategori atau menonaktifkannya. Butir Default tersalin ke quotation baru. | Butir tersimpan dengan kode | Template Keterangan | FR-48 – FR-50 |
 | UC-40 | Mencatat Template Formulir Konfirmasi | Manajemen *(sementara)* | Master Data | Dokumen | Nama template, Label kegiatan, Default untuk Jenis Produk, Isian, Pernyataan, Catatan | Aktor menambah/mengubah template, melihat contoh, atau menonaktifkannya. Template default terpilih otomatis di quotation menurut Jenis Produk paket. | Template tersimpan dengan kode | Template Formulir Konfirmasi, Jenis Produk | FR-51 – FR-53 |
@@ -215,11 +225,15 @@ di satu layar, tanpa serah-terima ke aktor lain.
 | FR-24 | Paket Produk berstatus Aktif adalah output yang **siap dibuat menjadi Product Costing**, yaitu dapat dipilih saat membuat **Master Program**. | `[KLR-SIPOC]`, `[MD-7]` + `[USULAN]` (hanya paket aktif) |
 | FR-43 | **Edit Paket Produk** lewat menu gear daftar Paket Produk: form berisi Nomor Product Combine (tetap), **Judul**, dan ketiga atribut (dropdown dapat dicari; nilai yang masternya sudah nonaktif tetap tampil sebagai pilihan terpilih). Cek keunikan FR-22 berlaku, tidak termasuk paket itu sendiri. Master Program yang memakai paket ikut menampilkan judul/atribut baru. | `input/Master - Buat Program/2026-10-29-edit-master-sertifikat-cari/` + `[USULAN]` (field yang dapat diubah, efek ke Master Program) |
 
-### 4.4 Katalog Produk *(Wishlist — ditunda)*
+### 4.4 Katalog Produk
 
 | ID | Kebutuhan | Sumber |
 |---|---|---|
-| FR-14 | Dari Paket Produk sistem menghasilkan **Katalog Produk** untuk Promosi. Format katalog belum ada; FR ini tidak dikerjakan sampai Labmania menyiapkan format. | `[WISH-2]`, `[SIPOC]`, `[KLR-Q-09]` |
+| FR-14 | Dari Paket Produk sistem menghasilkan **Katalog Produk** untuk Promosi. Isi katalog = Paket Produk berstatus **Aktif** (FR-24); katalog **tidak disimpan** sebagai data tersendiri, melainkan disusun dari `paket_produk` setiap kali dibuka/dicetak. Format sebelumnya ditunda (Q-09); kini dibuat `input/Master - Buat Program/2026-11-05-katalog-produk/`. | `[WISH-2]`, `[SIPOC]`, `[KLR-Q-09]`, `input/Master - Buat Program/2026-11-05-katalog-produk/` + `[USULAN]` (hanya paket aktif) |
+| FR-60 | Halaman **Katalog Produk** dapat **difilter berdasarkan Bidang dan Sertifikat** (dapat dipakai bersamaan), ditambah kolom cari (Judul, Nomor, atribut). Pilihan filter hanya Bidang/Sertifikat yang dipakai paket aktif, disertai jumlah paketnya. | `input/Master - Buat Program/2026-11-05-katalog-produk/` + `[USULAN]` (kolom cari, isi pilihan filter) |
+| FR-61 | Tampilan layar mengelompokkan paket **per Bidang** (urut nama Bidang; di dalamnya urut Judul lalu Sertifikat). Tiap paket tampil sebagai kartu: Jenis Produk, Nomor Product Combine, Judul, Sertifikat. Bila tidak ada hasil, tampil pesan agar filter diubah. | `input/Master - Buat Program/2026-11-05-katalog-produk/` + `[USULAN]` |
+| FR-62 | Tombol **Cetak Katalog (PDF)** menghasilkan PDF A4 bergaya katalog produk dari **hasil filter yang sedang tampil**: (1) sampul depan — logo, "Katalog Produk", tahun, jumlah paket/bidang/jenis sertifikat, filter yang dipakai, tanggal cetak; (2) Daftar Isi per Bidang dengan nomor halaman dan daftar jenis sertifikat; (3) isi per Bidang, kartu paket 2 kolom (Jenis Produk, Nomor, Judul, Bidang, Sertifikat), Bidang yang berlanjut ke halaman berikut diberi "(lanjutan)", tiap halaman bernomor; (4) sampul belakang berisi kontak LabMania. Cetak ditolak bila hasil filter kosong. | `input/Master - Buat Program/2026-11-05-katalog-produk/` + `[USULAN]` (tata letak) |
+| FR-63 | Setiap cetak Katalog Produk dicatat di **Activity Log** (modul Master Data, sub Katalog Produk, aksi Cetak, keterangan berisi jumlah paket dan filter). | `[USULAN]` |
 
 ### 4.5 Master Peserta
 
@@ -262,16 +276,17 @@ di satu layar, tanpa serah-terima ke aktor lain.
 | FR-27 | Sidebar menampilkan menu **Dashboard** paling atas (halaman pertama setelah login, FR-40), lalu dua modul, **Master Data** dan **Penjualan Program**, masing-masing dapat dibuka/ditutup. Modul Penjualan Program berisi sub modul **Master Program** (menu Daftar Master Program) lalu **Penjualan Program** (menu Daftar Penjualan Program) `[GMP-1]`. Di dalam modul, menu diurutkan per sub modul (tabel di bagian 1), tetapi **label sub modul tidak ditampilkan** — menu langsung di bawah nama modul `[SBL-1]`. Breadcrumb menampilkan Modul / Menu. | `[RMD-1]`, `[KPG-7]`, `[GMP-1]`, `[SBL-1]` + `[USULAN]` (nama sub modul, Q-18) |
 | FR-28 | Kolom **Action** pada setiap tabel daftar hanya menampilkan **ikon gear**. Opsi aksi (Edit, Aktifkan/Nonaktifkan, Delete — sesuai FR masing-masing daftar) baru muncul sebagai menu setelah gear diklik. Menu tertutup bila pengguna mengklik di luar menu, menekan Esc, atau menggulir halaman. | `[RMD-4]` + `[USULAN]` (perilaku tutup menu) |
 | FR-29 | Sidebar memiliki kolom **search menu** tepat di bawah logo Labmania. Pencarian menyaring menu dari **semua modul** berdasarkan nama menu saat pengguna mengetik `[SBL-1]`; modul tanpa hasil disembunyikan dan bila tidak ada yang cocok ditampilkan "Menu tidak ditemukan". Enter membuka hasil pertama, Esc mengosongkan pencarian. | `[RMD-5]` + `[USULAN]` (Enter/Esc, pencocokan sub modul) |
+| FR-66 | Sidebar memiliki tombol **sembunyikan sidebar** di kanan logo Labmania `input/Master - Buat Program/2026-11-05-sidebar-hide/`. Di layar lebar, sidebar disembunyikan penuh sehingga area kerja melebar, lalu tombol menu di kiri topbar memunculkannya kembali. Di layar sempit (sidebar berupa drawer), tombol yang sama menutup drawer. Kedua tombol dapat dipakai dengan keyboard, punya label yang terbaca pembaca layar, dan fokus berpindah ke tombol lawannya. Status tersembunyi berlaku selama halaman terbuka, tidak disimpan per user. | `input/Master - Buat Program/2026-11-05-sidebar-hide/` + `[USULAN]` (perilaku layar lebar/sempit, tidak disimpan) |
 
 
 ### 4.10 Master User
 
 | ID | Kebutuhan | Sumber |
 |---|---|---|
-| FR-36 | **Master User** (sub modul **Pengguna**, modul Master Data) menyimpan data karyawan Labmania beserta **akun login** ke sistem. Memakai tabel existing aplikasi: data karyawan di `employees`, akun di `users` dengan group akses `user_groups` / `groups` (Q-25). Group **Admin Developer** wajib ada — bersama **Manajemen** menjadi satu-satunya group yang dapat membuka Activity Log (`docs/fr-nfr-activity-log.md` LOG-FR-09) `input/Master - Buat Program/2026-10-30-activity-log-akses-retensi/`. | `[USR-1]` + `[USULAN]` (sub modul, tabel) |
-| FR-37 | **Form Tambah/Edit User** mengikuti format acuan, dua kolom. Kiri: **Employee ID** (wajib, unik, tidak dapat diubah setelah disimpan), **Employee Name** (wajib), Personal ID Number / NIK (opsional, 16 digit), Birth Place, Birth Date, **Department** (wajib, pilihan), **Division** (wajib, pilihan tersaring menurut Department — "Pilih Department terlebih dahulu."), **Jabatan** (wajib, pilihan), **Gender** (wajib, pilihan), Religion (pilihan). Kanan: **Phone Number** (wajib, format `+62…`, 9–15 digit), Email (format email), Address, NPWP (15/16 digit), Join Date, **Employee Type** (wajib, pilihan), Job Desc., **Status** (wajib, radio Active / Non Active, default Active). Tombol Save / Close. | `[USR-1]` + `[USULAN]` (validasi format, Employee ID terkunci) |
-| FR-38 | Form memuat bagian tambahan **Akun Login**: centang "dapat login ke sistem"; bila dicentang, **Username** (wajib, unik, huruf kecil/angka/titik/garis bawah, 3–50 karakter), **Group Akses** (wajib, pilihan), **Password** + **Konfirmasi Password** (wajib saat akun dibuat, minimal 8 karakter, harus sama; saat edit dikosongkan bila tidak diganti). Password disimpan ter-hash, tidak pernah ditampilkan. User tanpa akun (mis. trainer lepas) tetap dapat dicatat. | `[USULAN]` (tambahan di luar form acuan, `[USR-1]` "kalo ada yang kurang ditambahin") |
-| FR-39 | **Daftar User**: No, Employee ID, Nama (+ email/telepon), Department / Division, Jabatan (+ Employee Type), Akun login (username + group, atau "Tanpa akun"), Status, Action (menu gear: Edit, Aktifkan/Nonaktifkan, Reset Password bila punya akun). Filter Department dan Status; pencarian ID, nama, username, email. User **tidak dihapus**, hanya dinonaktifkan; user nonaktif **tidak dapat login**. Setiap tambah/ubah/aktif-nonaktif/reset password dicatat dengan `write_log()` (tanpa nilai password). | `[USR-1]`, `[STD]` + `[USULAN]` (kolom, tanpa hapus, reset password) |
+| FR-36 | **Master User** (sub modul **Pengguna**, modul Master Data) menyimpan data karyawan Labmania beserta **akun login** ke sistem. Memakai tabel existing aplikasi: data karyawan di `employees`, akun di `users`; **role** = record `groups` yang dipilih dari **Master Role** (FR-64) `[MRO]`, relasi akun lewat `user_groups` (Q-25). Hanya **Manajemen** dan **Superadmin** yang dapat membuka Activity Log (`docs/fr-nfr-activity-log.md` LOG-FR-09) `input/Master - Buat Program/2026-10-30-activity-log-akses-retensi/`. | `[USR-1]`, `[RNP]`, `[MRO]` + `[USULAN]` (sub modul, tabel) |
+| FR-37 | **Form Tambah/Edit User** mengikuti format acuan, dua kolom. Kiri: **Employee ID** (wajib, unik, tidak dapat diubah setelah disimpan), **Employee Name** (wajib), Personal ID Number / NIK (opsional, 16 digit), Birth Place, Birth Date, **Role** (wajib, pilihan dari Master Role kecuali Superadmin) `[MRO]`, **Gender** (wajib, pilihan), Religion (pilihan). Kanan: **Phone Number** (wajib, format `+62…`, 9–15 digit), Email (format email), Address, NPWP (15/16 digit), Join Date, **Employee Type** (wajib, pilihan), Job Desc., **Status** (wajib, radio Active / Non Active, default Active). Tombol Save / Close. Field **Division** dan **Jabatan (Position)** **tidak dipakai lagi**, diganti Role `[MRO]`; field **Department tidak dipakai** `[RNP]`. Role wajib juga untuk user tanpa akun login dan disimpan di kolom baru `employees.id_group` `[USULAN]` (Q-37). | `[USR-1]`, `[RNP]`, `[MRO]` + `[USULAN]` (validasi format, Employee ID terkunci, Role wajib untuk semua user) |
+| FR-38 | Form memuat bagian tambahan **Akun Login**: centang "dapat login ke sistem"; bila dicentang, **Username** (wajib, unik, huruf kecil/angka/titik/garis bawah, 3–50 karakter), **Password** + **Konfirmasi Password** (wajib saat akun dibuat, minimal 8 karakter, harus sama; saat edit dikosongkan bila tidak diganti), dan **Override Permission** (opsional, FR-65). Saat disimpan, akun dihubungkan ke Role yang dipilih di form (`user_groups`); mengganti Role memindahkan user ke role itu. Pengecualian: akun **Superadmin** (developer) memegang role bawaan **Superadmin** (FR-56) yang tampil hanya-baca dan tidak dapat diganti; Superadmin tidak muncul di pilihan Role user lain `[RNP2]`. Password disimpan ter-hash, tidak pernah ditampilkan. User tanpa akun (mis. trainer lepas) tetap dapat dicatat; Override Permission hanya untuk user berakun. Role tidak lagi terbentuk otomatis dari Division + Jabatan `[MRO]`. | `[RNP]`, `[RNP2]`, `[MRO]` + `[USULAN]` (tambahan di luar form acuan, `[USR-1]` "kalo ada yang kurang ditambahin") |
+| FR-39 | **Daftar User**: No, Employee ID, Nama (+ email/telepon), **Role** (+ Employee Type), **Akun login** (username dan penanda "Override n hak" bila user punya Override Permission, atau "Tanpa akun"), Status, Action (menu gear: Edit, Aktifkan/Nonaktifkan, Reset Password bila punya akun). Filter **Role** dan Status; pencarian ID, nama, username, email, role. User **tidak dihapus**, hanya dinonaktifkan; user nonaktif **tidak dapat login**. Setiap tambah/ubah/aktif-nonaktif/reset password dicatat dengan `write_log()` (tanpa nilai password), termasuk perubahan Role dan Override Permission. | `[USR-1]`, `[STD]`, `[RNP]`, `[MRO]` + `[USULAN]` (kolom, tanpa hapus, reset password) |
 
 
 ### 4.11 Dashboard
@@ -286,14 +301,15 @@ di satu layar, tanpa serah-terima ke aktor lain.
 
 ### 4.12 Master Trainer
 
-Sumber: `input/Master - Buat Program/2026-10-29-master-trainer/`, format `input/Master Trainer Ivan Sarifudin.xlsx` (5 sheet: *Identitas Trainer*, *Pelatihan dan Seminar*, *Pengalaman Kerja*, *Pengalaman Mengajar*, *Lampiran Dokumen*).
+Sumber: `input/Master - Buat Program/2026-10-29-master-trainer/`, format `input/Master - Buat Program/Master Trainer Ivan Sarifudin.xlsx` (5 sheet: *Identitas Trainer*, *Pelatihan dan Seminar*, *Pengalaman Kerja*, *Pengalaman Mengajar*, *Lampiran Dokumen*).
 
 | ID | Kebutuhan | Sumber |
 |---|---|---|
 | FR-44 | **Daftar Master Trainer** menampilkan: No, ID Trainer, Nama Trainer (+ telepon), Bidang Keahlian, Riwayat (jumlah baris tiap daftar), jumlah Penjualan Program yang memakai trainer, Status, Action (menu gear: **Edit**, **Lihat CV**, **Aktifkan / Nonaktifkan**). Pencarian ID, nama, bidang keahlian; filter status. | `input/Master - Buat Program/2026-10-29-master-trainer/` + `[USULAN]` (kolom) |
-| FR-45 | **Form Trainer** bertab mengikuti sheet Excel. **Identitas Trainer**: ID Trainer (otomatis, format Q-01), **Nama lengkap** (wajib), Tempat lahir, Tanggal lahir (Excel: satu sel "Tempat, tanggal lahir" — dipecah `[USULAN]`), Alamat rumah, No. telepon rumah/HP; **Pendidikan formal** — SMU/sederajat, Diploma, Sarjana, Pascasarjana (teks); **Bidang keahlian** (daftar, satu per baris); Pengalaman lainnya; Tempat & Tanggal pengesahan CV; Nama pada tanda tangan. Empat tab daftar dengan baris dapat ditambah/dihapus: **Pelatihan & Seminar** (Judul, Penyelenggara/Tempat, Waktu), **Pengalaman Kerja** (Jabatan, Institusi/Perusahaan, Tahun — boleh rentang, mis. "2018–sekarang"), **Pengalaman Mengajar** (Topik Pembelajaran, Tempat, Tahun), **Lampiran Dokumen** (Dokumen / Sertifikat, Tahun, **File** unggahan PDF/JPG/PNG `[USULAN]`, Q-27). Baris kosong dibuang saat simpan; baris berisi wajib punya kolom pertama. Field wajib lain menunggu Q-26. | `input/Master - Buat Program/2026-10-29-master-trainer/`, `input/Master Trainer Ivan Sarifudin.xlsx` + `[USULAN]` (pemecahan tempat/tanggal lahir, file lampiran, validasi baris) |
+| FR-45 | **Form Trainer** bertab mengikuti sheet Excel. **Identitas Trainer**: ID Trainer (otomatis, format Q-01), **Nama lengkap** (wajib), Tempat lahir, Tanggal lahir (Excel: satu sel "Tempat, tanggal lahir" — dipecah `[USULAN]`), Alamat rumah, No. telepon rumah/HP; **Pendidikan formal** — SMU/sederajat, Diploma, Sarjana, Pascasarjana (teks); **Bidang keahlian** (daftar, satu per baris); Pengalaman lainnya; Tempat & Tanggal pengesahan CV; Nama pada tanda tangan. Empat tab daftar dengan baris dapat ditambah/dihapus: **Pelatihan & Seminar** (Judul, Penyelenggara/Tempat, Waktu), **Pengalaman Kerja** (Jabatan, Institusi/Perusahaan, Tahun — boleh rentang, mis. "2018–sekarang"), **Pengalaman Mengajar** (Topik Pembelajaran, Tempat, Tahun), **Lampiran Dokumen** (Dokumen / Sertifikat, Tahun, **File** unggahan PDF/JPG/PNG `[USULAN]`, Q-27). Baris kosong dibuang saat simpan; baris berisi wajib punya kolom pertama. Field wajib lain menunggu Q-26. | `input/Master - Buat Program/2026-10-29-master-trainer/`, `input/Master - Buat Program/Master Trainer Ivan Sarifudin.xlsx` + `[USULAN]` (pemecahan tempat/tanggal lahir, file lampiran, validasi baris) |
 | FR-46 | Trainer **tidak dapat dihapus**, hanya **Aktifkan / Nonaktifkan** (seperti FR-08). Trainer nonaktif tidak muncul di pilihan Penjualan Program; Penjualan Program yang sudah memakainya tetap menampilkan namanya. | `[USULAN]` (mengikuti FR-08, FR-21) |
 | FR-47 | **Lihat CV**: tampilan baca seluruh data trainer dalam urutan Excel (identitas, pendidikan, keahlian, pengesahan, lalu empat daftar bernomor). Trainer dipilih di **Penjualan Program** — satu trainer per event (`docs/fr-nfr-penjualan-program.md` PJ-FR-23). | `input/Master - Buat Program/2026-10-29-master-trainer/`, `[K3M-1]` + `[USULAN]` (Lihat CV) |
+| FR-59 | **Akun login trainer**: form Trainer (tab Identitas) memuat pilihan **Akun login (Master User)** — user ber-akun yang menjadi akun trainer itu (opsional; satu akun untuk satu trainer). Dipakai agar trainer termasuk **tim program** Penjualan Program yang ia latih dan dapat mengajukan biaya (`docs/fr-nfr-pengajuan-biaya.md` PB-FR-19). Kolom `ms_trainer.id_user`. Trainer lepas tanpa akun tetap dapat dicatat. | `[MAM2]` + `[USULAN]` (opsional, satu akun satu trainer) |
 
 ### 4.13 Template Keterangan Quotation
 
@@ -303,17 +319,32 @@ Sumber: `input/Master - Buat Program/2026-10-29-keterangan-quotation-default/`. 
 |---|---|---|
 | FR-48 | **Template Keterangan Quotation** menyimpan butir teks per **kategori**: Syarat keikutsertaan, Termasuk, Tidak termasuk, Dokumen persyaratan, Klausul tanda tangan (Q-28). Setiap butir: Kode (otomatis, format Q-01), Kategori (wajib), **Teks** (wajib, satu butir), **Berlaku untuk** (Semua / Public / B2B, default Semua), **Default** (ya/tidak — otomatis masuk quotation baru), Status Aktif/Nonaktif. | `input/Master - Buat Program/2026-10-29-keterangan-quotation-default/` + `[USULAN]` (kategori, Berlaku untuk) |
 | FR-49 | **Daftar** butir: No, Kode, Kategori, Teks (penanda "contoh" bila isi awal dari analis), Berlaku untuk, Default, Status, Action (Edit, Aktifkan / Nonaktifkan); diurutkan per kategori; filter kategori & status; pencarian kode/teks. Butir tidak dapat dihapus, hanya dinonaktifkan. | `[USULAN]` (mengikuti FR-08) |
-| FR-50 | Perubahan master hanya berlaku untuk quotation **baru**: quotation menyimpan salinan teksnya sendiri (QTN-FR-17), sehingga PDF quotation lama tidak berubah. Isi awal: dari Template Penawaran (Termasuk: Materi, Sertifikat pelatihan, Pajak; dua kalimat klausul tanda tangan), dari S&K (Dokumen: formulir konfirmasi — Public, karena in-house tidak memerlukannya), dan butir **contoh** usulan analis (Q-30). | `input/Master - Buat Program/2026-10-29-keterangan-quotation-default/`, `input/Template Penawaran Labmania.pdf`, `input/SYARAT & KETENTUAN KEBIJAKAN LAYANAN PEMBELAJARAN.pdf` + `[USULAN]` |
+| FR-50 | Perubahan master hanya berlaku untuk quotation **baru**: quotation menyimpan salinan teksnya sendiri (QTN-FR-17), sehingga PDF quotation lama tidak berubah. Isi awal: dari Template Penawaran (Termasuk: Materi, Sertifikat pelatihan, Pajak; dua kalimat klausul tanda tangan), dari S&K (Dokumen: formulir konfirmasi — Public, karena in-house tidak memerlukannya), dan butir **contoh** usulan analis (Q-30). | `input/Master - Buat Program/2026-10-29-keterangan-quotation-default/`, `input/Master - Buat Program/Template Penawaran Labmania.pdf`, `input/Master - Buat Program/SYARAT & KETENTUAN KEBIJAKAN LAYANAN PEMBELAJARAN.pdf` + `[USULAN]` |
 
 ### 4.14 Template Formulir Konfirmasi
 
-Sumber: `input/Master - Buat Program/2026-10-29-template-formulir-konfirmasi/` (`input/Tamplate Formulir Konfirmasi Workshop.doc`, `input/Template Formulir Konfirmasi Training Sertifikasi .doc`, `input/Template Formulir Konfirmasi Resertifikasi.doc`). Dipakai `docs/fr-nfr-quotation.md` QTN-FR-16, QTN-FR-19.
+Sumber: `input/Master - Buat Program/2026-10-29-template-formulir-konfirmasi/` (`input/Master - Buat Program/Tamplate Formulir Konfirmasi Workshop.doc`, `input/Master - Buat Program/Template Formulir Konfirmasi Training Sertifikasi .doc`, `input/Master - Buat Program/Template Formulir Konfirmasi Resertifikasi.doc`). Dipakai `docs/fr-nfr-quotation.md` QTN-FR-16, QTN-FR-19.
 
 | ID | Kebutuhan | Sumber |
 |---|---|---|
 | FR-51 | **Template Formulir Konfirmasi**: Kode (otomatis), **Nama template** (wajib), **Label kegiatan** (wajib; dipakai di catatan "subject email … kegiatan <label> dengan judul …"), **Default untuk Jenis Produk** (opsional, master Jenis Produk aktif), **Isian** (minimal 1, dari daftar: Nama Lengkap Peserta*, NIK, Jabatan, Nama Instansi, Alamat Instansi, Nomor Hp, Nomor WhatsApp, Alamat Email Aktif, Masa Pengalaman Bekerja Sesuai Skema, LSP, Tanggal Habis Sertifikat), **Kalimat pernyataan 1** (wajib; penanda {judul} {tanggal} {waktu} {durasi} {lokasi} diisi otomatis, `**teks**` = tebal), **Catatan** (satu butir per baris; penanda {email} {telp} {kegiatan} {judul}), Status Aktif/Nonaktif. Pernyataan 2 (membaca & menyetujui S&K), kop, dan kode dokumen `FR/LMI-TR-01/02/Ed.Rev-1.0` sama untuk semua template. | `input/Master - Buat Program/2026-10-29-template-formulir-konfirmasi/` + `[USULAN]` (bentuk field, penanda) |
-| FR-52 | **Data awal** tiga template sesuai file: **Workshop** (default Pelatihan; 8 isian termasuk Masa Pengalaman; "akan hadir … tanggal … pukul …"), **Training & Sertifikasi** (default Sertifikasi; isian sama; label kegiatan "Training dan Sertifikasi"), **Resertifikasi** (tanpa default — dipilih manual; isian + Nomor Hp, LSP, Tanggal Habis Sertifikat, tanpa Masa Pengalaman; "akan mengikuti … Resertifikasi … (H-3 Bulan)", tanpa tanggal). Catatan ketujuh butir sama untuk ketiganya. | `input/Tamplate Formulir Konfirmasi Workshop.doc`, `input/Template Formulir Konfirmasi Training Sertifikasi .doc`, `input/Template Formulir Konfirmasi Resertifikasi.doc` + `[USULAN]` (pemetaan Jenis Produk, Q-31) |
+| FR-52 | **Data awal** tiga template sesuai file: **Workshop** (default Pelatihan; 8 isian termasuk Masa Pengalaman; "akan hadir … tanggal … pukul …"), **Training & Sertifikasi** (default Sertifikasi; isian sama; label kegiatan "Training dan Sertifikasi"), **Resertifikasi** (tanpa default — dipilih manual; isian + Nomor Hp, LSP, Tanggal Habis Sertifikat, tanpa Masa Pengalaman; "akan mengikuti … Resertifikasi … (H-3 Bulan)", tanpa tanggal). Catatan ketujuh butir sama untuk ketiganya. | `input/Master - Buat Program/Tamplate Formulir Konfirmasi Workshop.doc`, `input/Master - Buat Program/Template Formulir Konfirmasi Training Sertifikasi .doc`, `input/Master - Buat Program/Template Formulir Konfirmasi Resertifikasi.doc` + `[USULAN]` (pemetaan Jenis Produk, Q-31) |
 | FR-53 | **Daftar** template: No, Kode, Nama (+ label kegiatan), Default untuk Jenis Produk, Isian (jumlah + isian khusus), Pernyataan (ringkas), Status, Action (**Edit**, **Lihat contoh** — pratinjau formulir dengan data contoh, **Aktifkan / Nonaktifkan**). Tidak dapat dihapus. Perubahan hanya berlaku untuk quotation baru (quotation menyimpan salinan pilihannya). | `input/Master - Buat Program/2026-10-29-template-formulir-konfirmasi/` + `[USULAN]` |
+
+### 4.15 Role & Permission
+
+Diminta user 04-11-2026 untuk mengatur siapa yang dapat membuka modul (pertama untuk Pengajuan Biaya) `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/` `[MAM]`. Draf 11t `[RNP]`: menu diganti nama **Role & Permission** (sebelumnya Matrix Akses Menu) dan disusun per **role**. Draf 11w `[MRO]`: role **diinput manual di Master Role** (FR-64) dan dipilih di form Master User; tidak lagi terbentuk dari Division + Jabatan. Hak tambahan untuk satu user diberikan lewat **Override Permission** di Master User (FR-65). Tampilan mengikuti video acuan `input/Invoice & Pengajuan/Role & Permission.mp4` (tombol "Add New Role" di video tidak dipakai).
+Aplikasi sudah punya struktur hak akses: `groups`, `user_groups`, `permissions` (satu baris per menu per aksi, nama `Nama_Menu.View` / `.Add` / `.Manage` / `.Delete`), `group_permissions`, `user_permissions`, `menus.permission_id`; sidebar (`Menu_generator`) hanya menampilkan menu yang permission View-nya dimiliki; group **id 1 = Admin** lolos semua permission (`Auth::is_admin()`). Halaman hak akses **per user** sudah ada (`users/setting/permission`); halaman **per group** belum ada.
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| FR-54 | Menu **Role & Permission** (modul Master Data, sub modul **Pengguna**) mengatur hak setiap **Role** atas setiap menu aplikasi: menu apa yang dapat dibuka dan apa yang dapat dilakukan di menu itu `[RNP]`. Daftar role = isi **Master Role** (FR-64) `[MRO]`; tambah, ubah nama, dan hapus role dilakukan di Master Role, bukan di halaman ini. Memakai tabel existing `groups` (satu record per role), `user_groups`, `permissions`, `group_permissions`, `menus`. Hak tambahan per user (`user_permissions`) diatur lewat **Override Permission** di Master User (FR-65). | `[MAM]`, `[RNP]`, `[MRO]` + `[USULAN]` (tabel existing) |
+| FR-55 | Tampilan mengikuti video `[RNP]`: kartu ringkas (**Total Role**, **User berakun**, **Menu diatur**); cari nama role; tabel **Role** (Superadmin bertanda *Full Access*), **User terdaftar**, **Total hak** ("n hak diberikan" / "Semua hak aktif" / "Belum diatur"), **Cakupan** (preview kode hak, mis. `qtn.view`, +n lagi), Action **Atur Akses** (Superadmin: Lihat). **Atur Akses** membuka modal: Nama Role (hanya baca), **Matrix Hak Akses** "x dari y dipilih", tombol **Pilih Semua Modul**, **Kosongkan**, cari menu / hak; baris **menu dikelompokkan per modul** (urut sidebar), tiap baris: centang semua, chip aksi **View**, **Add**, **Manage**, **Delete** yang berlaku, tombol **Pilih Semua / Batal Semua**, **Scope** n/m; kaki "Total: n hak dipilih". Aksi yang tidak berlaku tidak ditampilkan (mis. Dashboard hanya View). Arti aksi `[USULAN]`: **View** = membuka menu & daftar; **Add** = tambah / ajukan; **Manage** = ubah, finalkan, dan **proses approval** pada menu approval; **Delete** = hapus / batalkan / nonaktifkan. Mencentang Add/Manage/Delete otomatis mencentang View; melepas View melepas semua hak menu itu. Kolom User terdaftar juga menyebut jumlah user role itu yang punya Override Permission. Hapus role ada di Master Role (FR-64): role tanpa user **boleh dihapus** `[RNP2]`; role yang masih dipakai user dan role Superadmin tidak dapat dihapus. | `[MAM]`, `[RNP]`, `[RNP2]` + `[USULAN]` |
+| FR-56 | Dua akun khusus `[MAM2]`: **Superadmin** — akun **developer**, group id 1 aplikasi, role **bawaan sistem** yang **dibuat dari awal** (seed) dan **tidak dapat ditambah lagi** `[RNP2]`; tampil di Master Role sebagai baris terkunci, tidak dapat diubah, dihapus, atau dipilih untuk user lain; selalu memiliki **semua** akses dan semua data; barisnya di Role & Permission tampil terkunci "Full Access — semua hak aktif". **Admin** — akun **user Labmania**, role biasa di Master Role yang **hak modulnya dapat dibatasi**; hak data tetap semua (mis. semua program di Pengajuan Biaya, PB-FR-20). Di mockup, Admin = role **Admin** — contoh, menunggu Q-35. | `[MAM]`, `[MAM2]`, `[RNP]`, `[RNP2]`, `[MRO]` |
+| FR-57 | **Simpan** mengganti hak role terpilih (`group_permissions`). Akibatnya: sidebar user dengan role itu hanya menampilkan menu dengan View; tombol aksi tanpa hak tidak tampil; request tanpa hak ditolak server. Role baru dari Master Role (FR-64) belum punya hak sampai disimpan di sini. Hak **data** (mis. hanya program terkait di Pengajuan Biaya, PB-FR-20) tetap diatur di masing-masing modul. Perubahan dicatat `write_log()` modul "Master Data", sub modul "Role & Permission" (hak sebelum → sesudah per menu). | `[MAM]`, `[RNP]`, `[STD]` + `[USULAN]` |
+| FR-58 | **Isi awal** hak per role `[USULAN]` (Q-33, sedang dicek user), contoh role mockup: **Direktur** (Manajemen) — semua menu kecuali Role & Permission, termasuk Approval Pengajuan (View, Manage); **Superadmin** — otomatis semua (FR-56); **Admin** — semua menu termasuk Role & Permission, **kecuali Activity Log** (LOG-FR-09; dapat diberikan lewat Role & Permission); role Sales / Trainer (**Sales Public**, **Sales B2B**, **Trainer**); role **Keuangan** belum diatur — Dashboard (View), Quotation (View, Add, Manage), Pengajuan Biaya (View, Add). | `[USULAN]`, `[MAM2]`, `[RNP]` |
+| FR-64 | **Master Role** (menu baru, modul Master Data, sub modul **Pengguna**, di antara Master User dan Role & Permission) `[MRO]`: daftar role yang diinput manual. Isian: **Nama Role** (wajib, unik tanpa membedakan huruf besar/kecil, maks. 50 karakter) `[USULAN]`. Daftar: No, Nama Role, **User terdaftar**, **Hak di Role & Permission** ("n hak diberikan" / "Belum diatur"), Dibuat / Diubah, Action (gear: Edit, **Atur Akses** membuka modal Role & Permission role itu, **Hapus** hanya bila tidak dipakai user). Role baru belum punya hak (pesan mengarahkan ke Role & Permission). Mengubah nama role tidak memutus user maupun haknya (relasi lewat id). Role **Superadmin** tampil terkunci (FR-56). Isi Master Role menjadi **satu-satunya sumber** pilihan Role di Master User (FR-37) dan daftar role di Role & Permission (FR-54). Tabel existing `groups` (`id_group`, `nm_group`); tambah / ubah / hapus dicatat `write_log()` modul "Master Data", sub modul "Master Role". Isi contoh mockup: Direktur, Admin, Sales Public, Sales B2B, Trainer, Keuangan (Q-37). | `[MRO]` + `[USULAN]` (isian, aturan hapus, letak menu, isi contoh) |
+| FR-65 | **Override Permission** `[MRO]`: bagian dalam **Akun Login** form Master User (dapat dilipat; judul menyebut "n hak tambahan") untuk memberi **satu user** hak menu **tambahan** di luar hak role-nya. Isinya matrix menu × aksi yang sama dengan Role & Permission (dikelompokkan per modul, aksi yang berlaku saja). Hak yang sudah dimiliki role tampil **tercentang dan terkunci** (penanda "role"); hak lain dapat dicentang. Mencentang Add / Manage / Delete otomatis mencentang View; melepas View melepas hak tambahan menu itu. Override **hanya menambah**, tidak dapat mengurangi hak role `[USULAN]` (Q-37). Saat Role di form diganti, hak override yang sudah tercakup role baru dibuang. Hak efektif user = hak role (`group_permissions` lewat `user_groups`) **+** override (`user_permissions`), diperiksa di server (NFR-13). Tidak tersedia untuk Superadmin (sudah semua hak) dan user tanpa akun. Daftar User menandai user ber-override ("Override n hak"); perubahan tercatat di log Master User (jumlah hak sebelum → sesudah). | `[MRO]`, `[RNP]` + `[USULAN]` (letak di form, tampilan, hanya menambah) |
 
 ## 5. Kebutuhan Non-Fungsional (NFR)
 
@@ -333,6 +364,7 @@ Setiap NFR punya kriteria uji yang terukur. Butir `[USULAN]` belum dinyatakan kl
 | NFR-10 | Usability | Semua pilihan master pada form (Produk, Bidang, Sertifikat, Satuan, COA, Provinsi, Kota, Jenis Instansi) memakai dropdown yang dapat dicari. Mockup draf 11n menerapkannya di Product Combine (tambah & edit) `input/Master - Buat Program/2026-10-29-edit-master-sertifikat-cari/`. | Mengetik 3 huruf menyaring opsi pada dropdown | FR-12, FR-16, FR-19, FR-20, FR-31 | `[USULAN]` |
 | NFR-11 | Usability | Logo dan kolom search menu di sidebar **tetap terlihat (freeze)**; hanya daftar menu yang dapat digulir. | Dengan daftar menu lebih tinggi dari layar, setelah daftar menu digulir sampai bawah kolom search masih terlihat dan dapat diketik tanpa menggulir kembali; berlaku juga di layar ≤ 900 px (sidebar sebagai panel) | FR-29 | `[RMD-6]` |
 | NFR-12 | Validasi / Usability | **Semua isian uang** (Default Cost, Harga jual / peserta, Target profit, nominal biaya Master Program & Penjualan Program, Harga all-in, Diskon, Biaya lain-lain Quotation) berupa angka rupiah ≥ 0 tanpa desimal dan **tampil dengan pemisah ribuan titik saat diketik** (600.000, bukan 600000); hanya angka diterima, nilai disimpan sebagai angka tanpa titik. | Ketik `1600000` → tampil `1.600.000`, tersimpan 1600000; `-1` atau `abc` ditolak | FR-19, FR-20, semua modul | `[CM]`, `input/Master - Buat Program/2026-10-30-format-rupiah-titik/` + `[USULAN]` (simpan tanpa titik) |
+| NFR-13 | Keamanan | Hak Role & Permission **diperiksa di server** (`auth->restrict()` / `has_permission()`), bukan hanya menyembunyikan menu. Role **Superadmin** tidak dapat dikurangi haknya dan halaman Role & Permission selalu terbuka untuknya agar tidak ada keadaan terkunci; hak role Admin dapat dikurangi. | User role Staff membuka URL Approval Pengajuan langsung → 403; simpan hak untuk Superadmin ditolak | FR-54 – FR-58 | `[MAM]`, `[MAM2]` + `[USULAN]` |
 
 ---
 
@@ -345,14 +377,14 @@ Setiap NFR punya kriteria uji yang terukur. Butir `[USULAN]` belum dinyatakan kl
 | Q-01 | Bagaimana **format penomoran** kode untuk Jenis Produk, Jenis Sertifikat, Jenis Bidang, Nomor Product Combine, Kode Peserta, Kode Company, dan Kode Fixed/Variable Cost? (prefix, panjang digit, reset per tahun/tidak) | FR-03, FR-13, FR-17, FR-19, FR-20, FR-32 |
 | Q-06 | Siapa pengguna yang mengelola **Master Peserta**, **Master Company**, **Master Rate**, dan yang **membuat Katalog**? *(masih ditanyakan Labmania)* | UC-06 – UC-09, UC-11 |
 | Q-07b | Kolom **Lokasi** di daftar peserta menampilkan Provinsi, Kota, atau keduanya? Dari mana sumber data Provinsi & Kota/Kabupaten (tabel wilayah yang ada di sistem, atau diinput Labmania)? | FR-15, FR-16, FR-31 |
-| Q-09 | Format **Katalog Produk** *(belum ada, menunggu Labmania)*. | FR-14 |
+| Q-36 | Perlu tambahan isi per paket di **Katalog Produk** (deskripsi singkat, durasi, harga, foto)? Saat ini Paket Produk hanya punya Judul + Produk/Bidang/Sertifikat, jadi hanya itu yang tampil. | FR-14, FR-61, FR-62 |
 | Q-13 | **Pain Point** proses saat ini *(masih digali Labmania)*. | Cakupan |
 | Q-14 | ~~Setelah tersimpan, apakah Paket Produk masih dapat diubah?~~ **Terjawab** `input/Master - Buat Program/2026-10-29-edit-master-sertifikat-cari/`: Paket Produk punya aksi **Edit** (FR-43). | FR-10, UC-10 |
 | Q-16 | Apakah **Peserta** dan **Company** juga hanya boleh dinonaktifkan (tidak dihapus), seperti master lain dan Master Rate? (saat ini mengikuti mockup: Edit/Delete) | FR-15, FR-32 |
 | Q-17 | Apakah paket yang **nonaktif** ikut dihitung dalam cek keunikan kombinasi? (mis. paket lama dinonaktifkan, lalu kombinasi yang sama dibuat lagi) | FR-22 |
 | Q-18 | Apakah nama sub modul **Atribut Produk**, **Produk**, **Customer**, dan **Biaya** di bawah modul Master Data sudah sesuai? | FR-27 |
 | Q-20 | Aplikasi sudah punya tabel **`customer`** (nama, alamat, provinsi, kota, telepon, email, NPWP, PIC, status aktif). Boleh Master Company memakai tabel itu (ditambah kolom Jenis Instansi), atau perlu tabel baru? *(ERD draf 4 memakai `customer`)* | FR-30 – FR-32, ERD |
-| Q-25 | Master User: (a) isi pilihan **Group Akses** dan hak tiap group (contoh mockup: Manajemen, Admin, Staff); (b) data **Department, Division, Jabatan** — **menyusul dari Labmania** (`input/Master - Buat Program/2026-10-28-master-user-data-menyusul/`); mockup memakai contoh. Employee Type dan Religion — memakai master aplikasi atau diisi Labmania?; (c) **Employee ID** diinput manual (seperti form acuan) atau dibuat otomatis seperti modul `employees` (EMP…); (d) boleh memakai tabel existing `employees` / `users`? | FR-36 – FR-39, ERD |
+| Q-25 | Master User: (a) ~~isi pilihan Group Akses~~ — diganti Role dari Master Role `[MRO]`; (b) ~~data Division, Jabatan~~ — diganti Role `[MRO]`; isi **Master Role** final dan Employee Type — **menyusul dari Labmania** (`input/Master - Buat Program/2026-10-28-master-user-data-menyusul/`); mockup memakai contoh. Department tidak dipakai `[RNP]`. Employee Type dan Religion — memakai master aplikasi atau diisi Labmania?; (c) **Employee ID** diinput manual (seperti form acuan) atau dibuat otomatis seperti modul `employees` (EMP…); (d) boleh memakai tabel existing `employees` / `users`? | FR-36 – FR-39, FR-64, ERD |
 | Q-26 | Master Trainer: field mana yang **wajib** selain Nama lengkap (mis. telepon, bidang keahlian)? Siapa pengguna yang mengelola? | FR-45, UC-38 |
 | Q-27 | Lampiran Dokumen trainer perlu **file unggahan** (ijazah, sertifikat), atau cukup nama dokumen & tahun seperti Excel? (usulan: dapat diunggah, opsional) | FR-45 |
 | Q-28 | Template Keterangan: apakah lima **kategori** (Syarat keikutsertaan, Termasuk, Tidak termasuk, Dokumen persyaratan, Klausul tanda tangan) sudah lengkap? Perlu kategori lain (mis. Catatan lain-lain)? | FR-48 |
@@ -360,6 +392,9 @@ Setiap NFR punya kriteria uji yang terukur. Butir `[USULAN]` belum dinyatakan kl
 | Q-30 | **Isi default awal** dari Labmania untuk tiap kategori? Mockup memakai isi template + butir bertanda "contoh". | FR-50 |
 | Q-31 | Template Formulir Konfirmasi default dipilih dari **Jenis Produk** paket (usulan: Pelatihan → Workshop, Sertifikasi → Training & Sertifikasi). **Resertifikasi** dipilih manual — perlu atribut produk tersendiri (mis. Jenis Produk "Resertifikasi") agar otomatis? | FR-51, FR-52 |
 | Q-32 | Isian yang tidak ada di Master Peserta (NIK, Jabatan, **Nomor Hp**, Masa Pengalaman, LSP, Tanggal Habis Sertifikat) dibiarkan kosong untuk diisi tangan (usulan), atau perlu ditambahkan ke Master Peserta agar terisi otomatis? | FR-51, FR-16 |
+| Q-33 | **Sedang dicek user (04-11-2026).** **Role & Permission**: isi awal hak per role (FR-58) sudah sesuai? Apakah aksi cukup View / Add / Manage / Delete (konvensi aplikasi), atau perlu aksi **Approve** terpisah? | FR-55, FR-58, Q-25 |
+| Q-35 | **Role & Permission** `[RNP]` — sisa yang belum dijawab: (a) role mana yang menjadi role **Admin** (user Labmania)? Mockup memakai contoh role Admin. Bagian Superadmin, (b) hapus role, dan (c) hak tambahan per user terjawab — lihat 6.2. | FR-54, FR-56 |
+| Q-37 | **Master Role & Override Permission** `[MRO]`: (a) daftar role final Labmania (mockup: Direktur, Admin, Sales Public, Sales B2B, Trainer, Keuangan)? Role mana yang termasuk **Manajemen** (sementara Direktur, Q-PB-14)? (b) kolom Division / Position di tabel `employees` aplikasi tetap dipakai modul lain (HR) atau tidak dipakai lagi? Role disimpan di kolom baru `employees.id_group` agar user tanpa akun tetap punya role, setuju? (c) perlu Override yang **mengurangi** hak role (mis. role Sales tanpa menu tertentu untuk satu orang), atau cukup menambah? | FR-37, FR-64, FR-65, PB-FR-19, LOG-FR-09 |
 
 ### 6.2 Sudah terjawab
 
@@ -367,6 +402,10 @@ Sumber: 22-10-2026 `input/Master - Buat Program/2026-10-22-klarifikasi-produk/`;
 
 | ID | Jawaban | Diterapkan di |
 |---|---|---|
+| Q-09 | 05-11-2026 `input/Master - Buat Program/2026-11-05-katalog-produk/`: katalog dibuat sekarang, **filter Bidang & Sertifikat**, cetak **PDF** bergaya katalog produk pada umumnya. Tata letak PDF usulan analis (FR-62). | FR-14, FR-60 – FR-62 |
+| Q-35 (c) | 05-11-2026 `[MRO]`: hak tambahan per user **tetap ada**, diatur sebagai **Override Permission** di Master User (FR-65, `user_permissions`). | FR-54, FR-65 |
+| Q-34 | 04-11-2026 `[MAM2]`: **1 Superadmin** (developer, semua akses) dan **1 Admin** (user Labmania, hak modul masih dapat dibatasi). | FR-56, FR-58, NFR-13 |
+| Q-35 (sebagian) | 04-11-2026 `[RNP2]`: (a) **Superadmin** dibuat dari awal sebagai role bawaan, tidak dapat ditambah lagi; (b) role tanpa user **boleh dihapus**. Manajemen sementara jabatan **Direktur** (Q-PB-14). | FR-38, FR-55, FR-56 |
 | SIPOC | Output juga berupa paket produk yang siap dibuat menjadi Product Costing | Bagian 1, FR-24 |
 | Q-02 | Ikuti *Data Mentah*: Pelatihan/Sertifikasi = Jenis Produk; Sertifikat BNSP dst. = Jenis Sertifikasi | FR-04, FR-05 |
 | Q-03 | Satu kali combine dapat menghasilkan lebih dari satu paket; saat disimpan menjadi per item paket | FR-10, FR-12, FR-13 |
@@ -455,7 +494,7 @@ Catatan data awal:
 | draf 8 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/`: mode harga Master Rate dihapus — semua item Default Cost yang dapat diedit (FR-19, FR-20, FR-26, FR-33 dihapus, NFR-12, UC-08, UC-09, bagian 7; Q-21 gugur); Seminar Kit dan Ongkir Dokumen kembali memakai Default Cost Rp 35.000 / Rp 15.000. |
 | draf 9 | 25-10-2026 | `input/Master - Buat Program/2026-10-25-jalur-public-b2b/`: Company dipilih di Sales Order B2B (ditunda), bukan di Penjualan Program (FR-30, bagian 1); Penjualan Program sama untuk Public dan B2B. |
 | draf 10 | 28-10-2026 | `input/Master - Buat Program/2026-10-28-jawaban-pertanyaan-program/`: Company aktif dipilih di Penjualan Program B2B, bukan Sales Order (FR-30); Master Company punya status Aktif/Nonaktif (FR-32). |
-| draf 11 | 28-10-2026 | `input/Master - Buat Program/2026-10-28-master-user/`: sub modul **Pengguna** → **Master User** (FR-36 – FR-39, UC-32, bagian 1); form mengikuti `input/Master User.png` + bagian Akun Login (usulan); Q-25 baru. |
+| draf 11 | 28-10-2026 | `input/Master - Buat Program/2026-10-28-master-user/`: sub modul **Pengguna** → **Master User** (FR-36 – FR-39, UC-32, bagian 1); form mengikuti `input/Master - Buat Program/Master User.png` + bagian Akun Login (usulan); Q-25 baru. |
 | draf 11a | 28-10-2026 | `input/Master - Buat Program/2026-10-28-master-user-data-menyusul/`: data Department, Division, Jabatan menyusul; modul Master User tetap dipakai dengan data contoh (Q-25 b). |
 | draf 11b | 28-10-2026 | `input/Master - Buat Program/2026-10-28-gabung-menu-penjualan-program/`: sidebar dua modul — Master Program & Penjualan Program digabung di modul **Penjualan Program** (FR-27, bagian 1). |
 | draf 11c | 28-10-2026 | `input/Master - Buat Program/2026-10-28-sidebar-tanpa-label/`: label sub modul tidak tampil di sidebar; breadcrumb Modul / Menu; search hanya nama menu (FR-27, FR-29). |
@@ -467,12 +506,19 @@ Catatan data awal:
 | draf 11i | 29-10-2026 | `input/Master - Buat Program/2026-10-29-quotation-diskon-aksi/`: peserta dapat ditambah dari form Quotation Personal dan langsung tersimpan di Master Peserta (FR-15). |
 | draf 11j | 29-10-2026 | `input/Master - Buat Program/2026-10-29-edit-master-sertifikat-cari/`: Paket Produk dapat diedit (FR-43, FR-08, FR-10, UC-10; Q-14 terjawab); master "Jenis Sertifikasi" menjadi **Jenis Sertifikat** (FR-05 dan semua sebutan nama master; nilai Jenis Produk "Sertifikasi" tetap); dropdown Product Combine dapat dicari (FR-12, NFR-10). |
 | draf 11k | 29-10-2026 | `input/Master - Buat Program/2026-10-29-npwp-instansi-hapus-varian/`: master **Varian Pelaksanaan dihapus** — Paket Produk = Jenis Produk + Jenis Sertifikat + Jenis Bidang (FR-01, FR-02, FR-07, FR-10, FR-12, FR-22, FR-26, FR-43, UC-04, lampiran 7); field **NPWP Instansi** di Master Peserta (FR-16, UC-07) dan Master Company (FR-31, label dari NPWP). ERD draf 9. |
-| draf 11l | 29-10-2026 | `input/Master - Buat Program/2026-10-29-master-trainer/`: **Master Trainer** baru (sub modul Trainer) mengikuti `input/Master Trainer Ivan Sarifudin.xlsx` — FR-44 – FR-47, UC-38, bagian 4.12, Q-26, Q-27; dipilih di Penjualan Program (PJ-FR-23). ERD draf 10. |
+| draf 11l | 29-10-2026 | `input/Master - Buat Program/2026-10-29-master-trainer/`: **Master Trainer** baru (sub modul Trainer) mengikuti `input/Master - Buat Program/Master Trainer Ivan Sarifudin.xlsx` — FR-44 – FR-47, UC-38, bagian 4.12, Q-26, Q-27; dipilih di Penjualan Program (PJ-FR-23). ERD draf 10. |
 | draf 11m | 29-10-2026 | `input/Master - Buat Program/2026-10-29-keterangan-quotation-default/`: **Template Keterangan Quotation** baru (sub modul Dokumen) — FR-48 – FR-50, UC-39, bagian 4.13, Q-28 – Q-30; ERD `ms_template_keterangan`. |
 | draf 11n | 29-10-2026 | `input/Master - Buat Program/2026-10-29-template-formulir-konfirmasi/`: **Template Formulir Konfirmasi** baru (sub modul Dokumen) dengan tiga template awal Workshop, Training & Sertifikasi, Resertifikasi — FR-51 – FR-53, UC-40, bagian 4.14, Q-31, Q-32; ERD `ms_template_konfirmasi`. |
 | draf 11o | 30-10-2026 | `input/Master - Buat Program/2026-10-30-format-rupiah-titik/`: **NFR-12** diperluas — semua isian uang di semua modul memakai pemisah ribuan titik saat diketik; mockup draf 11z. |
 | draf 11p | 30-10-2026 | `input/Master - Buat Program/2026-10-30-histori-activity-log/`: kolom jejak (created/updated/deleted) di semua tabel dan modul **Activity Log** — rujukan ke `docs/fr-nfr-activity-log.md` di NFR audit; mockup draf 12. |
 | draf 11q | 30-10-2026 | `input/Master - Buat Program/2026-10-30-activity-log-akses-retensi/`: group akses **Admin Developer** di Master User (FR-36) untuk akses Activity Log. |
+| draf 11r | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/`: **Matrix Akses Menu** di sub modul Pengguna (bagian 4.15, FR-54 – FR-58, UC-49, NFR-13) memakai tabel hak akses existing; Q-33, Q-34 baru. Dipakai pertama oleh modul Pengajuan Biaya (`docs/fr-nfr-pengajuan-biaya.md`). Draf 11q: `input/backup/fr-nfr_sebelum-matrix-akses_04-11-2026.md`. |
+| draf 11s | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya-2/`: Q-34 terjawab — **Superadmin** (developer, terkunci) dan **Admin** (user Labmania, dapat dibatasi) (FR-56, FR-58, NFR-13, UC-49); **FR-59** akun login trainer di Master Trainer (Q-PB-13 disetujui). Q-33 masih dicek user. |
+| draf 11t | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-role-permission/` `[RNP]`: **Matrix Akses Menu** diganti **Role & Permission** (bagian 4.15, FR-54 – FR-58, UC-49, NFR-13) mengikuti video acuan; **role = Division + Jabatan**, terbentuk otomatis dari akun di Master User — pilihan Group Akses dihapus dari form (FR-38); **Department dihapus** dari Master User (FR-37, FR-39, UC-32); Q-35 baru. Draf 11s: `input/backup/fr-nfr_sebelum-role-permission_04-11-2026.md`. |
+| draf 11u | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-jawaban-role-permission/` `[RNP2]`: Q-35 terjawab sebagian — **Superadmin role bawaan sistem** (dibuat dari awal, tidak dapat ditambah, tidak dari Division + Jabatan; FR-38, FR-56); **hapus role tanpa user** jadi keputusan (FR-55). Q-35 tersisa: role Admin, hak per user. Draf 11t: `input/backup/fr-nfr_sebelum-superadmin-bawaan_04-11-2026.md`. |
+| draf 11v | 05-11-2026 | `input/Master - Buat Program/2026-11-05-katalog-produk/`: **Katalog Produk** tidak lagi ditunda (bagian 1.1, 4.4, UC-06) — FR-14 diperbarui (isi = paket aktif, tidak disimpan), **FR-60 – FR-63** (filter Bidang & Sertifikat, tampilan per Bidang, PDF katalog, Activity Log); Q-09 terjawab, Q-36 baru. ERD tidak berubah. Draf 11u: `input/backup/fr-nfr_sebelum-katalog-produk_05-11-2026.md`. |
+| draf 11w | 05-11-2026 | `[MRO]`: field **Division** dan **Jabatan (Position)** di Master User diganti satu field **Role** (FR-37 – FR-39, UC-32); menu baru **Master Role** input manual (FR-64, UC-55) jadi sumber pilihan Role di Master User dan daftar role di Role & Permission (FR-54 – FR-58, UC-49; role tidak lagi terbentuk dari Division + Jabatan); **Override Permission** per user di Master User (FR-65). Q-35 (c) terjawab, Q-25 diperbarui, Q-37 baru. ERD Matrix Akses: `employees.id_group` (usulan). Draf 11v: `input/backup/fr-nfr_sebelum-master-role_05-11-2026.md`. |
+| draf 11x | 05-11-2026 | `input/Master - Buat Program/2026-11-05-sidebar-hide/`: **FR-66** tombol sembunyikan sidebar (bagian 4.9). Draf 11w: `input/backup/fr-nfr_sebelum-hide-sidebar_05-11-2026.md`. |
 
 ---
 
@@ -485,7 +531,7 @@ Catatan data awal:
 - **Modul terkait:** hulu Master Data → `docs/fr-nfr.md` (Paket Produk, Master Rate); hilir Penjualan Program → `docs/fr-nfr-penjualan-program.md` (menarik Master Program Final)
 - **Use case kanonis:** `docs/workbook.xlsx` sheet *UC Non-BPMN*
 - **ERD:** `docs/diagrams/erd.drawio` halaman *ERD Master Program*
-- **Mockup:** `ui-mockup/produk/index.html` → modul Master Program (layout form mengikuti `input/labmania.html`, hanya layout)
+- **Mockup:** `ui-mockup/produk/index.html` → modul Master Program (layout form mengikuti `input/Master - Buat Program/labmania.html`, hanya layout)
 
 Penomoran memakai awalan **MP-** agar tidak bentrok dengan dokumen lain. Kode UC satu urutan untuk seluruh workbook.
 
@@ -500,7 +546,7 @@ Penomoran memakai awalan **MP-** agar tidak bentrok dengan dokumen lain. Kode UC
 | `[USR-3M]` | penjelasan user 23-10-2026, `input/Master - Buat Program/2026-10-23-requirements-3-modul/` |
 | `[KPG-n]` | klarifikasi chat 23-10-2026, `input/Master - Buat Program/2026-10-23-klarifikasi-program/` |
 | `[OPS-1]` | opsi menu per status, `input/Master - Buat Program/2026-10-23-opsi-status-master-program/` (menggantikan `input/Master - Buat Program/2026-10-23-opsi-draft-master-program/`) |
-| `[SIMX]` | tampilan simulasi, `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/` (`input/simulasi_hasil.html`) |
+| `[SIMX]` | tampilan simulasi, `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/` (`input/Master - Buat Program/simulasi_hasil.html`) |
 | `[BEP-1]` | permintaan data BEP 23-10-2026, `input/Master - Buat Program/2026-10-23-simulasi-bep/` |
 | `[JLR-n]` | jalur Public vs B2B 25-10-2026, `input/Master - Buat Program/2026-10-25-jalur-public-b2b/` — pesan n |
 | `[SPA-2]` | laporan Rencana vs Aktual, `input/Master - Buat Program/2026-10-25-surat-penawaran-rencana-aktual/` butir 2 |
@@ -598,7 +644,7 @@ Menu: modul **Penjualan Program**, sub modul **Master Program** (sub modul perta
 | MP-FR-07 | **Variable Cost** ditambah satu per satu (pilih dari Master Rate, lalu "+ Tambah") dan dapat dihapus (ikon ×) selama Draft, dikelompokkan per satuan: **Peserta/Event** dan **Peserta/Day** (× durasi). Item yang sama tidak dapat ditambahkan dua kali. Berlaku untuk Fixed & Variable Cost: item bernilai **0 dianggap tidak dipakai dan dibuang saat disimpan**; kelompok satuan tanpa item tidak menampilkan tabel kosong, dan tidak ditampilkan sama sekali saat terkunci `[BTS-1]`. | `[MP-14]`, `[MP-16]`, `[BTS-1]` + `[USULAN]` (tanpa duplikat, buang item 0) |
 | MP-FR-08 | Nominal item terisi **Default Cost** dari Master Rate dan **selalu dapat diedit** (tidak ada mode Fix / Input manual). Nama item, satuan, dan nominal disimpan sebagai salinan di Master Program. | `[MP-15]`, `[MD-8]`, `[REV-1]` + `[USULAN]` (salinan) |
 | MP-FR-09 | Ada opsi **biaya manual di luar master** (tombol "+ Biaya lain") pada Fixed Cost dan Variable Cost: Nama biaya, Nominal; satuannya mengikuti kelompok tempat biaya ditambahkan. Biaya manual tidak menambah item ke Master Rate. | `[MP-16]` + `[USULAN]` (penempatan per kelompok) |
-| MP-FR-10 | **Simulasi costing** dihitung ulang setiap angka berubah dan menampilkan: Total Fixed Cost, Total Variable Cost, HPP, Profit, Harga BEP / peserta, Jumlah peserta BEP, Target Profit, Harga jual (rumus bagian 8). Tampilan mengikuti `input/simulasi_hasil.html` `[SIMX]`: (1) **Titik impas (BEP)** — kotak *BEP jumlah peserta* = Fixed Cost ÷ (harga per peserta − biaya variable per peserta), dibulatkan ke atas, dan *BEP harga jual* = HPP ÷ jumlah peserta, masing-masing dengan kalimat penjelas (aman/kurang terhadap rencana); (2) **Hasil rencana simulasi** — kotak Pendapatan, Biaya (HPP), Profit (untung/rugi, margin % dari pendapatan), lalu baris **target profit** (tercapai / kurang) beserta **minimal peserta untuk capai target** = ⌈(Fixed Cost + target profit) ÷ (harga − biaya variable per peserta)⌉; (3) **Posisi di skala jumlah peserta** — batang zona rugi / untung belum capai target / target tercapai dengan penanda BEP, Target profit, Rencana; (4) **Rincian perhitungan** yang dapat dibuka/tutup, ditulis **sederhana dan mudah dipahami** `[JLR-3]`: langkah hitung bernomor dalam bahasa sehari-hari (biaya tetap acara → biaya per peserta → total biaya → pendapatan → untung/rugi → titik impas), masing-masing satu kalimat + angka, lalu tabel profit **pendek** (± 5 baris: BEP, rencana, dan beberapa jumlah peserta di sekitarnya). **Input simulasi** (durasi, target peserta, harga jual standar / peserta, target profit) tampil di bagian 1 *Informasi Program* **dan** di atas hasil di bagian 4 *Simulasi Hasil*, terikat ke **satu nilai**: cukup diisi sekali di salah satu tempat, tempat lain ikut berubah `[ISC-1]`, `[KSC-1]`. Simulasi yang sama dipakai di Penjualan Program. Peringatan (tidak menghalangi simpan Draft): profit minus; BEP > target peserta; profit < target profit; Hotel Trainer \*\* dan \*\*\* keduanya terisi (hanya peringatan `[K3M-6]`). | `[MP-17]`, `[MP-WISH-1]`, `[MP-WISH-2]`, `[MP-SIM]`, `[MP-9]`, `[MP-OP-2]`, `[REV-4]`, `[BEP-1]`, `[SIMX]`, `[JLR-3]`, `[ISC-1]`, `[KSC-1]` |
+| MP-FR-10 | **Simulasi costing** dihitung ulang setiap angka berubah dan menampilkan: Total Fixed Cost, Total Variable Cost, HPP, Profit, Harga BEP / peserta, Jumlah peserta BEP, Target Profit, Harga jual (rumus bagian 8). Tampilan mengikuti `input/Master - Buat Program/simulasi_hasil.html` `[SIMX]`: (1) **Titik impas (BEP)** — kotak *BEP jumlah peserta* = Fixed Cost ÷ (harga per peserta − biaya variable per peserta), dibulatkan ke atas, dan *BEP harga jual* = HPP ÷ jumlah peserta, masing-masing dengan kalimat penjelas (aman/kurang terhadap rencana); (2) **Hasil rencana simulasi** — kotak Pendapatan, Biaya (HPP), Profit (untung/rugi, margin % dari pendapatan), lalu baris **target profit** (tercapai / kurang) beserta **minimal peserta untuk capai target** = ⌈(Fixed Cost + target profit) ÷ (harga − biaya variable per peserta)⌉; (3) **Posisi di skala jumlah peserta** — batang zona rugi / untung belum capai target / target tercapai dengan penanda BEP, Target profit, Rencana; (4) **Rincian perhitungan** yang dapat dibuka/tutup, ditulis **sederhana dan mudah dipahami** `[JLR-3]`: langkah hitung bernomor dalam bahasa sehari-hari (biaya tetap acara → biaya per peserta → total biaya → pendapatan → untung/rugi → titik impas), masing-masing satu kalimat + angka, lalu tabel profit **pendek** (± 5 baris: BEP, rencana, dan beberapa jumlah peserta di sekitarnya). **Input simulasi** (durasi, target peserta, harga jual standar / peserta, target profit) tampil di bagian 1 *Informasi Program* **dan** di atas hasil di bagian 4 *Simulasi Hasil*, terikat ke **satu nilai**: cukup diisi sekali di salah satu tempat, tempat lain ikut berubah `[ISC-1]`, `[KSC-1]`. Simulasi yang sama dipakai di Penjualan Program. Peringatan (tidak menghalangi simpan Draft): profit minus; BEP > target peserta; profit < target profit; Hotel Trainer \*\* dan \*\*\* keduanya terisi (hanya peringatan `[K3M-6]`). | `[MP-17]`, `[MP-WISH-1]`, `[MP-WISH-2]`, `[MP-SIM]`, `[MP-9]`, `[MP-OP-2]`, `[REV-4]`, `[BEP-1]`, `[SIMX]`, `[JLR-3]`, `[ISC-1]`, `[KSC-1]` |
 
 ### 4.3 Status
 
@@ -680,7 +726,7 @@ Catatan: *Cost Master* D39 di Excel baru sudah `=D11+D19` (tidak lagi dobel hitu
 | draf 3 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-arah-penjualan-program/`: hilir Master Program adalah **Penjualan Program** (bukan quotation); MP-FR-17 — angka Master Program = As Is, Penjualan Program mengikuti perubahan; realisasi peserta fix pindah ke modul Quotation (ditunda). |
 | draf 4 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/`: tanpa mode harga — nominal item selalu dapat diedit (MP-FR-08, MP-NFR-05); simulasi ditata ulang agar mudah dibaca (MP-FR-10); As Is dihapus (MP-FR-17, Q-MP-07 baru). |
 | draf 5 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-bep/`: simulasi ditambah **Data BEP** — perhitungan BEP langkah demi langkah dan tabel profit menurut jumlah peserta (MP-FR-10). |
-| draf 6 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/`: tampilan simulasi mengikuti `input/simulasi_hasil.html` — kotak BEP, hasil rencana, skala peserta, rincian yang dapat dibuka/tutup; tambah margin % dan minimal peserta untuk target profit (MP-FR-10). |
+| draf 6 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/`: tampilan simulasi mengikuti `input/Master - Buat Program/simulasi_hasil.html` — kotak BEP, hasil rencana, skala peserta, rincian yang dapat dibuka/tutup; tambah margin % dan minimal peserta untuk target profit (MP-FR-10). |
 | draf 6a | 23-10-2026 | Istilah "sumbangan per peserta" dihapus atas permintaan user (chat 23-10-2026); BEP peserta ditulis langsung sebagai Fixed Cost ÷ (harga − biaya variable per peserta). |
 | draf 7 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-opsi-draft-master-program/`: menu gear Master Program Draft hanya Finalkan dan Batalkan; form dibuka lewat tautan nomor/judul (MP-FR-01). |
 | draf 8 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-opsi-status-master-program/`: menu gear Draft = Edit, Finalkan, Batalkan; Final = Lihat; Batal = Lihat; tautan nomor/judul dihapus (MP-FR-01); Q-MP-08 baru. |
@@ -705,7 +751,7 @@ Catatan: *Cost Master* D39 di Excel baru sudah `=D11+D19` (tidak lagi dobel hitu
 - **Modul terkait:** hulu Master Program → `docs/fr-nfr-master-program.md`; Master Data → `docs/fr-nfr.md` (Master Rate); hilir **Quotation** untuk Public **dan** B2B → `docs/fr-nfr-quotation.md` `[QCP-1]`; **Sales Order tidak ada** `[B2B-3]`
 - **Use case kanonis:** `docs/workbook.xlsx` sheet *UC Non-BPMN*
 - **ERD:** `docs/diagrams/erd.drawio` halaman *ERD Penjualan Program*
-- **Mockup:** `ui-mockup/produk/index.html` → modul Penjualan Program (layout form mengikuti `input/labmania.html`)
+- **Mockup:** `ui-mockup/produk/index.html` → modul Penjualan Program (layout form mengikuti `input/Master - Buat Program/labmania.html`)
 
 Penomoran memakai awalan **PJ-**. Kode UC satu urutan untuk seluruh workbook; kode yang dihapus tidak dipakai ulang.
 
@@ -717,7 +763,7 @@ Penomoran memakai awalan **PJ-**. Kode UC satu urutan untuk seluruh workbook; ko
 | `[K3M-n]` | konfirmasi, `input/Master - Buat Program/2026-10-23-konfirmasi-3-modul/` — butir n |
 | `[ARH-n]` | arah modul, `input/Master - Buat Program/2026-10-23-arah-penjualan-program/` — butir n |
 | `[REV-n]` | revisi, `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/` — butir n |
-| `[SIMX]` | tampilan simulasi, `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/` (`input/simulasi_hasil.html`) |
+| `[SIMX]` | tampilan simulasi, `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/` (`input/Master - Buat Program/simulasi_hasil.html`) |
 | `[TDK-1]` | Penjualan Program tanpa diskon, `input/Master - Buat Program/2026-10-23-tanpa-diskon/` |
 | `[BEP-1]` | permintaan data BEP, `input/Master - Buat Program/2026-10-23-simulasi-bep/` |
 | `[JLR-n]` | jalur Public vs B2B, `input/Master - Buat Program/2026-10-25-jalur-public-b2b/` — pesan n |
@@ -921,7 +967,7 @@ Final dan Batal tidak kembali ke Draft. Final tidak dapat dibatalkan `[JPP-5]`.
 | draf 3 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-arah-penjualan-program/` — ditulis ulang sebagai **Penjualan Program** dengan status Draft → Final / Batal; Final Public → Quotation, B2B → Sales Order (ditunda); fitur quotation ditunda; diskon B2B; As Is vs Penjualan; UC-24, UC-25, UC-27 dihapus; UC-29 baru. |
 | draf 4 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/`: B2B punya **skema harga** per peserta (default) atau all-in — harga paket tidak wajib (PJ-FR-04, PJ-FR-12, PJ-FR-13, PJ-NFR-06); As Is vs Penjualan dan laporannya dihapus (PJ-FR-18, PJ-FR-19, UC-28 dihapus; Q-PJ-14 baru); simulasi ditata ulang agar mudah dibaca (PJ-FR-10); tidak ada mode harga (PJ-FR-05). |
 | draf 5 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-bep/`: simulasi ditambah **Data BEP** — perhitungan BEP, tabel profit menurut jumlah peserta, dan batas peserta untuk B2B all-in (PJ-FR-10). |
-| draf 6 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/`: tampilan simulasi mengikuti `input/simulasi_hasil.html` (PJ-FR-10); B2B all-in memakai harga paket minimal & maksimal peserta pada kotak BEP dan skala. |
+| draf 6 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/`: tampilan simulasi mengikuti `input/Master - Buat Program/simulasi_hasil.html` (PJ-FR-10); B2B all-in memakai harga paket minimal & maksimal peserta pada kotak BEP dan skala. |
 | draf 6a | 23-10-2026 | Istilah "sumbangan per peserta" dihapus atas permintaan user (chat 23-10-2026); BEP peserta ditulis langsung sebagai Fixed Cost ÷ (harga − biaya variable per peserta). |
 | draf 7 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-tanpa-diskon/`: **diskon dihapus untuk sementara** (Public & B2B) — PJ-FR-12, PJ-FR-13, PJ-FR-15, PJ-NFR-06, UC-23, UC-29; Q-PJ-13 gugur. |
 | draf 8 | 25-10-2026 | `input/Master - Buat Program/2026-10-25-jalur-public-b2b/`: **form & simulasi sama** untuk Public dan B2B; jenis hanya penanda jalur (PJ-FR-03). Company, skema all-in, harga paket, jumlah peserta min 10 keluar ke **Sales Order** (ditunda) — PJ-FR-11 – PJ-FR-13 dihapus, bagian 4.3 baru. UC-23 digabung ke UC-22. Target peserta disalin dari Master Program (default 10). Rincian simulasi disederhanakan (PJ-FR-10). Q-PJ-04 gugur; Q-PJ-15, Q-PJ-16 baru. |
@@ -943,13 +989,13 @@ Final dan Batal tidak kembali ke Draft. Final tidak dapat dibatalkan `[JPP-5]`.
 
 # Bagian 4 — Modul Quotation Labmania
 
-- **Versi:** draf 9c — 30-10-2026
-- **Sumber:** `input/Master - Buat Program/2026-10-30-allin-b2b-tabel-baru/` (all-in hanya B2B, `tr_penawaran` tidak dipakai); `input/Master - Buat Program/2026-10-30-b2b-allin-diskon-konfirmasi/` (all-in boleh diskon, pecah invoice = all-in ÷ peserta, B2B tanpa Confirmation Letter, minimal 10 saat Deal); `input/Master - Buat Program/2026-10-30-b2b-quotation-allin-min10/` (B2B: skema harga per peserta / all-in, minimal 10 peserta, tanpa Sales Order, tanpa Formulir Konfirmasi, satu quotation); `input/Master - Buat Program/2026-10-29-cetak-quotation-snk-konfirmasi/` (template `input/Template Penawaran Labmania.pdf`, `input/SYARAT & KETENTUAN KEBIJAKAN LAYANAN PEMBELAJARAN.pdf`, `input/Tamplate Formulir Konfirmasi Workshop.doc`); `input/Master - Buat Program/2026-10-29-quotation-diskon-aksi/` (tampilan index acuan `input/labmania.html`, panel Quotation); `input/Master - Buat Program/2026-10-28-quotation-company-personal/`; keputusan terdahulu `input/Master - Buat Program/2026-10-25-quotation-so-persiapan-invoice/`, `input/Master - Buat Program/2026-10-25-surat-penawaran-rencana-aktual/`, `input/Master - Buat Program/2026-10-28-jawaban-pertanyaan-program/`
+- **Versi:** draf 10a — 03-11-2026
+- **Sumber:** `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/` (format nomor Penawaran `LMI/PW/MM/yy-zzz`); `input/Master - Buat Program/2026-10-30-allin-b2b-tabel-baru/` (all-in hanya B2B, `tr_penawaran` tidak dipakai); `input/Master - Buat Program/2026-10-30-b2b-allin-diskon-konfirmasi/` (all-in boleh diskon, pecah invoice = all-in ÷ peserta, B2B tanpa Confirmation Letter, minimal 10 saat Deal); `input/Master - Buat Program/2026-10-30-b2b-quotation-allin-min10/` (B2B: skema harga per peserta / all-in, minimal 10 peserta, tanpa Sales Order, tanpa Formulir Konfirmasi, satu quotation); `input/Master - Buat Program/2026-10-29-cetak-quotation-snk-konfirmasi/` (template `input/Master - Buat Program/Template Penawaran Labmania.pdf`, `input/Master - Buat Program/SYARAT & KETENTUAN KEBIJAKAN LAYANAN PEMBELAJARAN.pdf`, `input/Master - Buat Program/Tamplate Formulir Konfirmasi Workshop.doc`); `input/Master - Buat Program/2026-10-29-quotation-diskon-aksi/` (tampilan index acuan `input/Master - Buat Program/labmania.html`, panel Quotation); `input/Master - Buat Program/2026-10-28-quotation-company-personal/`; keputusan terdahulu `input/Master - Buat Program/2026-10-25-quotation-so-persiapan-invoice/`, `input/Master - Buat Program/2026-10-25-surat-penawaran-rencana-aktual/`, `input/Master - Buat Program/2026-10-28-jawaban-pertanyaan-program/`
 - **Status:** DRAF — pertanyaan terbuka di bagian 7
 - **Modul terkait:** hulu Penjualan Program → `docs/fr-nfr-penjualan-program.md`; Master Data → `docs/fr-nfr.md` (Master Peserta, Master Company, Master User)
 - **Mockup:** `ui-mockup/produk/index.html` → modul Quotation (draf 11x)
 - **ERD:** `docs/diagrams/erd.drawio` halaman *ERD Quotation* (draf 1) — tabel `quotation`, `quotation_peserta`, `quotation_keterangan`; `ms_peserta.id_customer` di *ERD Master Data*
-- **Draf sebelumnya:** `input/backup/fr-nfr-quotation_draf8_30-10-2026.md`
+- **Draf sebelumnya:** `input/backup/fr-nfr-quotation_draf10_03-11-2026.md`
 
 Penomoran memakai awalan **QTN-**.
 
@@ -958,13 +1004,14 @@ Penomoran memakai awalan **QTN-**.
 | `[QDA-n]` | `input/Master - Buat Program/2026-10-29-quotation-diskon-aksi/` — butir n: (1) Public & B2B → Quotation, (2) Company/Personal, peserta baru dari form, company peserta ikut, (3) diskon Rupiah, (4) Public berkali-kali, index seperti `labmania.html`, (5) empat aksi |
 | `[CQP]` | `input/Master - Buat Program/2026-10-29-cetak-quotation-snk-konfirmasi/` — cetak quotation = PDF Penawaran + S&K + Formulir Konfirmasi, mengikuti tiga template |
 | `[QCP-n]` | `input/Master - Buat Program/2026-10-28-quotation-company-personal/` — kalimat n: (3) Company → peserta dari company yang sama |
-| `[LMH]` | tampilan acuan `input/labmania.html` |
+| `[LMH]` | tampilan acuan `input/Master - Buat Program/labmania.html` |
 | `[INV-1]` | Quotation = persiapan invoice, peserta sudah fix |
 | `[SPA-2]` | harga jual tidak berubah; selisih peserta → laporan Rencana vs Aktual |
 | `[JPP-15]` | Deal/Batal per peserta masih ada |
 | `[ATB-n]` | `input/Master - Buat Program/2026-10-30-allin-b2b-tabel-baru/` — jawaban n: (1) all-in hanya B2B, (2) `tr_penawaran` tidak dipakai, tabel baru |
 | `[BAD-n]` | `input/Master - Buat Program/2026-10-30-b2b-allin-diskon-konfirmasi/` — jawaban n: (1) all-in boleh diskon, (2) pecah invoice = all-in ÷ peserta (sementara), (3) B2B tanpa Confirmation Letter, (4) minimal 10 juga saat Deal |
 | `[B2B-n]` | `input/Master - Buat Program/2026-10-30-b2b-quotation-allin-min10/` — jawaban n: (1) B2B = company, harga per peserta atau all-in 1 company, (2) minimal 10 peserta dari Penjualan Program sampai Quotation, (3) Sales Order tidak ada, (4) B2B tanpa Formulir Konfirmasi, (5) B2B satu quotation, invoice dapat dipecah per peserta |
+| `[FPN]` | `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/` — format nomor Penawaran `LMI/PW/MM/yy-zzz` dan Invoice `LMI/INV/MM/yy-zzz` |
 | `[STD]` | standar proyek di `AGENTS.md` |
 | `[USULAN]` | usulan analis, **belum** dinyatakan klien |
 
@@ -995,12 +1042,12 @@ Beda **Public** dan **B2B** di Quotation:
 | Skema harga | Per peserta | **Per peserta** atau **All-in 1 company** `[B2B-1]` |
 | Diskon | Rupiah per peserta | Per peserta: Rupiah per peserta; All-in: Rupiah **total** `[BAD-1]` |
 | Formulir Konfirmasi / Confirmation Letter | Dicetak | **Tidak** `[B2B-4]`, `[BAD-3]` |
-| Invoice (menyusul) | Per quotation | Dapat **dipecah per peserta** bila client minta `[B2B-5]`; all-in: per peserta = (all-in − diskon) ÷ peserta `[BAD-2]` |
+| Invoice (`docs/fr-nfr-invoice.md`) | Satu invoice per quotation Deal | **Mengikuti skema**: all-in ke company = 1 invoice; per peserta = 1 invoice per peserta Deal (`input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/`, menggantikan `[BAD-2]`) |
 
 ```
 Penjualan Program Final (Public / B2B)
    └─► Quotation: Draft ──Kirim & Cetak──► Terkirim ──Deal──► Deal ──► Confirmation Letter
-                    │                         │                      └─► Invoice (menyusul)
+                    │                         │                      └─► Invoice (docs/fr-nfr-invoice.md)
                     └──────── Batalkan ───────┴──► Batal
 ```
 
@@ -1021,7 +1068,7 @@ Penjualan Program Final (Public / B2B)
 |---|---|---|---|---|---|
 | UC-33 | Membuat Quotation | Manajemen | Ada Penjualan Program Final (B2B: belum ada quotation selain Batal) | Pilih Penjualan Program, isi tanggal & sales, pilih Company/Personal (B2B: Company penjualan), pilih atau isi peserta baru (B2B ≥ 10), pilih skema harga (B2B: per peserta / all-in), isi diskon, Keterangan, Formulir Konfirmasi (Public), preview, simpan | Quotation Draft dengan nomor; peserta baru tersimpan di Master Peserta |
 | UC-34 | Kirim dan Cetak Quotation | Manajemen | Quotation Draft / Terkirim | Buka pratinjau PDF (Penawaran + S&K + Formulir Konfirmasi per peserta; B2B tanpa formulir), Kirim & Cetak | Status Terkirim (menunggu deal) |
-| UC-35 | Menandai Deal | Manajemen | Quotation Terkirim | Centang peserta yang deal (default semua; B2B ≥ 10), simpan | Status Deal; peserta deal = peserta aktual |
+| UC-35 | Menandai Deal | Manajemen | Quotation Terkirim | Centang peserta yang deal (default semua; B2B ≥ 10), simpan | Status Deal; peserta deal = peserta aktual dan dasar invoice (QTN-FR-11) |
 | UC-36 | Membatalkan Quotation | Manajemen | Quotation Draft / Terkirim | Konfirmasi batal | Status Batal; pesertanya dapat dipakai di quotation lain |
 | UC-37 | Mencetak Confirmation Letter | Manajemen | Quotation Deal **Public** (B2B tidak ada `[BAD-3]`) | Buka pratinjau surat konfirmasi kehadiran, cetak | Surat tercetak (format menyusul) |
 
@@ -1041,7 +1088,7 @@ Penjualan Program Final (Public / B2B)
 
 | ID | Kebutuhan | Sumber |
 |---|---|---|
-| QTN-FR-04 | **Header**: Penjualan Program (wajib, hanya Final), **Nomor Quotation** otomatis berformat **`LM-I/AM/PW/MM/YY-XXX`** sesuai template `[CQP]` (arti `AM` & reset urutan: Q-QTN-01), **Tanggal quotation** (wajib, default hari ini), Berlaku sampai (default +30 hari; tidak boleh sebelum tanggal quotation), **Sales / marketing** (wajib, Master User aktif — juga penanda tangan Penawaran dan kontak di Formulir Konfirmasi `[USULAN]`), Sumber informasi (Sales, Media sosial, Website, Referensi / repeat order, Lainnya). Catatan bebas digantikan blok **Keterangan** (QTN-FR-17). **Tanpa pilihan cara pembayaran** `input/Master - Buat Program/2026-10-29-tanpa-pilihan-pembayaran/`. | `[LMH]`, `[CQP]`, `input/Master - Buat Program/2026-10-29-tanpa-pilihan-pembayaran/` + `[USULAN]` |
+| QTN-FR-04 | **Header**: Penjualan Program (wajib, hanya Final), **Nomor Quotation** otomatis berformat **`LMI/PW/MM/yy-zzz`** `[FPN]` — `LMI` kode PT LabMania Indonesia Jaya, `PW` kode Penawaran, `MM` bulan 2 digit, `yy` 2 digit terakhir tahun, `zzz` nomor urut 3 digit (contoh `LMI/PW/11/26-001`); `MM/yy` dari Tanggal quotation, urutan di-reset tiap bulan `[USULAN]` (Q-QTN-01); nomor dibuat server saat Simpan, **Tanggal quotation** (wajib, default hari ini), Berlaku sampai (default +30 hari; tidak boleh sebelum tanggal quotation), **Sales / marketing** (wajib, Master User aktif — juga penanda tangan Penawaran dan kontak di Formulir Konfirmasi `[USULAN]`), Sumber informasi (Sales, Media sosial, Website, Referensi / repeat order, Lainnya). Catatan bebas digantikan blok **Keterangan** (QTN-FR-17). **Tanpa pilihan cara pembayaran** `input/Master - Buat Program/2026-10-29-tanpa-pilihan-pembayaran/`. | `[LMH]`, `[FPN]`, `input/Master - Buat Program/2026-10-29-tanpa-pilihan-pembayaran/` + `[USULAN]` (sumber MM/yy, reset urutan) |
 | QTN-FR-05 | **Quotation ke** wajib: **Company** atau **Personal** `[QDA-2]`. Company: **Company** wajib (Master Company aktif), **u.p.** (default PIC company), Alamat (default alamat + kota company). Personal: tanpa field Company; Kepada = peserta pertama, Alamat default kota + provinsi peserta pertama `[USULAN]`. Penjualan **B2B**: tujuan otomatis Company dan terkunci ke Company Penjualan Program `[B2B-1]`. Alamat dapat diubah untuk surat ini. | `[QDA-2]`, `[B2B-1]` + `[USULAN]` |
 | QTN-FR-06 | **Peserta — Company**: daftar centang **hanya peserta Master Peserta yang terdaftar di company itu** (tombol "Pilih semua"), minimal 1; **Penjualan B2B minimal 10 peserta** (QTN-FR-21). | `[QCP-3]`, `[B2B-2]` |
 | QTN-FR-07 | **Peserta — Personal**: pilih **satu atau lebih** peserta dari Master Peserta (tambah baris, hapus baris), minimal 1. Tiap peserta yang dipilih menampilkan **Company / Instansi**, kode, telepon, dan email dari Master Peserta `[QDA-2]`. Tombol **"+ Peserta baru"** membuka isian di dalam form quotation dengan field Master Peserta (FR-16 `docs/fr-nfr.md`; semua wajib kecuali Company) — saat **Tambahkan**, peserta **langsung tersimpan ke Master Peserta** dengan Kode Peserta baru dan masuk daftar quotation ini, walau quotation tidak jadi disimpan `[QDA-2]` + `[USULAN]` (field mengikuti FR-16, saat simpan). Peserta yang sudah ada di quotation lain (selain Batal; peserta tidak Batal) untuk Penjualan Program yang sama **tidak dapat dipilih** — berlaku juga untuk Company. | `[QDA-2]` + `[USULAN]` (larangan ganda) |
@@ -1055,11 +1102,11 @@ Penjualan Program Final (Public / B2B)
 |---|---|---|
 | QTN-FR-09 | Menu gear per status (bagian 6). Empat aksi dari klien: **Kirim dan Cetak Quotation**, **Deal**, **Batalkan**, **Confirmation Letter** `[QDA-5]`. Tambahan: **Edit** pada Draft `[USULAN]`; **Lihat** pada Batal. Tidak ada aksi Hapus — quotation yang tidak jadi dibatalkan `[QDA-5]` + `[USULAN]`. | `[QDA-5]` |
 | QTN-FR-10 | **Kirim dan Cetak Quotation**: quotation yang sudah jadi dikirim untuk **menunggu deal** `[QDA-5]`. Menghasilkan **satu PDF** berisi berurutan: (1) **Penawaran** (QTN-FR-14), (2) **Syarat & Ketentuan** (QTN-FR-15), (3) **Formulir Konfirmasi Keikutsertaan** satu halaman per peserta quotation (QTN-FR-16) `[CQP]` — **tidak untuk B2B** `[B2B-4]`. Pratinjau halaman A4 di layar berlabel **"Preview — belum dikirim"** (Draft), tombol **Tutup** dan **Kirim & Cetak**, serta **Cetak / Simpan PDF** `input/Master - Buat Program/2026-10-29-keterangan-ux-preview/`. Dari Draft → **Terkirim**, tidak dapat diedit lagi. Pada Terkirim/Deal dapat dicetak ulang. | `[QDA-5]`, `[CQP]` |
-| QTN-FR-11 | **Deal**: hanya pada Terkirim. Popup berisi peserta quotation dengan centang **Deal** (default semua dicentang); minimal satu dicentang — bila tidak ada yang deal, gunakan Batalkan. Peserta tidak dicentang = **Batal** dan bebas dipakai di quotation lain `[JPP-15]` + `[USULAN]`. Status → **Deal**. Peserta Deal = peserta aktual untuk laporan Rencana vs Aktual (PJ-FR-21), jumlah "deal" di daftar Penjualan Program, dan progres di index. Nilai Deal dihitung dari peserta Deal. | `[QDA-5]`, `[JPP-15]`, `[SPA-2]` + `[USULAN]` (centang peserta) |
+| QTN-FR-11 | **Deal**: hanya pada Terkirim. Popup berisi peserta quotation dengan centang **Deal** (default semua dicentang); minimal satu dicentang — bila tidak ada yang deal, gunakan Batalkan. Peserta tidak dicentang = **Batal** dan bebas dipakai di quotation lain `[JPP-15]` + `[USULAN]`. Status → **Deal**. Peserta Deal = peserta aktual untuk laporan Rencana vs Aktual (PJ-FR-21), jumlah "deal" di daftar Penjualan Program, dan progres di index. Nilai Deal dihitung dari peserta Deal. **Peserta Deal juga menjadi dasar invoice** `[INV-1]`: hanya peserta Deal yang ditagih, peserta Batal tidak. Jumlah invoice mengikuti jenis penjualan dan skema harga: Public (Company atau Personal) = 1 invoice per quotation; B2B All-in 1 company = 1 invoice; B2B Per peserta = 1 invoice per peserta Deal, dipecah otomatis dengan nomor invoice berbeda per peserta (`docs/fr-nfr-invoice.md` IVC-FR-06, IVC-FR-09; `input/Invoice & Pengajuan/2026-11-03-b2b-per-peserta-pecah-otomatis/`). | `[QDA-5]`, `[JPP-15]`, `[SPA-2]` + `[USULAN]` (centang peserta) |
 | QTN-FR-12 | **Batalkan**: untuk quotation yang **tidak jadi deal** — Draft atau Terkirim `[QDA-5]`. Konfirmasi; status → **Batal**, tidak dapat diubah; pesertanya dapat dibuatkan quotation baru. | `[QDA-5]` |
-| QTN-FR-13 | **Confirmation Letter**: hanya untuk quotation **Deal** `[QDA-5]`, **Public** saja — **B2B tidak ada Confirmation Letter** `[B2B-4]`, `[BAD-3]`. Mencetak **Formulir Konfirmasi Keikutsertaan** (format QTN-FR-16, **template formulir quotation**) untuk **peserta Deal** saja; tidak mengubah status. Format diambil dari `input/Tamplate Formulir Konfirmasi Workshop.doc` `[CQP]` + `[USULAN]` (Confirmation Letter = formulir ini, Q-QTN-05). | `[QDA-5]`, `[CQP]` + `[USULAN]` |
-| QTN-FR-14 | **Halaman Penawaran** mengikuti `input/Template Penawaran Labmania.pdf` (kode `FR/LMI-TR-01/01/Ed.Rev-1.1`, berlaku 01/01/2025): kop PT LabMania Indonesia Jaya; **Kepada** (nama Company/peserta, alamat); blok **Penawaran** (Nomor, Tanggal — baris Pembayaran di template **tidak dicetak** `input/Master - Buat Program/2026-10-29-tanpa-pilihan-pembayaran/`, Q-QTN-14); tabel **No Catalog** (Nomor Paket Produk), **Item** (judul paket), **Deskripsi** (durasi, tanggal, **waktu**, tempat; + daftar nama peserta `[USULAN]`), **Kts.** (jumlah peserta), **Harga** (per peserta), **Diskon** (Rupiah per peserta — template menulis persentase, tetapi diskon diputuskan Rupiah saja `[QDA-3]`), **Total Harga** (Kts × Harga); **Keterangan**: "Up. Ibu/Bapak" (u.p. Company; Personal = peserta pertama), lalu isi **Keterangan quotation** (QTN-FR-17) per kategori — Syarat keikutsertaan, "Biaya sudah termasuk mendapatkan", "Biaya tidak termasuk", Dokumen persyaratan (butir berawalan "-"; kategori kosong tidak dicetak) — dan Klausul tanda tangan sebagai paragraf; ringkasan **Sub Total, Diskon, PPN (11%), Biaya Lain-lain, Total**; tanda tangan: tanggal + Divisi (Department Master User) + nama sales, dan "Disetujui oleh Pelanggan"; kaki halaman kode dokumen. | `[CQP]` + `[USULAN]` (pemetaan field) |
-| QTN-FR-15 | **Halaman Syarat & Ketentuan Kebijakan Layanan Pembelajaran**: teks tetap sesuai `input/SYARAT & KETENTUAN KEBIJAKAN LAYANAN PEMBELAJARAN.pdf` (kode `DP/LMI-TR-01/01/Ed.Rev-1.1`, berlaku 21/10/2024, 2 halaman, tujuh bagian: Pembatalan Kepesertaan, Penarikan dan Pengembalian Uang; Pembayaran; Penggantian Barang Rusak/Hilang; Kerahasiaan; Sertifikat Pelatihan; Lisensi; Umpan Balik, Saran dan Keluhan; pengesahan Operational Director). Perubahan isi = versi dokumen baru (Q-QTN-12). | `[CQP]` + `[USULAN]` (teks tetap) |
+| QTN-FR-13 | **Confirmation Letter**: hanya untuk quotation **Deal** `[QDA-5]`, **Public** saja — **B2B tidak ada Confirmation Letter** `[B2B-4]`, `[BAD-3]`. Mencetak **Formulir Konfirmasi Keikutsertaan** (format QTN-FR-16, **template formulir quotation**) untuk **peserta Deal** saja; tidak mengubah status. Format diambil dari `input/Master - Buat Program/Tamplate Formulir Konfirmasi Workshop.doc` `[CQP]` + `[USULAN]` (Confirmation Letter = formulir ini, Q-QTN-05). | `[QDA-5]`, `[CQP]` + `[USULAN]` |
+| QTN-FR-14 | **Halaman Penawaran** mengikuti `input/Master - Buat Program/Template Penawaran Labmania.pdf` (kode `FR/LMI-TR-01/01/Ed.Rev-1.1`, berlaku 01/01/2025): kop PT LabMania Indonesia Jaya; **Kepada** (nama Company/peserta, alamat); blok **Penawaran** (Nomor, Tanggal — baris Pembayaran di template **tidak dicetak** `input/Master - Buat Program/2026-10-29-tanpa-pilihan-pembayaran/`, Q-QTN-14); tabel **No Catalog** (Nomor Paket Produk), **Item** (judul paket), **Deskripsi** (durasi, tanggal, **waktu**, tempat; + daftar nama peserta `[USULAN]`), **Kts.** (jumlah peserta), **Harga** (per peserta), **Diskon** (Rupiah per peserta — template menulis persentase, tetapi diskon diputuskan Rupiah saja `[QDA-3]`), **Total Harga** (Kts × Harga); **Keterangan**: "Up. Ibu/Bapak" (u.p. Company; Personal = peserta pertama), lalu isi **Keterangan quotation** (QTN-FR-17) per kategori — Syarat keikutsertaan, "Biaya sudah termasuk mendapatkan", "Biaya tidak termasuk", Dokumen persyaratan (butir berawalan "-"; kategori kosong tidak dicetak) — dan Klausul tanda tangan sebagai paragraf; ringkasan **Sub Total, Diskon, PPN (11%), Biaya Lain-lain, Total**; tanda tangan: tanggal + Divisi (Department Master User) + nama sales, dan "Disetujui oleh Pelanggan"; kaki halaman kode dokumen. | `[CQP]` + `[USULAN]` (pemetaan field) |
+| QTN-FR-15 | **Halaman Syarat & Ketentuan Kebijakan Layanan Pembelajaran**: teks tetap sesuai `input/Master - Buat Program/SYARAT & KETENTUAN KEBIJAKAN LAYANAN PEMBELAJARAN.pdf` (kode `DP/LMI-TR-01/01/Ed.Rev-1.1`, berlaku 21/10/2024, 2 halaman, tujuh bagian: Pembatalan Kepesertaan, Penarikan dan Pengembalian Uang; Pembayaran; Penggantian Barang Rusak/Hilang; Kerahasiaan; Sertifikat Pelatihan; Lisensi; Umpan Balik, Saran dan Keluhan; pengesahan Operational Director). Perubahan isi = versi dokumen baru (Q-QTN-12). | `[CQP]` + `[USULAN]` (teks tetap) |
 | QTN-FR-16 | **Formulir Konfirmasi Keikutsertaan Peserta** (kode `FR/LMI-TR-01/02/Ed.Rev-1.0`, berlaku 01/08/2023), **satu halaman per peserta**, mengikuti **template formulir quotation** (QTN-FR-19; master `docs/fr-nfr.md` FR-51): isian sesuai template + isian tambahan quotation — Nama, Instansi, Alamat Instansi (alamat company atau kota peserta), Nomor WhatsApp, Email terisi dari Master Peserta; isian lain dikosongkan untuk diisi peserta (Q-32); pernyataan 1 dari quotation dengan penanda terisi data Penjualan Program; pernyataan 2 (S&K) tetap; tempat/tanggal, tanda tangan, Jabatan; catatan dari template dengan email & telepon **sales quotation** dan label kegiatan template. **Tidak dicetak untuk B2B / in-house** `[B2B-4]`. | `[CQP]`, `input/Master - Buat Program/2026-10-29-template-formulir-konfirmasi/` + `[USULAN]` (isian otomatis, kontak) |
 | QTN-FR-17 | **Keterangan** (langkah 2 form, QTN-FR-18) berupa **daftar centang per kategori** yang dapat dilipat: Syarat keikutsertaan, Termasuk, Tidak termasuk, Dokumen persyaratan. Setiap kategori menampilkan semua butir aktif Template Keterangan (`docs/fr-nfr.md` FR-48) yang **berlaku untuk jenis penjualan**; butir **Default tercentang** otomatis; judul kategori menampilkan ringkasan "x dari y dipilih". Per quotation: **centang / hapus centang**; **+ Tambah teks lain** (isian satu baris, Enter); **✎ ubah teks** butir (butir yang diubah/ditambah ditandai "khusus quotation ini"); **Kembalikan ke default**. **Klausul tanda tangan tidak tampil** di form — dicetak dari butir Default master sesuai jenis penjualan. Teks tercentang disimpan di quotation (salinan), tidak mengubah master; terkunci setelah Terkirim. Mengganti Penjualan Program sebelum ada perubahan mengisi ulang default sesuai jenisnya. | `input/Master - Buat Program/2026-10-29-keterangan-ux-preview/`, `input/Master - Buat Program/2026-10-29-keterangan-quotation-default/` + `[USULAN]` (Klausul dari master saja) |
 | QTN-FR-18 | **Form quotation 4 langkah** (B2B **3 langkah** — tanpa Formulir Konfirmasi `[B2B-4]`) dengan penanda langkah yang dapat diklik: **1 Data Quotation** (QTN-FR-04 – QTN-FR-08), **2 Keterangan** (QTN-FR-17), **3 Formulir Konfirmasi** (QTN-FR-19), **4 Preview** — PDF lengkap (Penawaran + S&K + Formulir Konfirmasi per peserta) **sebelum disimpan**, berlabel "Preview — belum disimpan". Tombol bawah: Batal, **← Kembali** (langkah 2–4), **Lanjut →** (langkah 1–3) / **Simpan Draft** (langkah 4; edit: Simpan Perubahan). Langkah 2–4 hanya terbuka bila langkah 1 valid; bila tidak, kembali ke langkah 1 dengan pesan galat. Isian tetap tersimpan saat berpindah langkah. | `input/Master - Buat Program/2026-10-29-keterangan-ux-preview/` + `[USULAN]` (urutan & tombol) |
@@ -1108,7 +1155,7 @@ ikut **Batal** bila quotation dibatalkan.
 
 | ID | Pertanyaan | Mempengaruhi |
 |---|---|---|
-| Q-QTN-01 | Nomor dari template: `LM-I/AM/PW/MM/YY-XXX` `[CQP]`. Apa arti segmen **AM** (tetap, atau kode divisi/sales)? Urutan XXX di-reset per bulan, per tahun, atau berlanjut? | QTN-FR-04 |
+| Q-QTN-01 | ~~Arti segmen AM di `LM-I/AM/PW/MM/YY-XXX`?~~ **Terjawab** `[FPN]`: format menjadi `LMI/PW/MM/yy-zzz` (tanpa AM). Masih usulan: `MM/yy` dari Tanggal quotation dan urutan `zzz` di-reset tiap bulan — benar, atau berlanjut sepanjang tahun? | QTN-FR-04 |
 | Q-QTN-02 | ~~Personal satu peserta atau beberapa?~~ **Terjawab** `[QDA-2]`: boleh lebih dari satu. | — |
 | Q-QTN-03 | ~~Sales Order masih dipakai?~~ **Terjawab** `[B2B-3]`: Sales Order tidak ada, Quotation saja. | — |
 | Q-QTN-04 | ~~Tabel baru atau `tr_penawaran`?~~ **Terjawab** `[ATB-2]`: `tr_penawaran` tidak dipakai; tabel baru `quotation`, `quotation_peserta`, `quotation_keterangan` + kolom `ms_peserta.id_customer`. | — |
@@ -1123,7 +1170,7 @@ ikut **Batal** bila quotation dibatalkan.
 | Q-QTN-13 | ~~B2B tetap mencetak Formulir Konfirmasi?~~ **Terjawab** `[B2B-4]`: tidak perlu. | — |
 | Q-QTN-14 | Template Penawaran memuat baris **Pembayaran** `[Cash In Advance/Termin/Tempo]`. Setelah pilihan pembayaran dihapus, baris itu dihilangkan (usulan) atau dicetak dengan teks tetap? | QTN-FR-14 |
 | Q-QTN-15 | ~~All-in boleh diskon? Hanya B2B?~~ **Terjawab** `[BAD-1]`, `[ATB-1]`: boleh diskon (Rupiah total, usulan); hanya B2B. Masih terbuka: di Penawaran dicetak satu baris paket (usulan)? | QTN-FR-20 |
-| Q-QTN-16 | ~~Invoice B2B dipecah per peserta~~ **Terjawab sementara** `[BAD-2]` ("coba begitu dulu"): per peserta = (all-in − diskon) ÷ jumlah peserta, dipilih saat membuat invoice. | Modul Invoice (menyusul) |
+| Q-QTN-16 | ~~Invoice B2B dipecah per peserta~~ **Terjawab** `input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/` (menggantikan `[BAD-2]`): invoice mengikuti skema quotation. All-in = 1 invoice; per peserta = 1 invoice per peserta. | `docs/fr-nfr-invoice.md` IVC-FR-06 |
 | Q-QTN-17 | ~~B2B Confirmation Letter?~~ **Terjawab** `[BAD-3]`: tidak ada. | — |
 | Q-QTN-18 | ~~Minimal 10 saat Deal?~~ **Terjawab** `[BAD-4]`: ya, peserta Deal ≥ 10. | — |
 
@@ -1133,7 +1180,7 @@ ikut **Batal** bila quotation dibatalkan.
 
 | Versi | Tanggal | Perubahan |
 |---|---|---|
-| draf 1 | 28-10-2026 | Penyusunan awal dari `input/Master - Buat Program/2026-10-28-quotation-company-personal/` dan `input/labmania.html`: Public & B2B → Quotation; tujuan Company/Personal; peserta dari company yang sama; Deal/Batal per peserta; mockup draf 11l. |
+| draf 1 | 28-10-2026 | Penyusunan awal dari `input/Master - Buat Program/2026-10-28-quotation-company-personal/` dan `input/Master - Buat Program/labmania.html`: Public & B2B → Quotation; tujuan Company/Personal; peserta dari company yang sama; Deal/Batal per peserta; mockup draf 11l. |
 | draf 2 | 29-10-2026 | `input/Master - Buat Program/2026-10-29-quotation-diskon-aksi/`: Personal boleh banyak peserta + isi peserta baru yang langsung masuk Master Peserta, company peserta ikut tampil (QTN-FR-07); **diskon Rupiah** (QTN-FR-08); Public berkali-kali, index per Penjualan Program seperti `labmania.html` (QTN-FR-01 – QTN-FR-03); empat aksi Kirim dan Cetak, Deal, Batalkan, Confirmation Letter (QTN-FR-09 – QTN-FR-13); status Draft → Terkirim → Deal / Batal menggantikan Selesai; Hapus dihapus; UC-37 baru; Q-QTN-02 terjawab, Q-QTN-05 – Q-QTN-10 baru; mockup draf 11m. |
 | draf 2a | 29-10-2026 | `input/Master - Buat Program/2026-10-29-detail-batch-tanpa-kartu/`: detail batch tanpa kartu (kartu alur & kartu ringkasan/bar progres dihapus), tombol **+ Create Quotation** per batch, filter status lewat dropdown (QTN-FR-02). |
 | draf 3 | 29-10-2026 | `input/Master - Buat Program/2026-10-29-cetak-quotation-snk-konfirmasi/`: cetak quotation = **satu PDF** Penawaran + S&K + Formulir Konfirmasi per peserta (QTN-FR-10, QTN-FR-14 – QTN-FR-16 baru, QTN-NFR-06); nomor `LM-I/AM/PW/MM/YY-XXX`; field Pembayaran, Catatan, Biaya Lain-lain (QTN-FR-04, QTN-FR-08); Confirmation Letter = Formulir Konfirmasi peserta Deal (QTN-FR-13); Q-QTN-01, -05 diperbarui; Q-QTN-11 – Q-QTN-13 baru; mockup draf 11r. |
@@ -1146,12 +1193,628 @@ ikut **Batal** bila quotation dibatalkan.
 | draf 9a | 30-10-2026 | `input/Master - Buat Program/2026-10-30-allin-b2b-tabel-baru/`: all-in **hanya B2B** (QTN-FR-20); `tr_penawaran` **tidak dipakai**, tabel baru dikonfirmasi (QTN-NFR-05). Q-QTN-04 terjawab, Q-QTN-15 tinggal soal cetak satu baris. |
 | draf 9b | 30-10-2026 | `input/Master - Buat Program/2026-10-30-format-rupiah-titik/`: isian uang dengan pemisah ribuan titik (QTN-NFR-07 baru). |
 | draf 9c | 30-10-2026 | `input/Master - Buat Program/2026-10-30-histori-activity-log/`: kolom jejak (created/updated/deleted) di semua tabel dan modul **Activity Log** — rujukan ke `docs/fr-nfr-activity-log.md` di NFR audit; mockup draf 12. |
+| draf 10a | 03-11-2026 | Penegasan hubungan Quotation → Invoice (QTN-FR-11, UC-35): peserta Deal = dasar invoice, peserta Batal tidak ditagih, jumlah invoice mengikuti jenis penjualan dan skema harga. Tidak ada aturan baru; diselaraskan dengan `docs/fr-nfr-invoice.md` IVC-FR-06, IVC-FR-09 (`[INV-1]`, `input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/`). |
+| draf 10 | 02-11-2026 | `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/`: Nomor Quotation menjadi **`LMI/PW/MM/yy-zzz`** (QTN-FR-04), menggantikan `LM-I/AM/PW/MM/YY-XXX`; Q-QTN-01 terjawab sebagian (sumber MM/yy dan reset per bulan masih usulan); penanda `[FPN]` baru. |
+| draf 9d | 30-10-2026 | `input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/`: baris Invoice di tabel Public vs B2B dan Q-QTN-16 diselaraskan dengan spec Invoice. Invoice B2B mengikuti skema quotation; `[BAD-2]` tidak dipakai lagi. |
 
 ---
 
-# Bagian 5 — Jejak Data & Modul Activity Log Labmania
+# Bagian 5 — Modul Invoice Labmania
 
-- **Versi:** draf 2 — 30-10-2026
+- **Versi:** draf 2i — 03-11-2026
+- **Sumber:** `input/Invoice & Pengajuan/2026-11-03-invoice-tanpa-nomor-po/` (Nomor PO dihapus, Nomor Faktur per invoice, COA Penjualan tetap); `input/Invoice & Pengajuan/2026-11-03-b2b-per-peserta-pecah-otomatis/` (B2B per peserta dipecah otomatis, nomor invoice berbeda per peserta); `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/` (format nomor Invoice `LMI/INV/MM/yy-zzz`); `input/Invoice & Pengajuan/2026-10-30-print-invoice/` (Print Invoice, template usulan); `input/Invoice & Pengajuan/2026-10-30-tanpa-report-invoice/` (menu report ditunda); `input/Invoice & Pengajuan/2026-10-30-add-invoice-halaman-penuh/` (Add Invoice halaman penuh); `input/Invoice & Pengajuan/2026-10-30-tab-invoiced-filter-jenis/` (status Uninvoiced/Invoiced, tab Invoiced, filter Public/B2B); `input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/` (invoice B2B mengikuti skema quotation); `input/Invoice & Pengajuan/2026-10-30-invoice-per-quotation-tab/` (satu quotation Deal = satu invoice, tab Public/B2B, kolom nomor program); `input/Invoice & Pengajuan/2026-10-30-invoice-consulting/` (`input/Invoice & Pengajuan/Invoice Consulting.xlsx`, `input/Invoice & Pengajuan/Invoice Consulting.html`); keputusan hulu dari modul Quotation: `input/Master - Buat Program/2026-10-25-quotation-so-persiapan-invoice/`, `input/Master - Buat Program/2026-10-30-b2b-quotation-allin-min10/`, `input/Master - Buat Program/2026-10-30-b2b-allin-diskon-konfirmasi/`
+- **Status:** DRAF. Pertanyaan terbuka ada di bagian 8.
+- **Modul terkait:** hulu Quotation (`docs/fr-nfr-quotation.md`); Master Company (`docs/fr-nfr.md` FR-30, FR-31); Activity Log (`docs/fr-nfr-activity-log.md`)
+- **Mockup:** `ui-mockup/produk/index.html`, modul **Invoice** (draf 13h)
+- **Draf sebelumnya:** `input/backup/fr-nfr-invoice_draf2h_03-11-2026.md`
+- **ERD:** belum digambar. Menunggu Q-IVC-01 (tabel baru atau tabel `tr_invoice_*` yang sudah ada). Usulan tabel ada di bagian 7.
+
+Penomoran memakai awalan **IVC-**. Awalan `INV-` sudah dipakai sebagai penanda sumber `[INV-1]` di spec Quotation.
+
+| Penanda | Arti |
+|---|---|
+| `[ICX-R n]` | `Invoice Consulting.xlsx` sheet **Requirements**, baris nomor n. (1) Progress tanpa DP. (2) Jenis PPN: WAPU, PKP, Kawasan Berikat. (3) 1 TOP = 1 invoice. (5) Tidak ada deposit/proforma. (7) Pembalikan uang muka PPN WAPU saat bukti setor diterima. (8) Non PKP tidak dipotong PPh 23. |
+| `[ICX-C1]` | sheet Requirements, Catatan Konsep 1: jurnal dibebankan ke company depan |
+| `[ICX-DEF]` | sheet **Definisi**: WAPU, Penjualan, DPP, PPN, Piutang |
+| `[ICX-BP]` | sheet **Business Process**: tabel jurnal (WAPU, Terima FP WAPU, PKP, Kawasan Berikat) dan daftar report |
+| `[ICX-K]` | sheet **Konsep**: field form Create Invoice, perhitungan, kolom jurnal |
+| `[ICX-TC]` | sheet **Test Case**: simulasi angka WAPU, PKP, Kawasan Berikat |
+| `[ICH]` | `Invoice Consulting.html`: daftar Uninvoiced/Invoiced, form Add Invoicing, kartu perhitungan, tabel jurnal, pilihan COA Penjualan |
+| `[IPQ-n]` | `input/Invoice & Pengajuan/2026-10-30-invoice-per-quotation-tab/` — butir n: (1) satu quotation Deal = satu invoice, tidak digabung per program, (2) ~~tab Public / B2B~~ (digantikan `[TIF]`), (3) kolom nomor program di setiap item invoice |
+| `[BSK]` | `input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/` — invoice B2B mengikuti skema quotation: all-in ke company = 1 invoice; per peserta = quotation pecah = 1 invoice per peserta. Menggantikan `[BAD-2]` |
+| `[PPO]` | `input/Invoice & Pengajuan/2026-11-03-b2b-per-peserta-pecah-otomatis/` — B2B per peserta dipecah otomatis di invoicing: satu kali Add Invoicing membuat satu invoice per peserta Deal, masing-masing dengan nomor invoice sendiri (tidak satu nomor bersama). Menggantikan usulan dropdown "Peserta yang ditagih" |
+| `[TPO]` | `input/Invoice & Pengajuan/2026-11-03-invoice-tanpa-nomor-po/` — Nomor PO tidak ada di invoice (semua jenis); Nomor Faktur per invoice; COA Penjualan sementara tetap seperti rancangan |
+| `[TIF]` | `input/Invoice & Pengajuan/2026-10-30-tab-invoiced-filter-jenis/` — status hanya Uninvoiced / Invoiced; tab Uninvoiced dan tab Invoiced; Public / B2B lewat filter |
+| `[AHP]` | `input/Invoice & Pengajuan/2026-10-30-add-invoice-halaman-penuh/` — Add Invoice berupa halaman penuh, bukan pop up |
+| `[TRI]` | `input/Invoice & Pengajuan/2026-10-30-tanpa-report-invoice/` — menu Report Jurnal Invoice dan Report Uninvoiced & Piutang ditunda |
+| `[PRI]` | `input/Invoice & Pengajuan/2026-10-30-print-invoice/` — Print Invoice untuk invoice yang sudah dibuat; template dibuatkan analis |
+| `[FPN]` | `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/` — format nomor Invoice `LMI/INV/MM/yy-zzz` (pola sama dengan Penawaran `LMI/PW/MM/yy-zzz`) |
+| `[INV-1]` | Quotation = persiapan invoice; peserta sudah fix |
+| `[B2B-5]` | B2B satu quotation; invoice dapat dipecah per peserta bila client minta |
+| `[BAD-2]` | ~~pecah invoice B2B: per peserta = (all-in − diskon) ÷ peserta (sementara)~~, digantikan `[BSK]` |
+| `[STD]` | standar proyek di `AGENTS.md` |
+| `[USULAN]` | usulan analis, **belum** dinyatakan klien |
+
+---
+
+## 1. Ringkasan Kebutuhan
+
+Quotation yang sudah **Deal** adalah persiapan invoice `[INV-1]`, lalu dibuatkan **Invoice**. Perhitungan,
+perlakuan PPN, dan jurnalnya mengikuti konsep Invoicing modul konsultasi `[ICX-K]`, `[ICH]`. Hulunya diganti
+dengan Quotation Labmania:
+
+| Konsep di file acuan (konsultasi) | Di Labmania |
+|---|---|
+| SPK | **Quotation Deal** `[INV-1]` |
+| Term of Payment (TOP) dari plan tagih; 1 TOP = 1 invoice `[ICX-R 3]` | **Satu quotation Deal = satu invoice** `[IPQ-1]`, tanpa termin `[USULAN]` (Quotation tidak punya pilihan pembayaran, `input/Master - Buat Program/2026-10-29-tanpa-pilihan-pembayaran/`). Quotation Deal dalam satu Penjualan Program **tidak digabung**: 1 quotation Deal → 1 invoice, 10 quotation Deal → 10 invoice `[IPQ-1]`. **B2B mengikuti skema quotation** `[BSK]`: all-in ke company = 1 invoice; per peserta = quotation pecah per peserta = 1 invoice per peserta Deal, dipecah **otomatis** dengan nomor invoice berbeda per peserta `[PPO]` |
+| Project / No. SPK di daftar | **No. Program** (nomor Penjualan Program `PJP-`/`PJB-`) di setiap item invoice `[IPQ-3]`; daftar dipisah tab **Uninvoiced** / **Invoiced**, dengan Public / B2B lewat filter jenis `[TIF]` |
+| Kepada, Alamat, Ditujukan dari SPK | Kepada, Alamat, u.p. dari quotation |
+| Perlakuan PPN dari master customer | Field baru **Perlakuan PPN** di Master Company `[USULAN]`. Personal = PKP `[USULAN]` |
+| Company depan (STM/VUCA) untuk pembebanan jurnal `[ICX-C1]` | Satu company: **PT LabMania Indonesia Jaya (LMI)** `[USULAN]` |
+| COA Penjualan: Konsultasi, In House Training, Public Training & Seminar, HSE Pengujian `[ICH]` | Default **Penjualan Public Training & Seminar** untuk Public, **Penjualan In House Training** untuk B2B; dapat diganti `[USULAN]` |
+
+```
+Penjualan Program (No. Program PJP-/PJB-)
+   ├─ Quotation Deal 1 ──► Invoice 1
+   ├─ Quotation Deal 2 ──► Invoice 2        (tidak digabung, [IPQ-1])
+   └─ Quotation Deal n ──► Invoice n
+
+Quotation Deal ──► Uninvoiced ──Add Invoicing (Save)──► Invoiced ──(WAPU) Terima Bukti Setor──► Invoiced · PPN WAPU disetor
+                      │
+                      └─ B2B skema per peserta [BSK], [PPO]: sekali Save dipecah otomatis, tiap peserta Deal 1 invoice
+                         dengan nomor invoice sendiri; quotation langsung Invoiced
+                         (B2B all-in ke company: 1 invoice)
+```
+
+Perhitungan `[ICX-DEF]`, `[ICX-K]`:
+
+| Baris | Rumus | Contoh `[ICX-TC]` (WAPU) |
+|---|---|---|
+| Penjualan | nilai unit tagih (bagian 4.3) | 291.000.000 |
+| DPP | Penjualan × 11/12 | 266.750.000 |
+| PPN | DPP × 12% | 32.010.000 |
+| Total Tagihan | Penjualan + PPN | 323.010.000 |
+
+Piutang dan jurnal per perlakuan PPN `[ICX-DEF]`, `[ICX-BP]`, `[ICH]`:
+
+| Perlakuan | Piutang | Jurnal (Debit / Credit) |
+|---|---|---|
+| **PKP** | Penjualan + PPN | D Piutang Dagang Usaha = Total Tagihan · K Hutang PPN DN = PPN · K Penjualan = Penjualan |
+| **WAPU** (biasanya BUMN; PPN disetor sendiri oleh customer) | Penjualan | D Uang Muka PPN WAPU = PPN · D Piutang Dagang Usaha = Penjualan · K Hutang PPN WAPU = PPN · K Penjualan = Penjualan |
+| **Kawasan Berikat** (tidak bayar PPN) | Penjualan | D Piutang Dagang Usaha = Penjualan · K Penjualan = Penjualan |
+| WAPU, saat **Terima Bukti Setor** `[ICX-R 7]` | — | D Hutang PPN WAPU = PPN · K Uang Muka PPN WAPU = PPN |
+
+---
+
+## 2. Aktor
+
+| Aktor | Peran | Sumber |
+|---|---|---|
+| Finance / Keuangan | Membuat invoice, memilih COA Penjualan, mencatat bukti setor PPN WAPU | `[ICH]` (menu Finance) + `[USULAN]` (aktor Labmania belum ditetapkan, Q-IVC-13) |
+| Manajemen | Melihat daftar | `[USULAN]` |
+
+---
+
+## 3. Tabel Use Case
+
+| Kode | Use case | Aktor | Prasyarat | Alur singkat | Hasil |
+|---|---|---|---|---|---|
+| UC-40 | Membuat Invoice | Finance | Quotation Deal dengan unit tagih yang belum ditagih | Pilih quotation Uninvoiced, Add Invoicing (cara tagih otomatis dari skema quotation). Isi Tanggal dan Nomor Faktur (B2B per peserta: Nomor Faktur per invoice). Tidak ada Nomor PO `[TPO]`. Cek perhitungan, pilih COA Penjualan, Save | Invoice tersimpan dengan nomor dan jurnal yang balance. B2B per peserta: sistem membuat satu invoice per peserta Deal sekaligus, masing-masing bernomor sendiri `[PPO]`. Quotation menjadi Invoiced |
+| UC-41 | Mencatat Bukti Setor PPN WAPU | Finance | Invoice WAPU yang bukti setornya belum dicatat | Pilih invoice, isi tanggal (dan nomor) bukti setor, Simpan | Jurnal pembalikan Uang Muka PPN WAPU tersimpan |
+| ~~UC-42~~ | ~~Melihat Report Invoice~~ — **ditunda** `[TRI]` (IVC-FR-14) | | | | |
+
+Kode UC melanjutkan UC-38/UC-39 (Activity Log). Kode ini belum masuk `docs/workbook.xlsx`.
+
+---
+
+## 4. Kebutuhan Fungsional (FR)
+
+### 4.1 Daftar
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| IVC-FR-01 | Menu: modul **Invoice** dengan menu **Invoicing** saja `[ICH]`. Menu **Report Jurnal Invoice** dan **Report Uninvoiced & Piutang** **belum dibuat (ditunda)** `[TRI]`, IVC-FR-14. Report Actual Tagih (forecast TOP) **tidak dibuat** karena tidak ada termin `[USULAN]`. | `[ICH]`, `[TRI]` + `[USULAN]` |
+| IVC-FR-02 | **Daftar Invoicing** dipisah dalam dua tab menurut status `[TIF]`, dengan jumlah baris di label tab. **Status hanya Uninvoiced dan Invoiced** `[TIF]`. **Tab Uninvoiced**: satu baris per **quotation Deal** yang masih punya peserta Deal belum ditagih; beberapa quotation Deal dalam satu program tampil sebagai baris terpisah `[IPQ-1]`. Kolom: No, **No. Program** (jenis, nomor Penjualan Program, tanggal acara) `[IPQ-3]`, **No. Quotation**, **Customer** (Kepada, tag Company/Personal, perlakuan PPN), **Program** (judul paket, lokasi; pengganti Project), **Sales**, **Cara tagih** (1 invoice, atau "Per peserta · m invoice" `[PPO]`), **Nilai quotation**, **Status**, **Action**. **Tab Invoiced** (khusus yang sudah terinvoice) `[TIF]`: **satu baris per invoice** `[USULAN]`. Kolom: No, **No. Program**, **No. Invoice** (tanggal), **No. Quotation**, **Customer** (+ nama peserta untuk invoice per peserta), **No. Faktur** (Nomor PO tidak ada `[TPO]`), **Perlakuan PPN** (+ status bukti setor untuk WAPU), **Total Tagihan** (+ piutang), **Status**, **Action**. Filter di kedua tab: **Jenis program** (Public & B2B / Program Public / Program B2B) `[TIF]`, **Program** (nomor program) `[USULAN]`, **Tahun**, pencarian (juga nomor program, nomor invoice, faktur); tombol **Excel** `[ICH]`. Kolom Company (STM/VUCA) dan Project Leader **tidak dipakai** `[USULAN]`. | `[TIF]`, `[IPQ-1]`, `[IPQ-3]`, `[ICH]` + `[USULAN]` (pemetaan kolom, satu baris per invoice di tab Invoiced, filter program) |
+| IVC-FR-03 | **Action**: tab Uninvoiced, **Add Invoicing**. Tab Invoiced, **Lihat Invoice** dan **Terima Bukti Setor WAPU** (invoice WAPU yang belum dicatat). "View Plan Tagih" di acuan tidak dipakai karena tidak ada plan tagih `[USULAN]`. Dari daftar Quotation, quotation Deal yang belum ditagih juga punya aksi **Buat Invoice** `[USULAN]`. | `[ICH]` + `[USULAN]` |
+
+### 4.2 Form Add Invoicing
+
+**Add Invoicing dibuka sebagai halaman penuh**, bukan pop up `[AHP]`, seperti halaman Add Invoicing di `[ICH]`. Breadcrumb: Invoice / Invoicing / Add Invoicing; menu Invoicing tetap aktif. Isinya dibagi menjadi bagian bernomor menurut urutan kerja `[USULAN]`: **1 Data Invoice** (IVC-FR-04, IVC-FR-05), **2 Cara Tagih** (B2B saja, IVC-FR-06), **3 Rincian Tagihan** (IVC-FR-07), **4 Perhitungan Invoice** (IVC-FR-08), **5 Jurnal** (IVC-FR-10). Tombol **Back** dan **Save** di bawah, tetap terlihat saat halaman digulir `[USULAN]`. Dibuka dari daftar Invoicing (tab Uninvoiced) atau dari aksi Buat Invoice di Quotation; Back/Save kembali ke halaman asal `[USULAN]`.
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| IVC-FR-04 | Di atas form tampil **No. Program** (nomor Penjualan Program dan jenisnya), judul paket, dan nomor quotation `[IPQ-3]`. **Header kiri** (hanya tampil, tidak dapat diubah): **Kepada** (nama Company, atau peserta pertama untuk Personal), **Alamat**, **Ditujukan** (u.p. quotation; untuk Personal: nama peserta), **Perlakuan PPN** (dari Master Company; Personal = PKP) `[ICX-K]`, `[ICH]`. | `[ICX-K]`, `[ICH]` + `[USULAN]` (Personal) |
+| IVC-FR-05 | **Header kanan**: **Tanggal Invoice** (pilih tanggal, default hari ini) `[ICX-K]`; **Nomor Invoice** otomatis oleh sistem `[ICX-K]`, berformat **`LMI/INV/MM/yy-zzz`** `[FPN]` — `LMI` kode PT LabMania Indonesia Jaya, `INV` kode Invoice, `MM` bulan 2 digit, `yy` 2 digit terakhir tahun, `zzz` nomor urut 3 digit (contoh `LMI/INV/11/26-001`); `MM/yy` dari Tanggal Invoice, urutan di-reset tiap bulan dan terpisah dari urutan Penawaran `[USULAN]` (Q-IVC-04); **tidak ada Nomor PO** (di acuan wajib `[ICX-K]`, untuk Labmania dihapus `[TPO]`); **Nomor Faktur** wajib `[ICX-K]` (tidak tampil bila quotation tanpa PPN `[USULAN]`, Q-IVC-07). | `[ICX-K]`, `[FPN]`, `[TPO]` + `[USULAN]` |
+| IVC-FR-06 | **Cara tagih** tidak dipilih di form, tetapi **mengikuti quotation** `[BSK]`. **B2B skema All-in 1 company**: **satu invoice** untuk seluruh peserta Deal. **B2B skema Per peserta**: quotation dianggap pecah per peserta, jadi dibuat **satu invoice per peserta Deal**. Pemecahan dilakukan **otomatis** `[PPO]`: satu kali Add Invoicing → Save membuat semua invoice peserta Deal sekaligus; user **tidak memilih peserta** satu per satu. Setiap invoice mendapat **Nomor Invoice sendiri** (berurutan); satu nomor invoice **tidak boleh** dipakai bersama oleh beberapa peserta `[PPO]`. Form menampilkan keterangan cara tagih dan tabel **daftar invoice yang akan dibuat**: No, Peserta, Nomor Invoice (pratinjau), Nominal, **Nomor Faktur** (diisi per invoice). **Nomor Faktur per invoice** `[TPO]`. **Tanggal Invoice** dan **COA Penjualan** diisi sekali dan berlaku untuk semua invoice hasil pecahan (COA Penjualan: sementara `[TPO]`; tanggal sama: `[USULAN]`). **Public selalu satu invoice per quotation** `[IPQ-1]`. | `[BSK]`, `[PPO]`, `[TPO]`, `[IPQ-1]` + `[USULAN]` (tanggal sama) |
+| IVC-FR-07 | **Tabel rincian tagihan** (pengganti tabel Term of Payment `[ICH]`). Kolom: No, **Item** (judul paket dan nomor Penjualan Program), **Peserta** (jumlah dan nama), **Harga / peserta**, **Diskon**, **Nominal**. B2B per peserta: satu baris per peserta Deal (= satu invoice), dengan Nomor Invoice pratinjau di setiap baris `[PPO]`. Kartu perhitungan (IVC-FR-08) dan jurnal (IVC-FR-10) ditampilkan **per invoice** plus total gabungan `[USULAN]`. | `[ICH]`, `[PPO]` + `[USULAN]` |
+| IVC-FR-08 | **Kartu perhitungan** `[ICX-K]`, `[ICH]`: **Penjualan** (nilai unit tagih, IVC-FR-09); **DPP** = Penjualan × 11/12; **PPN** = DPP × 12%; **Biaya Lain-lain** (dari quotation, tanpa PPN `[USULAN]`, Q-IVC-09); **Total Tagihan** = Penjualan + PPN + Biaya Lain-lain; baris **Piutang** sesuai perlakuan PPN `[ICX-DEF]`. Setiap baris menampilkan rumusnya. Pembulatan ke rupiah di setiap tahap `[ICH]` (Q-IVC-08). Quotation **tanpa PPN**: DPP dan PPN = 0 `[USULAN]` (Q-IVC-07). | `[ICX-K]`, `[ICX-DEF]`, `[ICH]` + `[USULAN]` |
+| IVC-FR-09 | **Nilai unit tagih (Penjualan)**: yang ditagih hanya **peserta Deal** hasil aksi Deal di Quotation (QTN-FR-11); peserta Batal tidak masuk invoice `[INV-1]`. Public dan B2B all-in = nilai quotation setelah diskon untuk **peserta Deal** (QTN-FR-08 / QTN-FR-20: subtotal − diskon, atau harga all-in − diskon). B2B per peserta = **harga − diskon per peserta** `[BSK]`. Biaya Lain-lain quotation per peserta dibagi rata, dan sisa pembulatan masuk ke invoice peserta **terakhir** agar jumlah semua invoice = nilai quotation `[USULAN]` (Q-IVC-09). | `[BSK]` + `[USULAN]` (Biaya Lain-lain) |
+| IVC-FR-10 | **Tabel jurnal** `[ICX-K]`, `[ICH]`: kolom Tanggal Jurnal (= Tanggal Invoice), Nama Company (LMI `[USULAN]`), **No. Program** `[IPQ-3]`, COA, Nama COA, Deskripsi, Debit, Credit; baris **Balancing** berisi jumlah debit dan jumlah credit, yang harus sama. Baris jurnal sesuai perlakuan PPN (tabel bagian 1); baris bernilai 0 tidak tampil `[ICH]`. **Deskripsi** = "Nama COA - No Invoice - No Quotation" (acuan: "- No SPK"), ditambah "- Kawasan Berikat" untuk perlakuan KB `[ICX-K]`, `[ICH]`. COA selain Penjualan bersifat tetap (*hard code*) `[ICX-K]`. **COA Penjualan** dipilih di baris jurnal (dropdown dengan pencarian) dan wajib diisi `[ICH]`. Defaultnya mengikuti jenis penjualan `[USULAN]`. Biaya Lain-lain dikreditkan ke COA Penjualan yang sama `[USULAN]` (Q-IVC-09). | `[ICX-K]`, `[ICH]` + `[USULAN]` |
+| IVC-FR-11 | **Save**: memeriksa Nomor Faktur dan COA Penjualan (bila wajib), serta jurnal balance. B2B per peserta: Nomor Faktur setiap invoice wajib diisi `[TPO]` dan tidak boleh sama `[USULAN]`. Invoice tersimpan dengan status **Invoiced** dan jurnalnya ikut tersimpan; B2B per peserta menyimpan semua invoice pecahan sekaligus `[PPO]`. Quotation tidak dapat diubah lagi `[USULAN]`. **Back** kembali ke daftar tanpa menyimpan `[ICH]`. Setelah Save, halaman kembali ke daftar asal `[AHP]` + `[USULAN]`. | `[ICH]`, `[AHP]` + `[USULAN]` |
+
+### 4.3 Setelah invoice dibuat
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| IVC-FR-12 | **Terima Bukti Setor WAPU** `[ICX-R 7]`, `[ICX-BP]`: hanya untuk invoice WAPU. Isi Tanggal bukti setor (wajib) dan Nomor bukti setor (opsional) `[USULAN]`. Membentuk jurnal pembalikan **D Hutang PPN WAPU / K Uang Muka PPN WAPU** sebesar PPN invoice. Satu kali per invoice. | `[ICX-R 7]`, `[ICX-BP]` + `[USULAN]` (isian, tempat aksi) |
+| IVC-FR-13 | **Lihat Invoice**: **No. Program** `[IPQ-3]`, header, rincian, perhitungan, jurnal invoice, dan jurnal bukti setor (bila ada). Tombol **Print Invoice** (IVC-FR-15). Belum ada aksi batal/revisi invoice (Q-IVC-11). | `[PRI]` + `[USULAN]` |
+| IVC-FR-14 | **DITUNDA** `[TRI]`: catatan di bawah ini disimpan sebagai rancangan, belum dibangun. **Report** `[ICX-BP]`. Setiap baris report memuat **No. Program** dan dapat dicari dengannya `[IPQ-3]`. **Report Jurnal Invoice**: semua jurnal invoice dan bukti setor yang sudah diposting, saring periode, perlakuan PPN, dan COA, dengan total debit/credit. **Report Uninvoiced & Piutang**: (a) quotation Deal atau peserta yang belum ditagih, beserta nilainya; (b) invoice yang sudah menjadi piutang, beserta nilai piutangnya. Pelunasan belum termasuk (modul penerimaan belum dibahas, Q-IVC-12). | `[ICX-BP]`, `[TRI]` + `[USULAN]` |
+| IVC-FR-15 | **Print Invoice** `[PRI]`: aksi di tab Invoiced (gear) dan di Lihat Invoice, untuk setiap invoice yang sudah dibuat. B2B per peserta dicetak satu dokumen per invoice per peserta. Pratinjau A4 lalu **Cetak / Simpan PDF**; setiap cetak dicatat di Activity Log (aksi Cetak). **Format usulan** (Q-IVC-10): kop PT LabMania Indonesia Jaya (sama dengan Penawaran); judul **INVOICE**; kotak **Kepada** (nama Company/peserta, alamat, u.p., NPWP bila ada); kotak data (**No. Invoice**, Tanggal, **No. Program**, No. Quotation, No. Faktur Pajak, Perlakuan PPN; tanpa No. PO `[TPO]`); tabel **No, Deskripsi** (judul paket, durasi, tanggal, waktu, lokasi, No. Program & Quotation, nama peserta), **Kts.**, **Harga** (per peserta, atau all-in), **Diskon**, **Jumlah**, plus baris Biaya Lain-lain bila ada; ringkasan **Jumlah, DPP Nilai Lain (11/12), PPN 12%, Biaya Lain-lain, Total Tagihan**; untuk WAPU baris "PPN dipungut & disetor oleh Pemungut (WAPU)", untuk Kawasan Berikat "PPN tidak dipungut"; **Jumlah yang harus dibayar** (= piutang) dan **Terbilang**; blok **Pembayaran** (rekening, a.n. PT LabMania Indonesia Jaya, cantumkan No. Invoice; WAPU: mohon kirim bukti setor/NTPN); tanda tangan "Bekasi, [tanggal invoice] · Hormat kami · Finance"; kaki halaman kode dokumen `FR/LMI-FN-01/01` (usulan). Quotation tanpa PPN tidak mencetak baris DPP/PPN. | `[PRI]` + `[USULAN]` (seluruh format) |
+
+Perubahan di Master Data: **Master Company** mendapat field **Perlakuan PPN** (wajib; pilihan PKP, WAPU,
+Kawasan Berikat; default PKP). Field ini diusulkan di bagian Pajak form Company (FR-31 `docs/fr-nfr.md`)
+`[ICX-R 2]` + `[USULAN]` (Q-IVC-05).
+
+---
+
+## 5. Kebutuhan Non-Fungsional (NFR)
+
+| ID | Kategori | Kebutuhan | Sumber |
+|---|---|---|---|
+| IVC-NFR-01 | Integritas data | Nilai invoice dihitung ulang di server dari quotation Deal (peserta Deal, harga, diskon, skema, PPN), bukan dari isian klien. Satu unit tagih hanya boleh punya satu invoice, diperiksa di server dalam transaksi. B2B per peserta: semua invoice pecahan disimpan dalam **satu transaksi** (semua berhasil atau tidak sama sekali) `[USULAN]`. | `[PPO]` + `[USULAN]` |
+| IVC-NFR-02 | Integritas data | Jurnal disimpan hanya bila debit = credit. Header invoice, detail, dan jurnal disimpan dalam satu transaksi. | `[ICX-K]` (Balancing) + `[USULAN]` |
+| IVC-NFR-03 | Integritas data | Nomor Invoice (`LMI/INV/MM/yy-zzz`, IVC-FR-05) dibuat server saat Save (bukan saat form dibuka) agar tidak ada nomor ganda; nomor urut diambil di dalam transaksi yang sama dengan penyimpanan invoice dan kolom nomor unik `[USULAN]`. B2B per peserta mengambil nomor berurutan, satu nomor per invoice peserta `[PPO]`. | `[ICX-K]` + `[USULAN]` |
+| IVC-NFR-04 | Audit | Save invoice dan bukti setor WAPU dicatat `write_log()` modul "Invoice" (jurnal sebagai `detail_changes`). Tabel memakai kolom jejak `created_by`, `created_date`, `updated_by`, `updated_date`; aksi tampil di Activity Log (`docs/fr-nfr-activity-log.md`). | `[STD]` |
+| IVC-NFR-05 | Pajak | Pelanggan Non PKP tidak dipotong PPh 23 `[ICX-R 8]`. Catatan ini untuk modul penerimaan, bukan pembuatan invoice. | `[ICX-R 8]` |
+| IVC-NFR-06 | Platform | CI3 HMVC, MySQL, Bootstrap + jQuery; nama tabel/kolom = ERD (setelah Q-IVC-01). Isian uang memakai pemisah ribuan titik (`fr-nfr.md` NFR-12). Menu dan aksi mengikuti permission aplikasi. | `[STD]` |
+| IVC-NFR-07 | Dokumen | PDF invoice dibuat server-side dari template HTML/CSS (A4) agar identik dengan pratinjau, sama dengan QTN-NFR-06; nilai dicetak dari data invoice tersimpan (bukan dihitung ulang dari quotation). | `[PRI]` + `[USULAN]` |
+
+---
+
+## 6. Status
+
+| Objek | Dari | Aksi | Ke |
+|---|---|---|---|
+| Quotation (di daftar Invoicing) | Deal, belum ada invoice | — | **Uninvoiced** |
+| Quotation | Uninvoiced | Save invoice (satu invoice; B2B per peserta: semua invoice peserta Deal dibuat sekaligus `[PPO]`) | **Invoiced**, pindah dari tab Uninvoiced |
+| Invoice | — | Save | **Invoiced** |
+| Invoice WAPU | Invoiced | Terima Bukti Setor | Invoiced, bukti setor tercatat |
+
+---
+
+## 7. Usulan Data (sebelum ERD)
+
+Ini **bukan ERD**. Daftar ini disusun untuk menjawab Q-IVC-01 dan baru masuk `docs/diagrams/erd.drawio`
+setelah diputuskan.
+
+| Usulan tabel | Isi |
+|---|---|
+| `invoice` | nomor, tanggal, id_quotation, id_penjualan_program (salinan untuk telusur `[IPQ-3]`, usulan), cara_tagih (satu/peserta, diturunkan dari skema quotation), perlakuan_ppn, no_faktur (tanpa no_po `[TPO]`), penjualan, dpp, ppn, biaya_lain, total_tagihan, piutang, coa_penjualan, kolom jejak |
+| `invoice_peserta` | id_invoice, id_quotation_peserta, nominal |
+| `invoice_jurnal` (atau tabel `jurnal` yang sudah ada) | id_invoice, jenis (invoice / bukti setor WAPU), tanggal, company, coa, nama_coa, deskripsi, debit, credit |
+| `invoice_bukti_setor` | id_invoice, tanggal, nomor |
+| `customer` (Master Company) | + `perlakuan_ppn` |
+
+---
+
+## 8. Pertanyaan Terbuka
+
+| ID | Pertanyaan | Mempengaruhi |
+|---|---|---|
+| Q-IVC-01 | Aplikasi sudah punya modul `invoicing` (membaca tabel konsultasi `kons_tr_actual_plan_tagih`) serta tabel `tr_invoice_header`, `tr_invoice_detail`, `tr_invoice_payment`, dan `jurnal`. Untuk Labmania, buat **tabel baru** (bagian 7) atau pakai tabel yang ada? Hal yang sama diputuskan untuk Quotation (`tr_penawaran` tidak dipakai, `[ATB-2]`). | ERD, IVC-NFR-06 |
+| Q-IVC-02 | **Termin**: apakah Labmania memang tanpa termin (usulan: 1 quotation / 1 peserta = 1 invoice)? Atau ada DP/pelunasan seperti "Termin" di baris Pembayaran template Penawaran (Q-QTN-14)? | IVC-FR-06, IVC-FR-07 |
+| Q-IVC-03 | ~~Public ke Company boleh dipecah per peserta?~~ **Terjawab** `[IPQ-1]`: satu quotation Deal = satu invoice; Public tidak dipecah. | — |
+| Q-IVC-04 | ~~Format Nomor Invoice?~~ **Terjawab** `[FPN]`: `LMI/INV/MM/yy-zzz`. Masih usulan: `MM/yy` dari Tanggal Invoice dan urutan `zzz` di-reset tiap bulan — benar, atau berlanjut sepanjang tahun? | IVC-FR-05 |
+| Q-IVC-05 | **Perlakuan PPN** disimpan di Master Company (usulan, default PKP)? Bolehkah diganti per invoice? Di acuan, field ini terkunci kecuali untuk case demo. Personal selalu PKP? | IVC-FR-04, Master Company |
+| Q-IVC-06 | ~~Nomor PO wajib untuk Personal?~~ **Tidak relevan** `[TPO]`: Nomor PO tidak ada di invoice. | — |
+| Q-IVC-07 | Quotation dapat dibuat **tanpa PPN** (centang PPN 11% di QTN-FR-08). Di invoice, apakah ini "Non PPN" (usulan: DPP & PPN = 0, Nomor Faktur tidak wajib, jurnal seperti Kawasan Berikat tanpa keterangan KB), atau semua invoice wajib PPN? | IVC-FR-05, IVC-FR-08, IVC-FR-10 |
+| Q-IVC-08 | **PPN quotation** = 11% × DPP (QTN-FR-08), sedangkan **PPN invoice** = (Penjualan × 11/12) × 12%. Nilainya sama, tetapi pembulatannya bisa beda Rp 1. Apakah quotation ikut rumus invoice? Apakah aturan pembulatannya (bulat di setiap tahap) sudah sesuai dengan tim pajak? | IVC-FR-08, QTN-FR-08 |
+| Q-IVC-09 | **Biaya Lain-lain** quotation: masuk invoice tanpa PPN dan dikreditkan ke COA Penjualan (usulan), ke COA lain, atau ikut dikenai PPN? | IVC-FR-08, IVC-FR-10 |
+| Q-IVC-10 | **Format cetak invoice**: template **usulan** sudah dibuat (IVC-FR-15) karena belum ada template klien `[PRI]`. Masih perlu dari klien: (a) **rekening bank** tujuan transfer; (b) **nama & jabatan penanda tangan** (usulan: Finance); (c) **jatuh tempo / termin pembayaran** dicetak atau tidak; (d) **kode dokumen** resmi (usulan `FR/LMI-FN-01/01`); (e) kota & tanggal tanda tangan (usulan: Bekasi, tanggal invoice); (f) apakah perlu tanda tangan/stempel digital. | IVC-FR-15 |
+| Q-IVC-11 | Bila invoice salah (misalnya nomor faktur), apakah bisa **dibatalkan/direvisi**, dan apa yang terjadi pada jurnalnya (jurnal balik)? | IVC-FR-13 |
+| Q-IVC-12 | **Penerimaan/pelunasan** piutang dan jurnal penerimaan (di acuan ada menu Jurnal Penerimaan) masuk ruang lingkup Labmania sekarang atau menyusul? | IVC-FR-14 |
+| Q-IVC-13 | Siapa **aktor** invoice di Labmania (group Keuangan, Manajemen)? Apakah perlu approval sebelum Save? | Bagian 2 |
+| Q-IVC-15 | ~~Pecah invoice B2B per peserta tetap ada?~~ **Terjawab** `[BSK]`: invoice B2B mengikuti skema quotation. All-in ke company = 1 invoice; per peserta = 1 invoice per peserta. | — |
+| Q-IVC-16 | ~~Nomor PO sekali, Nomor Faktur per invoice?~~ **Terjawab** `[TPO]`: Nomor PO tidak ada di invoice; Nomor Faktur per invoice; COA Penjualan sementara tetap (sama untuk semua invoice pecahan). | — |
+| Q-IVC-14 | **Kode COA** final untuk Piutang Dagang Usaha (`1102-01-01`), Hutang PPN DN (`2104-01-07`), Uang Muka PPN WAPU (`1106-01-XX`), Hutang PPN WAPU (`2104-01-XX`), dan COA Penjualan (`0000-00-00`). Apakah Labmania memakai daftar COA yang sama? | IVC-FR-10 |
+
+---
+
+## 9. Riwayat Perubahan
+
+| Versi | Tanggal | Perubahan |
+|---|---|---|
+| draf 1 | 30-10-2026 | Penyusunan awal dari `input/Invoice & Pengajuan/2026-10-30-invoice-consulting/`: konsep Invoicing modul konsultasi dipetakan ke Quotation Deal Labmania. Perhitungan 11/12 & 12%, perlakuan PPN PKP/WAPU/Kawasan Berikat, jurnal dan Balancing, COA Penjualan, bukti setor WAPU, dua report. Pecah per peserta untuk B2B (`[B2B-5]`, `[BAD-2]`). Field Perlakuan PPN di Master Company (usulan). Q-IVC-01 – Q-IVC-14. Mockup draf 13. |
+| draf 2 | 30-10-2026 | `input/Invoice & Pengajuan/2026-10-30-invoice-per-quotation-tab/`: **satu quotation Deal = satu invoice**, tidak digabung per program (bagian 1, IVC-FR-02, IVC-FR-06); daftar dipisah **tab Program Public / Program B2B** (IVC-FR-02); kolom **No. Program** di daftar, form, jurnal, Lihat Invoice, dan kedua report, plus filter program (IVC-FR-02, -04, -10, -13, -14); usulan kolom `invoice.id_penjualan_program`. Q-IVC-03 terjawab; Q-IVC-15 baru. Mockup draf 13a. |
+| draf 2a | 30-10-2026 | `input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/`: cara tagih B2B **mengikuti skema quotation** (all-in = 1 invoice, per peserta = 1 invoice per peserta); pilihan manual di form dihapus (bagian 1, UC-40, IVC-FR-06, IVC-FR-09). `[BAD-2]` (all-in ÷ peserta) tidak dipakai lagi. Q-IVC-15 terjawab. Mockup draf 13b (seed program B2B per peserta). |
+| draf 2b | 30-10-2026 | `input/Invoice & Pengajuan/2026-10-30-tab-invoiced-filter-jenis/`: status hanya **Uninvoiced / Invoiced** ("Sebagian" dihapus); tab **Uninvoiced** dan tab **Invoiced** (satu baris per invoice), menggantikan tab Program Public / B2B; Public / B2B lewat **filter jenis program** (bagian 1, IVC-FR-02, IVC-FR-03, bagian 6). Mockup draf 13c. |
+| draf 2c | 30-10-2026 | `input/Invoice & Pengajuan/2026-10-30-add-invoice-halaman-penuh/`: **Add Invoicing halaman penuh**, bukan pop up, dengan lima bagian bernomor dan tombol Back/Save tetap di bawah (bagian 4.2, IVC-FR-11). Mockup draf 13d (render dicek lewat screenshot Chrome headless; kolom tabel jurnal dikunci agar Debit/Credit terlihat). |
+| draf 2d | 30-10-2026 | `input/Invoice & Pengajuan/2026-10-30-tanpa-report-invoice/`: menu **Report Jurnal Invoice** dan **Report Uninvoiced & Piutang** **ditunda** (IVC-FR-01, IVC-FR-14, UC-42, bagian 2). Modul Invoice hanya menu Invoicing. Mockup draf 13e. |
+| draf 2f | 02-11-2026 | `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/`: Nomor Invoice menjadi **`LMI/INV/MM/yy-zzz`** (IVC-FR-05, IVC-NFR-03), menggantikan usulan `NNN/LMI/YYYY`; Q-IVC-04 terjawab sebagian (sumber MM/yy dan reset per bulan masih usulan); penanda `[FPN]` baru. |
+| draf 2e | 30-10-2026 | `input/Invoice & Pengajuan/2026-10-30-print-invoice/`: **Print Invoice** (IVC-FR-15 baru, IVC-FR-13, IVC-NFR-07 baru) dengan **template usulan analis**; Q-IVC-10 diperbarui menjadi daftar isian yang perlu dari klien. Mockup draf 13f (render dicek lewat screenshot). |
+| draf 2g | 03-11-2026 | IVC-FR-09: penegasan bahwa yang ditagih hanya peserta Deal dari Quotation (QTN-FR-11); peserta Batal tidak masuk invoice `[INV-1]`. Tidak ada aturan baru. |
+| draf 2h | 03-11-2026 | `input/Invoice & Pengajuan/2026-11-03-b2b-per-peserta-pecah-otomatis/` (`[PPO]`): invoice B2B skema per peserta **dipecah otomatis**: satu kali Add Invoicing membuat satu invoice per peserta Deal, masing-masing bernomor sendiri; dropdown "Peserta yang ditagih" dihapus (bagian 1, UC-40, IVC-FR-02, IVC-FR-06, IVC-FR-07, IVC-FR-11, IVC-NFR-01, IVC-NFR-03, bagian 6: status "sebagian peserta" dihapus). Nomor PO sekali / Nomor Faktur per invoice masih usulan (Q-IVC-16 baru). Mockup draf 13g. |
+| draf 2i | 03-11-2026 | `input/Invoice & Pengajuan/2026-11-03-invoice-tanpa-nomor-po/` (`[TPO]`): **Nomor PO dihapus** dari invoice (UC-40, IVC-FR-02 kolom & pencarian, IVC-FR-05, IVC-FR-11, IVC-FR-15 cetak, bagian 7 kolom `no_po`); Nomor Faktur per invoice dikonfirmasi (IVC-FR-06, IVC-FR-11); COA Penjualan sementara tetap. Q-IVC-06 tidak relevan, Q-IVC-16 terjawab. Mockup draf 13h. |
+
+---
+
+# Bagian 6 — Modul Manage Peserta Labmania
+
+- **Versi:** draf 1 — 04-11-2026
+- **Sumber:** `input/Invoice & Pengajuan/2026-11-04-manage-peserta/` (permintaan user + jawaban atas usulan analis)
+- **Status:** DRAF. Cakupan **Fase 1**: daftar program, peserta per program, cetak Daftar Peserta & Daftar Hadir, export Excel, Close Program. **Fase 2 ditunda** (bagian 2). Pertanyaan terbuka di bagian 7.
+- **Modul terkait:** hulu Quotation (`docs/fr-nfr-quotation.md`: peserta **Deal** per quotation, QTN-FR-11) dan Penjualan Program (`docs/fr-nfr-penjualan-program.md`: program Final, trainer, tanggal, lokasi); Master Peserta (`docs/fr-nfr.md` FR-15 – FR-17); hilir Pengajuan Biaya (`docs/fr-nfr-pengajuan-biaya.md` PB-FR-20: program Closed tidak dapat diajukan); hak menu lewat Role & Permission (`docs/fr-nfr.md` FR-54 – FR-58); Activity Log (`docs/fr-nfr-activity-log.md`)
+- **ERD:** `docs/diagrams/erd.drawio` halaman *ERD Penjualan Program* (`penjualan_program.closed_by`, `closed_date`) — **tanpa tabel baru**
+- **Use case:** `docs/workbook.xlsx` sheet *UC Non-BPMN* (UC-50 – UC-52)
+- **Mockup:** `ui-mockup/produk/Labmania.html`, modul **Manage Peserta** (draf 14e)
+
+Penomoran memakai awalan **MP-**; pertanyaan modul ini **Q-MPS-nn** (Q-MP-nn sudah dipakai `fr-nfr-master-program.md`).
+
+| Penanda | Arti |
+|---|---|
+| `[MPS-1]` | permintaan user 04-11-2026: modul "Manage Peserta", setiap program terlist, bisa print daftar peserta dsb. |
+| `[MPS-2]` | jawaban user 04-11-2026: setelah Deal quotation; Halaman 1 setuju + action **Close Program**; Halaman 2 setuju semua; Fase 2 nanti; hak pakai disetting sendiri; format cetak belum ada — dibuatkan |
+| `[JPB-12]` | `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/` butir PB-12: pengajuan boleh selama program belum **Closed** |
+| `[STD]` | standar proyek di `AGENTS.md` (`write_log()`) |
+| `[USULAN]` | usulan analis, **belum** dinyatakan klien |
+
+---
+
+## 1. Ringkasan
+
+Setelah quotation **Deal**, peserta program sudah fix `[MPS-2]`. Modul **Manage Peserta** menampilkan setiap
+Penjualan Program **Final** beserta peserta Deal-nya, untuk dicetak (Daftar Peserta, Daftar Hadir per hari)
+dan diekspor ke Excel, lalu **Close Program** saat program ditutup. Modul ini **tidak menambah atau mengubah
+peserta**: sumbernya hanya peserta yang dicentang Deal di quotation Deal; perbaikan data peserta lewat Master Peserta `[USULAN]`.
+
+```
+Penjualan Program Final ──► Quotation Deal (peserta Deal) ──► Manage Peserta ──► Close Program ──► Pengajuan Biaya tertutup
+                                                              (lihat · cetak · export)
+```
+
+## 2. Cakupan
+
+| Termasuk (Fase 1) | Ditunda (Fase 2) `[MPS-2]` |
+|---|---|
+| Daftar Program (tab On going / Selesai) | Input kehadiran per hari |
+| Peserta per program | Hasil (Kompeten / Belum Kompeten), nomor & masa berlaku sertifikat |
+| Cetak Daftar Peserta, Cetak Daftar Hadir (template usulan) | Rekap rencana vs aktual peserta |
+| Export Excel | Status pembayaran per peserta (tidak dijawab — tidak dimasukkan) |
+| Close Program | |
+
+## 3. Aktor
+
+| Aktor | Peran | Sumber |
+|---|---|---|
+| Pengguna dengan hak menu **Manage Peserta** | View = lihat, cetak, export; Manage = Close Program. Role mana yang diberi hak **diatur user sendiri** di Role & Permission | `[MPS-2]` |
+
+## 4. Use Case (salinan baca; kanonis di workbook)
+
+| Kode | Nama | Aktor | Prasyarat | Alur singkat | Hasil |
+|---|---|---|---|---|---|
+| UC-50 | Melihat Peserta Program | Pengguna (hak View) | Penjualan Program Final | Buka Manage Peserta, pilih tab, cari / saring, pilih **Lihat Peserta** | Daftar peserta Deal program tampil |
+| UC-51 | Mencetak & Mengekspor Peserta | Pengguna (hak View) | Program punya ≥ 1 peserta Deal | Di halaman peserta pilih Cetak Daftar Peserta / Cetak Daftar Hadir / Export Excel | PDF / Excel peserta |
+| UC-52 | Close Program | Pengguna (hak Manage) | Program Final belum Closed | Pilih **Close Program** di menu gear, baca peringatan, konfirmasi | Program Closed; pindah ke tab Selesai; tidak dapat diajukan biaya |
+
+## 5. Kebutuhan Fungsional
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| MP-FR-01 | Menu: modul **Manage Peserta** dengan menu **Manage Peserta** (sidebar setelah Invoice). Hak membuka menu dan aksinya diatur di **Role & Permission** (`fr-nfr.md` FR-54 – FR-58): **View** = lihat daftar & peserta, cetak, export; **Manage** = Close Program. | `[MPS-1]`, `[MPS-2]` + `[USULAN]` (pemetaan aksi) |
+| MP-FR-02 | **Daftar Program**: semua Penjualan Program **Final**, tab **On going** / **Selesai** (Selesai = tanggal selesai acara sudah lewat **atau** program sudah Closed `[USULAN]`, Q-MPS-01). Kolom: No, **No. Program**, **Judul Program** (+ Company untuk B2B), **Jenis** (Public / B2B), **Tanggal & Lokasi**, **Trainer**, **Peserta (Deal / Target)**, Status (Berjalan / Selesai / Closed `[USULAN]`), Action (menu gear: **Lihat Peserta**, **Close Program**). Cari nomor / judul / lokasi / trainer; filter jenis. Urut tanggal mulai. | `[MPS-2]` |
+| MP-FR-03 | **Close Program** (menu gear, hanya program belum Closed dan pengguna punya hak Manage): popup konfirmasi; menampilkan **peringatan** (tidak memblokir `[USULAN]`, Q-MPS-02) bila: acara belum selesai, masih ada quotation Draft / Terkirim, quotation Deal belum dibuatkan invoice, atau pengajuan biaya Menunggu Approval. Setelah konfirmasi: program **Closed** (siapa & kapan disimpan), pindah ke tab Selesai, menu Close tidak tampil lagi, **tidak dapat dibuka kembali** `[USULAN]` (Q-MPS-02). | `[MPS-2]` + `[USULAN]` |
+| MP-FR-04 | **Peserta per Program** (Lihat Peserta): kepala halaman berisi info program — jenis, judul, tanggal & durasi, lokasi, trainer, Company (B2B), peserta Deal / target, status. Tombol **← Semua Program**, **Export Excel**, **Cetak Daftar Hadir**, **Cetak Daftar Peserta** (nonaktif bila belum ada peserta Deal). Program Closed menampilkan pemberitahuan siapa & kapan di-Close; tetap dapat dilihat, dicetak, diekspor. | `[MPS-2]` |
+| MP-FR-05 | **Tabel peserta**: No, **Kode**, **Nama**, **Instansi / Company**, **No. WA**, **Email**, **No. Quotation**. Sumber: peserta berstatus **Deal** di quotation berstatus **Deal** untuk program itu (QTN-FR-11) — peserta Batal / menunggu tidak tampil. Pencarian kode, nama, instansi, kontak, nomor quotation. **Tidak ada tambah / ubah / hapus** peserta di modul ini; data diperbaiki di Master Peserta. | `[MPS-2]` + `[USULAN]` (tanpa edit) |
+| MP-FR-06 | **Cetak Daftar Peserta** (PDF A4, template usulan — format Labmania belum ada `[MPS-2]`, Q-MPS-03): kop PT LabMania Indonesia Jaya; judul **DAFTAR PESERTA**; info Program, No. Program, Tanggal, Lokasi, Trainer, Company (B2B), Jumlah peserta; tabel No, Nama Peserta, Instansi / Company, No. WA, Email; maksimal 18 baris per halaman; kaki: kode dokumen (menyusul), "Halaman x dari y". | `[MPS-2]` + `[USULAN]` |
+| MP-FR-07 | **Cetak Daftar Hadir** (PDF A4, template usulan, Q-MPS-04): **satu lembar per hari** pelaksanaan (durasi Penjualan Program; tanggal = tanggal mulai + hari ke-n); judul **DAFTAR HADIR PESERTA**; info program + "Hari ke n dari N — tanggal"; tabel No, Nama Peserta, Instansi / Company, **Tanda Tangan** (dua kolom selang-seling, nomor di kotak); di akhir: tanda tangan **Trainer** (nama trainer program) dan **Penyelenggara**. | `[MPS-2]` + `[USULAN]` |
+| MP-FR-08 | **Export Excel**: berkas `.xlsx` "Peserta_[No. Program]" berisi baris judul (nomor, judul, tanggal, lokasi program) dan kolom No, Kode, Nama, Instansi / Company, No. WA (format teks agar angka 0 di depan tidak hilang), Email, No. Quotation. | `[MPS-2]` + `[USULAN]` (kolom) |
+| MP-FR-09 | **Dampak Close ke Pengajuan Biaya** `[JPB-12]`: program Closed tidak dapat ditambah pengajuan / overbudget baru (tombol Add tidak tampil, server menolak); pengajuan yang ada tetap dapat dilihat dan yang masih Menunggu tetap dapat diproses `[USULAN]`. Lihat `fr-nfr-pengajuan-biaya.md` PB-FR-20. Dampak ke Quotation / Invoice **belum ditetapkan** (Q-MPS-05). | `[JPB-12]` + `[USULAN]` |
+| MP-FR-10 | **Activity Log** `[STD]`: `write_log()` modul "Manage Peserta" untuk **Close Program** (status Final → Closed, `old`/`new`), **Cetak** (Daftar Peserta / Daftar Hadir) dan **Export** (nomor program). | `[STD]` + `[USULAN]` (catat cetak/export) |
+
+## 6. Kebutuhan Non-Fungsional
+
+| ID | Kategori | Kebutuhan | Kriteria uji | Sumber |
+|---|---|---|---|---|
+| MP-NFR-01 | Keamanan | Hak View / Manage diperiksa di server (`has_permission()`), bukan hanya menyembunyikan tombol; Close Program ditolak bila program sudah Closed atau bukan Final. | Request Close tanpa hak Manage → 403; Close dua kali → ditolak | `[USULAN]` |
+| MP-NFR-02 | Konsistensi | Peserta dibaca langsung dari quotation Deal (tanpa salinan), sehingga perubahan Master Peserta langsung tampil. | Ubah nama peserta di Master Peserta → halaman & cetak ikut berubah | `[USULAN]` |
+| MP-NFR-03 | Dokumen | PDF dibuat server-side dari template HTML/CSS (A4), identik dengan pratinjau — pola QTN-NFR-06. Excel memakai pustaka spreadsheet aplikasi (mis. PhpSpreadsheet). | Pratinjau = PDF unduhan; Excel terbuka tanpa peringatan format | `[USULAN]` |
+
+## 7. Data
+
+Tanpa tabel baru `[USULAN]`. Close Program memakai kolom yang sudah ada di `penjualan_program`:
+`closed_by` (user) dan `closed_date` (waktu) — **terisi = Closed**; `status` tetap `final`. Peserta dibaca dari
+`quotation` (status `deal`) → `quotation_peserta` (peserta Deal) → `ms_peserta`; trainer dari `penjualan_program.id_trainer`.
+
+## 8. Pertanyaan Terbuka
+
+| ID | Pertanyaan | Terkait |
+|---|---|---|
+| Q-MPS-01 | Kapan program masuk tab **Selesai**? Usulan: tanggal selesai acara lewat atau sudah Closed (sama dengan Quotation Q-QTN-09). | MP-FR-02 |
+| Q-MPS-02 | **Close Program** boleh kapan saja dengan peringatan (usulan), atau hanya setelah acara selesai / semua invoice dibuat? Perlu tombol **Buka Kembali**? | MP-FR-03 |
+| Q-MPS-03 | Format **Daftar Peserta**: kolom sudah cukup? Kode dokumen (FR/LMI-…)? | MP-FR-06 |
+| Q-MPS-04 | Format **Daftar Hadir**: perlu kolom jam / sesi (pagi–siang)? Penanda tangan selain Trainer & Penyelenggara? | MP-FR-07 |
+| Q-MPS-05 | Setelah Closed, apakah **Quotation** (buat / Deal) dan **Invoice** juga dikunci? | MP-FR-09 |
+
+## 9. Riwayat
+
+| Versi | Tanggal | Perubahan |
+|---|---|---|
+| draf 1 | 04-11-2026 | Penyusunan awal dari `input/Invoice & Pengajuan/2026-11-04-manage-peserta/` `[MPS-1]`, `[MPS-2]`: Fase 1 (MP-FR-01 – MP-FR-10), template cetak usulan, Close Program mengisi status Closed `[JPB-12]`; mockup draf 14e. |
+
+---
+
+# Bagian 7 — Modul Pengajuan Biaya Labmania
+
+- **Versi:** draf 4a — 05-11-2026
+- **Sumber:** `input/Invoice & Pengajuan/2026-11-04-pengajuan-biaya-as-is/` (permintaan user + video `input/Invoice & Pengajuan/Menu Pengajuan Biaya - As Is.mp4`); `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/` (jawaban Q-PB-01 – Q-PB-12, Matrix Akses Menu); `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya-2/` (jawaban Q-PB-13 – Q-PB-16, Q-34)
+- **Status:** DRAF. Cakupan sekarang: **pengajuan + approval + tanda Paid** (sementara, sebelum modul pencairan). Pencairan Finance, realisasi, dan jurnal menyusul. Pertanyaan terbuka di bagian 8.
+- **Modul terkait:** hulu Penjualan Program (`docs/fr-nfr-penjualan-program.md`: costing Final = budget, Trainer) dan Quotation (`docs/fr-nfr-quotation.md`: Sales); Master User & **Role & Permission** (`docs/fr-nfr.md` FR-36 – FR-39, FR-54 – FR-58); Master Trainer (`docs/fr-nfr.md` FR-44 – FR-47); Activity Log (`docs/fr-nfr-activity-log.md`)
+- **ERD:** `docs/diagrams/erd.drawio` halaman *ERD Pengajuan Biaya* (draf 2) dan *ERD Matrix Akses*
+- **Flow Process:** `docs/diagrams/bpmn-to-be.drawio` halaman *Level 1 — Pengajuan Biaya*
+- **Use case:** `docs/workbook.xlsx` sheet *UC Non-BPMN* (UC-43 – UC-45, UC-47, UC-48, UC-53, UC-54)
+- **Mockup:** `ui-mockup/produk/Labmania.html`, modul **Pengajuan Biaya** (draf 14g)
+- **Draf sebelumnya:** `input/backup/fr-nfr-pengajuan-biaya_draf2_04-11-2026.md` (draf 1: `input/backup/fr-nfr-pengajuan-biaya_draf1_04-11-2026.md`)
+
+Penomoran memakai awalan **PB-**.
+
+| Penanda | Arti |
+|---|---|
+| `[PBU]` | permintaan user 04-11-2026: PIC penanggung jawab program mengajukan biaya program ke manajemen untuk dicairkan; "kurang lebih seperti" video, disesuaikan dengan Labmania |
+| `[VID-1]` | video, daftar Pengajuan per SPK: Nomor SPK & Paket, Customer, Team / PIC, Status, Action |
+| `[VID-2]` | video, halaman pengajuan per SPK: blok per kategori biaya dengan kartu Budget / Aktual / Sisa Budget, tabel pengajuan (Req Number, Description, Total, Tipe, Request By, Status, Date, Option), blok Overbudget |
+| `[VID-3]` | video, form Add Pengajuan: kepala SPK, Request By (+ peringatan bukan tim), Tgl, Deskripsi wajib; Informasi Pengajuan (Estimasi / Terpakai / Overbudget per item); tabel Pengajuan (Qty, Price/Unit, Total; baris habis budget terkunci); Bank, Bank Number, Account Name wajib; Upload Bukti; Back / Save |
+| `[JPB-n]` | jawaban user 04-11-2026, `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/`, butir PB-n |
+| `[JPB2-n]` | jawaban user 04-11-2026 kedua, `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya-2/`, butir Q-PB-n / Q-n |
+| `[FPN]` | pola nomor dokumen `LMI/XX/MM/yy-zzz` dari `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/` |
+| `[STD]` | standar proyek di `AGENTS.md` |
+| `[USULAN]` | usulan analis, **belum** dinyatakan klien |
+
+---
+
+## 1. Ringkasan Kebutuhan
+
+**Tim program** mengajukan biaya program ke **Manajemen** untuk disetujui `[PBU]`, `[JPB-01]`. Tampilan dan alurnya
+mengikuti menu Pengajuan sistem acuan `[VID-1]` – `[VID-3]`, disesuaikan ke Labmania. Cakupan sekarang hanya
+**pengajuan dan approval** `[JPB-06]`; pencairan oleh **Finance** menyusul `[JPB-02]`.
+
+| Konsep di sistem acuan | Di Labmania |
+|---|---|
+| SPK (project) | **Penjualan Program Final** (Public & B2B) |
+| Team SPK (Project Leader, Sales) | **Tim program** `[JPB-01]`: **Sales** yang dipilih di Quotation **Deal** program itu `[JPB2-16]`, **Trainer** yang dipilih di Penjualan Program (lewat akun login trainer `[JPB2-13]`), dan user **Manajemen** (posisi di Master User, daftar menyusul `[JPB2-14]`) |
+| Budget per item (Estimasi) | **Costing Penjualan Program Final** — budget sudah menjadi konsekuensi sejak Penjualan Program dibuat; selisih peserta hanya memengaruhi profit `[JPB-04]` |
+| Kategori biaya (± 5 di acuan) | **2 kategori: Fixed Cost dan Variable Cost** (sementara) `[JPB-03]` |
+| Add Pengajuan Kasbon / Direct Payment / PO | **Satu tombol "Add Pengajuan"**; jenis dipilih di form: **Kasbon** atau **Direct Payment** `[JPB-05]`. **PO tidak ada** `[JPB-05]` |
+| Overbudget | Tambahan budget item costing **atau item baru** di luar costing `[JPB-10]` |
+| Approval | **1 level, Manajemen** (sementara) `[JPB-03]` |
+| Pencairan (Request Payment), Expense Report, jurnal | **Menyusul** `[JPB-02]`, `[JPB-06]`, `[JPB-09]`; sementara pengajuan dapat **ditandai Paid** (PB-FR-23) `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/` |
+| Daftar pengajuan & progres | Menu Pengajuan Biaya dibagi tab **Ajukan Biaya** dan **Sudah Diajukan**; progres **Waiting Approval → Waiting Payment → Paid** `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/` |
+| Hak akses | Menu lewat **Role & Permission** (`fr-nfr.md` FR-54 – FR-58, FR-65; role dari Master Role FR-64, ditambah Override Permission per user); data program hanya untuk **user terkait**; **Superadmin** (developer) dan **Admin** (user Labmania) melihat semua `[JPB-07]`, `[JPB2-34]` |
+
+```
+Penjualan Program Final (costing = budget; Trainer)   Quotation (Sales)   Group Manajemen
+                 └──────────────── tim program ───────────────┘──────────────┘
+   │
+   ├─ Fixed Cost   : Budget │ Aktual │ Sisa ──► + Add Pengajuan (pilih Kasbon / Direct Payment) ──► Waiting Approval ─┬─ Setujui ─► Waiting Payment ─► Tandai Paid ─► Paid
+   │                                    └─► + Add Overbudget (item costing / item baru) ──► Menunggu Approval ─┐   ├─ Tolak ───► Ditolak
+   └─ Variable Cost: (sama)                                                              Setujui: budget naik ┘   └─ Batalkan (pengaju) ─► Batal
+```
+
+Rumus per item costing (`fr-nfr-master-program.md` bagian 8) — budget dari **Penjualan Program Final** `[JPB-04]`:
+
+| Satuan | Qty Estimasi | Contoh (durasi 2 hari, target 25 peserta) |
+|---|---|---|
+| Event | 1 | Honor Trainer: 1 × 2.125.000 |
+| Day | durasi | Hotel Trainer: 2 × 375.000 |
+| Peserta/Event | target peserta | Modul: 25 × 50.000 |
+| Peserta/Day | target peserta × durasi | Makan Siang: 50 × 50.000 |
+
+- **Total Budget item** = Qty Estimasi × Price/Unit + total Overbudget item yang **Disetujui**. Item baru dari Overbudget punya budget = total overbudget itu saja.
+- **Terpakai item** = jumlah detail pengajuan berstatus **Menunggu Approval** (Waiting Approval), **Disetujui** (Waiting Payment), atau **Paid** (Ditolak dan Batal tidak dihitung), agar budget yang sedang diajukan tidak dapat diajukan dua kali `[USULAN]`.
+- **Sisa item** = Total Budget item − Terpakai item (informasi). Kartu **Budget / Aktual / Sisa Budget** per kategori = jumlah itemnya `[VID-2]`.
+- **Budget mencukupi dihitung per kategori** `[JPB2-15]`: total pengajuan Fixed Cost ≤ **Sisa total Fixed Cost**, total pengajuan Variable Cost ≤ **Sisa total Variable Cost**. Satu item boleh melebihi budget item-nya selama sisa kategori cukup.
+
+### 1.1 Cakupan
+
+| Termasuk | Ditunda / tidak termasuk |
+|---|---|
+| Daftar program untuk user terkait, halaman pengajuan per program | **Pencairan oleh Finance** `[JPB-02]` |
+| Add Pengajuan (Kasbon / Direct Payment) per item | Pengajuan **PO** `[JPB-05]` |
+| Add Overbudget (item costing / item baru) | **Pelaporan realisasi** / pertanggungjawaban kasbon `[JPB-06]` |
+| Approval 1 level oleh Manajemen | **Jurnal** `[JPB-09]` |
+| Batalkan pengajuan selama menunggu approval | Status **Closed** program sebagai batas pengajuan `[JPB-12]` |
+| Role & Permission (spec di `docs/fr-nfr.md`) | Approval bertingkat `[JPB-03]` |
+
+### 1.2 Istilah
+
+| Istilah | Arti |
+|---|---|
+| Tim program | User yang terkait dengan satu Penjualan Program: Sales di quotation **Deal**-nya, Trainer-nya (lewat akun login trainer), dan user Manajemen `[JPB-01]`, `[JPB2-16]`. |
+| Kasbon | Uang muka yang ditransfer ke rekening pengaju sebelum biaya dikeluarkan. |
+| Direct Payment | Pembayaran langsung ke rekening penerima (vendor / pihak ketiga) atas tagihan biaya program. |
+| Overbudget | Permintaan tambahan budget: menambah item costing yang sisanya tidak cukup, atau menambah item baru `[JPB-10]`. |
+| Budget / Aktual / Sisa | Lihat rumus di atas. "Aktual" di kartu = Terpakai. |
+
+---
+
+## 2. Aktor
+
+| Aktor | Peran | Sumber |
+|---|---|---|
+| Sales (tim program) | Mengajukan biaya & overbudget untuk program yang quotation **Deal**-nya ia tangani; membatalkan pengajuannya selama Menunggu Approval | `[JPB-01]`, `[JPB2-16]` |
+| Trainer (tim program) | Sama dengan Sales, untuk program yang ia latih, lewat **akun login** di Master Trainer (`fr-nfr.md` FR-59) | `[JPB-01]`, `[JPB2-13]` |
+| Manajemen | Termasuk tim semua program (dapat mengajukan); **menyetujui / menolak** pengajuan dan overbudget. Siapa yang termasuk Manajemen ditentukan dari **Role di Master User** (Master Role, `fr-nfr.md` FR-64) `input/Invoice & Pengajuan/2026-11-05-master-role-override/`, daftar role menyusul (Q-PB-14, Q-37); sementara (mockup) role **Direktur** | `[JPB-01]`, `[JPB-03]`, `[JPB2-14]` |
+| Superadmin | Akun developer (group id 1): semua menu, semua data, tidak dapat dibatasi | `[JPB2-34]` |
+| Admin | Akun user Labmania: membuka semua data program `[JPB-07]`; menu & aksinya mengikuti hak role-nya di Role & Permission (dapat dibatasi) | `[JPB-07]`, `[JPB2-34]` |
+| Finance | Mencairkan — **menyusul** | `[JPB-02]` |
+
+---
+
+## 3. Tabel Use Case
+
+| Kode | Nama Use Case | User | Modul | Sub Modul | Input | Deskripsi | Output | Entity/Objek Terkait | FR |
+|---|---|---|---|---|---|---|---|---|---|
+| UC-43 | Mengajukan Biaya Program | Tim program (Sales, Trainer, Manajemen) | Pengajuan Biaya | Pengajuan | Penjualan Program Final, kategori (Fixed / Variable), jenis (Kasbon / Direct Payment), deskripsi, Qty & Price/Unit per item, Bank, No. Rekening, Nama Rekening, bukti | Aktor membuka program di daftar Pengajuan Biaya dan menekan Add Pengajuan pada kategori biaya. Di form, aktor memilih jenis Kasbon atau Direct Payment. Sistem menampilkan Informasi Pengajuan (Estimasi / Terpakai / Overbudget / Sisa per item); isian terkunci bila sisa kategori habis. Aktor mengisi Qty (Price/Unit boleh diubah), rekening, deskripsi, dan bukti, lalu Save. Sistem memeriksa total pengajuan ≤ sisa kategori, memberi nomor, dan meneruskan ke Manajemen. | Pengajuan berstatus Menunggu Approval dengan nomor `LMI/KS/…` atau `LMI/DP/…` | Pengajuan Biaya, Detail Pengajuan Biaya, Lampiran Pengajuan, Penjualan Program, Biaya Penjualan Program, Detail Overbudget | PB-FR-01 – PB-FR-11 |
+| UC-44 | Mengajukan Overbudget | Tim program | Pengajuan Biaya | Overbudget | Penjualan Program Final, kategori, item costing atau item baru, Qty & Price/Unit tambahan, alasan | Aktor menekan Add Overbudget pada kategori biaya, mengisi tambahan Qty dan Price/Unit untuk item costing dan/atau menambah item baru (nama, Qty, Price/Unit), mengisi alasan, lalu Save. | Overbudget berstatus Menunggu Approval dengan nomor `LMI/OB/…` | Pengajuan Overbudget, Detail Overbudget, Biaya Penjualan Program | PB-FR-12, PB-FR-13 |
+| UC-45 | Menyetujui / Menolak Pengajuan | Manajemen | Pengajuan Biaya | Approval | Pengajuan atau Overbudget berstatus Menunggu Approval; alasan (wajib bila tolak) | Aktor membuka menu Approval Pengajuan, melihat rincian dan posisi budget program, lalu Setujui atau Tolak (dengan alasan). Pengajuan sendiri tidak dapat diproses. | Pengajuan Disetujui / Ditolak; Overbudget Disetujui menambah budget | Pengajuan Biaya, Pengajuan Overbudget | PB-FR-14, PB-FR-15 |
+| ~~UC-46~~ | ~~Mencairkan Biaya~~ — **ditunda** `[JPB-02]`; kode tidak dipakai ulang | | | | | | | | |
+| UC-47 | Membatalkan Pengajuan | Pengaju (tim program) | Pengajuan Biaya | Pengajuan | Pengajuan / Overbudget miliknya berstatus Menunggu Approval | Aktor memilih Batalkan dan mengonfirmasi. Budget yang dipesan kembali tersedia. | Pengajuan / Overbudget berstatus Batal | Pengajuan Biaya, Pengajuan Overbudget | PB-FR-17 |
+| UC-48 | Melihat Posisi Budget Program | Tim program, Superadmin, Admin | Pengajuan Biaya | Pengajuan | Penjualan Program Final | Aktor membuka daftar Pengajuan Biaya (hanya program terkait; Superadmin & Admin semua) dan halaman program: Budget, Aktual, Sisa per kategori, daftar pengajuan dan overbudget beserta statusnya. | Posisi budget program | Penjualan Program, Biaya Penjualan Program, Pengajuan Biaya, Pengajuan Overbudget | PB-FR-01 – PB-FR-04, PB-FR-18 – PB-FR-20 |
+| UC-53 | Memantau Progres Pengajuan | Tim program, Superadmin, Admin | Pengajuan Biaya | Pengajuan | Pengajuan Kasbon / Direct Payment pada program terkait; filter jenis & progres (opsional) | Aktor membuka tab **Sudah Diajukan** dan melihat progres setiap pengajuan: Waiting Approval → Waiting Payment → Paid (Ditolak / Batal menghentikan progres). | Daftar pengajuan beserta progresnya | Pengajuan Biaya, Penjualan Program | PB-FR-21, PB-FR-22 |
+| UC-54 | Menandai Pengajuan Paid | Hak Manage Pengajuan Biaya (sementara, Q-PB-17) | Pengajuan Biaya | Pengajuan | Pengajuan berstatus Waiting Payment; tanggal bayar, keterangan / bukti transfer (opsional) | Aktor memilih Tandai Paid pada pengajuan Waiting Payment, mengisi tanggal bayar, lalu menyimpan. Sementara sebelum modul pencairan Finance dibuat. | Pengajuan berstatus Paid | Pengajuan Biaya | PB-FR-23 |
+
+UC-49 (Mengatur Role & Permission) ada di `docs/fr-nfr.md`.
+
+---
+
+## 4. Kebutuhan Fungsional (FR)
+
+### 4.1 Daftar & halaman program
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PB-FR-01 | Menu: modul **Pengajuan Biaya** dengan menu **Pengajuan Biaya** (daftar program) dan **Approval Pengajuan** (Manajemen). Menu **Pencairan** belum dibuat `[JPB-02]`. Hak membuka menu dan aksinya diatur di **Role & Permission** (`fr-nfr.md` FR-54 – FR-58). | `[VID-1]`, `[JPB-01]`, `[JPB-02]` |
+| PB-FR-02 | Tab **Ajukan Biaya** (PB-FR-21) — **Daftar Pengajuan Biaya**: satu baris per **Penjualan Program Final** yang **terkait dengan user login** (PB-FR-19); **Superadmin dan Admin melihat semua** `[JPB-07]`, `[JPB2-34]`. Kolom: No, **No. Program** (jenis, nomor, tanggal acara), **Program** (judul paket, lokasi), **Customer** (Company untuk B2B; "Public" untuk Public), **Tim** (Sales dari quotation, Trainer), **Budget**, **Aktual**, **Sisa**, **Status** (Belum ada pengajuan / n Waiting Approval / Berjalan), **Action** (Lihat Pengajuan). Filter jenis program; pencarian nomor, judul, customer, sales, trainer. Penjualan Program Draft / Batal tidak tampil. | `[VID-1]`, `[JPB-07]` + `[USULAN]` (kolom angka, status) |
+| PB-FR-03 | **Halaman Pengajuan per program**: kepala **No. Program**, Jenis, Customer, Program (judul), Lokasi, **Sales** (dari quotation Deal), **Trainer**, **Waktu** (tanggal mulai – selesai), Durasi, Target peserta. Di bawahnya satu blok per kategori **Fixed Cost** dan **Variable Cost** `[JPB-03]`. | `[VID-2]`, `[JPB-03]` |
+| PB-FR-04 | Setiap blok kategori: kartu **Budget**, **Aktual**, **Sisa Budget** (rumus bagian 1); **satu tombol "+ Add Pengajuan"** `[JPB-05]`; tabel pengajuan: No, **No. Pengajuan**, Deskripsi, Total, **Jenis** (badge Kasbon / Direct Payment), **Request By**, **Status** (label progres PB-FR-22), Tanggal, Option (gear: Lihat, Batalkan). Sub-blok **Overbudget [kategori]** dengan tombol **+ Add Overbudget** dan tabel: No, No. Overbudget, Item, Amount, Status, Pembuat Pengajuan, Option. Tombol Add tampil bila user punya hak **Add** di menu Pengajuan Biaya (Role & Permission) **dan** termasuk tim program; **Superadmin** selalu dapat; **Admin** dapat bila punya hak Add (keduanya dengan peringatan bukan tim, PB-FR-05). | `[VID-2]`, `[JPB-05]`, `[JPB-01]` |
+
+### 4.2 Form Add Pengajuan
+
+Form dibuka sebagai **halaman penuh** `[VID-3]`. Breadcrumb: Pengajuan Biaya / Pengajuan Biaya / [No. Program] / Add Pengajuan.
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PB-FR-05 | **Kepala**: data program (PB-FR-03, hanya tampil); **Jenis** wajib dipilih di form: **Kasbon** atau **Direct Payment** `[JPB-05]`; **Kategori** (dari blok yang ditekan, terkunci); **Request By** = user login (terkunci); bila user login bukan tim program (mis. Admin), tampil peringatan "[nama] bukan tim program ini" `[VID-3]`; **Tanggal** = hari ini (terkunci) `[VID-3]`; **Deskripsi / Keterangan** wajib `[VID-3]`. | `[VID-3]`, `[JPB-05]` |
+| PB-FR-06 | **Informasi Pengajuan** (hanya tampil): satu baris per item kategori itu — item costing dan item baru dari Overbudget yang disetujui. Kolom **Estimasi** (Qty, Price/Unit, Total Budget), **Terpakai** (Qty, Total Terpakai), **Overbudget** (Qty, Total disetujui), **Sisa**; baris **Total kategori** dengan Sisa kategori. | `[VID-3]`, `[JPB-10]` + `[USULAN]` (kolom Sisa) |
+| PB-FR-07 | **Tabel Pengajuan**: satu baris per item: Item, **Qty** (isian), **Price/Unit** (terisi Price/Unit budget, **boleh diubah**) `[JPB-04]`, **Total Pengajuan** = Qty × Price/Unit, plus **Grand Total**, **Sisa kategori**, dan **sisa kategori setelah pengajuan ini**. Semua item kategori dapat diisi selama Sisa kategori > 0; bila Sisa kategori 0 seluruh isian terkunci (acuan mengunci per item `[VID-3]`; Labmania per kategori `[JPB2-15]`). Minimal satu item dengan Total > 0. | `[VID-3]`, `[JPB-04]`, `[JPB2-15]` |
+| PB-FR-08 | **Budget harus mencukupi per kategori** `[JPB-04]`, `[JPB2-15]`: **Grand Total** pengajuan ≤ **Sisa total kategori** (Fixed Cost atau Variable Cost). Satu item boleh melebihi sisa item-nya selama total kategori cukup; tabel menandai item yang melebihi sisa item-nya (informasi, tidak menghalangi). Bila Grand Total melebihi sisa kategori, Save ditolak dengan pesan untuk mengajukan Overbudget. Qty boleh desimal (mis. 0,5 hari) `[USULAN]`. | `[JPB-04]`, `[JPB2-15]` |
+| PB-FR-09 | **Rekening tujuan** wajib: **Bank**, **No. Rekening**, **Nama Rekening** `[VID-3]`. Kasbon: rekening pengaju (terisi dari pengajuan Kasbon sebelumnya bila ada); Direct Payment: rekening penerima (vendor) `[USULAN]`. Label bagian berganti mengikuti jenis. | `[VID-3]` + `[USULAN]` |
+| PB-FR-10 | **Bukti** (Upload Bukti, tarik & letakkan, beberapa file) `[VID-3]`. **Wajib untuk Direct Payment** (tagihan / nota), **opsional untuk Kasbon** `[USULAN]`. | `[VID-3]` + `[USULAN]` |
+| PB-FR-11 | **Save**: memeriksa isian wajib dan batas budget, memberi **Nomor Pengajuan** otomatis dengan format **sementara** `[JPB-08]` **`LMI/KS/MM/yy-zzz`** (Kasbon) atau **`LMI/DP/MM/yy-zzz`** (Direct Payment), pola `[FPN]`, urut per kode per bulan, lalu menyimpan dengan status **Menunggu Approval**. Tidak ada simpan Draft `[USULAN]`. **Back** kembali ke halaman program tanpa menyimpan. | `[VID-3]`, `[FPN]`, `[JPB-08]` |
+
+### 4.3 Overbudget
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PB-FR-12 | **Add Overbudget** (per kategori, pop up): (a) tabel **item costing** kategori itu — isi **Qty tambahan** dan **Price/Unit** (default harga budget), Total dihitung; (b) **+ Item baru** di luar costing `[JPB-10]` — **Nama item**, Qty, Price/Unit; (c) **Alasan** wajib. Minimal satu baris dengan Total > 0. Save memberi nomor **`LMI/OB/MM/yy-zzz`** (sementara `[JPB-08]`) dan status **Menunggu Approval**. | `[VID-2]`, `[JPB-10]`, `[JPB-08]` |
+| PB-FR-13 | Overbudget **Disetujui**: item costing — Qty dan Total Budget item bertambah (kolom Overbudget di Informasi Pengajuan); item baru — muncul sebagai baris item baru di kategori itu (tanda "item baru") dan dapat diajukan. Costing Penjualan Program Final **tidak berubah** `[USULAN]`. Ditolak / Batal tidak menambah budget. | `[VID-3]`, `[JPB-10]` + `[USULAN]` |
+
+### 4.4 Approval
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PB-FR-14 | **Approval Pengajuan** (Manajemen, 1 level `[JPB-03]`): daftar pengajuan dan overbudget berstatus **Menunggu Approval**, tab **Pengajuan** dan **Overbudget**. Kolom: No, No. Pengajuan, No. Program, Kategori / Jenis, Deskripsi, Total, Request By, Tanggal, Action (Lihat, Proses). Proses menampilkan rincian item, posisi budget kategori, rekening tujuan, dan bukti. Hak proses = hak **Manage** di menu Approval Pengajuan (Role & Permission; default role Manajemen) `[USULAN]`. | `[PBU]`, `[JPB-03]` + `[USULAN]` (hak Manage) |
+| PB-FR-15 | **Setujui** → status **Disetujui** (tercatat penyetuju & waktu). **Tolak** → status **Ditolak**, **alasan wajib**, budget kembali tersedia. Tidak ada setuju sebagian; pengaju **tidak dapat memproses pengajuannya sendiri** `[USULAN]`. Pengajuan Disetujui menunggu pencairan Finance (menyusul `[JPB-02]`). | `[PBU]`, `[JPB-02]` + `[USULAN]` |
+| PB-FR-16 | **Pencairan** — **ditunda** `[JPB-02]`. Catatan rancangan: dilakukan Finance atas pengajuan Waiting Payment (tanggal cair, bukti transfer); kemungkinan lewat modul `request_payment` aplikasi (Q-PB-11). Sampai modul itu ada, pembayaran dicatat dengan **Tandai Paid** (PB-FR-23). | `[JPB-02]` |
+
+### 4.4a Tab & progres pengajuan
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PB-FR-21 | Menu **Pengajuan Biaya** dibagi **2 tab**: (1) **Ajukan Biaya** — daftar program (PB-FR-02) untuk membuka halaman program dan Add Pengajuan; (2) **Sudah Diajukan** — daftar semua pengajuan **Kasbon / Direct Payment** pada program yang dapat dilihat user (PB-FR-20), kolom: No, **No. Pengajuan** (nomor, badge jenis, tanggal), **Program** (nomor — membuka halaman program, judul), **Kategori / Deskripsi**, **Total**, **Request By**, **Progres**, Action (gear: Lihat; Batalkan bila miliknya dan Waiting Approval; **Tandai Paid** bila Waiting Payment dan punya hak). Filter **jenis** (Kasbon / Direct Payment) dan **progres**, pencarian nomor, program, deskripsi, pengaju; urut tanggal terbaru. Setiap tab menampilkan jumlah datanya. Overbudget tidak tampil di tab ini `[USULAN]`. Nomor tetap per jenis: Kasbon `LMI/KS/…`, Direct Payment `LMI/DP/…` (PB-FR-11). | `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/` + `[USULAN]` (kolom, filter, overbudget tidak ikut) |
+| PB-FR-22 | **Progres pengajuan** tampil sebagai langkah **Waiting Approval → Waiting Payment → Paid** (langkah selesai bertanda ✓, langkah sekarang menyala). **Ditolak** / **Batal** menghentikan progres di langkah pertama dan ditandai ×. Label yang sama dipakai di tabel halaman program, Approval, dan Lihat Pengajuan (baris Progres + riwayat status). Overbudget tetap memakai label Menunggu Approval / Disetujui / Ditolak / Batal. | `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/` + `[USULAN]` (tampilan Ditolak/Batal) |
+| PB-FR-23 | **Tandai Paid** (sementara, sebelum modul pencairan PB-FR-16): pada pengajuan **Waiting Payment**, user dengan hak **Manage** di menu Pengajuan Biaya (Role & Permission; Superadmin dan Admin selalu dapat) mengisi **Tanggal bayar** (wajib; tidak sebelum tanggal pengajuan dan tidak di masa depan) dan **Keterangan / bukti transfer** (opsional). Status menjadi **Paid** (tercatat oleh & tanggal), tidak dapat diubah lagi, dan tetap dihitung sebagai Aktual. Dicatat di Activity Log (aksi **Tandai Paid**). | `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/` + `[USULAN]` (pelaku, isian) — Q-PB-17 |
+
+### 4.5 Batal, lihat, dan akses
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PB-FR-17 | Pengaju dapat **Batalkan** pengajuan / overbudget miliknya selama **Menunggu Approval** (konfirmasi). Status **Batal**; budget kembali tersedia. Pengajuan Disetujui tidak dapat diubah atau dibatalkan `[USULAN]`. Perbaikan isian = batalkan lalu ajukan ulang `[USULAN]`. | `[USULAN]` |
+| PB-FR-18 | **Lihat Pengajuan**: kepala program, jenis, kategori, nomor, tanggal, deskripsi, Request By, rincian item (Qty, Price/Unit, Total), rekening tujuan, bukti, dan riwayat status (diajukan; disetujui / ditolak beserta alasan; batal). | `[VID-2]` + `[USULAN]` |
+| PB-FR-19 | **Tim program** `[JPB-01]` = (a) user **Sales** pada quotation program itu yang berstatus **Deal** (`quotation.id_sales`; Public dapat lebih dari satu sales) `[JPB2-16]`; (b) **Trainer** Penjualan Program, lewat **akun login** di Master Trainer (`ms_trainer.id_user`, `fr-nfr.md` FR-59) `[JPB2-13]`; (c) user **Manajemen** — ditentukan dari **posisi di Master User**, bukan Department / Division; daftar posisi **menyusul** `[JPB2-14]` (sementara: jabatan Direktur). Program tanpa quotation Deal / trainer tetap dapat diajukan oleh Manajemen. | `[JPB-01]`, `[JPB2-13]`, `[JPB2-14]`, `[JPB2-16]` |
+| PB-FR-20 | **Hak data** `[JPB-07]`: halaman program, form, dan Lihat Pengajuan hanya dapat dibuka **tim program**; **Superadmin** (akun developer, group id 1, lolos semua permission) dan **Admin** (akun user Labmania) membuka semua data program `[JPB2-34]`. Hak **menu & aksi** mengikuti **Role & Permission**: Pengajuan Biaya (View, Add), Approval Pengajuan (View, Manage). Batas waktu: selama program belum **Closed** `[JPB-12]` — Closed dilakukan lewat **Close Program** di modul Manage Peserta (`docs/fr-nfr-manage-peserta.md` MP-FR-03, MP-FR-09, `input/Invoice & Pengajuan/2026-11-04-manage-peserta/`): program Closed tidak dapat ditambah pengajuan / overbudget baru (tombol Add tidak tampil, server menolak); pengajuan yang ada tetap dapat dilihat dan yang Menunggu tetap dapat diproses `[USULAN]`. | `[JPB-07]`, `[JPB-12]` + `[USULAN]` (pemetaan aksi) |
+
+---
+
+## 5. Kebutuhan Non-Fungsional (NFR)
+
+| ID | Kategori | Kebutuhan | Kriteria uji | Lingkup | Sumber |
+|---|---|---|---|---|---|
+| PB-NFR-01 | Integritas data | Budget, Terpakai, dan Sisa dihitung ulang **di server** dari `penjualan_program_biaya`, overbudget disetujui, dan detail pengajuan aktif — bukan dari isian klien. Pemeriksaan batas **sisa kategori** (PB-FR-08) dan penyimpanan header + detail + lampiran dalam **satu transaksi** dengan penguncian baris program. | Dua Save bersamaan yang masing-masing pas dengan sisa kategori → satu ditolak | PB-FR-08, PB-FR-11 | `[USULAN]` |
+| PB-NFR-02 | Integritas data | Nomor pengajuan / overbudget dibuat server saat Save, di transaksi yang sama, kolom `nomor` unik (pola IVC-NFR-03). | Tidak ada nomor ganda pada Save bersamaan | PB-FR-11, PB-FR-12 | `[USULAN]` |
+| PB-NFR-03 | Integritas data | Transisi status hanya sesuai bagian 6, diperiksa di server (Setujui / Tolak hanya dari Menunggu Approval). Pengajuan Disetujui tidak dapat diubah. | Request Setujui untuk pengajuan Batal ditolak (422) | PB-FR-14 – PB-FR-17 | `[USULAN]` |
+| PB-NFR-04 | Audit | Ajukan, setujui, tolak, batal, dan overbudget dicatat `write_log()` modul **"Pengajuan Biaya"** (sub modul Pengajuan / Overbudget / Approval), rincian item sebagai `detail_changes`. Tabel memakai kolom jejak `created_by`, `created_date`, `updated_by`, `updated_date`; aksi tampil di Activity Log. | Setujui 1 pengajuan → 1 log dengan status lama → baru | Semua UC | `[STD]` |
+| PB-NFR-05 | Keamanan | **Dua lapis** `[JPB-07]`: (1) menu & aksi via permission role (Role & Permission, `Pengajuan_Biaya.View/Add`, `Approval_Pengajuan_Biaya.View/Manage`, diperiksa `has_permission()` / `auth->restrict()`); (2) **data** — setiap request ke program / pengajuan memeriksa user ∈ tim program, Superadmin, atau Admin. Pengaju tidak dapat memproses pengajuannya sendiri. | User bukan tim membuka URL program → 403; tanpa `Add` → tombol tidak tampil, request ditolak | PB-FR-04, PB-FR-14, PB-FR-19, PB-FR-20 | `[JPB-07]` + `[USULAN]` (nama permission) |
+| PB-NFR-06 | File | Bukti: PDF, JPG, PNG; maks. 5 MB per file; disimpan di luar web root dengan nama acak, diunduh lewat controller yang memeriksa hak akses (PB-NFR-05). | File .exe ditolak; file 6 MB ditolak | PB-FR-10 | `[USULAN]` |
+| PB-NFR-07 | Akurasi | Uang DECIMAL(15,2), Qty DECIMAL(10,2); tampil rupiah tanpa desimal, isian uang dengan pemisah ribuan titik (`fr-nfr.md` NFR-12). Qty Estimasi memakai fungsi faktor satuan yang sama dengan simulasi costing (PJ-NFR-05). | Budget item = angka costing Penjualan Program Final | PB-FR-06 | `[JPB-04]` + `[USULAN]` |
+| PB-NFR-08 | Platform | CI3 HMVC, MySQL, Bootstrap + jQuery; nama tabel/kolom = ERD halaman *ERD Pengajuan Biaya*. Tabel kasbon konsultan (`kons_tr_kasbon_project_*`) **tidak dipakai** (rekomendasi, Q-PB-11). | Code review | Semua | `[STD]` + `[USULAN]` |
+
+---
+
+## 6. Status
+
+**Pengajuan (Kasbon / Direct Payment)**
+
+| Dari | Aksi | Oleh | Ke | Efek |
+|---|---|---|---|---|
+| — | Save | Tim program | **Waiting Approval** | Nomor dibuat (`LMI/KS/…` Kasbon, `LMI/DP/…` Direct Payment); budget item terpakai |
+| Waiting Approval | Setujui | Manajemen | **Waiting Payment** | Menunggu pembayaran |
+| Waiting Payment | Tandai Paid (tanggal bayar) | Hak Manage Pengajuan Biaya (sementara, Q-PB-17) | **Paid** | Tercatat pembayar & tanggal bayar; tetap dihitung Aktual |
+| Waiting Approval | Tolak (alasan) | Manajemen | **Ditolak** | Budget kembali tersedia |
+| Waiting Approval | Batalkan | Pengaju | **Batal** | Budget kembali tersedia |
+
+Nilai di database tetap `menunggu` (Waiting Approval), `disetujui` (Waiting Payment), `paid`, `ditolak`, `batal`; label tampilan memakai istilah klien `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/`.
+
+**Overbudget**: Menunggu Approval → **Disetujui** (budget item bertambah / item baru tersedia) / **Ditolak** / **Batal** (oleh pengaju).
+
+Paid, Ditolak, dan Batal adalah status akhir pengajuan. Saat modul pencairan Finance dibuat, Paid diisi dari pencairan itu (PB-FR-16) `[JPB-02]`.
+
+**Status program di daftar** (turunan, tidak disimpan): **Belum ada pengajuan** · **n Waiting Approval** · **Berjalan**.
+
+---
+
+## 7. Data (ringkas — rinci di ERD)
+
+| Tabel | Isi |
+|---|---|
+| `pengajuan_biaya` | nomor, id_penjualan, tipe_biaya (fixed / variable), jenis (kasbon / direct_payment), tanggal, deskripsi, total, bank, no_rekening, nama_rekening, status (menunggu / disetujui / **paid** / ditolak / batal), request_by, approved_by, approved_date, alasan_tolak, closed_by, closed_date, **paid_by, paid_date, paid_keterangan** (PB-FR-23) |
+| `pengajuan_biaya_detail` | id_pengajuan, **id_penjualan_biaya** (item costing) **atau id_overbudget_detail** (item baru), item (salinan), qty, harga, total |
+| `pengajuan_biaya_lampiran` | id_pengajuan, nama_file, file_path |
+| `pengajuan_overbudget` | nomor, id_penjualan, tipe_biaya, tanggal, alasan, total, status, request_by, approved_by, approved_date, alasan_tolak, closed_by, closed_date |
+| `pengajuan_overbudget_detail` | id_overbudget, id_penjualan_biaya (NULL = **item baru**), item, qty, harga, total |
+| `ms_trainer` | + `id_user` (akun login trainer, NULL) — disetujui `[JPB2-13]`, `fr-nfr.md` FR-59 |
+| Hak akses | tabel existing `groups`, `user_groups`, `permissions`, `group_permissions`, `user_permissions`, `menus` — halaman *ERD Matrix Akses* |
+
+---
+
+## 8. Pertanyaan Terbuka
+
+### 8.1 Masih terbuka
+
+| ID | Pertanyaan | Mempengaruhi |
+|---|---|---|
+| Q-PB-11 | **Tabel kasbon yang sudah ada** — jawaban analis: folder `application/` memakai basis kode ERP **"CONSULTANT"** (aplikasi yang sama dengan video acuan). Di dalamnya sudah ada modul kasbon milik **modul konsultan**: tabel `kons_tr_kasbon_project_header` dan rinciannya per kategori (`_akomodasi`, `_others`, `_lab`, `_subcont…`), overbudget `kons_tr_kasbon_req_ovb_*`, bukti `kons_tr_kasbon_project_bukti_penggunaan`; semuanya terhubung ke **SPK konsultan** (`kons_tr_spk_penawaran`, `kons_tr_spk_budgeting_*`, `kons_master_biaya`). Modul terkait: `kasbon_project`, `approval_kasbon_project`, `approval_kasbon_overbudget`, `request_payment` + `approval_request_payment` (pencairan, membaca header kasbon), `expense_report_project` (realisasi). Jadi tabel itu **bukan** buatan program Labmania — ikut terbawa dari aplikasi asal. **Rekomendasi:** tabel baru Labmania (bagian 7), karena budget Labmania berasal dari Penjualan Program dengan 2 kategori, bukan SPK dengan tabel per kategori. **Perlu dikonfirmasi IT developer:** (a) setuju tabel baru; (b) pencairan nanti memakai modul `request_payment` yang ada (perlu penyesuaian) atau dibuat baru. | ERD, PB-NFR-08, PB-FR-16 |
+| Q-PB-17 | **Tandai Paid**: siapa yang menandai (Finance / Admin)? Bukti transfer wajib diunggah? Setelah modul pencairan ada, tetap ditandai manual atau otomatis dari pencairan? Sementara: hak Manage Pengajuan Biaya, tanggal bayar wajib, keterangan opsional. `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/` | PB-FR-16, PB-FR-23 |
+| Q-PB-12 | Status **Closed** program (batas akhir pengajuan) — **sebagian terjawab** `input/Invoice & Pengajuan/2026-11-04-manage-peserta/`: ditutup lewat **Close Program** di Manage Peserta oleh role yang diberi hak Manage. Kapan boleh di-Close masih Q-MPS-02 (`docs/fr-nfr-manage-peserta.md`). | PB-FR-20 |
+| Q-PB-14 | **Posisi** apa saja di Master User yang termasuk **Manajemen**? Terjawab sebagian `[JPB2-14]`: ditentukan dari Master User (bukan Department / Division); **daftar posisi menyusul dari user**. Group Akses dihapus `input/Invoice & Pengajuan/2026-11-04-role-permission/`; sementara memakai jabatan **Direktur** — disetujui user sebagai data sementara `input/Invoice & Pengajuan/2026-11-04-jawaban-role-permission/`. 05-11-2026 `input/Invoice & Pengajuan/2026-11-05-master-role-override/`: Division dan Jabatan diganti **Role** dari Master Role, jadi Manajemen = role tertentu; sementara role **Direktur** (`fr-nfr.md` Q-37). | PB-FR-19 |
+
+### 8.2 Sudah terjawab (04-11-2026, `[JPB-n]`, `[JPB2-n]`)
+
+| ID | Jawaban |
+|---|---|
+| Q-PB-01 | Tim program = Sales (quotation), Trainer (Penjualan Program), Manajemen; tidak ada field PIC terpisah. Dibuatkan **Matrix Akses Menu** (`fr-nfr.md` FR-54 – FR-58). |
+| Q-PB-02 | Pencairan oleh **Finance**, **menyusul**; sekarang hanya modul pengajuan. |
+| Q-PB-03 | Kategori **Fixed Cost / Variable Cost**; approval **1 level** — sementara. |
+| Q-PB-04 | Budget dari **Penjualan Program Final** (target peserta); Price/Unit boleh berbeda asal budget cukup (rincian Q-PB-15). |
+| Q-PB-05 | **PO tidak ada**; satu tombol **Add Pengajuan**, jenis Kasbon / Direct Payment dipilih di form. |
+| Q-PB-06 | Pelaporan realisasi **menyusul**; cakupan pengajuan + approval. |
+| Q-PB-07 | Hanya **user terkait** yang membuka; **Admin** membuka semua. |
+| Q-PB-08 | Format nomor **sementara**: `LMI/KS/MM/yy-zzz`, `LMI/DP/MM/yy-zzz`, `LMI/OB/MM/yy-zzz`. |
+| Q-PB-09 | Jurnal **menyusul**. |
+| Q-PB-10 | Overbudget **boleh** menambah item baru. |
+| Q-PB-13 | **Setuju** `[JPB2-13]`: field Akun login di Master Trainer (`fr-nfr.md` FR-59). |
+| Q-PB-15 | **Per kategori** `[JPB2-15]`: total Fixed Cost dan total Variable Cost. |
+| Q-PB-16 | Hanya quotation **Deal** `[JPB2-16]`. |
+
+---
+
+## 9. Riwayat Perubahan
+
+| Versi | Tanggal | Perubahan |
+|---|---|---|
+| draf 1 | 04-11-2026 | Penyusunan awal dari `input/Invoice & Pengajuan/2026-11-04-pengajuan-biaya-as-is/`: SPK → Penjualan Program Final, budget = costing, PIC Program (PJ-FR-26), Kasbon / Direct Payment / Overbudget, Approval Manajemen, Pencairan Keuangan. Q-PB-01 – Q-PB-12. |
+| draf 2 | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/` (`[JPB-n]`): **tim program** (Sales quotation, Trainer, Manajemen) menggantikan field PIC — PJ-FR-26 dibatalkan; **Matrix Akses Menu** (`fr-nfr.md` FR-54 – FR-58); **pencairan ditunda** — menu Pencairan, aktor Keuangan, status Dicairkan, kolom `cair_*`, UC-46 dihapus dari cakupan; **satu tombol Add Pengajuan** + pilih jenis di form; overbudget **item baru** (`id_overbudget_detail`, `id_penjualan_biaya` NULL); hak data user terkait / Admin semua; format nomor sementara; batas Closed menyusul. Q-PB-01 – Q-PB-10 terjawab; Q-PB-11 dijawab analis (perlu konfirmasi IT); Q-PB-13 – Q-PB-16 baru. Mockup draf 14a. |
+| draf 3 | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya-2/` (`[JPB2-n]`): batas budget **per kategori** (bagian 1, UC-43, PB-FR-06 – PB-FR-08, PB-NFR-01); tim Sales hanya quotation **Deal** (PB-FR-19); akun login trainer disetujui (`fr-nfr.md` FR-59); Manajemen dari posisi Master User, daftar menyusul (Q-PB-14); **Superadmin** (developer, group id 1) dan **Admin** (user Labmania, menu dapat dibatasi) — keduanya melihat semua data (aktor, PB-FR-02, PB-FR-04, PB-FR-20, PB-NFR-05). Q-PB-13, -15, -16 terjawab. Mockup draf 14b. |
+| draf 3a | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-role-permission/`: rujukan **Matrix Akses Menu** → **Role & Permission** (role = Division + Jabatan); Manajemen sementara = jabatan Direktur (Q-PB-14 masih menunggu). Draf 3: `input/backup/fr-nfr-pengajuan-biaya_sebelum-role-permission_04-11-2026.md`. |
+| draf 3b | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-jawaban-role-permission/`: Manajemen = jabatan Direktur disetujui sebagai data sementara (Q-PB-14 tetap menunggu daftar posisi). Draf 3a: `input/backup/fr-nfr-pengajuan-biaya_sebelum-superadmin-bawaan_04-11-2026.md`. |
+| draf 3c | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-manage-peserta/`: status **Closed** kini ada lewat **Close Program** (Manage Peserta) — PB-FR-20 menolak pengajuan baru untuk program Closed; Q-PB-12 sebagian terjawab. Draf 3b: `input/backup/fr-nfr-pengajuan-biaya_sebelum-manage-peserta_04-11-2026.md`. |
+| draf 4 | 05-11-2026 | `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/`: menu Pengajuan Biaya dibagi tab **Ajukan Biaya** / **Sudah Diajukan** (PB-FR-21); progres **Waiting Approval → Waiting Payment → Paid** (PB-FR-22, bagian 6); **Tandai Paid** sementara (PB-FR-23, Q-PB-17); nomor per jenis (KS / DP) ditegaskan. ERD: `pengajuan_biaya.status` + `paid`, kolom `paid_by`, `paid_date`, `paid_keterangan`. Draf 3c: `input/backup/fr-nfr-pengajuan-biaya_sebelum-tab-progress_05-11-2026.md`. |
+| draf 4a | 05-11-2026 | `input/Invoice & Pengajuan/2026-11-05-master-role-override/`: hak akses memakai Role dari **Master Role** + **Override Permission** (bagian 1); Manajemen = **role** Direktur (sebelumnya jabatan Direktur; bagian 2, Q-PB-14). Draf 4: `input/backup/fr-nfr-pengajuan-biaya_sebelum-master-role_05-11-2026.md`. |
+
+---
+
+# Bagian 8 — Jejak Data & Modul Activity Log Labmania
+
+- **Versi:** draf 2b — 05-11-2026
 - **Sumber:** `input/Master - Buat Program/2026-10-30-activity-log-akses-retensi/` (tanpa login/logout, simpan 60 hari, akses Manajemen & Admin Developer); `input/Master - Buat Program/2026-10-30-histori-activity-log/`; standar `write_log()` di `AGENTS.md` `[STD]`
 - **Status:** DRAF — pertanyaan terbuka di bagian 7
 - **Modul terkait:** berlaku lintas modul — Master Data (`docs/fr-nfr.md`), Master Program (`docs/fr-nfr-master-program.md`), Penjualan Program (`docs/fr-nfr-penjualan-program.md`), Quotation (`docs/fr-nfr-quotation.md`)
@@ -1214,7 +1877,7 @@ Aksi pengguna di modul mana pun ──► data tersimpan + kolom jejak (created_
 | LOG-FR-06 | **Detail** satu catatan (popup): waktu, pengguna, modul › sub modul, aksi, keterangan, dan tabel **Field — Sebelum (merah) — Sesudah (hijau)**; perubahan baris detail (item biaya, peserta, Keterangan) ditampilkan per baris (`detail_changes`). Tambah menampilkan isi data baru; Hapus menampilkan isi data terakhir. | `[STD]` + `[USULAN]` |
 | LOG-FR-07 | **Lihat Riwayat** di menu gear setiap baris data membuka Activity Log yang tersaring ke data itu, dengan tombol "Tampilkan semua". | `[USULAN]` |
 | LOG-FR-08 | Catatan Activity Log **tidak dapat diubah atau dihapus** oleh pengguna; hanya penghapusan otomatis setelah masa simpan (LOG-NFR-06). Data yang dihapus tetap terlacak selama masa simpan (hapus lunak + catatan Hapus). | `[AKR-3]` + `[USULAN]` |
-| LOG-FR-09 | **Hak akses**: menu **Activity Log** dan menu gear **Lihat Riwayat** hanya tampil dan dapat dibuka oleh group akses **Manajemen** dan **Admin Developer** (group baru di Master User, `docs/fr-nfr.md` FR-36); pengguna lain tidak melihat menu tersebut dan ditolak di server. | `[AKR-4]` |
+| LOG-FR-09 | **Hak akses**: menu **Activity Log** dan menu gear **Lihat Riwayat** hanya tampil dan dapat dibuka oleh **Manajemen** dan **Admin Developer** — kini **role Superadmin** (`docs/fr-nfr.md` FR-56); Manajemen ditentukan dari **Role** di Master User (sementara role Direktur; `docs/fr-nfr-pengajuan-biaya.md` Q-PB-14, `docs/fr-nfr.md` Q-37). Role **Admin** dapat diberi hak lewat **Role & Permission** (`docs/fr-nfr.md` FR-54 – FR-58, `input/Invoice & Pengajuan/2026-11-04-role-permission/`); hak View Activity Log lewat **Override Permission** (FR-65) juga tetap dibatasi aturan ini `input/Invoice & Pengajuan/2026-11-05-master-role-override/`; pengguna lain tidak melihat menu tersebut dan ditolak di server. | `[AKR-4]` |
 
 ---
 
@@ -1224,7 +1887,7 @@ Aksi pengguna di modul mana pun ──► data tersimpan + kolom jejak (created_
 |---|---|---|---|
 | LOG-NFR-01 | Audit | Pencatatan memakai `write_log()` sesuai standar `AGENTS.md`: Edit menyimpan snapshot `old` (diambil **sebelum** update) dan `new`; header–detail menyertakan `detail_changes`; perbedaan format angka (0 vs 0.00) dan NULL ↔ 0 pada kolom nominal tidak dianggap perubahan; nama modul tampil otomatis di filter (`SELECT DISTINCT module`). | `[STD]` |
 | LOG-NFR-02 | Integritas data | Simpan data, kolom jejak, dan `write_log()` dalam **satu transaksi**: bila log gagal, simpan dibatalkan. Kolom jejak diisi di server (bukan dari isian klien). | `[USULAN]` |
-| LOG-NFR-03 | Keamanan | Tabel `logs` hanya-tambah (tanpa endpoint ubah/hapus dari aplikasi). Akses Activity Log & Lihat Riwayat dibatasi ke group Manajemen dan Admin Developer lewat permission aplikasi, diperiksa di server (LOG-FR-09). | `[AKR-4]` + `[USULAN]` |
+| LOG-NFR-03 | Keamanan | Tabel `logs` hanya-tambah (tanpa endpoint ubah/hapus dari aplikasi). Akses Activity Log & Lihat Riwayat dibatasi ke Manajemen dan Superadmin (Admin bila diberi hak) lewat permission role aplikasi, diperiksa di server (LOG-FR-09). | `[AKR-4]` + `[USULAN]` |
 | LOG-NFR-04 | Kinerja | Daftar Activity Log: paginasi & penyaringan di server, indeks pada (`created_date`), (`module`, `action`), (`ref_table`, `ref_id`), (`created_by`). | `[USULAN]` |
 | LOG-NFR-06 | Retensi | Log **disimpan 60 hari**; catatan dengan `created_date` lebih dari 60 hari dihapus otomatis oleh job harian (cron) `[USULAN]` (mekanisme). Kolom jejak pada data (Dibuat/Diubah oleh) tidak ikut terhapus. | `[AKR-3]` + `[USULAN]` |
 | LOG-NFR-05 | Format | Tanggal & jam tampil **DD-MM-YYYY HH:mm** (24 jam, waktu server WIB); disimpan DATETIME. | `[STD]` (format tanggal) + `[USULAN]` |
@@ -1258,4 +1921,5 @@ Aksi pengguna di modul mana pun ──► data tersimpan + kolom jejak (created_
 |---|---|---|
 | draf 1 | 30-10-2026 | Penyusunan awal dari `input/Master - Buat Program/2026-10-30-histori-activity-log/`: kolom jejak di semua modul (LOG-FR-01, -02), modul Activity Log (LOG-FR-03 – LOG-FR-08), NFR, tabel `logs`, UC-38, UC-39; mockup draf 12. |
 | draf 2 | 30-10-2026 | `input/Master - Buat Program/2026-10-30-activity-log-akses-retensi/`: login/logout tidak dicatat (LOG-FR-04); log disimpan **60 hari** (LOG-NFR-06 baru, LOG-FR-08); akses **Manajemen & Admin Developer** (LOG-FR-09 baru, LOG-NFR-03, UC-38, UC-39); tampil di daftar + modul khusus dikonfirmasi (LOG-FR-02). Q-LOG-02, -04, -05 terjawab, Q-LOG-03 sebagian; Q-LOG-01 diperjelas. Mockup draf 12a. |
-
+| draf 2a | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-role-permission/`: group akses diganti **role** (Division + Jabatan) di Role & Permission — LOG-FR-09, LOG-NFR-03 menyebut Superadmin / Manajemen / Admin. Draf 2: `input/backup/fr-nfr-activity-log_sebelum-role-permission_04-11-2026.md`. |
+| draf 2b | 05-11-2026 | `input/Invoice & Pengajuan/2026-11-05-master-role-override/`: Manajemen ditentukan dari **Role** (Master Role), bukan posisi; Override Permission tidak melewati aturan LOG-FR-09. Draf 2a: `input/backup/fr-nfr-activity-log_sebelum-master-role_05-11-2026.md`. |

@@ -1,6 +1,6 @@
 # Kebutuhan Fungsional & Non-Fungsional — Jejak Data & Modul Activity Log Labmania
 
-- **Versi:** draf 2 — 30-10-2026
+- **Versi:** draf 2b — 05-11-2026
 - **Sumber:** `input/Master - Buat Program/2026-10-30-activity-log-akses-retensi/` (tanpa login/logout, simpan 60 hari, akses Manajemen & Admin Developer); `input/Master - Buat Program/2026-10-30-histori-activity-log/`; standar `write_log()` di `AGENTS.md` `[STD]`
 - **Status:** DRAF — pertanyaan terbuka di bagian 7
 - **Modul terkait:** berlaku lintas modul — Master Data (`docs/fr-nfr.md`), Master Program (`docs/fr-nfr-master-program.md`), Penjualan Program (`docs/fr-nfr-penjualan-program.md`), Quotation (`docs/fr-nfr-quotation.md`)
@@ -63,7 +63,7 @@ Aksi pengguna di modul mana pun ──► data tersimpan + kolom jejak (created_
 | LOG-FR-06 | **Detail** satu catatan (popup): waktu, pengguna, modul › sub modul, aksi, keterangan, dan tabel **Field — Sebelum (merah) — Sesudah (hijau)**; perubahan baris detail (item biaya, peserta, Keterangan) ditampilkan per baris (`detail_changes`). Tambah menampilkan isi data baru; Hapus menampilkan isi data terakhir. | `[STD]` + `[USULAN]` |
 | LOG-FR-07 | **Lihat Riwayat** di menu gear setiap baris data membuka Activity Log yang tersaring ke data itu, dengan tombol "Tampilkan semua". | `[USULAN]` |
 | LOG-FR-08 | Catatan Activity Log **tidak dapat diubah atau dihapus** oleh pengguna; hanya penghapusan otomatis setelah masa simpan (LOG-NFR-06). Data yang dihapus tetap terlacak selama masa simpan (hapus lunak + catatan Hapus). | `[AKR-3]` + `[USULAN]` |
-| LOG-FR-09 | **Hak akses**: menu **Activity Log** dan menu gear **Lihat Riwayat** hanya tampil dan dapat dibuka oleh group akses **Manajemen** dan **Admin Developer** (group baru di Master User, `docs/fr-nfr.md` FR-36); pengguna lain tidak melihat menu tersebut dan ditolak di server. | `[AKR-4]` |
+| LOG-FR-09 | **Hak akses**: menu **Activity Log** dan menu gear **Lihat Riwayat** hanya tampil dan dapat dibuka oleh **Manajemen** dan **Admin Developer** — kini **role Superadmin** (`docs/fr-nfr.md` FR-56); Manajemen ditentukan dari **Role** di Master User (sementara role Direktur; `docs/fr-nfr-pengajuan-biaya.md` Q-PB-14, `docs/fr-nfr.md` Q-37). Role **Admin** dapat diberi hak lewat **Role & Permission** (`docs/fr-nfr.md` FR-54 – FR-58, `input/Invoice & Pengajuan/2026-11-04-role-permission/`); hak View Activity Log lewat **Override Permission** (FR-65) juga tetap dibatasi aturan ini `input/Invoice & Pengajuan/2026-11-05-master-role-override/`; pengguna lain tidak melihat menu tersebut dan ditolak di server. | `[AKR-4]` |
 
 ---
 
@@ -73,7 +73,7 @@ Aksi pengguna di modul mana pun ──► data tersimpan + kolom jejak (created_
 |---|---|---|---|
 | LOG-NFR-01 | Audit | Pencatatan memakai `write_log()` sesuai standar `AGENTS.md`: Edit menyimpan snapshot `old` (diambil **sebelum** update) dan `new`; header–detail menyertakan `detail_changes`; perbedaan format angka (0 vs 0.00) dan NULL ↔ 0 pada kolom nominal tidak dianggap perubahan; nama modul tampil otomatis di filter (`SELECT DISTINCT module`). | `[STD]` |
 | LOG-NFR-02 | Integritas data | Simpan data, kolom jejak, dan `write_log()` dalam **satu transaksi**: bila log gagal, simpan dibatalkan. Kolom jejak diisi di server (bukan dari isian klien). | `[USULAN]` |
-| LOG-NFR-03 | Keamanan | Tabel `logs` hanya-tambah (tanpa endpoint ubah/hapus dari aplikasi). Akses Activity Log & Lihat Riwayat dibatasi ke group Manajemen dan Admin Developer lewat permission aplikasi, diperiksa di server (LOG-FR-09). | `[AKR-4]` + `[USULAN]` |
+| LOG-NFR-03 | Keamanan | Tabel `logs` hanya-tambah (tanpa endpoint ubah/hapus dari aplikasi). Akses Activity Log & Lihat Riwayat dibatasi ke Manajemen dan Superadmin (Admin bila diberi hak) lewat permission role aplikasi, diperiksa di server (LOG-FR-09). | `[AKR-4]` + `[USULAN]` |
 | LOG-NFR-04 | Kinerja | Daftar Activity Log: paginasi & penyaringan di server, indeks pada (`created_date`), (`module`, `action`), (`ref_table`, `ref_id`), (`created_by`). | `[USULAN]` |
 | LOG-NFR-06 | Retensi | Log **disimpan 60 hari**; catatan dengan `created_date` lebih dari 60 hari dihapus otomatis oleh job harian (cron) `[USULAN]` (mekanisme). Kolom jejak pada data (Dibuat/Diubah oleh) tidak ikut terhapus. | `[AKR-3]` + `[USULAN]` |
 | LOG-NFR-05 | Format | Tanggal & jam tampil **DD-MM-YYYY HH:mm** (24 jam, waktu server WIB); disimpan DATETIME. | `[STD]` (format tanggal) + `[USULAN]` |
@@ -107,3 +107,5 @@ Aksi pengguna di modul mana pun ──► data tersimpan + kolom jejak (created_
 |---|---|---|
 | draf 1 | 30-10-2026 | Penyusunan awal dari `input/Master - Buat Program/2026-10-30-histori-activity-log/`: kolom jejak di semua modul (LOG-FR-01, -02), modul Activity Log (LOG-FR-03 – LOG-FR-08), NFR, tabel `logs`, UC-38, UC-39; mockup draf 12. |
 | draf 2 | 30-10-2026 | `input/Master - Buat Program/2026-10-30-activity-log-akses-retensi/`: login/logout tidak dicatat (LOG-FR-04); log disimpan **60 hari** (LOG-NFR-06 baru, LOG-FR-08); akses **Manajemen & Admin Developer** (LOG-FR-09 baru, LOG-NFR-03, UC-38, UC-39); tampil di daftar + modul khusus dikonfirmasi (LOG-FR-02). Q-LOG-02, -04, -05 terjawab, Q-LOG-03 sebagian; Q-LOG-01 diperjelas. Mockup draf 12a. |
+| draf 2a | 04-11-2026 | `input/Invoice & Pengajuan/2026-11-04-role-permission/`: group akses diganti **role** (Division + Jabatan) di Role & Permission — LOG-FR-09, LOG-NFR-03 menyebut Superadmin / Manajemen / Admin. Draf 2: `input/backup/fr-nfr-activity-log_sebelum-role-permission_04-11-2026.md`. |
+| draf 2b | 05-11-2026 | `input/Invoice & Pengajuan/2026-11-05-master-role-override/`: Manajemen ditentukan dari **Role** (Master Role), bukan posisi; Override Permission tidak melewati aturan LOG-FR-09. Draf 2a: `input/backup/fr-nfr-activity-log_sebelum-master-role_05-11-2026.md`. |

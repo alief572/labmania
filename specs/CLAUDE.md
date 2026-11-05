@@ -102,6 +102,19 @@ Google Sheets formula survives the `.xlsx` round trip (`UNIQUE`,
 separate save/reload cycles and has silently clobbered rows more than once:
 reload and print the sheet after writing.
 
+## Mockups use antislop
+
+Every change to a mockup (`ui-mockup/`, `final/Mock Up*/`, and any new mockup)
+loads the antislop skills first: the core `antislop`, plus `antislop-ui`,
+`antislop-human` and `antislop-copywriting`; add `antislop-layoutmobile` for
+layout that must reflow, `antislop-code` when writing comments. Mode is
+**during** for this project (the user asked on 05-11-2026 for antislop on all
+mockups), so do not ask the mode question; an explicit choice in the session
+still wins. The client's own terms and the mockup's existing visual system
+(colours, fonts, components) stay as they are unless the user asks: antislop
+filters purposeless additions, it does not restyle the product. Check colour
+pairs with `.claude/skills/antislop-human/contrast-check.py`.
+
 ## Context — read only when relevant, not up front
 
 - **Building or fixing code** → `context/coder-only/README.md`, then only its

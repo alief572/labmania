@@ -6,7 +6,7 @@
 - **Modul terkait:** hulu Master Program → `docs/fr-nfr-master-program.md`; Master Data → `docs/fr-nfr.md` (Master Rate); hilir **Quotation** untuk Public **dan** B2B → `docs/fr-nfr-quotation.md` `[QCP-1]`; **Sales Order tidak ada** `[B2B-3]`
 - **Use case kanonis:** `docs/workbook.xlsx` sheet *UC Non-BPMN*
 - **ERD:** `docs/diagrams/erd.drawio` halaman *ERD Penjualan Program*
-- **Mockup:** `ui-mockup/produk/index.html` → modul Penjualan Program (layout form mengikuti `input/labmania.html`)
+- **Mockup:** `ui-mockup/produk/index.html` → modul Penjualan Program (layout form mengikuti `input/Master - Buat Program/labmania.html`)
 
 Penomoran memakai awalan **PJ-**. Kode UC satu urutan untuk seluruh workbook; kode yang dihapus tidak dipakai ulang.
 
@@ -18,7 +18,7 @@ Penomoran memakai awalan **PJ-**. Kode UC satu urutan untuk seluruh workbook; ko
 | `[K3M-n]` | konfirmasi, `input/Master - Buat Program/2026-10-23-konfirmasi-3-modul/` — butir n |
 | `[ARH-n]` | arah modul, `input/Master - Buat Program/2026-10-23-arah-penjualan-program/` — butir n |
 | `[REV-n]` | revisi, `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/` — butir n |
-| `[SIMX]` | tampilan simulasi, `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/` (`input/simulasi_hasil.html`) |
+| `[SIMX]` | tampilan simulasi, `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/` (`input/Master - Buat Program/simulasi_hasil.html`) |
 | `[TDK-1]` | Penjualan Program tanpa diskon, `input/Master - Buat Program/2026-10-23-tanpa-diskon/` |
 | `[BEP-1]` | permintaan data BEP, `input/Master - Buat Program/2026-10-23-simulasi-bep/` |
 | `[JLR-n]` | jalur Public vs B2B, `input/Master - Buat Program/2026-10-25-jalur-public-b2b/` — pesan n |
@@ -222,7 +222,7 @@ Final dan Batal tidak kembali ke Draft. Final tidak dapat dibatalkan `[JPP-5]`.
 | draf 3 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-arah-penjualan-program/` — ditulis ulang sebagai **Penjualan Program** dengan status Draft → Final / Batal; Final Public → Quotation, B2B → Sales Order (ditunda); fitur quotation ditunda; diskon B2B; As Is vs Penjualan; UC-24, UC-25, UC-27 dihapus; UC-29 baru. |
 | draf 4 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/`: B2B punya **skema harga** per peserta (default) atau all-in — harga paket tidak wajib (PJ-FR-04, PJ-FR-12, PJ-FR-13, PJ-NFR-06); As Is vs Penjualan dan laporannya dihapus (PJ-FR-18, PJ-FR-19, UC-28 dihapus; Q-PJ-14 baru); simulasi ditata ulang agar mudah dibaca (PJ-FR-10); tidak ada mode harga (PJ-FR-05). |
 | draf 5 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-bep/`: simulasi ditambah **Data BEP** — perhitungan BEP, tabel profit menurut jumlah peserta, dan batas peserta untuk B2B all-in (PJ-FR-10). |
-| draf 6 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/`: tampilan simulasi mengikuti `input/simulasi_hasil.html` (PJ-FR-10); B2B all-in memakai harga paket minimal & maksimal peserta pada kotak BEP dan skala. |
+| draf 6 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/`: tampilan simulasi mengikuti `input/Master - Buat Program/simulasi_hasil.html` (PJ-FR-10); B2B all-in memakai harga paket minimal & maksimal peserta pada kotak BEP dan skala. |
 | draf 6a | 23-10-2026 | Istilah "sumbangan per peserta" dihapus atas permintaan user (chat 23-10-2026); BEP peserta ditulis langsung sebagai Fixed Cost ÷ (harga − biaya variable per peserta). |
 | draf 7 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-tanpa-diskon/`: **diskon dihapus untuk sementara** (Public & B2B) — PJ-FR-12, PJ-FR-13, PJ-FR-15, PJ-NFR-06, UC-23, UC-29; Q-PJ-13 gugur. |
 | draf 8 | 25-10-2026 | `input/Master - Buat Program/2026-10-25-jalur-public-b2b/`: **form & simulasi sama** untuk Public dan B2B; jenis hanya penanda jalur (PJ-FR-03). Company, skema all-in, harga paket, jumlah peserta min 10 keluar ke **Sales Order** (ditunda) — PJ-FR-11 – PJ-FR-13 dihapus, bagian 4.3 baru. UC-23 digabung ke UC-22. Target peserta disalin dari Master Program (default 10). Rincian simulasi disederhanakan (PJ-FR-10). Q-PJ-04 gugur; Q-PJ-15, Q-PJ-16 baru. |

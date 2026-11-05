@@ -30,3 +30,6 @@ application/config/config.php
 /tests/*
 !/tests/ExpenseReportJournalRepairTest.php
 Dockerfile
+
+# Artifact dokumentasi per fitur (AGENTS.md: .artifacts/ diabaikan git)
+.artifacts/

@@ -43,6 +43,82 @@ One `-` bullet per event, newest first:
 
 ---
 
+- **2026-11-05** `[DECISION]` **Sidebar: tombol hide.** Permintaan user: "side bar ditambahkan button hide". Intake `input/Master - Buat Program/2026-11-05-sidebar-hide/`; `docs/fr-nfr.md` draf 11x FR-66; mockup draf 14i (tombol di kanan logo; layar lebar menyembunyikan sidebar dan tombol menu topbar memunculkannya lagi; layar sempit menutup drawer). Perilaku dan tidak disimpan per user = `[USULAN]`. Dikerjakan dengan antislop mode during. Backup `input/backup/*_sebelum-hide-sidebar_05-11-2026.*`.
+- **2026-11-05** `[FIX]` **Sidebar tersembunyi: area kosong di kanan.** User: "ketika di hide, layout dari halamannya jadi aneh, kayak 3/4 kosong". Sebab: `.content` dibatasi `max-width: 1280px` rata kiri. Saat sidebar tersembunyi (layar >900px) batas dilepas, konten mengisi lebar penuh. Dicek di 1920 dan 2560 px. Backup `input/backup/style_sebelum-fix-layout-hide-sidebar_05-11-2026.css`.
+- **2026-11-05** `[DECISION]` **Paket final `specs/final/` disinkronkan ke versi terbaru.** Permintaan user: "untuk FR & NFR juga update ke yang terbaru, ERD, Flow Process, Use Case, dan Mock Up". FR & NFR gabungan kini delapan bagian (tambahan Invoice draf 2i, Manage Peserta draf 1, Pengajuan Biaya draf 4a; Activity Log pindah ke Bagian 8). ERD, Flow Process, Use Case (`workbook.xlsx`) dan Mock Up (draf 14i + fix lebar konten) disalin dari sumber; nama file final tetap "Master - Quotation". `Labmania.zip` dibuat ulang. Backup `input/backup/final-master-quotation_sebelum-update_05-11-2026/`, `input/backup/Labmania_sebelum-update-final_05-11-2026.zip`. Catatan: awalan MP-FR dipakai Master Program dan Manage Peserta (dicatat di daftar isi).
+- **2026-11-05** `[DECISION]` **Master User: Role dari Master Role + Override Permission.** Permintaan user: Division dan Position diganti satu field Role; Role dikelola di Master Role (input manual) dan jadi sumber pilihan di Master User dan Role & Permission; Override Permission memberi satu user akses menu tambahan. Intake `input/Invoice & Pengajuan/2026-11-05-master-role-override/`. `docs/fr-nfr.md` draf 11w (FR-36 – FR-39, FR-54 – FR-58, FR-64 Master Role, FR-65 Override Permission, UC-32, UC-49, UC-55, Q-25, Q-35 (c) terjawab, Q-37 baru); `fr-nfr-pengajuan-biaya.md` draf 4a dan `fr-nfr-activity-log.md` draf 2b (Manajemen = role Direktur); ERD halaman Matrix Akses draf 3 (`employees.id_group` usulan, relasi ke `users` dan `groups`); workbook UC-49, UC-55, Entities. Mockup draf 14h, dikerjakan dengan antislop mode during. Usulan analis ditandai `[USULAN]`: Role wajib untuk semua user, Override hanya menambah hak, isian Master Role hanya Nama Role. ERD belum dirender visual (draw.io CLI tidak ada); tumpang tindih tabel dicek lewat skrip. Backup `input/backup/*_sebelum-master-role_05-11-2026.*`.
+- **2026-11-05** `[DECISION]` **Skill antislop dipasang untuk semua mockup.** Permintaan user: "untuk semua mock up tolong tambahkan skill anti slop". Skill antislop v3.2.25 (MIT, `miqdadbadjuber/anti-slop`, commit `5d90a9a`) disalin utuh ke `.claude/skills/antislop*` (6 skill); dikreditkan di `THIRD_PARTY.md` (sebelumnya hanya tercantum sebagai rekomendasi). `CLAUDE.md` bagian *Mockups use antislop*: setiap perubahan mockup memuat antislop, mode *during*, tanpa mengubah sistem visual mockup yang sudah disepakati kecuali diminta; `AGENTS.md` digenerate ulang. Mockup yang sudah ada belum diaudit. Backup: `input/backup/CLAUDE_sebelum-antislop_05-11-2026.md`, `AGENTS_…`, `THIRD_PARTY_…`.
+- **2026-11-05** `[DECISION]` **Pengajuan Biaya: tab Ajukan / Sudah Diajukan, progres sampai Paid.**
+  `input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/`. Tab **Sudah Diajukan** berisi pengajuan Kasbon /
+  Direct Payment dengan progres Waiting Approval → Waiting Payment → Paid (label baru untuk status lama
+  menunggu/disetujui; `paid` status baru). Nomor per jenis (`LMI/KS`, `LMI/DP`) sudah ada sejak draf 2 — tidak berubah.
+  Karena pencairan Finance belum dibuat, Paid ditandai lewat **Tandai Paid** (hak Manage) — usulan, Q-PB-17; alternatif
+  "Paid hanya tampil, tanpa aksi" ditolak karena progres tidak bisa didemokan. Spec draf 4 (PB-FR-21 – PB-FR-23,
+  UC-53, UC-54), ERD Pengajuan Biaya draf 4 (`paid_by`, `paid_date`, `paid_keterangan`, enum + `paid`), mockup
+  draf 14g. Diuji Chrome headless: kedua tab, progres, alur Tandai Paid. `[TODO]` Render ERD belum dicek visual —
+  draw.io CLI tidak terpasang; geometri diperiksa skrip (tabel tidak bertumpuk).
+- **2026-11-05** `[DECISION]` **Katalog Produk dibuat: filter Bidang & Sertifikat, cetak PDF katalog.**
+  `input/Master - Buat Program/2026-11-05-katalog-produk/`. FR-14 tidak lagi ditunda; isi = Paket Produk Aktif,
+  tidak disimpan (ERD tetap). PDF A4: sampul, daftar isi per Bidang, kartu paket 2 kolom per Bidang
+  ("lanjutan" bila terpotong), sampul belakang kontak — tata letak usulan karena klien hanya minta "seperti
+  katalog pada umumnya". Spec draf 11v (FR-60 – FR-63, Q-09 terjawab, Q-36 baru), workbook UC-06 & Entities,
+  mockup draf 14f (+2 paket contoh). Diuji render Chrome headless: layar, filter, PDF 5 paket (4 hlm) dan
+  27 paket (8 hlm, paginasi & daftar isi benar). `[TODO]` Isi tambahan per paket (deskripsi/durasi/harga/foto)
+  menunggu Q-36; aktor pembuat katalog masih Q-06.
+- **2026-11-04** `[DECISION]` **Modul baru Manage Peserta (Fase 1) + Close Program; pemilih user mockup diperbaiki.**
+  `input/Invoice & Pengajuan/2026-11-04-manage-peserta/`. Usulan analis disetujui user: Daftar Program (Final, tab On going / Selesai) +
+  action Close Program; halaman peserta Deal per program, Cetak Daftar Peserta, Cetak Daftar Hadir per hari (template usulan — format
+  Labmania belum ada), Export Excel. Fase 2 (kehadiran, sertifikat, rekap) ditunda; hak pakai diatur user di Role & Permission (View, Manage
+  = Close). Close memakai kolom existing `penjualan_program.closed_by/closed_date` (status tetap final) — ditolak alternatif ENUM `closed`
+  karena Quotation / Pengajuan / Dashboard menyaring `status = final`. Close mengisi status Closed yang "menyusul" di PB-FR-20 `[JPB-12]`.
+  Dokumen: `fr-nfr-manage-peserta.md` draf 1 (MP-FR-01 – MP-FR-10, Q-MPS-01 – 05), `fr-nfr-pengajuan-biaya.md` draf 3c, ERD catatan
+  *ERD Penjualan Program* (kotak catatan dipertinggi; render belum dicek — draw.io CLI tidak ada), workbook UC-50 – UC-52 + Modules.
+  Mockup draf 14e diuji harness Chrome headless (list → peserta → cetak → hadir 3 hari → export → close → PB terkunci → log) tanpa error JS.
+  `[TODO]` Q-MPS-01 – Q-MPS-05.
+- **2026-11-04** `[DECISION]` **Superadmin = role bawaan sistem; hapus role tanpa user disetujui; mengoreksi usulan entri di bawah.**
+  `input/Invoice & Pengajuan/2026-11-04-jawaban-role-permission/`. Superadmin tidak lagi "IT – Developer" (Division + Jabatan) melainkan role
+  bawaan yang dibuat dari awal dan tidak dapat ditambah; user IT – Developer baru = role biasa. Role tanpa user boleh dihapus. Manajemen =
+  jabatan Direktur disetujui sebagai data sementara. `fr-nfr.md` draf 11u (FR-38, FR-55, FR-56, Q-35 sisa: role Admin, hak per user);
+  `fr-nfr-pengajuan-biaya.md` draf 3b; mockup draf 14d diuji ulang harness Chrome headless tanpa error JS.
+  `[TODO]` Q-35 sisa, Q-PB-14 daftar posisi, Q-33.
+- **2026-11-04** `[DECISION]` **Matrix Akses Menu → Role & Permission; role = Division + Jabatan; Department dihapus dari Master User.**
+  `input/Invoice & Pengajuan/2026-11-04-role-permission/` (chat + video `Role & Permission.mp4`, frame disimpan). Pilihan Group Akses di form
+  user ditolak user ("select role malah salah"): role kini terbentuk otomatis dari Division + Jabatan saat akun disimpan, lalu hak menu × aksi
+  diatur di menu Role & Permission (daftar role + modal matrix mengikuti video; tombol "Add New Role" video tidak dipakai). `fr-nfr.md` draf 11t
+  (FR-36 – FR-39, FR-54 – FR-58, UC-32, UC-49, NFR-13, Q-25, Q-35 baru); `fr-nfr-pengajuan-biaya.md` draf 3a; `fr-nfr-activity-log.md` draf 2a;
+  ERD *ERD Matrix Akses* (label/catatan saja, tanpa tabel baru — XML valid, render belum dicek: draw.io CLI tidak terpasang); workbook UC-49,
+  Modules, Entities. Mockup draf 14c diuji harness Chrome headless (tambah user → role baru → atur akses → login sebagai role baru) tanpa error JS.
+  `[TODO]` Q-35 (role mana = Superadmin/Admin, hapus role tanpa user), Q-PB-14 (Manajemen sementara jabatan Direktur), Q-33.
+- **2026-11-04** `[DECISION]` **Pengajuan Biaya draf 3: budget per kategori, sales hanya quotation Deal, Superadmin vs Admin.**
+  `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya-2/`. Batas pengajuan = sisa total Fixed Cost / Variable Cost (bukan per item;
+  item boleh melebihi budget item-nya, hanya ditandai). Tim Sales hanya dari quotation Deal. Akun login trainer disetujui (`fr-nfr.md` FR-59).
+  Q-34: Superadmin (developer, group id 1, terkunci) dan Admin (user Labmania, hak modul dapat dibatasi, data semua) — FR-56, FR-58, NFR-13
+  (`fr-nfr.md` draf 11s). Manajemen ditentukan dari posisi Master User, daftar posisi menyusul (Q-PB-14). ERD (catatan, label), BPMN
+  (gateway "Sisa kategori cukup?"), workbook UC-43/48/49 disinkronkan; mockup draf 14b diuji 11 langkah harness tanpa error JS.
+  `[TODO]` Q-33 dicek user; Q-PB-11 (IT), Q-PB-12, Q-PB-14 (daftar posisi Manajemen).
+- **2026-11-04** `[DECISION]` **Pengajuan Biaya draf 2 + Matrix Akses Menu; mengoreksi entri draf 1 di bawah.**
+  `input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/` (jawaban Q-PB-01 – Q-PB-12). Field **PIC Program (PJ-FR-26) dibatalkan**:
+  pengaju = **tim program** (Sales di quotation, Trainer Penjualan Program lewat akun login, group Manajemen); `fr-nfr-penjualan-program.md`
+  dikembalikan ke draf 12b, `penjualan_program.id_pic` dihapus dari ERD. **Pencairan / aktor Keuangan ditunda** (status Dicairkan, kolom `cair_*`,
+  menu Pencairan, UC-46 dikeluarkan); satu tombol **Add Pengajuan** dengan pilihan jenis di form; overbudget boleh **item baru**
+  (`pengajuan_biaya_detail.id_overbudget_detail`). `[DISCOVERY]` `application/` adalah basis kode ERP CONSULTANT (aplikasi di video):
+  tabel kasbon `kons_tr_kasbon_project_*` milik modul konsultan, dan hak akses sudah ada (`groups`, `permissions` View/Add/Manage/Delete,
+  `group_permissions`, `user_permissions`, `menus`; group id 1 = Admin lolos semua) — halaman per group belum ada, maka **Matrix Akses Menu**
+  dispesifikasikan tanpa tabel baru (`fr-nfr.md` draf 11r FR-54 – FR-58, UC-49; ERD halaman *ERD Matrix Akses*). BPMN Level 1 draf 2 (pool Tim Program,
+  Manajemen). Workbook dipulihkan dari backup lalu diisi UC-43 – UC-45, UC-47 – UC-49. Mockup draf 14a dibangun ulang dari backup: sidebar
+  mengikuti matrix, hak data tim program, Admin melihat semua, akun login di Master Trainer; diuji 22 langkah harness Chrome headless tanpa error JS.
+  `[TODO]` Q-PB-11 (tabel baru vs kasbon konsultan, pencairan via `request_payment`) perlu IT developer; Q-PB-12 – Q-PB-16, Q-33, Q-34.
+- **2026-11-04** `[DECISION]` **Modul baru Pengajuan Biaya (draf 1): PIC Program mengajukan biaya, Manajemen menyetujui, Keuangan mencairkan.**
+  `input/Invoice & Pengajuan/2026-11-04-pengajuan-biaya-as-is/` (permintaan user + video `Menu Pengajuan Biaya - As Is.mp4`, dibaca
+  per frame). SPK acuan dipetakan ke **Penjualan Program Final**; budget = costing Penjualan Program per item (qty dari satuan ×
+  durasi × target peserta), kategori Fixed / Variable Cost menggantikan Akomodasi / Others; Kasbon & Direct Payment, Overbudget,
+  Approval, Pencairan. PO dan pertanggungjawaban kasbon tidak diambil. Hampir semua pemetaan `[USULAN]` → Q-PB-01 – Q-PB-12.
+  Spec baru `docs/fr-nfr-pengajuan-biaya.md`; PJ draf 12c (PJ-FR-26 PIC Program); ERD halaman *ERD Pengajuan Biaya* + `penjualan_program.id_pic`;
+  BPMN *Level 1 — Pengajuan Biaya* (pool PIC Program / Manajemen / Keuangan) + kotak Level 0; workbook UC-43 – UC-48, modul, 5 entity;
+  mockup draf 14. ERD & BPMN dicek render (viewer diagrams.net + Chrome headless); mockup diuji harness Chrome headless
+  (ajukan, tolak lewat sisa, overbudget, approval, blok approval diri sendiri, pencairan, hak lihat PIC, Activity Log) tanpa error JS.
+  Backup: `input/backup/*_sebelum-pengajuan-biaya_04-11-2026.*`.
+  `[TODO]` Konfirmasi klien: aktor PIC & Keuangan (Q-PB-01, Q-PB-02), kategori biaya (Q-PB-03), basis qty Variable Cost (Q-PB-04).
 - **2026-11-02** `[DECISION]` **Format nomor Penawaran `LMI/PW/MM/yy-zzz` dan Invoice `LMI/INV/MM/yy-zzz`.**
   `input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/`. Menggantikan nomor template
   `LM-I/AM/PW/MM/YY-XXX` (segmen AM dibuang) dan usulan invoice `NNN/LMI/YYYY`. Quotation draf 10 (QTN-FR-04,

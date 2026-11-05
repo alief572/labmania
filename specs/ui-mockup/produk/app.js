@@ -92,6 +92,9 @@
   seedPaket('Pelatihan ISO/IEC 17025:2017', 'Pelatihan', 'ISO 17025', 'Sertifikat Labmania');
   seedPaket('Pelatihan ISO/IEC 17025:2017', 'Pelatihan', 'ISO 17025', 'Sertifikat Labmania KAN ISO 29993');
   seedPaket('Sertifikasi Petugas Sampling', 'Sertifikasi', 'Petugas Sampling', 'Sertifikat BNSP');
+  // Judul dari input/Master - Buat Program/2026-10-29-template-formulir-konfirmasi/ (contoh isi Katalog Produk).
+  seedPaket('Sertifikasi Kompetensi Analis Kimia', 'Sertifikasi', 'Analisis Kimia', 'Sertifikat BNSP');
+  seedPaket('Sertifikasi Laboran Kimia', 'Sertifikasi', 'Kimia', 'Sertifikat BNSP');
 
   // Contoh data wilayah — sumber data wilayah masih Q-07b.
   const WILAYAH = {
@@ -242,8 +245,8 @@
 
   // ---------- State & navigation ----------
   const state = {
-    view: 'dashboard', q: '', status: 'all', jenis: 'all', page: 1, rateTab: 'fixed', form: null, pf: null, qtnPj: null, qtnTab: 'ongoing',
-    navOpen: { 'Master Data': true, 'Penjualan Program': true, Quotation: true, Invoice: true }, navQ: ''
+    view: 'dashboard', q: '', status: 'all', jenis: 'all', ktBidang: 'all', ktSert: 'all', page: 1, rateTab: 'fixed', form: null, pf: null, qtnPj: null, qtnTab: 'ongoing',
+    navOpen: { 'Master Data': true, 'Penjualan Program': true, Quotation: true, Invoice: true, 'Manage Peserta': true, 'Pengajuan Biaya': true }, navQ: ''
   };
 
   // Dua modul (FR-27): Master Data → Penjualan Program (sub modul Master Program & Penjualan Program); grup di bawahnya adalah sub modul.
@@ -251,6 +254,8 @@
   const ICON_SALE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>';
   const ICON_QTN = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H8l-4 4z"/><path d="M8 9h8M8 12h5"/></svg>';
   const ICON_INV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>';
+  const ICON_PB = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/><path d="M7 6V4h10v2"/></svg>';
+  const ICON_MP = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-3-5.5"/></svg>';
   const ICON_LOG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
   const MODULES = [
     {
@@ -261,7 +266,7 @@
         { group: 'Trainer', items: [['trainer', 'Master Trainer']] },
         { group: 'Dokumen', items: [['ketQtn', 'Template Keterangan Quotation'], ['kfTpl', 'Template Formulir Konfirmasi']] },
         { group: 'Biaya', items: [['rate', 'Master Rate']] },
-        { group: 'Pengguna', items: [['user', 'Master User']] }
+        { group: 'Pengguna', items: [['user', 'Master User'], ['role', 'Master Role'], ['akses', 'Role & Permission']] }
       ]
     },
     {
@@ -284,6 +289,18 @@
       ]
     },
     {
+      // Peserta Deal per program: daftar, cetak, export, Close Program (input/Invoice & Pengajuan/2026-11-04-manage-peserta/).
+      name: 'Manage Peserta', icon: ICON_MP, groups: [
+        { group: 'Peserta', items: [['mpst', 'Manage Peserta']] }
+      ]
+    },
+    {
+      // Tim program mengajukan biaya ke Manajemen (input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/); pencairan Finance menyusul.
+      name: 'Pengajuan Biaya', icon: ICON_PB, groups: [
+        { group: 'Pengajuan', items: [['pb', 'Pengajuan Biaya'], ['pbAppr', 'Approval Pengajuan']] }
+      ]
+    },
+    {
       // Pergerakan semua data di sistem (input/Master - Buat Program/2026-10-30-histori-activity-log/).
       name: 'Activity Log', icon: ICON_LOG, groups: [
         { group: 'Activity Log', items: [['actlog', 'Activity Log']] }
@@ -298,14 +315,15 @@
         : v === 'ketQtn' ? db.ketQtn.length
         : v === 'kfTpl' ? db.kfTpl.length
         : v === 'user' ? db.user.length
+        : v === 'role' ? db.role.length
           : v === 'rate' ? db.rate.fixed.length + db.rate.variable.length
             : v === 'mprog' ? db.mprog.length
               : v === 'quot' ? db.quot.length
-                : v === 'qtn' ? db.qtn.length : v === 'ivc' ? db.qtn.filter(k => k.status === 'deal').length : v === 'actlog' ? db.logs.length : null;
-  const SUBVIEW = { combine: ['paket', 'Tambah Product'], mpForm: ['mprog', null], qtForm: ['quot', null], ivcForm: ['ivc', null], qtnDetail: ['qtn', null] };
+                : v === 'qtn' ? db.qtn.length : v === 'ivc' ? db.qtn.filter(k => k.status === 'deal').length : v === 'pb' ? pbVisible().length : v === 'pbAppr' ? db.pb.concat(db.ob).filter(x => x.status === 'menunggu').length : v === 'mpst' ? mpProgs().filter(x => !mpDone(x)).length : v === 'akses' ? db.role.length : v === 'actlog' ? db.logs.length : null;
+  const SUBVIEW = { combine: ['paket', 'Tambah Product'], mpForm: ['mprog', null], qtForm: ['quot', null], ivcForm: ['ivc', null], qtnDetail: ['qtn', null], pbProg: ['pb', null], pbForm: ['pb', null] };
 
   function go(view) {
-    state.view = view; state.q = ''; state.status = 'all'; state.jenis = 'all'; state.page = 1; state.qtnPj = null;
+    state.view = view; state.q = ''; state.status = 'all'; state.jenis = 'all'; state.ktBidang = 'all'; state.ktSert = 'all'; state.page = 1; state.qtnPj = null; state.mpPj = null;
     state.navQ = ''; $('#nav-q').value = '';
     if (view === 'actlog') state.logF = { modul: 'all', aksi: 'all', user: 'all', from: '', to: '', refId: null, ref: '' };
     document.body.classList.remove('nav-open');
@@ -323,17 +341,18 @@
       return i < 0 ? esc(s) : `${esc(s.slice(0, i))}<mark>${esc(s.slice(i, i + kw.length))}</mark>${esc(s.slice(i + kw.length))}`;
     };
     const HOME = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>';
-    const home = !kw || 'dashboard'.includes(kw)
+    const home = can('dashboard') && (!kw || 'dashboard'.includes(kw))
       ? `<button class="nav-module-head nav-home ${navView === 'dashboard' ? 'active' : ''}" data-view="dashboard">${HOME}<span>${mark('Dashboard')}</span></button>` : '';
     const html = home + MODULES.filter(m => m.name !== 'Activity Log' || canLog()).map(m => {
       const groups = m.groups.map(g => {
-        const items = !kw ? g.items : g.items.filter(([, label]) => label.toLowerCase().includes(kw));
+        const allowed = g.items.filter(([v]) => can(v)); // Role & Permission (FR-57)
+        const items = !kw ? allowed : allowed.filter(([, label]) => label.toLowerCase().includes(kw));
         return items.length ? `<div class="nav-group">${items.map(([v, label]) => {
           const n = countOf(v);
           return `<button class="nav-item ${v === navView ? 'active' : ''}" data-view="${v}">${mark(label)}${n === null ? '' : `<span class="nav-count">${n}</span>`}</button>`;
         }).join('')}</div>` : '';
       }).join('');
-      if (kw && !groups) return '';
+      if (!groups) return '';
       const open = state.navOpen[m.name] || kw;
       return `<div class="nav-module ${open ? 'open' : ''}">
         <button class="nav-module-head" data-act="nav-module" data-module="${esc(m.name)}" aria-expanded="${!!open}">
@@ -350,6 +369,8 @@
     let leaf = label;
     if (state.view === 'combine') leaf = 'Tambah Product';
     if (state.view === 'ivcForm') leaf = 'Add Invoicing';
+    if (state.view === 'pbProg') leaf = (pjById(state.pbPj) || {}).nomor || 'Program';
+    if (state.view === 'pbForm') leaf = state.pbf ? `${(pjById(state.pbf.pj) || {}).nomor} / Add Pengajuan` : 'Add Pengajuan';
     if (state.view === 'qtnDetail') leaf = (db.qtn.find(x => x.id === state.qtnView) || {}).nomor || 'Detail';
     if (state.view === 'mpForm' || state.view === 'qtForm') leaf = state.pf.isNew ? (state.view === 'mpForm' ? 'Buat Master Program' : 'Buat Penjualan Program') : state.pf.p.nomor;
     $('#crumb').innerHTML = `${mod.name} / ${state.view in SUBVIEW ? `${label} / ` : ''}<b>${esc(leaf)}</b>`;
@@ -649,15 +670,128 @@
     toast(`${nomor.length} paket produk tersimpan: ${nomor.join(', ')}`);
   }
 
-  // ---------- Katalog (FR-14, ditunda) ----------
-  const viewKatalog = () => `${pageHead('Katalog Produk', 'Katalog disusun dari Paket Produk untuk kebutuhan Promosi.', 'FR-14')}
-    <div class="card empty-state">
-      <div class="icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6.5A2.5 2.5 0 0 0 4 21.5Z"/><path d="M8 7h7M8 11h5"/></svg></div>
-      <h2>Ditunda — format katalog belum tersedia</h2>
-      <p>Halaman ini akan dibuat setelah Labmania menyiapkan format katalog ${q('Q-09', 'Format Katalog Produk belum ada.')}
-        dan menetapkan pengguna yang membuatnya ${q('Q-06', 'Aktor pembuat katalog masih ditanyakan.')}.
-        Saat ini tersedia <b>${db.paket.filter(p => p.aktif).length} paket aktif</b> yang dapat menjadi isi katalog.</p>
+  // ---------- Katalog Produk (FR-14, FR-60 – FR-63; input/Master - Buat Program/2026-11-05-katalog-produk/) ----------
+  // Isi katalog = Paket Produk berstatus Aktif. Filter Bidang & Sertifikat; hasil filter yang sama dicetak sebagai PDF katalog.
+  const ktName = (key, id) => (findRec(key, id) || {}).nama || '—';
+  const ktBase = () => db.paket.filter(p => p.aktif);
+  const ktRows = () => ktBase().filter(p =>
+    (state.ktBidang === 'all' || String(p.bidang) === state.ktBidang)
+    && (state.ktSert === 'all' || String(p.sertifikasi) === state.ktSert)
+    && matches([p.nomor, p.judul, ...ATTRS.map(a => ktName(a.key, p[a.field]))]));
+  // Pilihan filter hanya nilai yang dipakai paket aktif, agar tidak ada pilihan yang hasilnya kosong.
+  const ktOpts = (key, field, all) => {
+    const used = [...new Set(ktBase().map(p => p[field]))].map(id => findRec(key, id)).filter(Boolean)
+      .sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
+    return [['all', all]].concat(used.map(r => [String(r.id), `${esc(r.nama)} (${ktBase().filter(p => p[field] === r.id).length})`]));
+  };
+  // Kelompok per Bidang (urut nama); paket di dalamnya urut Judul lalu Sertifikat.
+  const ktGroups = rows => [...new Set(rows.map(p => p.bidang))]
+    .map(id => ({ id, nama: ktName('jenisBidang', id), items: rows.filter(p => p.bidang === id)
+      .sort((a, b) => a.judul.localeCompare(b.judul, 'id') || ktName('jenisSertifikasi', a.sertifikasi).localeCompare(ktName('jenisSertifikasi', b.sertifikasi), 'id')) }))
+    .sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
+  const ktFilterText = () => `Bidang: ${state.ktBidang === 'all' ? 'Semua' : ktName('jenisBidang', +state.ktBidang)} · Sertifikat: ${state.ktSert === 'all' ? 'Semua' : ktName('jenisSertifikasi', +state.ktSert)}${state.q ? ` · Kata kunci: "${state.q}"` : ''}`;
+  const KT_ICON_CERT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="m8.5 13.5-1.5 8 5-3 5 3-1.5-8"/></svg>';
+
+  const viewKatalog = () => `${pageHead('Katalog Produk', 'Katalog disusun otomatis dari Paket Produk berstatus Aktif. Saring berdasarkan Bidang dan Sertifikat, lalu cetak sebagai PDF untuk Promosi.', 'FR-14 · FR-60 – FR-63',
+    '<button class="btn btn-accent" data-act="kt-print">Cetak Katalog (PDF)</button>')}
+    <div class="card">${toolbar('Cari judul, nomor, atau atribut…', false,
+      selectFilter('kt-bidang', 'Filter bidang', state.ktBidang, ktOpts('jenisBidang', 'bidang', 'Semua bidang'))
+      + selectFilter('kt-sert', 'Filter sertifikat', state.ktSert, ktOpts('jenisSertifikasi', 'sertifikasi', 'Semua sertifikat')))}
+      <div id="list">${listKatalog()}</div></div>`;
+
+  function listKatalog() {
+    const rows = ktRows(), groups = ktGroups(rows);
+    if (!rows.length) return `<div class="empty-state"><h2>Tidak ada paket produk</h2><p>${ktBase().length
+      ? 'Tidak ada Paket Produk aktif yang cocok dengan filter. Ubah filter Bidang/Sertifikat atau kata kunci.'
+      : 'Belum ada Paket Produk berstatus Aktif. Tambahkan atau aktifkan paket di menu Product Combine.'}</p></div>`;
+    return `<div class="kt-sum"><span><b>${rows.length}</b> paket produk · <b>${groups.length}</b> bidang</span><span class="muted">${esc(ktFilterText())}</span></div>
+      ${groups.map(g => `<section class="kt-group"><h3>${esc(g.nama)}<span>${g.items.length} paket</span></h3>
+        <div class="kt-grid">${g.items.map(p => `<article class="kt-card">
+          <div class="kt-top"><span class="tag">${esc(ktName('jenisProduk', p.produk))}</span><span class="code">${esc(p.nomor)}</span></div>
+          <h4>${esc(p.judul)}</h4>
+          <div class="kt-cert">${KT_ICON_CERT}<span>${esc(ktName('jenisSertifikasi', p.sertifikasi))}</span></div>
+        </article>`).join('')}</div></section>`).join('')}`;
+  }
+
+  // ----- PDF katalog: Sampul · Daftar Isi · Isi per Bidang (2 kolom) · Sampul belakang (kontak) -----
+  const KT_CAP = 16, KT_HEAD = 1, KT_ROW = 3; // satuan tinggi isi per halaman A4: judul bidang = 1, satu baris 2 kartu = 3
+  function ktPaginate(groups) {
+    const pages = []; let cur = [], used = 0;
+    groups.forEach(g => {
+      for (let i = 0; i < g.items.length; i += 2) {
+        if (used + KT_ROW + (i === 0 || used === 0 ? KT_HEAD : 0) > KT_CAP) { pages.push(cur); cur = []; used = 0; }
+        if (i === 0 || used === 0) { cur.push({ head: g, lanjut: i > 0 }); used += KT_HEAD; }
+        cur.push({ row: g.items.slice(i, i + 2) }); used += KT_ROW;
+      }
+    });
+    if (cur.length) pages.push(cur);
+    return pages;
+  }
+  const KT_LOGO = '<div class="kt-logo">L<i>A</i>B<small>M A N I A</small></div>';
+  const ktItem = p => `<div class="kt-item">
+      <div class="kt-item-top"><span class="kt-chip">${esc(ktName('jenisProduk', p.produk))}</span><span class="kt-kode">${esc(p.nomor)}</span></div>
+      <h4>${esc(p.judul)}</h4>
+      <div class="kt-item-meta"><span>Bidang</span><b>${esc(ktName('jenisBidang', p.bidang))}</b></div>
+      <div class="kt-item-cert">${KT_ICON_CERT}<span>${esc(ktName('jenisSertifikasi', p.sertifikasi))}</span></div>
     </div>`;
+  const ktPageFoot = n => `<div class="kt-pfoot"><span>PT LabMania Indonesia Jaya · www.labmaniaindonesia.id</span><span>${n}</span></div>`;
+
+  function katalogPages(rows) {
+    const groups = ktGroups(rows), body = ktPaginate(groups), tahun = new Date().getFullYear();
+    const produk = [...new Set(rows.map(p => ktName('jenisProduk', p.produk)))].sort((a, b) => a.localeCompare(b, 'id'));
+    const sert = [...new Set(rows.map(p => ktName('jenisSertifikasi', p.sertifikasi)))].sort((a, b) => a.localeCompare(b, 'id'));
+    const startOf = {}; // halaman pertama tiap bidang: sampul = 1, daftar isi = 2
+    body.forEach((pg, i) => pg.forEach(x => { if (x.head && !x.lanjut) startOf[x.head.id] = i + 3; }));
+
+    const cover = `<section class="pdf-page kt-page kt-cover">
+      <div class="kt-cover-top">${KT_LOGO}<span>${tahun}</span></div>
+      <div class="kt-cover-mid"><small>PT LabMania Indonesia Jaya</small><h1>Katalog<br>Produk</h1>
+        <p>Program ${esc(produk.join(' & '))}</p>
+        <ul class="kt-cover-stat"><li><b>${rows.length}</b>Paket produk</li><li><b>${groups.length}</b>Bidang</li><li><b>${sert.length}</b>Jenis sertifikat</li></ul></div>
+      <div class="kt-cover-foot">${esc(ktFilterText())}<br>Dicetak ${tglPanjang(todayIso)}</div>
+    </section>`;
+
+    const toc = `<section class="pdf-page kt-page">
+      <div class="kt-phead">${KT_LOGO}<span>Katalog Produk ${tahun}</span></div>
+      <div class="kt-pbody"><h2 class="kt-h2">Daftar Isi</h2>
+        <p class="kt-lead">Katalog ini memuat ${rows.length} paket produk ${esc(produk.join(' dan ').toLowerCase())} LabMania yang dikelompokkan menurut bidang. Setiap paket mencantumkan jenis sertifikat yang diterima peserta.</p>
+        <ol class="kt-toc">${groups.map(g => `<li><span>${esc(g.nama)} <em>${g.items.length} paket</em></span><i></i><b>${startOf[g.id]}</b></li>`).join('')}</ol>
+        <h3 class="kt-h3">Jenis Sertifikat</h3>
+        <ul class="kt-legend">${sert.map(s => `<li>${KT_ICON_CERT}${esc(s)}</li>`).join('')}</ul>
+      </div>${ktPageFoot(2)}</section>`;
+
+    const isi = body.map((pg, i) => `<section class="pdf-page kt-page">
+      <div class="kt-phead">${KT_LOGO}<span>Katalog Produk ${tahun}</span></div>
+      <div class="kt-pbody">${pg.map(x => x.head
+        ? `<h2 class="kt-band"><span>Bidang</span>${esc(x.head.nama)}${x.lanjut ? ' <em>(lanjutan)</em>' : ''}</h2>`
+        : `<div class="kt-row">${x.row.map(ktItem).join('')}</div>`).join('')}</div>
+      ${ktPageFoot(i + 3)}</section>`).join('');
+
+    const back = `<section class="pdf-page kt-page kt-cover kt-back">
+      <div class="kt-cover-mid">${KT_LOGO}<h2>Tertarik mengikuti program kami?</h2>
+        <p>Hubungi tim LabMania untuk jadwal, penawaran, dan program in house sesuai kebutuhan instansi Anda.</p>
+        <ul class="kt-contact"><li><span>Customer Care</span>0821-2429-3839</li><li><span>Website</span>www.labmaniaindonesia.id</li>
+          <li><span>Alamat</span>Ruby Commercial No. TC25 Summarecon Bekasi, Jalan Bulevar Selatan, Marga Mulya, Bekasi Utara, Kota Bekasi, Jawa Barat 17143</li></ul></div>
+      <div class="kt-cover-foot">PT LabMania Indonesia Jaya</div>
+    </section>`;
+    return { html: cover + toc + isi + back, total: body.length + 3 };
+  }
+
+  function katalogPrint() {
+    const rows = ktRows();
+    if (!rows.length) { toast('Tidak ada paket produk untuk dicetak — ubah filter terlebih dahulu', 'warn'); return; }
+    const k = katalogPages(rows), filter = ktFilterText();
+    openModal({
+      title: 'Cetak Katalog Produk', wide: 'x',
+      body: pdfWrap(k.html, `PDF katalog: ${k.total} halaman, ${rows.length} paket produk · ${esc(filter)}`),
+      onMount: pdfMount, cancelLabel: 'Tutup', saveLabel: 'Cetak / Simpan PDF',
+      onSave: () => {
+        logAct('Master Data', 'Katalog Produk', 'Cetak', 'Katalog Produk', null, `Cetak Katalog Produk (${rows.length} paket) — ${filter}`);
+        window.print();
+        return false; // modal tetap terbuka setelah dialog cetak ditutup
+      }
+    });
+  }
 
   // ---------- Wilayah (dipakai Peserta & Company) ----------
   const kotaOptions = (prov, selected) => prov
@@ -830,65 +964,101 @@
   }
 
   // ---------- Master User (FR-36 – FR-39; format form: input/Master - Buat Program/2026-10-28-master-user/) ----------
-  // Data karyawan (tabel existing `employees`) + akun login (tabel existing `users`, group akses `groups`).
-  const DEPARTMENT = {
-    'Manajemen': ['Direksi'],
-    'Marketing & Sales': ['Sales Public', 'Sales B2B', 'Marketing'],
-    'Operasional Training': ['Penyelenggaraan', 'Trainer'],
-    'Keuangan & Admin': ['Keuangan', 'Administrasi']
-  };
-  const JABATAN = ['Direktur', 'Manager', 'Supervisor', 'Staff', 'Admin'];
+  // Data karyawan (tabel existing `employees`) + akun login (tabel existing `users`). Department tidak dipakai
+  // (input/Invoice & Pengajuan/2026-11-04-role-permission/). Division dan Jabatan (Position) diganti satu field Role dari
+  // Master Role (input/Invoice & Pengajuan/2026-11-05-master-role-override/; FR-37, FR-64).
   const GENDER = ['Laki-laki', 'Perempuan'];
   const RELIGION = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'];
   const EMP_TYPE = ['Tetap', 'Kontrak', 'Magang', 'Freelance'];
-  const GROUP_AKSES = ['Manajemen', 'Admin Developer', 'Admin', 'Staff'];
-  const QUSR = q('Q-25', 'Daftar Group Akses, Department, Division, Jabatan, dan Employee Type di mockup hanya contoh — isi final mengikuti data aplikasi/Labmania.');
+  const QUSR = q('Q-25', 'Daftar Role dan Employee Type di mockup hanya contoh. Isi final mengikuti data Labmania.');
+
+  // ---------- Master Role (FR-64; tabel existing `groups`) ----------
+  // Role diinput manual. Superadmin = role bawaan sistem (akun developer, group id 1): terkunci, tidak dapat dipilih untuk user lain.
+  const SUPER_ROLE = 'Superadmin';
+  db.role = [{ nama: SUPER_ROLE, sistem: true }, { nama: 'Direktur' }, { nama: 'Admin' }, { nama: 'Sales Public' }, { nama: 'Sales B2B' }, { nama: 'Trainer' }, { nama: 'Keuangan' }]
+    .map(r => Object.assign({ id: uid() }, r));
+  const roleById = id => db.role.find(r => r.id === id);
+  const roleIdOf = nama => (db.role.find(r => r.nama === nama) || {}).id;
+  const roleOf = u => (roleById(u.role) || {}).nama || '';
+  const roleUsers = id => db.user.filter(u => u.role === id);
+  const roleLabel = nama => !nama ? '—' : nama === SUPER_ROLE ? `${nama} (bawaan sistem)` : nama;
+
   db.user = [
-    { kode: 'EMP-001', nama: 'Contoh User Satu', nik: '3275010101800001', tmpLahir: 'Bekasi', tglLahir: '1980-01-01', dept: 'Manajemen', div: 'Direksi', jabatan: 'Direktur', gender: 'Laki-laki', agama: 'Islam',
+    { kode: 'EMP-001', nama: 'Contoh User Satu', nik: '3275010101800001', tmpLahir: 'Bekasi', tglLahir: '1980-01-01', role: roleIdOf('Direktur'), gender: 'Laki-laki', agama: 'Islam',
       telp: '+6281211110000', email: 'user1@contoh.id', alamat: 'Jl. Contoh No. 1, Bekasi', npwp: '', tglMasuk: '2020-01-02', tipe: 'Tetap', jobdesc: 'Menyetujui Master & Penjualan Program', aktif: true,
-      akun: true, username: 'user.satu', group: 'Manajemen' },
-    { kode: 'EMP-002', nama: 'Contoh User Dua', nik: '', tmpLahir: '', tglLahir: '', dept: 'Marketing & Sales', div: 'Sales B2B', jabatan: 'Staff', gender: 'Perempuan', agama: '',
+      akun: true, username: 'user.satu' },
+    { kode: 'EMP-002', nama: 'Contoh User Dua', nik: '', tmpLahir: '', tglLahir: '', role: roleIdOf('Sales B2B'), gender: 'Perempuan', agama: '',
       telp: '+6281322220000', email: 'user2@contoh.id', alamat: '', npwp: '', tglMasuk: '2024-03-01', tipe: 'Kontrak', jobdesc: '', aktif: true,
-      akun: true, username: 'user.dua', group: 'Staff' },
-    { kode: 'EMP-003', nama: 'Contoh Trainer Tiga', nik: '', tmpLahir: '', tglLahir: '', dept: 'Operasional Training', div: 'Trainer', jabatan: 'Staff', gender: 'Laki-laki', agama: '',
+      akun: true, username: 'user.dua', ovr: { katalog: { v: true }, mprog: { v: true } } },
+    { kode: 'EMP-003', nama: 'Contoh Trainer Tiga', nik: '', tmpLahir: '', tglLahir: '', role: roleIdOf('Trainer'), gender: 'Laki-laki', agama: '',
       telp: '+6285733330000', email: '', alamat: '', npwp: '', tglMasuk: '', tipe: 'Freelance', jobdesc: 'Trainer lepas', aktif: false,
-      akun: false, username: '', group: '' },
-    { kode: 'EMP-004', nama: 'Contoh Admin Developer', nik: '', tmpLahir: '', tglLahir: '', dept: 'IT', div: 'Developer', jabatan: 'Staff', gender: 'Laki-laki', agama: '',
+      akun: false, username: '' },
+    { kode: 'EMP-004', nama: 'Contoh Admin Developer', nik: '', tmpLahir: '', tglLahir: '', role: roleIdOf(SUPER_ROLE), gender: 'Laki-laki', agama: '',
       telp: '+6281244440000', email: 'dev@contoh.id', alamat: '', npwp: '', tglMasuk: '2025-01-06', tipe: 'Tetap', jobdesc: 'Admin sistem & developer', aktif: true,
-      akun: true, username: 'admin.dev', group: 'Admin Developer' }
+      akun: true, username: 'admin.dev', superadmin: true }
   ].map(u => Object.assign({ id: uid() }, u));
 
-  const viewUser = () => `${pageHead('Master User', 'Data karyawan Labmania dan akun login ke sistem. User nonaktif tidak dapat login; data tidak dihapus.', 'FR-36 – FR-39',
+  const viewRole = () => `${pageHead('Master Role', 'Daftar role yang dipakai di Master User dan diatur haknya di Role & Permission. Role diinput manual. Role yang masih dipakai user tidak dapat dihapus.', 'FR-64',
+    '<button class="btn btn-accent" data-act="role-add">+ Tambah Role</button>')}
+    <div class="card">${toolbar('Cari nama role…', false)}<div id="list">${listRole()}</div></div>`;
+  function listRole() {
+    const rows = db.role.filter(r => matches([r.nama]));
+    return listBlock(rows, [
+      NO_COL,
+      { label: 'Nama Role', render: r => `<b>${esc(r.nama)}</b>${r.sistem ? ' <span class="tag">Bawaan sistem</span><br><span class="muted">Akun developer, semua hak. Tidak dapat diubah atau dipilih untuk user lain.</span>' : ''}` },
+      { label: 'User terdaftar', cls: 'nowrap', render: r => `${roleUsers(r.id).length} user` },
+      { label: 'Hak di Role & Permission', cls: 'nowrap', render: r => r.sistem ? '<span class="badge on">Semua hak aktif</span>'
+        : akCount(db.akses[r.id]) ? `<span class="badge on">${akCount(db.akses[r.id])} hak diberikan</span>` : '<span class="badge off">Belum diatur</span>' },
+      { label: 'Action', cls: 'act', render: r => r.sistem ? '<span class="muted">Terkunci</span>'
+        : gearMenu(r, [['role-edit', 'Edit'], ['role-akses', 'Atur Akses']].concat(roleUsers(r.id).length ? [] : [['role-del', 'Hapus', true]])) }
+    ]);
+  }
+  function roleForm(rec) {
+    openModal({
+      title: rec ? `Edit Role ${esc(rec.nama)}` : 'Tambah Role',
+      body: `${field('Nama Role' + req, `<input class="input" name="nama" value="${esc(rec ? rec.nama : '')}" maxlength="50" placeholder="mis. Sales B2B">`)}
+        <p class="hint">${rec ? `${roleUsers(rec.id).length} user memakai role ini; namanya ikut berubah di Master User.` : 'Role baru belum punya hak. Atur haknya di Role & Permission setelah disimpan.'}</p>`,
+      onSave: f => {
+        const nama = f.nama.value.trim();
+        if (!nama) return invalid(f.nama, 'Nama Role wajib diisi');
+        if (db.role.some(r => r !== rec && r.nama.toLowerCase() === nama.toLowerCase())) return invalid(f.nama, 'Nama Role sudah dipakai');
+        if (rec) { rec.nama = nama; toast(`Role ${nama} diperbarui`); }
+        else { db.role.push({ id: uid(), nama }); toast(`Role ${nama} ditambahkan. Atur haknya di Role & Permission.`); }
+      }
+    });
+  }
+  function roleDel(r) {
+    if (r.sistem || roleUsers(r.id).length) return toast('Role masih dipakai user, tidak dapat dihapus', 'warn');
+    confirmDelete(`role ${r.nama}`, () => { db.role = db.role.filter(x => x !== r); delete db.akses[r.id]; toast(`Role ${r.nama} dihapus`); });
+  }
+
+  const viewUser = () => `${pageHead('Master User', 'Data karyawan Labmania dan akun login ke sistem. <b>Role</b> dipilih dari Master Role; hak aksesnya diatur di <b>Role & Permission</b>. <b>Override Permission</b> memberi satu user hak menu tambahan di luar role-nya. User nonaktif tidak dapat login; data tidak dihapus.', 'FR-36 – FR-39 · FR-65',
     '<button class="btn btn-accent" data-act="user-add">+ Tambah User</button>')}
-    <div class="card">${toolbar('Cari ID, nama, username, atau email…', true,
-      selectFilter('fjenis', 'Filter department', state.jenis, [['all', 'Semua department'], ...Object.keys(DEPARTMENT).map(d => [d, d])]))}
+    <div class="card">${toolbar('Cari ID, nama, username, email, atau role…', true,
+      selectFilter('fjenis', 'Filter role', state.jenis, [['all', 'Semua role'], ...db.role.map(r => [String(r.id), r.nama])]))}
       <div id="list">${listUser()}</div></div>`;
 
   function listUser() {
-    const rows = db.user.filter(r => statusOk(r) && (state.jenis === 'all' || r.dept === state.jenis) &&
-      matches([r.kode, r.nama, r.username, r.email]));
+    const rows = db.user.filter(r => statusOk(r) && (state.jenis === 'all' || String(r.role) === state.jenis) &&
+      matches([r.kode, r.nama, r.username, r.email, roleOf(r)]));
     return listBlock(rows, [
       NO_COL,
       { label: 'Employee ID', cls: 'nowrap', render: r => `<span class="code">${esc(r.kode)}</span>` },
       { label: 'Nama', render: r => `${esc(r.nama)}<br><span class="muted">${esc(r.email || r.telp)}</span>` },
-      { label: 'Department / Division', render: r => `${esc(r.dept)}<br><span class="muted">${esc(r.div)}</span>` },
-      { label: 'Jabatan', render: r => `${esc(r.jabatan)}<br><span class="muted">${esc(r.tipe)}</span>` },
-      { label: 'Akun login', render: r => r.akun ? `<span class="code">${esc(r.username)}</span><br><span class="muted">${esc(r.group)}</span>` : '<span class="muted">Tanpa akun</span>' },
+      { label: 'Role', render: r => `${esc(roleLabel(roleOf(r)))}<br><span class="muted">${esc(r.tipe)}</span>` },
+      { label: 'Akun login', render: r => r.akun ? `<span class="code">${esc(r.username)}</span>${akCount(r.ovr) ? `<br><span class="tag" title="Hak menu tambahan di luar role">Override ${akCount(r.ovr)} hak</span>` : ''}` : '<span class="muted">Tanpa akun</span>' },
       STATUS_COL,
       { label: 'Action', cls: 'act', render: r => gearMenu(r, [['user-edit', 'Edit'], toggleItem(r)].concat(r.akun ? [['user-reset', 'Reset Password']] : [])) }
     ]);
   }
 
-  const divOptions = (dept, sel) => dept
-    ? `<option value="">Choose one</option>${opts(DEPARTMENT[dept] || [], sel)}`
-    : '<option value="">Choose one</option>';
-
   function userForm(rec) {
-    const r = rec || { kode: '', nama: '', nik: '', tmpLahir: '', tglLahir: '', dept: '', div: '', jabatan: '', gender: '', agama: '', telp: '', email: '', alamat: '', npwp: '',
-      tglMasuk: '', tipe: '', jobdesc: '', aktif: true, akun: true, username: '', group: '' };
+    const r = rec || { kode: '', nama: '', nik: '', tmpLahir: '', tglLahir: '', role: '', gender: '', agama: '', telp: '', email: '', alamat: '', npwp: '',
+      tglMasuk: '', tipe: '', jobdesc: '', aktif: true, akun: true, username: '' };
     const inp = (name, val, extra = '') => `<input class="input" name="${name}" value="${esc(val)}" ${extra}>`;
     const sel = (name, list, val) => `<select class="input" name="${name}"><option value="">Choose one</option>${opts(list, val)}</select>`;
     const sec = t => `<div class="form-sec span2">${t}</div>`;
+    const O = clone(r.ovr || {}); // Override Permission yang sedang diedit (FR-65)
     openModal({
       title: rec ? `Edit User ${rec.kode}` : 'Add New User',
       wide: true,
@@ -899,9 +1069,9 @@
           ${field('Personal ID Number', inp('nik', r.nik, 'placeholder="NIK" inputmode="numeric" maxlength="16"'))}
           ${field('Birth Place', inp('tmpLahir', r.tmpLahir, 'placeholder="Birth Place" maxlength="50"'))}
           ${field('Birth Date', inp('tglLahir', r.tglLahir, 'type="date"'))}
-          ${field('Department' + req + QUSR, `<select class="input" name="dept"><option value="">Choose one</option>${opts(Object.keys(DEPARTMENT), r.dept)}</select>`)}
-          ${field('Division' + req, `<select class="input" name="div" ${r.dept ? '' : 'disabled'}>${divOptions(r.dept, r.div)}</select><span class="hint ${r.dept ? 'hidden' : ''}" data-divhint>Pilih Department terlebih dahulu.</span>`)}
-          ${field('Jabatan' + req, sel('jabatan', JABATAN, r.jabatan))}
+          ${field('Role' + req + QUSR, r.superadmin
+            ? `<input class="input" value="${esc(SUPER_ROLE)}" readonly><input type="hidden" name="role" value="${r.role}"><span class="hint">Role bawaan sistem, tidak dapat diganti</span>`
+            : `<select class="input" name="role"><option value="">Choose one</option>${db.role.filter(x => !x.sistem).map(x => `<option value="${x.id}" ${x.id === r.role ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select><span class="hint">Dari Master Role; hak akses diatur di Role & Permission</span>`)}
           ${field('Gender' + req, sel('gender', GENDER, r.gender))}
           ${field('Religion', sel('agama', RELIGION, r.agama))}
         </div>
@@ -920,29 +1090,58 @@
         ${field('', `<label><input type="checkbox" name="akun" ${r.akun ? 'checked' : ''}> User ini dapat login ke sistem</label>`, '', 'span2')}
         <div class="grid2 span2 ${r.akun ? '' : 'hidden'}" data-akun>
           ${field('Username' + req, inp('username', r.username, 'autocomplete="off" maxlength="50" placeholder="huruf kecil, angka, titik"'))}
-          ${field('Group Akses' + req + QUSR, sel('group', GROUP_AKSES, r.group))}
           ${field('Password' + (rec && rec.akun ? '' : req), `<input class="input" name="password" type="password" autocomplete="new-password">${rec && rec.akun ? '<span class="hint">Kosongkan bila tidak diubah</span>' : '<span class="hint">Minimal 8 karakter</span>'}`)}
           ${field('Konfirmasi Password' + (rec && rec.akun ? '' : req), '<input class="input" name="password2" type="password" autocomplete="new-password">')}
+          ${r.superadmin ? '' : `<details class="ket-acc ovr-box span2" ${akCount(r.ovr) ? 'open' : ''}>
+            <summary><b>Override Permission</b><span class="muted" data-ovrcnt></span></summary>
+            <div class="ovr-body"><p class="hint top">Hak menu tambahan khusus untuk user ini, di luar hak role-nya (FR-65). Hak yang sudah dimiliki role tercentang dan terkunci. Override hanya menambah hak, tidak mengurangi.</p>
+              <div class="table-wrap ak-wrap"><table class="table ak-tbl"><thead><tr><th>Modul / Menu</th><th>Hak akses</th></tr></thead><tbody data-ovr></tbody></table></div></div>
+          </details>`}
         </div>
       </div>`,
       onMount: form => {
         const f = form.elements;
-        f.dept.addEventListener('change', e => {
-          f.div.innerHTML = divOptions(e.target.value, '');
-          f.div.disabled = !e.target.value;
-          form.querySelector('[data-divhint]').classList.toggle('hidden', !!e.target.value);
-        });
         f.akun.addEventListener('change', e => { form.querySelector('[data-akun]').classList.toggle('hidden', !e.target.checked); });
+        if (r.superadmin) return;
+        // Override Permission: matrix menu × aksi; hak dari role terkunci, sisanya dapat ditambahkan untuk user ini.
+        const fromRole = (v, k) => !!(((db.akses[+f.role.value] || {})[v] || {})[k]);
+        const drawOvr = () => {
+          const cnt = akCount(O);
+          form.querySelector('[data-ovrcnt]').textContent = cnt ? `${cnt} hak tambahan` : 'Belum ada hak tambahan';
+          form.querySelector('[data-ovr]').innerHTML = akMenus().map(m => `<tr class="ak-mod"><td colspan="2">${esc(m.mod)}</td></tr>` + m.items.map(([v, l]) =>
+            `<tr><td><b>${esc(l)}</b></td><td><div class="ak-chips">${akActsOf(v).map(k => {
+              const lbl = AK_ACTS.find(a => a[0] === k)[1];
+              if (fromRole(v, k)) return `<label class="ak-chip role" title="Sudah dari role"><input type="checkbox" checked disabled>${lbl} <span class="code">role</span></label>`;
+              const on = !!((O[v] || {})[k]);
+              return `<label class="ak-chip ${on ? 'on' : ''}"><input type="checkbox" data-ok="${v}" data-oa="${k}" ${on ? 'checked' : ''}>${lbl}</label>`;
+            }).join('')}</div></td></tr>`).join('')).join('');
+        };
+        form.addEventListener('change', e => {
+          const t = e.target;
+          if (t.name === 'role') {
+            // Hak yang kini sudah diberikan role baru tidak perlu disimpan sebagai override.
+            Object.keys(O).forEach(v => { Object.keys(O[v]).forEach(k => { if (fromRole(v, k)) delete O[v][k]; }); if (!Object.keys(O[v]).length) delete O[v]; });
+          } else if (t.dataset.ok) {
+            const v = t.dataset.ok, k = t.dataset.oa, x = O[v] = O[v] || {};
+            if (t.checked) { x[k] = true; if (k !== 'v' && !fromRole(v, 'v')) x.v = true; }
+            else if (k === 'v') Object.keys(x).forEach(a => { delete x[a]; });
+            else delete x[k];
+            if (!Object.keys(x).length) delete O[v];
+          } else return;
+          drawOvr();
+        });
+        drawOvr();
       },
       onSave: f => {
-        const keys = ['kode', 'nama', 'nik', 'tmpLahir', 'tglLahir', 'dept', 'div', 'jabatan', 'gender', 'agama', 'telp', 'email', 'alamat', 'npwp', 'tglMasuk', 'tipe', 'jobdesc', 'username', 'group'];
+        const keys = ['kode', 'nama', 'nik', 'tmpLahir', 'tglLahir', 'gender', 'agama', 'telp', 'email', 'alamat', 'npwp', 'tglMasuk', 'tipe', 'jobdesc', 'username'];
         const v = {};
         keys.forEach(k => { v[k] = f[k].value.trim(); });
+        v.role = +f.role.value || '';
         v.aktif = f.aktif.value === '1';
         v.akun = f.akun.checked;
         const pw = f.password.value, pw2 = f.password2.value;
         let ok = true;
-        const LBL = { kode: 'Employee ID', nama: 'Employee Name', dept: 'Department', div: 'Division', jabatan: 'Jabatan', gender: 'Gender', telp: 'Phone Number', tipe: 'Employee Type' };
+        const LBL = { kode: 'Employee ID', nama: 'Employee Name', role: 'Role', gender: 'Gender', telp: 'Phone Number', tipe: 'Employee Type' };
         Object.keys(LBL).forEach(k => { if (!v[k]) ok = invalid(f[k], `${LBL[k]} wajib diisi`); });
         if (!rec && v.kode && db.user.some(u => u.kode.toLowerCase() === v.kode.toLowerCase())) ok = invalid(f.kode, 'Employee ID sudah dipakai');
         if (v.nik && !/^\d{16}$/.test(v.nik)) ok = invalid(f.nik, 'NIK 16 digit angka');
@@ -955,19 +1154,22 @@
           if (!v.username) ok = invalid(f.username, 'Username wajib diisi');
           else if (!/^[a-z0-9._]{3,50}$/.test(v.username)) ok = invalid(f.username, 'Huruf kecil, angka, titik, atau garis bawah; 3–50 karakter');
           else if (db.user.some(u => u !== rec && u.akun && u.username === v.username)) ok = invalid(f.username, 'Username sudah dipakai');
-          if (!v.group) ok = invalid(f.group, 'Group Akses wajib diisi');
           if ((needPw || pw) && pw.length < 8) ok = invalid(f.password, 'Password minimal 8 karakter');
           if ((needPw || pw) && pw !== pw2) ok = invalid(f.password2, 'Konfirmasi password tidak sama');
-        } else { v.username = ''; v.group = ''; }
+        } else { v.username = ''; }
         if (!ok) return false;
+        // Override Permission hanya berlaku untuk user berakun login (FR-65).
+        const ovr = v.akun && !r.superadmin && akCount(O) ? clone(O) : null;
+        const roleMsg = ovr ? `, override ${akCount(ovr)} hak` : '';
         if (rec) {
           Object.assign(rec, v);
-          toast(`User ${rec.kode} diperbarui${pw ? ' (password diganti)' : ''}`);
+          if (ovr) rec.ovr = ovr; else delete rec.ovr;
+          toast(`User ${rec.kode} diperbarui${pw ? ' (password diganti)' : ''}${roleMsg}`);
         } else {
-          const u = Object.assign({ id: uid() }, v);
+          const u = Object.assign({ id: uid() }, v, ovr ? { ovr } : {});
           db.user.push(u);
           state.page = Math.ceil(db.user.length / PAGE_SIZE);
-          toast(`User ${u.kode} ditambahkan`);
+          toast(`User ${u.kode} ditambahkan${roleMsg}`);
         }
       }
     });
@@ -1090,6 +1292,7 @@
         ${field('Tanggal lahir', inp('tglLahir', '', 'type="date"'))}
         ${field('Alamat rumah', `<textarea class="input" name="alamat" rows="2">${esc(d.alamat)}</textarea>`, '', 'span2')}
         ${field('No. telepon rumah/HP', inp('telp', '08xxxxxxxxxx / 08xxxxxxxxxx'), E.telp, 'span2')}
+        ${field('Akun login (Master User)' + q('Q-PB-13', 'Usulan: trainer dihubungkan ke akun Master User agar dapat membuka dan mengajukan biaya program yang ia latih (Pengajuan Biaya).'), `<select class="input" name="user"><option value="">— Tanpa akun —</option>${db.user.filter(u => u.akun && (u.aktif || u.id === Number(d.user))).map(u => `<option value="${u.id}" ${u.id === Number(d.user) ? 'selected' : ''}>${esc(u.nama)} · ${esc(u.username)}</option>`).join('')}</select><span class="hint">Dipakai untuk hak data Pengajuan Biaya</span>`, '', 'span2')}
       </div>
       <p class="qtn-h">Pendidikan formal</p>
       <div class="grid2">${PENDIDIKAN.map(([k, l]) => field(l, inp(k, 'Jurusan, institusi, tahun lulus'))).join('')}</div>
@@ -1118,9 +1321,10 @@
   }
 
   function trainerForm(rec) {
-    const blank = { nama: '', tmpLahir: '', tglLahir: '', alamat: '', telp: '', pendSmu: '', pendDiploma: '', pendSarjana: '', pendPasca: '', keahlian: [], lainnya: '', cvTempat: '', cvTanggal: '', ttdNama: '', pelatihan: [], kerja: [], mengajar: [], lampiran: [] };
+    const blank = { user: '', nama: '', tmpLahir: '', tglLahir: '', alamat: '', telp: '', pendSmu: '', pendDiploma: '', pendSarjana: '', pendPasca: '', keahlian: [], lainnya: '', cvTempat: '', cvTanggal: '', ttdNama: '', pelatihan: [], kerja: [], mengajar: [], lampiran: [] };
     const d = Object.assign(clone(rec || blank), { tab: 'identitas', err: {} });
     d.keahlian = d.keahlian.join('\n');
+    if (d.user === undefined) d.user = '';
     openModal({
       title: rec ? `Edit Trainer ${rec.kode}` : 'Tambah Master Trainer', wide: 'x',
       body: trainerBody(d),
@@ -1165,6 +1369,7 @@
         const v = {};
         Object.keys(blank).forEach(k => { v[k] = typeof d[k] === 'string' ? d[k].trim() : d[k]; });
         v.keahlian = d.keahlian.split('\n').map(x => x.trim()).filter(Boolean);
+        v.user = d.user ? Number(d.user) : '';
         Object.keys(TR_LISTS).forEach(k => { v[k] = d[k].map(r => Object.fromEntries(Object.entries(r).map(([a, b]) => [a, String(b).trim()]))); });
         if (rec) { Object.assign(rec, v); toast(`Trainer ${rec.kode} diperbarui`); }
         else {
@@ -2810,7 +3015,7 @@
           <tr><td>PPN (${PPN_RATE}%)</td><td>${rp(v.ppn)}</td></tr><tr><td>Biaya Lain-lain</td><td>${rp(v.lain)}</td></tr><tr class="tot"><td>Total</td><td>${rp(v.total)}</td></tr></table>
       </div>
       <div class="pdf-2col pdf-sign">
-        <div>${tglPanjang(k.tanggal)}<br>${esc(s.dept || s.div || 'Divisi')}<div class="pdf-ttd"></div><b>${esc(s.nama || '—')}</b></div>
+        <div>${tglPanjang(k.tanggal)}<br>${esc(roleOf(s) || 'Sales')}<div class="pdf-ttd"></div><b>${esc(s.nama || '—')}</b></div>
         <div>............., .................. 20.....<br>Disetujui oleh Pelanggan,<div class="pdf-ttd"></div>Nama :</div>
       </div>`, pdfFoot('FR/LMI-TR-01/01/Ed.Rev-1.1', 'Halaman 1 dari 1', '01/01/2025'));
   }
@@ -3043,6 +3248,20 @@
     }
     return { penjualan: Math.floor(v.dpp / n), lain: Math.floor(v.lain / n), ps: [psId] };
   }
+  // B2B per peserta dipecah otomatis (input/Invoice & Pengajuan/2026-11-03-b2b-per-peserta-pecah-otomatis/):
+  // satu kali Save = satu invoice per peserta Deal yang belum ditagih, masing-masing bernomor sendiri.
+  function ivcSplit(k) {
+    const v = qtnNilai(k, dealRows(k)), n = dealRows(k).length || 1, sisa = ivcSisaPs(k);
+    let accP = invOfQtn(k).reduce((t, i) => t + i.penjualan, 0), accL = invOfQtn(k).reduce((t, i) => t + i.lain, 0);
+    return sisa.map((r, idx) => {
+      const last = idx === sisa.length - 1;
+      const p = last ? v.dpp - accP : Math.floor(v.dpp / n), l = last ? v.lain - accL : Math.floor(v.lain / n);
+      accP += p; accL += l;
+      return { penjualan: p, lain: l, ps: [r.id] };
+    });
+  }
+  // Pratinjau nomor invoice ke-(off+1) dari pecahan, tanpa memakai nomor urut.
+  const ivcNoAt = (iso, off) => { const s = ivcNo(iso, true); return s.slice(0, -3) + String(+s.slice(-3) + off).padStart(3, '0'); };
   // Perhitungan (IVC-FR-08): pembulatan ke rupiah di setiap tahap (Q-IVC-08).
   function ivcHitung(penjualan, lain, pl) {
     const dpp = pl === 'NON' ? 0 : Math.round(penjualan * 11 / 12), ppn = pl === 'NON' ? 0 : Math.round(dpp * 0.12);
@@ -3100,7 +3319,7 @@
     const k = db.qtn.find(x => x.status === 'deal' && x.tujuan === 'personal');
     if (k) {
       const tgl = '2026-10-29', pl = ivcPerlakuan(k), u = ivcNilaiUnit(k, 'satu'), h = ivcHitung(u.penjualan, u.lain, pl), nomor = ivcNo(tgl), coa = coaSalesDefault(k);
-      db.inv.push(Object.assign({ id: uid(), nomor, tanggal: tgl, qtn: k.id, prog: progNo(k), jenis: pjOfQtn(k).jenis, cara: 'satu', peserta: u.ps, perlakuan: pl, noPo: '-', noFaktur: '04002600000101', coaPenjualan: coa, setor: null, status: 'invoiced',
+      db.inv.push(Object.assign({ id: uid(), nomor, tanggal: tgl, qtn: k.id, prog: progNo(k), jenis: pjOfQtn(k).jenis, cara: 'satu', peserta: u.ps, perlakuan: pl, noFaktur: '04002600000101', coaPenjualan: coa, setor: null, status: 'invoiced',
         jurnal: ivcJurnal(h, pl, coa, nomor, k, tgl) }, h));
     }
   }
@@ -3142,7 +3361,7 @@
       { label: 'Program', render: k => { const pj = pjOfQtn(k); return `${esc(paketOf(mpOf(pj)).judul)}<br><span class="muted">${esc(pj.lokasi || '')}</span>`; } },
       { label: 'Sales', render: k => esc((salesOf(k) || {}).nama || '—') },
       { label: 'Cara tagih', render: k => ivcCaraOf(k) === 'peserta'
-        ? `Per peserta<br><span class="muted">${ivcSisaPs(k).length} dari ${dealRows(k).length} peserta belum ditagih</span>`
+        ? `Per peserta<br><span class="muted">${ivcSisaPs(k).length} invoice (dipecah otomatis)</span>`
         : `1 invoice<br><span class="muted">${dealRows(k).length} peserta deal${isAllin(k) ? ' · all-in' : ''}</span>` },
       { label: 'Nilai quotation', cls: 'money', render: k => rp(qtnNilai(k, dealRows(k)).total) },
       { label: 'Status', cls: 'nowrap', render: () => ivcBadge('uninvoiced') },
@@ -3153,14 +3372,14 @@
     const qOf = i => db.qtn.find(x => x.id === i.qtn);
     const rows = db.inv.filter(i => jenisOk(i.jenis) && progOk(i.prog) && yearOk(i.tanggal))
       .sort((a, b) => a.prog.localeCompare(b.prog) || a.id - b.id)
-      .filter(i => { const k = qOf(i); return matches([i.nomor, i.prog, k.nomor, kepadaOf(k), paketOf(mpOf(pjOfQtn(k))).judul, (salesOf(k) || {}).nama, i.noPo, i.noFaktur]); });
+      .filter(i => { const k = qOf(i); return matches([i.nomor, i.prog, k.nomor, kepadaOf(k), paketOf(mpOf(pjOfQtn(k))).judul, (salesOf(k) || {}).nama, i.noFaktur]); });
     return listBlock(rows, [
       NO_COL, progCol,
       { label: 'No. Invoice', cls: 'nowrap', render: i => `<button class="btn btn-ghost sm" data-act="ivc-view" data-id="${i.id}">${esc(i.nomor)}</button><br><span class="muted">${tglPanjang(i.tanggal)}</span>` },
       { label: 'No. Quotation', cls: 'nowrap', render: i => `<span class="code">${esc(qOf(i).nomor)}</span>` },
       { label: 'Customer', render: i => { const k = qOf(i), ps = i.cara === 'peserta' ? (pesertaById(i.peserta[0]) || {}).nama : '';
         return `${tujuanTag(k.tujuan)} ${esc(kepadaOf(k))}${ps ? `<br><span class="muted">Peserta: ${esc(ps)}</span>` : `<br><span class="muted">${i.peserta.length} peserta</span>`}`; } },
-      { label: 'PO / Faktur', render: i => `${esc(i.noPo || '—')}<br><span class="muted">${esc(i.noFaktur || '—')}</span>` },
+      { label: 'No. Faktur', render: i => esc(i.noFaktur || '—') },
       { label: 'Perlakuan PPN', render: i => PERLAKUAN[i.perlakuan] + (i.perlakuan === 'WAPU' ? `<br><span class="muted">${i.setor ? `Bukti setor ${tglPanjang(i.setor.tanggal)}` : 'Bukti setor belum'}</span>` : '') },
       { label: 'Total Tagihan', cls: 'money', render: i => `${rp(i.total)}<br><span class="muted">piutang ${rp(i.piutang)}</span>` },
       { label: 'Status', cls: 'nowrap', render: () => ivcBadge('invoiced') },
@@ -3173,7 +3392,7 @@
   function ivcForm(k, from) {
     if (ivcStatus(k) === 'invoiced') { toast('Semua peserta quotation ini sudah ditagih', 'warn'); return; }
     // Cara tagih tidak dipilih: mengikuti skema harga quotation (ivcCaraOf).
-    state.ivp = { qtn: k.id, from: from || 'ivc', d: { tanggal: todayIso, cara: ivcCaraOf(k), ps: (ivcSisaPs(k)[0] || {}).id, pl: ivcPerlakuan(k), noPo: '', noFaktur: '', coa: coaSalesDefault(k) } };
+    state.ivp = { qtn: k.id, from: from || 'ivc', d: { tanggal: todayIso, cara: ivcCaraOf(k), faktur: {}, pl: ivcPerlakuan(k), noFaktur: '', coa: coaSalesDefault(k) } };
     state.view = 'ivcForm';
     render(); window.scrollTo(0, 0);
   }
@@ -3181,7 +3400,8 @@
   function ivcParts() {
     const k = db.qtn.find(x => x.id === state.ivp.qtn), d = state.ivp.d;
     const b2b = isB2bQtn(k), pj = pjOfQtn(k), pk = paketOf(mpOf(pj)), v = qtnNilai(k, dealRows(k));
-    const unit = () => ivcNilaiUnit(k, d.cara, d.ps);
+    const perPs = d.cara === 'peserta';
+    const unit = () => ivcNilaiUnit(k, d.cara);
     const sec = (n, title, hint, body, id = '') => `<section class="card pad ivc-sec" ${id ? `id="${id}"` : ''}><p class="ivc-sec-h"><span class="ivc-no">${n}</span>${title}${hint ? ` <span class="muted">${hint}</span>` : ''}</p>${body}</section>`;
     const hdr = () => sec(1, 'Data Invoice', 'tujuan tagihan dari quotation, nomor dari sistem', `<div class="qtn-grid ivc-head"><div>
         ${field('Kepada', `<div class="ro">${esc(kepadaOf(k))} ${tujuanTag(k.tujuan)}</div>`)}
@@ -3191,22 +3411,45 @@
           `<select class="input" name="pl">${Object.keys(PERLAKUAN).map(p => `<option value="${p}" ${p === d.pl ? 'selected' : ''}>${PERLAKUAN[p]}</option>`).join('')}</select><span class="hint">Default ${PERLAKUAN[ivcPerlakuan(k)]} (${k.ppn ? (k.tujuan === 'company' ? 'Master Company' : 'Personal') : 'quotation tanpa PPN'}). Mockup: dapat diganti untuk mencoba jurnal.</span>`)}
       </div><div>
         ${field('Tanggal Invoice' + req, `<input class="input" type="date" name="tanggal" value="${d.tanggal}">`)}
-        ${field('Nomor Invoice' + QIVC(4, 'Format nomor LMI/INV/MM/yy-zzz (terjawab). Masih usulan: MM/yy dari Tanggal Invoice dan nomor urut di-reset tiap bulan.'), `<input class="input" value="${esc(ivcNo(d.tanggal, true))}" readonly><span class="hint">Otomatis oleh sistem saat Save</span>`)}
-        ${field('Nomor PO' + (k.tujuan === 'company' ? req : ' <span class="muted">(opsional untuk Personal)</span>' + QIVC(6, 'Nomor PO wajib di acuan. Untuk Personal tetap wajib atau opsional (usulan)?')), `<input class="input" name="noPo" value="${esc(d.noPo)}" placeholder="Nomor PO">`)}
-        ${d.pl === 'NON' ? field('Nomor Faktur', '<div class="ro muted">Tidak perlu — tanpa PPN</div>') : field('Nomor Faktur' + req, `<input class="input" name="noFaktur" value="${esc(d.noFaktur)}" placeholder="Nomor Faktur">`)}
+        ${field('Nomor Invoice' + QIVC(4, 'Format nomor LMI/INV/MM/yy-zzz (terjawab). Masih usulan: MM/yy dari Tanggal Invoice dan nomor urut di-reset tiap bulan.'), perPs
+          ? (() => { const m = ivcSisaPs(k).length; return `<input class="input" value="${esc(ivcNoAt(d.tanggal, 0))}${m > 1 ? ` s.d. ${esc(ivcNoAt(d.tanggal, m - 1))}` : ''}" readonly><span class="hint">${m} nomor berbeda, satu per peserta. Otomatis oleh sistem saat Save</span>`; })()
+          : `<input class="input" value="${esc(ivcNo(d.tanggal, true))}" readonly><span class="hint">Otomatis oleh sistem saat Save</span>`)}
+        ${d.pl === 'NON' ? field('Nomor Faktur', '<div class="ro muted">Tidak perlu — tanpa PPN</div>') : perPs ? field('Nomor Faktur' + req, '<div class="ro muted">Diisi per invoice di bagian 2 (Cara Tagih)</div>')
+          : field('Nomor Faktur' + req, `<input class="input" name="noFaktur" value="${esc(d.noFaktur)}" placeholder="Nomor Faktur">`)}
       </div></div>`);
     const cara = () => b2b ? sec(2, 'Cara Tagih', 'mengikuti skema harga quotation', `<p class="hint top">${d.cara === 'peserta'
-        ? `Quotation <b>per peserta</b>: satu invoice untuk satu peserta Deal. ${ivcDonePs(k).length} dari ${dealRows(k).length} peserta sudah ditagih.`
+        ? `Quotation <b>per peserta</b>: invoice <b>dipecah otomatis</b>, satu invoice untuk setiap peserta Deal dengan nomor invoice sendiri. Save akan membuat <b>${ivcSisaPs(k).length} invoice</b> sekaligus.`
         : `Quotation <b>all-in ke company</b>: satu invoice untuk seluruh ${dealRows(k).length} peserta Deal.`}</p>
-      ${d.cara === 'peserta' ? field('Peserta yang ditagih' + req, `<select class="input" name="ps">${ivcSisaPs(k).map(r => { const p = pesertaById(r.id) || {}; return `<option value="${r.id}" ${r.id === d.ps ? 'selected' : ''}>${esc(p.nama)} (${esc(p.kode)})</option>`; }).join('')}</select>
-        <span class="hint">Nilai per peserta = harga − diskon per peserta${v.lain ? `; Biaya Lain-lain dibagi rata ÷ ${dealRows(k).length}, sisa pembulatan di peserta terakhir` : ''}.</span>`, '', 'ivc-ps') : ''}`) : '';
+      ${perPs ? (() => { const sp = ivcSplit(k);
+        return `<div class="table-wrap"><table class="table"><thead><tr><th>No.</th><th>Peserta</th><th>Nomor Invoice</th><th class="money">Total Tagihan</th><th>Nomor Faktur${d.pl === 'NON' ? '' : req}</th></tr></thead><tbody>
+          ${sp.map((u, i) => { const p = pesertaById(u.ps[0]) || {}, h = ivcHitung(u.penjualan, u.lain, d.pl);
+            return `<tr><td>${i + 1}</td><td>${esc(p.nama)}<br><span class="muted">${esc(p.kode || '')}</span></td><td class="nowrap"><span class="code">${esc(ivcNoAt(d.tanggal, i))}</span></td><td class="money">${rp(h.total)}</td>
+              <td>${d.pl === 'NON' ? '<span class="muted">Tidak perlu — tanpa PPN</span>' : `<div class="field"><input class="input sm" name="fk-${u.ps[0]}" value="${esc(d.faktur[u.ps[0]] || '')}" placeholder="Nomor Faktur"></div>`}</td></tr>`; }).join('')}</tbody></table></div>
+        <span class="hint">Nilai per peserta = harga − diskon per peserta${v.lain ? `; Biaya Lain-lain dibagi rata ÷ ${dealRows(k).length}, sisa pembulatan di peserta terakhir` : ''}. Nomor Faktur diisi per invoice; Tanggal dan COA Penjualan sama untuk semua invoice.</span>`; })() : ''}`) : '';
     const n0 = b2b ? 2 : 1;
+    const coaPick = jr => jr.filter(r => r.sales).forEach(r => { r.pick = `<select class="input sm" name="coa"><option value="">— Pilih COA Penjualan —</option>${COA_SALES.map(c => `<option ${c === d.coa ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`; });
+    // B2B per peserta: rincian, perhitungan, dan jurnal per invoice pecahan.
+    const dynPs = () => {
+      const sp = ivcSplit(k).map((u, i) => { const h = ivcHitung(u.penjualan, u.lain, d.pl), nomor = ivcNoAt(d.tanggal, i);
+        return { u, h, nomor, nama: (pesertaById(u.ps[0]) || {}).nama || '—', jr: ivcJurnal(h, d.pl, d.coa, nomor, k, d.tanggal) }; });
+      const sum = f => sp.reduce((t, x) => t + x.h[f], 0);
+      const jr = sp.flatMap(x => x.jr); coaPick(jr);
+      return sec(n0 + 1, 'Rincian Tagihan', 'satu baris = satu invoice', `<div class="table-wrap"><table class="table"><thead><tr><th>No.</th><th>No. Invoice</th><th>No. Program</th><th>Item</th><th>Peserta</th><th class="money">Harga / peserta</th><th class="money">Diskon</th><th class="money">Nominal</th></tr></thead>
+        <tbody>${sp.map((x, i) => `<tr><td>${i + 1}</td><td class="nowrap"><span class="code">${esc(x.nomor)}</span></td><td class="nowrap"><span class="code">${esc(pj.nomor)}</span></td><td>${esc(pk.judul)}<br><span class="muted">${esc(pk.nomor)}</span></td>
+          <td>${esc(x.nama)}</td><td class="money">${rp(v.harga)}</td><td class="money">${rp(v.disk)}</td><td class="money"><b>${rp(x.u.penjualan)}</b></td></tr>`).join('')}</tbody></table></div>`)
+        + sec(n0 + 2, 'Perhitungan Invoice' + QIVC(8, 'PPN quotation = 11% × DPP, PPN invoice = (Penjualan × 11/12) × 12%. Nilainya sama, tetapi pembulatan bisa beda Rp 1. Pembulatan per tahap perlu dikonfirmasi ke tim pajak.'), 'per invoice: Penjualan → DPP → PPN → Total Tagihan',
+          `<div class="table-wrap"><table class="table"><thead><tr><th>No. Invoice</th><th>Peserta</th><th class="money">Penjualan</th><th class="money">DPP</th><th class="money">PPN</th>${v.lain ? '<th class="money">Biaya Lain-lain</th>' : ''}<th class="money">Total Tagihan</th><th class="money">Piutang</th></tr></thead>
+          <tbody>${sp.map(x => `<tr><td class="nowrap"><span class="code">${esc(x.nomor)}</span></td><td>${esc(x.nama)}</td><td class="money">${rp(x.h.penjualan)}</td><td class="money">${rp(x.h.dpp)}</td><td class="money">${rp(x.h.ppn)}</td>${v.lain ? `<td class="money">${rp(x.h.lain)}</td>` : ''}<td class="money"><b>${rp(x.h.total)}</b></td><td class="money">${rp(x.h.piutang)}</td></tr>`).join('')}</tbody>
+          <tfoot><tr><td colspan="2"><b>Total ${sp.length} invoice</b></td><td class="money"><b>${rp(sum('penjualan'))}</b></td><td class="money"><b>${rp(sum('dpp'))}</b></td><td class="money"><b>${rp(sum('ppn'))}</b></td>${v.lain ? `<td class="money"><b>${rp(sum('lain'))}</b></td>` : ''}<td class="money"><b>${rp(sum('total'))}</b></td><td class="money"><b>${rp(sum('piutang'))}</b></td></tr></tfoot></table></div>`)
+        + sec(n0 + 3, 'Jurnal' + QIVC(14, 'Kode COA dari file acuan: 1102-01-01, 2104-01-07, 1106-01-XX, 2104-01-XX; COA Penjualan 0000-00-00. Kode final Labmania?'), `jurnal ${sp.length} invoice (deskripsi memuat nomor invoice masing-masing); pilih COA Penjualan; debit dan credit harus balance`, `${jrTable(jr)}<div class="field" id="ivc-err"></div>`);
+    };
     const dyn = () => {
+      if (perPs) return dynPs();
       const u = unit(), h = ivcHitung(u.penjualan, u.lain, d.pl), nomor = ivcNo(d.tanggal, true);
       const per = u.ps.length ? u.penjualan / u.ps.length : 0;
       const psNames = u.ps.map(id => (pesertaById(id) || {}).nama).filter(Boolean);
       const jr = ivcJurnal(h, d.pl, d.coa, nomor, k, d.tanggal);
-      jr.filter(r => r.sales).forEach(r => { r.pick = `<select class="input sm" name="coa"><option value="">— Pilih COA Penjualan —</option>${COA_SALES.map(c => `<option ${c === d.coa ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`; });
+      coaPick(jr);
       const done = ivcDonePs(k).map(id => (pesertaById(id) || {}).nama).filter(Boolean);
       return sec(n0 + 1, 'Rincian Tagihan', 'yang ditagih di invoice ini', `<div class="table-wrap"><table class="table"><thead><tr><th>No.</th><th>No. Program</th><th>Item</th><th>Peserta</th><th class="money">Harga / peserta</th><th class="money">Diskon</th><th class="money">Nominal</th></tr></thead>
         <tbody><tr><td>1</td><td class="nowrap"><span class="code">${esc(pj.nomor)}</span></td><td>${esc(pk.judul)}<br><span class="muted">${esc(pk.nomor)}</span></td>
@@ -3234,11 +3477,10 @@
     const form = $('#ivc-page'); if (!form) return;
     const redraw = all => { const P = ivcParts(); if (all) { form.querySelector('#ivc-hdr').innerHTML = P.hdr(); form.querySelector('#ivc-cara').innerHTML = P.cara(); } form.querySelector('#ivc-dyn').innerHTML = P.dyn(); };
     const d = state.ivp.d;
-    form.addEventListener('input', e => { const n = e.target.name; if (n === 'noPo' || n === 'noFaktur') d[n] = e.target.value; });
+    form.addEventListener('input', e => { const n = e.target.name; if (n === 'noFaktur') d[n] = e.target.value; else if (n && n.startsWith('fk-')) d.faktur[n.slice(3)] = e.target.value; });
     form.addEventListener('change', e => {
       const t = e.target, n = t.name;
       if (n === 'tanggal') { d.tanggal = t.value || todayIso; redraw(true); }
-      else if (n === 'ps') { d.ps = +t.value; redraw(); }
       else if (n === 'pl') { d.pl = t.value; redraw(true); }
       else if (n === 'coa') { d.coa = t.value; redraw(); }
     });
@@ -3249,14 +3491,29 @@
       const P = ivcParts(), k = P.k, f = form.elements;
       let ok = true;
       if (!d.tanggal) ok = invalid(f.tanggal, 'Tanggal Invoice wajib diisi');
-      if (k.tujuan === 'company' && !d.noPo.trim()) ok = invalid(f.noPo, 'Nomor PO wajib diisi');
-      if (d.pl !== 'NON' && !d.noFaktur.trim()) ok = invalid(f.noFaktur, 'Nomor Faktur wajib diisi');
+      const perPs = d.cara === 'peserta';
+      if (d.pl !== 'NON' && !perPs && !d.noFaktur.trim()) ok = invalid(f.noFaktur, 'Nomor Faktur wajib diisi');
+      if (d.pl !== 'NON' && perPs) {
+        const seen = {};
+        ivcSisaPs(k).forEach(r => { const el = f[`fk-${r.id}`], val = (d.faktur[r.id] || '').trim();
+          if (!val) ok = invalid(el, 'Nomor Faktur wajib diisi');
+          else if (seen[val]) ok = invalid(el, 'Nomor Faktur tidak boleh sama dengan invoice lain');
+          seen[val] = true; });
+      }
       if (!d.coa) { ok = false; $('#ivc-err').innerHTML = '<div class="err"><i>!</i>COA Penjualan wajib dipilih di tabel jurnal.</div>'; }
-      if (d.cara === 'peserta' && !d.ps) { ok = false; $('#ivc-err').innerHTML = '<div class="err"><i>!</i>Pilih peserta yang ditagih.</div>'; }
       if (!ok) { toast('Lengkapi isian yang wajib', 'warn'); const first = form.querySelector('.has-err .input'); if (first) first.focus(); return; }
+      if (perPs) {
+        // Dipecah otomatis: satu invoice per peserta Deal, nomor berurutan (input/Invoice & Pengajuan/2026-11-03-b2b-per-peserta-pecah-otomatis/).
+        const made = ivcSplit(k).map(u => { const h = ivcHitung(u.penjualan, u.lain, d.pl), nomor = ivcNo(d.tanggal);
+          db.inv.push(Object.assign({ id: uid(), nomor, tanggal: d.tanggal, qtn: k.id, prog: progNo(k), jenis: P.pj.jenis, cara: 'peserta', peserta: u.ps, perlakuan: d.pl, noFaktur: d.pl === 'NON' ? '' : d.faktur[u.ps[0]].trim(),
+            coaPenjualan: d.coa, setor: null, status: 'invoiced', jurnal: ivcJurnal(h, d.pl, d.coa, nomor, k, d.tanggal) }, h));
+          return { nomor, total: h.total }; });
+        toast(`${made.length} invoice tersimpan (${made[0].nomor} s.d. ${made[made.length - 1].nomor}) — ${rp(made.reduce((t, x) => t + x.total, 0))}`);
+        const back = state.ivp.from; state.ivp = null; go(back); return;
+      }
       const u = P.unit(), h = ivcHitung(u.penjualan, u.lain, d.pl), nomor = ivcNo(d.tanggal);
       const jurnal = ivcJurnal(h, d.pl, d.coa, nomor, k, d.tanggal);
-      db.inv.push(Object.assign({ id: uid(), nomor, tanggal: d.tanggal, qtn: k.id, prog: progNo(k), jenis: P.pj.jenis, cara: d.cara, peserta: u.ps, perlakuan: d.pl, noPo: d.noPo.trim(), noFaktur: d.pl === 'NON' ? '' : d.noFaktur.trim(),
+      db.inv.push(Object.assign({ id: uid(), nomor, tanggal: d.tanggal, qtn: k.id, prog: progNo(k), jenis: P.pj.jenis, cara: d.cara, peserta: u.ps, perlakuan: d.pl, noFaktur: d.pl === 'NON' ? '' : d.noFaktur.trim(),
         coaPenjualan: d.coa, setor: null, status: 'invoiced', jurnal }, h));
       toast(`Invoice ${nomor} tersimpan — ${rp(h.total)}`);
       const back = state.ivp.from; state.ivp = null; go(back);
@@ -3268,7 +3525,7 @@
     const k = db.qtn.find(x => x.id === i.qtn), names = i.peserta.map(id => (pesertaById(id) || {}).nama).filter(Boolean);
     openModal({ title: `Invoice ${i.nomor}`, wide: 'x', info: true,
       body: `<div class="summary">${sumRow('No. Program', `${jenisTag(i.jenis)} <span class="code">${esc(i.prog)}</span> · ${esc(paketOf(mpOf(pjOfQtn(k))).judul)}`)}${sumRow('Tanggal Invoice', tglPanjang(i.tanggal))}${sumRow('Quotation', `${esc(k.nomor)} · ${esc(kepadaOf(k))}`)}${sumRow('Peserta', `${names.length} — ${esc(names.join(', '))}`)}
-        ${sumRow('Perlakuan PPN', PERLAKUAN[i.perlakuan])}${sumRow('Nomor PO', esc(i.noPo || '—'))}${sumRow('Nomor Faktur', esc(i.noFaktur || '—'))}${sumRow('COA Penjualan', esc(i.coaPenjualan))}
+        ${sumRow('Perlakuan PPN', PERLAKUAN[i.perlakuan])}${sumRow('Nomor Faktur', esc(i.noFaktur || '—'))}${sumRow('COA Penjualan', esc(i.coaPenjualan))}
         ${i.setor ? sumRow('Bukti setor WAPU', `${tglPanjang(i.setor.tanggal)}${i.setor.nomor ? ` · ${esc(i.setor.nomor)}` : ''}`) : ''}</div>
         <p class="qtn-h">Perhitungan</p>${calcCard(i, i.perlakuan)}
         <p class="qtn-h">Jurnal invoice</p>${jrTable(i.jurnal)}
@@ -3333,7 +3590,7 @@
         <div class="pdf-box"><table class="pdf-kv">
           <tr><td>No. Invoice</td><td>: <b>${esc(i.nomor)}</b></td></tr><tr><td>Tanggal</td><td>: ${tglPanjang(i.tanggal)}</td></tr>
           <tr><td>No. Program</td><td>: ${esc(pj.nomor)}</td></tr><tr><td>No. Quotation</td><td>: ${esc(k.nomor)}</td></tr>
-          <tr><td>No. PO</td><td>: ${esc(i.noPo || '—')}</td></tr><tr><td>No. Faktur Pajak</td><td>: ${esc(i.noFaktur || '—')}</td></tr>
+          <tr><td>No. Faktur Pajak</td><td>: ${esc(i.noFaktur || '—')}</td></tr>
           <tr><td>Perlakuan PPN</td><td>: ${PERLAKUAN[pl]}</td></tr></table></div>
       </div>
       <table class="pdf-tbl"><thead><tr><th>No</th><th>Deskripsi</th><th class="r">Kts.</th><th class="r">Harga</th><th class="r">Diskon</th><th class="r">Jumlah</th></tr></thead><tbody>${rows}</tbody></table>
@@ -3358,6 +3615,680 @@
     });
   }
 
+  // ---------- Manage Peserta (MP-FR-01 – MP-FR-10; input/Invoice & Pengajuan/2026-11-04-manage-peserta/) ----------
+  // Setelah Deal quotation: peserta Deal per Penjualan Program Final dilist, dicetak (Daftar Peserta, Daftar Hadir), diekspor; program dapat di-Close.
+  const QMP = (n, t) => q(`Q-MPS-${String(n).padStart(2, '0')}`, t);
+  const mpProgs = () => db.quot.filter(x => x.status === 'final');
+  const mpDone = pj => !!pj.closed || pjSelesai(pj); // tab Selesai: acara lewat atau sudah Closed
+  const mpStatus = pj => pj.closed ? '<span class="badge off">Closed</span>' : pjSelesai(pj) ? '<span class="badge st-selesai">Selesai</span>' : '<span class="badge on">Berjalan</span>';
+  const mpJudul = pj => (paketOf(mpOf(pj)) || {}).judul || '—';
+  // Peserta = peserta berstatus Deal di quotation Deal program itu (satu-satunya sumber; tidak ditambah di modul ini).
+  const mpPeserta = pj => qtnOfPj(pj).flatMap(k => dealRows(k).map(r => ({ p: pesertaById(r.id) || {}, k }))).filter(x => x.p.id);
+  state.mpTab = 'ongoing'; state.mpPj = null;
+
+  function viewMpst() {
+    const pj = state.mpPj && db.quot.find(x => x.id === state.mpPj);
+    if (!pj) state.mpPj = null;
+    if (pj) {
+      const tr = trainerById(pj.trainer), co = pj.jenis === 'b2b' ? companyOf(pj) : null, n = mpPeserta(pj).length;
+      const info = `${jenisTag(pj.jenis)} <b>${esc(mpJudul(pj))}</b> · ${fmtRange(pj.tglMulai, pj.tglSelesai)} (${Number(pj.durasi) || 1} hari) · ${esc(pj.lokasi || '—')}
+        <br>Trainer <b>${esc(tr ? tr.nama : '—')}</b>${co ? ` · Company <b>${esc(co.nama)}</b>` : ''} · Peserta Deal <b>${n}</b> / ${nPeserta(pj)} · ${mpStatus(pj)}`;
+      const dis = n ? '' : 'disabled title="Belum ada peserta Deal"';
+      return `${pageHead(`Peserta — ${esc(pj.nomor)}`, info, 'MP-FR-04 – MP-FR-08',
+        `<button class="btn btn-ghost" data-act="mp-back">← Semua Program</button><button class="btn btn-ghost" data-act="mp-xls" data-id="${pj.id}" ${dis}>Export Excel</button>
+         <button class="btn btn-ghost" data-act="mp-hadir" data-id="${pj.id}" ${dis}>Cetak Daftar Hadir</button><button class="btn btn-accent" data-act="mp-print" data-id="${pj.id}" ${dis}>Cetak Daftar Peserta</button>`)}
+        ${pj.closed ? `<div class="notice"><span>Program <b>Closed</b> oleh ${esc(pj.closed.by)} pada ${fmtWaktu(pj.closed.at)} — peserta tetap dapat dilihat, dicetak, dan diekspor.</span></div>` : ''}
+        <div class="card">${toolbar('Cari kode, nama, instansi, kontak, atau nomor quotation…', false)}<div id="list">${listMpst()}</div>
+        <p class="hint" style="padding:0 16px 14px">Peserta diambil dari quotation berstatus <b>Deal</b> (peserta yang dicentang Deal). Data peserta diperbaiki di <b>Master Data › Master Peserta</b>, bukan di sini.</p></div>`;
+    }
+    const tabCnt = t => mpProgs().filter(x => (t === 'done') === mpDone(x)).length;
+    const tabs = [['ongoing', 'On going'], ['done', 'Selesai']].map(([t, l]) =>
+      `<button class="tab ${state.mpTab === t ? 'active' : ''}" data-act="mp-tab" data-tab="${t}">${l}<span class="nav-count">${tabCnt(t)}</span></button>`).join('');
+    return `${pageHead('Manage Peserta', 'Setiap Penjualan Program Final beserta peserta yang sudah <b>Deal</b> di quotation. Buka <b>Lihat Peserta</b> untuk daftar, cetak Daftar Peserta / Daftar Hadir, dan export Excel. <b>Close Program</b> menutup program setelah selesai.', 'MP-FR-01 – MP-FR-03')}
+      <div class="card"><div class="tabs">${tabs}<span class="tabs-note">${QMP(1, 'Tab Selesai = tanggal selesai acara sudah lewat atau program sudah Closed (usulan, sama dengan Quotation).')}</span></div>
+        ${toolbar('Cari nomor, judul program, lokasi, atau trainer…', false,
+          selectFilter('fjenis', 'Filter jenis program', state.jenis, [['all', 'Public & B2B'], ['public', 'Program Public'], ['b2b', 'Program B2B']]))}
+        <div id="list">${listMpst()}</div></div>`;
+  }
+  function listMpst() {
+    const pj = state.mpPj && db.quot.find(x => x.id === state.mpPj);
+    if (pj) {
+      const rows = mpPeserta(pj).filter(({ p, k }) => matches([p.kode, p.nama, pesertaCo(p), p.telp, p.email, k.nomor])).map(({ p, k }) => ({ id: p.id, p, k }));
+      return listBlock(rows, [
+        NO_COL,
+        { label: 'Kode', cls: 'nowrap', render: x => `<span class="code">${esc(x.p.kode)}</span>` },
+        { label: 'Nama', render: x => `<b>${esc(x.p.nama)}</b>` },
+        { label: 'Instansi / Company', render: x => esc(pesertaCo(x.p)) },
+        { label: 'No. WA', cls: 'nowrap', render: x => esc(x.p.telp || '—') },
+        { label: 'Email', render: x => esc(x.p.email || '—') },
+        { label: 'No. Quotation', cls: 'nowrap', render: x => `<span class="code">${esc(x.k.nomor)}</span>` }
+      ]);
+    }
+    const rows = mpProgs().filter(x => (state.mpTab === 'done') === mpDone(x) && (state.jenis === 'all' || x.jenis === state.jenis)
+      && matches([x.nomor, mpJudul(x), x.lokasi, (trainerById(x.trainer) || {}).nama]))
+      .sort((a, b) => String(a.tglMulai || '').localeCompare(String(b.tglMulai || '')));
+    return listBlock(rows, [
+      NO_COL,
+      { label: 'No. Program', cls: 'nowrap', render: x => `<span class="code">${esc(x.nomor)}</span>` },
+      { label: 'Judul Program', render: x => `<b>${esc(mpJudul(x))}</b>${x.jenis === 'b2b' ? `<br><span class="muted">${esc((companyOf(x) || {}).nama || '—')}</span>` : ''}` },
+      { label: 'Jenis', render: x => jenisTag(x.jenis) },
+      { label: 'Tanggal & Lokasi', render: x => `${fmtRange(x.tglMulai, x.tglSelesai)}<br><span class="muted">${esc(x.lokasi || '—')}</span>` },
+      { label: 'Trainer', render: x => esc((trainerById(x.trainer) || {}).nama || '—') },
+      { label: 'Peserta (Deal / Target)', cls: 'nowrap', render: x => `<b>${mpPeserta(x).length}</b> / ${nPeserta(x)}` },
+      { label: 'Status', cls: 'nowrap', render: x => mpStatus(x) },
+      { label: 'Action', cls: 'act', render: x => gearMenu(x, [['mp-open', 'Lihat Peserta']].concat(!x.closed && can('mpst', 'm') ? [['mp-close', 'Close Program', true]] : [])) }
+    ]);
+  }
+  // Close Program (MP-FR-03): konfirmasi + peringatan bila masih ada pekerjaan terbuka; tidak memblokir (usulan Q-MP-02).
+  function mpClose(pj) {
+    if (!can('mpst', 'm')) return toast('Anda tidak punya hak Manage di Manage Peserta (Role & Permission)', 'warn');
+    const qs = qtnOfPj(pj), warn = [];
+    if (!pjSelesai(pj)) warn.push(`acara belum selesai (tanggal selesai ${fmtRange(pj.tglSelesai)})`);
+    const nTunggu = qs.filter(k => k.status === 'draft' || k.status === 'terkirim').length;
+    if (nTunggu) warn.push(`${nTunggu} quotation masih Draft / Terkirim`);
+    const nIvc = qs.filter(k => k.status === 'deal' && ivcStatus(k) !== 'invoiced').length;
+    if (nIvc) warn.push(`${nIvc} quotation Deal belum dibuatkan invoice`);
+    const nPb = (db.pb || []).concat(db.ob || []).filter(x => x.pj === pj.id && x.status === 'menunggu').length;
+    if (nPb) warn.push(`${nPb} pengajuan biaya masih Menunggu Approval`);
+    openModal({
+      title: `Close Program ${esc(pj.nomor)}`,
+      body: `<p style="margin:0 0 12px">Tutup program <b>${esc(mpJudul(pj))}</b> (${fmtRange(pj.tglMulai, pj.tglSelesai)})? Setelah Closed, program pindah ke tab <b>Selesai</b> dan <b>tidak dapat diajukan biaya lagi</b> (Pengajuan Biaya). Peserta tetap dapat dilihat dan dicetak.</p>
+        ${warn.length ? `<div class="notice"><span><b>Perhatian:</b> ${warn.map(esc).join('; ')}.</span></div>` : ''}
+        <p class="hint">Close tidak dapat dibatalkan${QMP(2, 'Close Program boleh kapan saja dengan peringatan (usulan), atau hanya setelah acara selesai / semua invoice dibuat? Perlu tombol Buka Kembali?')}.</p>`,
+      saveLabel: 'Close Program', danger: true,
+      onSave: () => {
+        pj.closed = { by: meName(), at: isoNow() };
+        logAct('Manage Peserta', 'Manage Peserta', 'Close Program', pj.nomor, pj.id, `Close Program ${pj.nomor}`, [{ f: 'Status program', old: 'Final', new: 'Closed' }]);
+        toast(`Program ${pj.nomor} Closed`);
+      }
+    });
+  }
+  // Cetak (MP-FR-06, MP-FR-07): template usulan — Labmania belum punya format (input/Invoice & Pengajuan/2026-11-04-manage-peserta/).
+  const MP_PER_PAGE = 18;
+  const mpChunks = list => { const out = []; for (let i = 0; i < list.length; i += MP_PER_PAGE) out.push(list.slice(i, i + MP_PER_PAGE)); return out.length ? out : [[]]; };
+  const mpInfoTbl = (pj, extra = []) => {
+    const tr = trainerById(pj.trainer), co = pj.jenis === 'b2b' ? companyOf(pj) : null;
+    const rows = [['Program', mpJudul(pj)], ['No. Program', pj.nomor], ['Tanggal', rangePanjang(pj.tglMulai, pj.tglSelesai)], ['Lokasi', pj.lokasi || '—'], ['Trainer', tr ? tr.nama : '—']]
+      .concat(co ? [['Company', co.nama]] : []).concat(extra);
+    return `<table class="pdf-form mp-info">${rows.map(([l, v]) => `<tr><td>${esc(l)}</td><td>:</td><td>${esc(v)}</td></tr>`).join('')}</table>`;
+  };
+  const MP_FOOT = (kode, i, n) => pdfFoot(kode, `Halaman ${i} dari ${n}`, '— (template usulan)');
+  function mpPrintPeserta(pj) {
+    const list = mpPeserta(pj), pages = mpChunks(list);
+    const html = pages.map((ch, pi) => pdfPage(`<h3 class="pdf-title">DAFTAR PESERTA</h3>${mpInfoTbl(pj, [['Jumlah peserta', `${list.length} orang`]])}
+      <table class="pdf-tbl mp-tbl"><thead><tr><th>No</th><th>Nama Peserta</th><th>Instansi / Company</th><th>No. WA</th><th>Email</th></tr></thead>
+      <tbody>${ch.map(({ p }, i) => `<tr><td>${pi * MP_PER_PAGE + i + 1}</td><td>${esc(p.nama)}</td><td>${esc(pesertaCo(p))}</td><td>${esc(p.telp || '')}</td><td>${esc(p.email || '')}</td></tr>`).join('')}</tbody></table>`,
+      MP_FOOT('FR/LMI-TR-… (usulan)', pi + 1, pages.length))).join('');
+    openModal({ title: `Daftar Peserta ${esc(pj.nomor)}`, wide: 'x', info: true, body: pdfWrap(html, `Daftar Peserta · ${list.length} peserta · template usulan${QMP(3, 'Format Daftar Peserta belum ada dari Labmania; ini template usulan (kolom: No, Nama, Instansi, No. WA, Email). Perlu kode dokumen / kolom lain?')}`), onMount: pdfMount });
+    logAct('Manage Peserta', 'Manage Peserta', 'Cetak', pj.nomor, pj.id, `Cetak Daftar Peserta ${pj.nomor}`);
+  }
+  function mpPrintHadir(pj) {
+    const list = mpPeserta(pj), hari = Math.max(1, Number(pj.durasi) || 1), tr = trainerById(pj.trainer);
+    const html = Array.from({ length: hari }, (_, d) => {
+      const tgl = pj.tglMulai ? addDays(pj.tglMulai, d) : '', chunks = mpChunks(list);
+      return chunks.map((ch, pi) => pdfPage(`<h3 class="pdf-title">DAFTAR HADIR PESERTA</h3>${mpInfoTbl(pj, [['Hari ke', `${d + 1} dari ${hari}${tgl ? ` — ${tglPanjang(tgl)}` : ''}`]])}
+        <table class="pdf-tbl mp-tbl mp-hadir"><thead><tr><th>No</th><th>Nama Peserta</th><th>Instansi / Company</th><th colspan="2">Tanda Tangan</th></tr></thead>
+        <tbody>${ch.map(({ p }, i) => { const no = pi * MP_PER_PAGE + i + 1; return `<tr><td>${no}</td><td>${esc(p.nama)}</td><td>${esc(pesertaCo(p))}</td><td class="mp-ttd">${no % 2 ? `${no}.` : ''}</td><td class="mp-ttd">${no % 2 ? '' : `${no}.`}</td></tr>`; }).join('')}</tbody></table>
+        ${pi === chunks.length - 1 ? `<div class="mp-sign"><div>Trainer<div class="pdf-ttd"></div><b>(${esc(tr ? tr.nama : '..............................')})</b></div><div>Penyelenggara<div class="pdf-ttd"></div><b>(..............................)</b></div></div>` : ''}`,
+        MP_FOOT('FR/LMI-TR-… (usulan)', pi + 1, chunks.length))).join('');
+    }).join('');
+    openModal({ title: `Daftar Hadir ${esc(pj.nomor)}`, wide: 'x', info: true, body: pdfWrap(html, `Daftar Hadir · ${hari} hari × ${list.length} peserta · template usulan${QMP(4, 'Format Daftar Hadir belum ada dari Labmania; ini template usulan: satu lembar per hari pelaksanaan, tanda tangan selang-seling, tanda tangan Trainer & Penyelenggara. Perlu kolom jam masuk / sesi pagi-siang?')}`), onMount: pdfMount });
+    logAct('Manage Peserta', 'Manage Peserta', 'Cetak', pj.nomor, pj.id, `Cetak Daftar Hadir ${pj.nomor}`);
+  }
+  // Export Excel (MP-FR-08): mockup mengunduh tabel HTML ber-ekstensi .xls (aplikasi: PhpSpreadsheet .xlsx).
+  function mpXls(pj) {
+    const list = mpPeserta(pj), cell = v => `<td>${esc(v == null ? '' : String(v))}</td>`;
+    const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><tr><th colspan="7">Daftar Peserta ${esc(pj.nomor)} — ${esc(mpJudul(pj))} (${esc(fmtRange(pj.tglMulai, pj.tglSelesai))}, ${esc(pj.lokasi || '')})</th></tr>
+      <tr><th>No</th><th>Kode</th><th>Nama</th><th>Instansi / Company</th><th>No. WA</th><th>Email</th><th>No. Quotation</th></tr>
+      ${list.map(({ p, k }, i) => `<tr>${cell(i + 1)}${cell(p.kode)}${cell(p.nama)}${cell(pesertaCo(p))}<td style="mso-number-format:'\\@'">${esc(p.telp || '')}</td>${cell(p.email)}${cell(k.nomor)}</tr>`).join('')}</table></body></html>`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' }));
+    a.download = `Peserta_${pj.nomor.replace(/[^\w-]+/g, '_')}.xls`;
+    document.body.appendChild(a); a.click(); a.remove();
+    logAct('Manage Peserta', 'Manage Peserta', 'Export', pj.nomor, pj.id, `Export Excel peserta ${pj.nomor}`);
+    toast(`Excel peserta ${pj.nomor} diunduh (${list.length} peserta)`);
+  }
+
+  // ---------- Role & Permission (FR-54 – FR-58; input/Invoice & Pengajuan/2026-11-04-role-permission/, video Role & Permission.mp4) ----------
+  // Role dari Master Role (FR-64). Hak per role atas setiap menu disimpan per id role:
+  // View / Add / Manage / Delete (konvensi permission aplikasi Nama_Menu.View dst.). Tampilan mengikuti video: daftar role + modal matrix.
+  const AK_ACTS = [['v', 'View'], ['a', 'Add'], ['m', 'Manage'], ['d', 'Delete']];
+  const ADMIN_ID = roleIdOf('Admin'); // Admin = akun user Labmania: menu mengikuti hak role (dapat dibatasi), data semua (Q-34; Q-35)
+  const MGMT_IDS = [roleIdOf('Direktur')]; // Manajemen sementara = role Direktur (Q-PB-14, Q-37)
+  const meUser = () => db.user.find(u => u.id === state.me) || {};
+  const meRole = () => roleOf(meUser());
+  const isSuper = () => meRole() === SUPER_ROLE;
+  const isAdmin = () => meUser().role === ADMIN_ID;
+  const isMgmt = () => MGMT_IDS.includes(meUser().role);
+  const seeAllData = () => isSuper() || isAdmin();
+  const akMenus = () => [{ mod: 'Dashboard', items: [['dashboard', 'Dashboard']] }].concat(MODULES.map(m => ({ mod: m.name, items: m.groups.flatMap(g => g.items) })));
+  // Aksi yang berlaku per menu (usulan): Dashboard, Katalog, Activity Log hanya View; Approval Pengajuan View & Manage (Manage = proses approval); Manage Peserta View & Manage (Manage = Close Program).
+  const akActsOf = v => ['dashboard', 'katalog', 'actlog'].includes(v) ? ['v'] : v === 'pbAppr' || v === 'mpst' ? ['v', 'm'] : ['v', 'a', 'm', 'd'];
+  const akFull = v => Object.fromEntries(akActsOf(v).map(x => [x, true]));
+  const akAllKeys = () => akMenus().flatMap(m => m.items.map(([v]) => v));
+  const akTotal = () => akAllKeys().reduce((s, v) => s + akActsOf(v).length, 0);
+  const akCount = m => Object.keys(m || {}).reduce((s, v) => s + akActsOf(v).filter(k => (m[v] || {})[k]).length, 0);
+  const akCode = (v, k) => `${v}.${AK_ACTS.find(a => a[0] === k)[1].toLowerCase()}`;
+  // Isi awal (FR-58, usulan Q-33) — per role contoh.
+  db.akses = {};
+  {
+    const all = except => Object.fromEntries(akAllKeys().filter(v => !except.includes(v)).map(v => [v, akFull(v)]));
+    const staff = () => ({ dashboard: { v: true }, qtn: { v: true, a: true, m: true }, pb: { v: true, a: true } });
+    db.akses[roleIdOf('Direktur')] = all(['akses']);
+    db.akses[ADMIN_ID] = all(['actlog']); // Activity Log mengikuti LOG-FR-09; dapat diberikan lewat Role & Permission
+    db.akses[roleIdOf('Sales Public')] = staff();
+    db.akses[roleIdOf('Sales B2B')] = staff();
+    db.akses[roleIdOf('Trainer')] = staff();
+  }
+  // Hak user = hak role-nya + Override Permission user itu (FR-65; user_permissions). Override hanya menambah.
+  const can = (v, act = 'v') => isSuper() || !!(((db.akses[meUser().role] || {})[v] || {})[act]) || !!(((meUser().ovr || {})[v] || {})[act]);
+  // Contoh user role Admin (akun user Labmania; Q-34).
+  db.user.push({ id: uid(), kode: 'EMP-005', nama: 'Contoh Admin', nik: '', tmpLahir: '', tglLahir: '', role: ADMIN_ID, gender: 'Perempuan', agama: '',
+    telp: '+6281355550000', email: 'admin@contoh.id', alamat: '', npwp: '', tglMasuk: '2024-01-02', tipe: 'Tetap', jobdesc: 'Admin aplikasi: semua akses, Role & Permission', aktif: true,
+    akun: true, username: 'admin' });
+
+  const viewAkses = () => {
+    const roles = db.role;
+    const kpi = (l, v, sub) => `<div class="kpi"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="muted">${sub}</div></div>`;
+    return `${pageHead('Role & Permission', 'Role diambil dari <b>Master Role</b>. Atur setiap role: menu apa saja yang bisa dibuka dan apa yang bisa dilakukan di menu itu — <b>View</b> = membuka menu & daftar, <b>Add</b> = tambah / ajukan, <b>Manage</b> = ubah, finalkan, proses approval, <b>Delete</b> = hapus / batalkan / nonaktifkan. Hak tambahan untuk satu user diatur lewat <b>Override Permission</b> di Master User. Hak <b>data</b> (mis. hanya program terkait di Pengajuan Biaya) diatur di modulnya.', 'FR-54 – FR-58')}
+      <div class="kpis" style="margin-bottom:14px">${kpi('Total Role', roles.length, 'dari Master Role')}${kpi('User berakun', db.user.filter(u => u.akun).length, 'tersebar di semua role')}${kpi('Menu diatur', akAllKeys().length, `${akTotal()} hak (menu × aksi)`)}</div>
+      <div class="card">${toolbar('Cari nama role…', false)}<div id="list">${listAkses()}</div>
+      <p class="hint" style="padding:0 16px 14px">Tambah, ubah nama, dan hapus role dilakukan di <b>Master Role</b>; role baru belum punya hak sampai diatur di sini. <b>Superadmin</b> dibuat dari awal (bawaan sistem) dan tidak dapat ditambah lagi${q('Q-35', 'Terjawab: Superadmin bawaan sistem; role tanpa user boleh dihapus; hak per user lewat Override Permission di Master User. Masih terbuka: role mana yang menjadi Admin (mockup: role Admin)?')}. Isi awal hak: usulan${q('Q-33', 'Isi awal hak per role sudah sesuai? Aksi cukup View / Add / Manage / Delete atau perlu Approve terpisah?')}.</p></div>`;
+  };
+  function listAkses() {
+    const rows = db.role.filter(r => matches([r.nama]));
+    return listBlock(rows, [
+      NO_COL,
+      { label: 'Role', render: x => x.sistem ? `<b>${esc(x.nama)}</b> <span class="tag">Full Access</span><br><span class="muted">Role bawaan sistem (akun developer), dibuat dari awal, tidak dapat ditambah lagi</span>`
+        : `<b>${esc(x.nama)}</b>${x.id === ADMIN_ID ? ' <span class="tag">Admin</span>' : ''}<br><span class="muted">Master Role</span>` },
+      { label: 'User terdaftar', cls: 'nowrap', render: x => { const us = roleUsers(x.id), o = us.filter(u => akCount(u.ovr)).length; return `${us.length} user${o ? `<br><span class="muted">${o} dengan override</span>` : ''}`; } },
+      { label: 'Total hak', cls: 'nowrap', render: x => x.sistem ? '<span class="badge on">Semua hak aktif</span>'
+        : akCount(db.akses[x.id]) ? `<span class="badge on">${akCount(db.akses[x.id])} hak diberikan</span>` : '<span class="badge off">Belum diatur</span>' },
+      { label: 'Cakupan (preview)', render: x => {
+        if (x.sistem) return '<span class="muted"><i>Otomatis memiliki semua hak sistem</i></span>';
+        const codes = akAllKeys().flatMap(v => akActsOf(v).filter(k => ((db.akses[x.id] || {})[v] || {})[k]).map(k => akCode(v, k)));
+        return codes.length ? `<div class="chips">${codes.slice(0, 3).map(c => `<span class="chip code">${esc(c)}</span>`).join('')}${codes.length > 3 ? `<span class="chip">+${codes.length - 3} lagi</span>` : ''}</div>` : '<span class="muted">—</span>';
+      } },
+      { label: 'Action', cls: 'act nowrap', render: x => `<button class="btn btn-ghost sm" data-act="ak-edit" data-role="${x.id}">${x.sistem ? 'Lihat' : 'Atur Akses'}</button>` }
+    ]);
+  }
+  // Modal Edit Role & Permissions (video): matrix per menu, dikelompokkan per modul; Pilih Semua Modul / Kosongkan / cari.
+  function akEdit(id) {
+    const rr = roleById(id), role = rr.nama, locked = !!rr.sistem, D = clone(db.akses[id] || {}), total = akTotal();
+    let cari = '';
+    const on = (v, k) => locked || !!((D[v] || {})[k]);
+    const matrix = () => {
+      const s = cari.toLowerCase();
+      const body = akMenus().map(m => {
+        const items = m.items.filter(([v, l]) => !s || [m.mod, l, v].some(t => t.toLowerCase().includes(s)) || akActsOf(v).some(k => akCode(v, k).includes(s)));
+        if (!items.length) return '';
+        return `<tr class="ak-mod"><td colspan="4">${esc(m.mod)}</td></tr>` + items.map(([v, l]) => {
+          const acts = akActsOf(v), n = acts.filter(k => on(v, k)).length, full = n === acts.length;
+          return `<tr><td><label class="ak-menu"><input type="checkbox" data-prow="${v}" ${full ? 'checked' : ''} ${locked ? 'disabled' : ''}><span><b>${esc(l)}</b><br><span class="muted code">${esc(v)} · ${acts.length} hak</span></span></label></td>
+            <td><div class="ak-chips">${acts.map(k => `<label class="ak-chip ${on(v, k) ? 'on' : ''}"><input type="checkbox" data-pk="${v}" data-pa="${k}" ${on(v, k) ? 'checked' : ''} ${locked ? 'disabled' : ''}>${AK_ACTS.find(a => a[0] === k)[1]} <span class="code">${esc(akCode(v, k))}</span></label>`).join('')}</div></td>
+            <td class="ak-c">${locked ? '' : `<button type="button" class="btn btn-ghost sm" data-prow-btn="${v}">${full ? 'Batal Semua' : 'Pilih Semua'}</button>`}</td>
+            <td class="ak-c"><span class="ak-scope ${n ? 'on' : ''}">${n} / ${acts.length}</span></td></tr>`;
+        }).join('');
+      }).join('');
+      return body || '<tr><td colspan="4" class="empty">Menu tidak ditemukan.</td></tr>';
+    };
+    const cnt = () => locked ? total : akCount(D);
+    const body = `${field('Nama Role', `<input class="input" value="${esc(role)}" readonly><span class="hint">Dari Master Role; nama diubah di sana. ${roleUsers(id).length} user memakai role ini.</span>`)}
+      ${locked ? '<div class="notice"><span><b>Superadmin</b> (akun developer) — semua akses dan semua data; tidak dapat diubah (FR-56).</span></div>' : ''}
+      <div class="ak-bar"><b>Matrix Hak Akses</b> <span class="tag" data-akcnt>${cnt()} dari ${total} dipilih</span>
+        <span class="ak-bar-r">${locked ? '' : '<button type="button" class="btn btn-ghost sm" data-akall="1">Pilih Semua Modul</button><button type="button" class="btn btn-ghost sm" data-akall="0">Kosongkan</button>'}
+        <input type="search" class="input sm" data-akq placeholder="Cari menu / hak…" aria-label="Cari menu atau hak"></span></div>
+      <div class="table-wrap ak-wrap"><table class="table ak-tbl"><thead><tr><th>Modul / Menu</th><th>Hak akses / aksi</th><th class="ak-c">Per menu</th><th class="ak-c">Scope</th></tr></thead><tbody data-akm>${matrix()}</tbody></table></div>
+      <p class="hint">Total: <b data-aktot>${cnt()}</b> hak dipilih. Mencentang Add / Manage / Delete otomatis mencentang View; melepas View melepas semua hak menu itu.</p>`;
+    const refresh = form => {
+      form.querySelector('[data-akm]').innerHTML = matrix();
+      form.querySelector('[data-akcnt]').textContent = `${cnt()} dari ${total} dipilih`;
+      form.querySelector('[data-aktot]').textContent = cnt();
+    };
+    const setRow = (v, val) => { if (val) D[v] = akFull(v); else delete D[v]; };
+    openModal({
+      title: locked ? `Role ${esc(role)}` : `Atur Akses Role ${esc(role)}`,
+      wide: 'x', info: locked, saveLabel: 'Simpan Role',
+      body,
+      onMount: form => {
+        form.addEventListener('change', e => {
+          const t = e.target;
+          if (t.dataset.prow) setRow(t.dataset.prow, t.checked);
+          else if (t.dataset.pk) {
+            const v = t.dataset.pk, k = t.dataset.pa, r = D[v] = D[v] || {};
+            r[k] = t.checked;
+            if (t.checked && k !== 'v') r.v = true;
+            if (!t.checked && k === 'v') Object.keys(r).forEach(x => { r[x] = false; });
+            Object.keys(r).forEach(x => { if (!r[x]) delete r[x]; });
+            if (!Object.keys(r).length) delete D[v];
+          } else return;
+          refresh(form);
+        });
+        form.addEventListener('click', e => {
+          const b = e.target.closest('[data-prow-btn], [data-akall]');
+          if (!b) return;
+          if (b.dataset.akall) akAllKeys().forEach(v => setRow(v, b.dataset.akall === '1'));
+          else { const v = b.dataset.prowBtn; setRow(v, akActsOf(v).some(k => !(D[v] || {})[k])); }
+          refresh(form);
+        });
+        form.querySelector('[data-akq]').addEventListener('input', e => { cari = e.target.value; form.querySelector('[data-akm]').innerHTML = matrix(); });
+      },
+      onSave: () => {
+        const before = db.akses[id] || {};
+        const lbl = Object.fromEntries(akMenus().flatMap(m => m.items));
+        const fmt = r => AK_ACTS.filter(([k]) => r && r[k]).map(([, l]) => l).join(', ') || '—';
+        const changes = akAllKeys().filter(v => fmt(before[v]) !== fmt(D[v])).map(v => ({ f: lbl[v], old: fmt(before[v]), new: fmt(D[v]) }));
+        db.akses[id] = clone(D);
+        logAct('Master Data', 'Role & Permission', 'Edit', role, id, `Edit Role & Permission ${role}`, changes);
+        toast(`Hak akses role ${role} disimpan — ${changes.length} menu berubah`);
+      }
+    });
+  }
+
+  // ---------- Pengajuan Biaya (PB-FR-01 – PB-FR-20, draf 2; input/Invoice & Pengajuan/2026-11-04-jawaban-pengajuan-biaya/) ----------
+  // Tim program (Sales quotation, Trainer, Manajemen) mengajukan biaya ke Manajemen; cakupan pengajuan + approval (pencairan Finance menyusul).
+  const QPB = (n, t) => q(`Q-PB-${String(n).padStart(2, '0')}`, t);
+  const PB_ST = { menunggu: 'Menunggu Approval', disetujui: 'Disetujui', ditolak: 'Ditolak', batal: 'Batal' };
+  const PB_JENIS = { kasbon: 'Kasbon', dp: 'Direct Payment' };
+  const PB_KODE = { kasbon: 'KS', dp: 'DP' };
+  const PB_KAT = { fixed: 'Fixed Cost', variable: 'Variable Cost' };
+  // Progres pengajuan Kasbon / Direct Payment (input/Invoice & Pengajuan/2026-11-05-tab-pengajuan-progress/):
+  // Waiting Approval → (Setujui) Waiting Payment → (Tandai Paid) Paid. Overbudget tetap memakai PB_ST (tidak ada pembayaran).
+  const PB_PROG = { menunggu: 'Waiting Approval', disetujui: 'Waiting Payment', paid: 'Paid', ditolak: 'Ditolak', batal: 'Batal' };
+  const PB_STEPS = ['menunggu', 'disetujui', 'paid'];
+  const PB_AKTIF = ['menunggu', 'disetujui', 'paid'];
+  const pbBadge = (s, ob = false) => `<span class="badge st-pb-${s}">${(ob ? PB_ST : PB_PROG)[s]}</span>`;
+  // Stepper progres: langkah selesai ✓, langkah sekarang menyala; Ditolak / Batal menghentikan progres di langkah approval.
+  const pbProgress = r => {
+    const stop = r.status === 'ditolak' || r.status === 'batal', at = stop ? 0 : PB_STEPS.indexOf(r.status);
+    return `<ol class="pb-prog ${stop ? 'stop' : ''}">${PB_STEPS.map((k, i) => `<li class="${i < at || r.status === 'paid' ? 'done' : i === at ? (stop ? 'x' : 'on') : ''}"><i></i><span>${i === 0 && stop ? PB_PROG[r.status] : PB_PROG[k]}</span></li>`).join('')}</ol>`;
+  };
+  const canPay = () => isSuper() || isAdmin() || can('pb', 'm');
+  const pbJenisTag = j => `<span class="tag tag-pb-${j}">${PB_JENIS[j]}</span>`;
+  const userName = id => (db.user.find(u => u.id === id) || {}).nama || '—';
+  const fmtQty = n => (Number(n) || 0).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+  const sumBy = (list, f) => list.reduce((t, x) => t + (Number(x[f]) || 0), 0);
+  const pjById = id => db.quot.find(x => x.id === id);
+
+  // Akun login trainer (usulan Q-PB-13): contoh trainer Ivan punya akun; dipakai sebagai trainer di program B2B Final.
+  db.user.push({ id: uid(), kode: 'EMP-006', nama: 'Ivan Sarifudin, S.T.', nik: '', tmpLahir: '', tglLahir: '', role: roleIdOf('Trainer'), gender: 'Laki-laki', agama: '',
+    telp: '+6281200000001', email: 'ivan@contoh.id', alamat: '', npwp: '', tglMasuk: '2023-05-02', tipe: 'Freelance', jobdesc: 'Trainer', aktif: true,
+    akun: true, username: 'ivan.trainer' });
+  db.trainer.forEach(t => { if (t.user === undefined) t.user = ''; });
+  if (db.trainer[0]) db.trainer[0].user = db.user[db.user.length - 1].id;
+  { const pj = db.quot.find(x => x.status === 'final' && x.jenis === 'b2b'); if (pj && db.trainer[0]) pj.trainer = db.trainer[0].id; }
+
+  // Tim program (PB-FR-19): Sales di quotation yang tidak Batal, akun trainer, group Manajemen.
+  const timOf = pj => {
+    const sales = [...new Set(db.qtn.filter(k => k.pj === pj.id && k.status === 'deal').map(k => k.sales).filter(Boolean))];
+    const tr = trainerById(pj.trainer);
+    return { sales, trainer: tr, trainerUser: tr && tr.user ? tr.user : '' };
+  };
+  const inTim = pj => { if (isMgmt()) return true; const t = timOf(pj); return t.sales.includes(state.me) || (t.trainerUser && t.trainerUser === state.me); };
+  const pbProgs = () => db.quot.filter(x => x.status === 'final');
+  const pbVisible = () => pbProgs().filter(x => seeAllData() || inTim(x));
+  const canAjukan = pj => !pj.closed && (isSuper() || (can('pb', 'a') && (inTim(pj) || isAdmin()))); // program Closed tidak dapat diajukan (PB-FR-20)
+  const canApprove = () => can('pbAppr', 'm');
+
+  db.pb = []; db.ob = [];
+  const pbQtyEst = (pj, b) => { const d = Number(pj.durasi) || 0, n = nPeserta(pj);
+    return b.satuan === 'Event' ? 1 : b.satuan === 'Day' ? d : b.satuan === 'Peserta/Event' ? n : n * d; };
+  // Item = item costing (key c<index>) + item baru dari overbudget disetujui (key o<id detail>).
+  function pbItems(pj, kat) {
+    const obOk = db.ob.filter(o => o.pj === pj.id && o.kat === kat && o.status === 'disetujui').flatMap(o => o.items);
+    const used = db.pb.filter(p => p.pj === pj.id && p.kat === kat && PB_AKTIF.includes(p.status)).flatMap(p => p.items);
+    const mk = (key, item, satuan, qty, harga, baru) => {
+      const ob = obOk.filter(d => d.key === key), us = used.filter(d => d.key === key);
+      const est = qty * harga, obQty = sumBy(ob, 'qty'), obTot = sumBy(ob, 'total'), usedQty = sumBy(us, 'qty'), usedTot = sumBy(us, 'total'), budget = est + obTot;
+      return { key, item, satuan, baru, qty, harga, est, obQty, obTot, usedQty, usedTot, budget, sisa: budget - usedTot, sisaQty: Math.max(0, qty + obQty - usedQty) };
+    };
+    const costing = pj.biaya.map((b, bi) => ({ b, bi })).filter(x => x.b.tipe === kat && Number(x.b.harga) > 0)
+      .map(({ b, bi }) => mk('c' + bi, b.item, b.satuan, pbQtyEst(pj, b), Number(b.harga) || 0, false));
+    const baru = obOk.filter(d => d.baru).map(d => mk(d.key, d.item, 'item baru', 0, d.harga, true));
+    return costing.concat(baru);
+  }
+  const pbSum = (pj, kat) => { const it = kat ? pbItems(pj, kat) : pbItems(pj, 'fixed').concat(pbItems(pj, 'variable'));
+    return { budget: sumBy(it, 'budget'), used: sumBy(it, 'usedTot'), sisa: sumBy(it, 'sisa') }; };
+  const pbOf = pj => db.pb.filter(p => p.pj === pj.id);
+  const obOf = pj => db.ob.filter(o => o.pj === pj.id);
+  const pbWaiting = pj => pbOf(pj).concat(obOf(pj)).filter(x => x.status === 'menunggu').length;
+
+  // Data contoh: program B2B Final — overbudget disetujui (tambah item costing + item baru), kasbon disetujui, direct payment menunggu.
+  {
+    const pj = db.quot.find(x => x.status === 'final' && x.jenis === 'b2b');
+    if (pj) {
+      const mgr = db.user[0].id, t = timOf(pj), by = t.sales[0] || t.trainerUser || mgr;
+      const it = (kat, name, qty) => { const x = pbItems(pj, kat).find(i => i.item === name); return { key: x.key, item: x.item, qty, harga: x.harga, total: qty * x.harga }; };
+      const nbId = uid();
+      db.ob.push({ id: uid(), nomor: lmiNo('OB', '2026-11-02'), pj: pj.id, kat: 'variable', tanggal: '2026-11-02', alasan: 'Tambahan 5 peserta observer dari client selama 3 hari; perlu name tag peserta.',
+        items: [Object.assign(it('variable', 'Coffee Break', 15), { total: 15 * 40000 }), { key: 'o' + nbId, item: 'Name tag & lanyard peserta', baru: true, qty: 25, harga: 12000, total: 300000 }],
+        total: 900000, status: 'disetujui', by, apprBy: mgr, apprAt: '2026-11-02 14:10', alasanTolak: '' });
+      const mkPb = (o, items) => db.pb.push(Object.assign({ id: uid(), pj: pj.id, items, total: sumBy(items, 'total'), files: [], apprBy: '', apprAt: '', alasanTolak: '' }, o));
+      mkPb({ nomor: lmiNo('KS', '2026-11-03'), kat: 'fixed', jenis: 'kasbon', tanggal: '2026-11-03', desk: 'Akomodasi & transport trainer in house Bekasi 17–19 November 2026',
+        bank: 'BCA', norek: '1234567890', nmRek: userName(by), status: 'disetujui', by, apprBy: mgr, apprAt: '2026-11-03 10:05' },
+        [it('fixed', 'Hotel Trainer **', 3), it('fixed', 'Konsumsi Trainer, di luar konsumsi selama training', 3), it('fixed', 'Transport Trainer Luar Kota PP', 1)]);
+      mkPb({ nomor: lmiNo('DP', '2026-11-04'), kat: 'variable', jenis: 'dp', tanggal: '2026-11-04', desk: 'Pelunasan katering makan siang peserta 3 hari (vendor)',
+        bank: 'Mandiri', norek: '1310099988877', nmRek: 'CV Contoh Katering', files: ['invoice-katering.pdf'], status: 'menunggu', by },
+        [it('variable', 'Makan Siang Training', 60)]);
+      mkPb({ nomor: lmiNo('DP', '2026-11-04'), kat: 'variable', jenis: 'dp', tanggal: '2026-11-04', desk: 'DP katering coffee break peserta (vendor)',
+        bank: 'Mandiri', norek: '1310099988877', nmRek: 'CV Contoh Katering', files: ['invoice-coffee-break.pdf'], status: 'paid', by, apprBy: mgr, apprAt: '2026-11-04 09:30',
+        paidBy: mgr, paidAt: '2026-11-04', paidKet: 'Transfer Mandiri' },
+        [it('variable', 'Coffee Break', 30)]);
+    }
+  }
+
+  // Daftar Pengajuan Biaya (PB-FR-02): program Final yang terkait dengan user login; Admin semua.
+  state.pbApprTab = 'pb'; state.pbPj = null; state.pbf = null; state.pbTab = 'ajukan'; state.pbJ = 'all'; state.pbS = 'all';
+  const pbProgStatus = pj => { const w = pbWaiting(pj), n = pbOf(pj).concat(obOf(pj)).filter(x => x.status !== 'batal').length;
+    return w ? `<span class="badge st-pb-menunggu">${w} Waiting Approval</span>` : n ? '<span class="badge st-pb-berjalan">Berjalan</span>' : '<span class="badge st-draft">Belum ada pengajuan</span>'; };
+  const timCell = pj => { const t = timOf(pj);
+    return `<b>Sales:</b> ${t.sales.length ? esc(t.sales.map(userName).join(', ')) : '<span class="muted">—</span>'}<br><span class="muted">Trainer: ${esc((t.trainer || {}).nama || '—')}</span>`; };
+  const viewPb = () => `${pageHead('Pengajuan Biaya', 'Tim program (Sales di quotation, Trainer, Manajemen) mengajukan biaya program (Kasbon / Direct Payment) ke Manajemen. Satu baris = satu Penjualan Program <b>Final</b>; budget = costing Penjualan Program Final. Hanya program yang terkait dengan Anda yang tampil; Admin melihat semua.', 'PB-FR-01 – PB-FR-04 · PB-FR-21 – PB-FR-23')}
+    <div class="notice"><span>Login sebagai <b>${esc(meUser().nama || '—')}</b> (${esc(meRole() || '—')}): ${isSuper() ? 'Superadmin — semua program' : isAdmin() ? 'Admin — semua program' : isMgmt() ? 'Manajemen — termasuk tim semua program' : 'program tempat Anda menjadi Sales di quotation Deal atau Trainer'}.</span></div>
+    <div class="card"><div class="tabs">${[['ajukan', 'Ajukan Biaya', pbVisible().length], ['diajukan', 'Sudah Diajukan', pbSent().length]].map(([t, l, n]) =>
+      `<button class="tab ${state.pbTab === t ? 'active' : ''}" data-act="pb-tab" data-tab="${t}">${l}<span class="nav-count">${n}</span></button>`).join('')}</div>
+      ${state.pbTab === 'diajukan'
+        ? toolbar('Cari nomor pengajuan, program, deskripsi, pengaju…', false,
+          selectFilter('fpbj', 'Filter jenis pengajuan', state.pbJ, [['all', 'Kasbon & Direct Payment'], ['kasbon', 'Kasbon'], ['dp', 'Direct Payment']])
+          + selectFilter('fpbs', 'Filter progres', state.pbS, [['all', 'Semua progres'], ...Object.entries(PB_PROG)]))
+        : toolbar('Cari nomor program, judul, customer, sales, trainer…', false,
+          selectFilter('fjenis', 'Filter jenis program', state.jenis, [['all', 'Public & B2B'], ['public', 'Program Public'], ['b2b', 'Program B2B']]))}
+      <div id="list">${state.pbTab === 'diajukan' ? listPbSent() : listPbProg()}</div></div>`;
+
+  // Tab Sudah Diajukan: semua pengajuan Kasbon / Direct Payment pada program yang dapat dilihat user, beserta progresnya.
+  const pbSent = () => { const ids = pbVisible().map(pj => pj.id); return db.pb.filter(p => ids.includes(p.pj)); };
+  function listPbSent() {
+    const rows = pbSent().filter(r => (state.pbJ === 'all' || r.jenis === state.pbJ) && (state.pbS === 'all' || r.status === state.pbS)
+      && matches([r.nomor, pjById(r.pj).nomor, paketOf(mpOf(pjById(r.pj))).judul, r.desk, userName(r.by)]))
+      .sort((a, b) => b.tanggal.localeCompare(a.tanggal) || b.id - a.id);
+    return listBlock(rows, [
+      NO_COL,
+      { label: 'No. Pengajuan', cls: 'nowrap', render: r => `<span class="code">${esc(r.nomor)}</span><br>${pbJenisTag(r.jenis)} <span class="muted">${tglPanjang(r.tanggal)}</span>` },
+      { label: 'Program', render: r => { const pj = pjById(r.pj); return `<button class="btn btn-ghost sm" data-act="pb-open" data-id="${pj.id}">${esc(pj.nomor)}</button><br><span class="muted">${esc(paketOf(mpOf(pj)).judul)}</span>`; } },
+      { label: 'Kategori / Deskripsi', render: r => `<b>${PB_KAT[r.kat]}</b><br>${esc(r.desk)}` },
+      { label: 'Total', cls: 'money', render: r => rp(r.total) },
+      { label: 'Request By', render: r => esc(userName(r.by)) },
+      { label: 'Progres', render: pbProgress },
+      { label: 'Action', cls: 'act', render: r => gearMenu(r, [['pb-view', 'Lihat']]
+        .concat(r.status === 'menunggu' && r.by === state.me ? [['pb-cancel', 'Batalkan', true]] : [])
+        .concat(r.status === 'disetujui' && canPay() ? [['pb-paid', 'Tandai Paid']] : [])) }
+    ]);
+  }
+
+  // Tandai Paid (usulan, Q-PB-17): sementara sebelum modul pencairan Finance dibuat.
+  function pbPaid(r) {
+    if (!canPay()) return toast('Anda tidak punya hak Manage di Pengajuan Biaya (Role & Permission)', 'warn');
+    openModal({ title: `Tandai Paid — ${esc(r.nomor)}`, saveLabel: 'Tandai Paid',
+      body: `<p class="hint top">${PB_JENIS[r.jenis]} ${rp(r.total)} ke ${esc(r.bank)} · ${esc(r.norek)} a.n. ${esc(r.nmRek)}. Setelah ditandai, progres menjadi <b>Paid</b> dan tidak dapat diubah.${QPB(17, 'Siapa yang menandai Paid (Finance / Admin)? Perlu bukti transfer wajib? Sementara: user dengan hak Manage Pengajuan Biaya, tanggal bayar wajib, keterangan opsional.')}</p>
+        ${field(`Tanggal bayar${req}`, `<input class="input" type="date" name="tgl" value="${todayIso}" max="${todayIso}">`)}
+        ${field('Keterangan / bukti transfer', '<input class="input" name="ket" maxlength="150" placeholder="mis. Transfer BCA, no. referensi">')}`,
+      onSave: f => {
+        if (!f.tgl.value) return invalid(f.tgl, 'Tanggal bayar wajib diisi');
+        if (f.tgl.value < r.tanggal) return invalid(f.tgl, 'Tanggal bayar tidak boleh sebelum tanggal pengajuan');
+        Object.assign(r, { status: 'paid', paidBy: state.me, paidAt: f.tgl.value, paidKet: f.ket.value.trim() });
+        toast(`${r.nomor} Paid`);
+      } });
+  }
+
+  function listPbProg() {
+    const rows = pbVisible().filter(pj => (state.jenis === 'all' || pj.jenis === state.jenis)
+      && matches([pj.nomor, paketOf(mpOf(pj)).judul, (companyOf(pj) || {}).nama, pj.lokasi, ...timOf(pj).sales.map(userName), (timOf(pj).trainer || {}).nama]))
+      .sort((a, b) => (a.tglMulai || '').localeCompare(b.tglMulai || ''));
+    return listBlock(rows, [
+      NO_COL,
+      { label: 'No. Program', cls: 'nowrap', render: pj => `${jenisTag(pj.jenis)} <button class="btn btn-ghost sm" data-act="pb-open" data-id="${pj.id}">${esc(pj.nomor)}</button><br><span class="muted">${fmtRange(pj.tglMulai, pj.tglSelesai)}</span>` },
+      { label: 'Program', cls: 'title', render: pj => `${esc(paketOf(mpOf(pj)).judul)}<br><span class="muted">${esc(pj.lokasi || '—')}</span>` },
+      { label: 'Customer', render: pj => pj.jenis === 'b2b' ? esc((companyOf(pj) || {}).nama || '—') : '<span class="muted">Public</span>' },
+      { label: 'Tim', render: timCell },
+      { label: 'Budget', cls: 'money', render: pj => rp(pbSum(pj).budget) },
+      { label: 'Aktual', cls: 'money', render: pj => rp(pbSum(pj).used) },
+      { label: 'Sisa', cls: 'money', render: pj => { const s = pbSum(pj); return `<b class="${s.sisa <= 0 ? 'neg' : ''}">${rp(s.sisa)}</b>`; } },
+      { label: 'Status', render: pbProgStatus },
+      { label: 'Action', cls: 'act', render: pj => gearMenu(pj, [['pb-open', 'Lihat Pengajuan']]) }
+    ]);
+  }
+
+  // Halaman per program (PB-FR-03, PB-FR-04).
+  const pbHead = pj => { const c = companyOf(pj), t = timOf(pj);
+    const r = (l, v) => `<div class="pb-kv"><span>${l}</span><b>${v}</b></div>`;
+    const trU = t.trainerUser ? (db.user.find(u => u.id === t.trainerUser) || {}).username : '';
+    return `<section class="card pad pb-head"><div class="pb-kvs">
+      ${r('No. Program', `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}`)}${r('Sales (quotation)', t.sales.length ? esc(t.sales.map(userName).join(', ')) : '<span class="muted">Belum ada quotation</span>')}
+      ${r('Customer', pj.jenis === 'b2b' ? esc((c || {}).nama || '—') : 'Public')}${r('Trainer', t.trainer ? `${esc(t.trainer.nama)} <span class="muted">· ${trU ? `akun ${esc(trU)}` : 'belum punya akun login'}${QPB(13, 'Trainer perlu akun login (field Akun login di Master Trainer, usulan) agar dapat mengajukan.')}</span>` : '—')}
+      ${r('Program', esc(paketOf(mpOf(pj)).judul))}${r('Waktu', `${fmtRange(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''}`)}
+      ${r('Lokasi', esc(pj.lokasi || '—'))}${r('Durasi · Target peserta', `${pj.durasi} hari · ${pj.targetPeserta} peserta`)}</div></section>`; };
+  const kpi3 = s => `<div class="kpis pb-kpis"><div class="kpi"><div class="kpi-l">Budget</div><div class="kpi-v">${rp(s.budget)}</div></div>
+    <div class="kpi"><div class="kpi-l">Aktual</div><div class="kpi-v">${rp(s.used)}</div><div class="kpi-s">waiting approval + waiting payment + paid</div></div>
+    <div class="kpi ${s.sisa <= 0 ? 'bad' : 'good'}"><div class="kpi-l">Sisa Budget</div><div class="kpi-v">${rp(s.sisa)}</div></div></div>`;
+  const rowGear = (r, view, cancel) => gearMenu(r, [[view, 'Lihat']].concat(r.status === 'menunggu' && r.by === state.me ? [[cancel, 'Batalkan', true]] : []));
+  const viewPbProg = () => {
+    const pj = pjById(state.pbPj); if (!pj) { state.view = 'pb'; return viewPb(); }
+    if (!seeAllData() && !inTim(pj)) return `${pageHead('Pengajuan Biaya', 'Program ini bukan program terkait Anda.', 'PB-FR-20')}<div class="notice"><span>Anda tidak termasuk tim program ${esc(pj.nomor)}.</span><button class="btn btn-ghost sm" data-act="pb-back">Kembali</button></div>`;
+    const can2 = canAjukan(pj);
+    const blok = kat => {
+      const s = pbSum(pj, kat), list = pbOf(pj).filter(p => p.kat === kat), obs = obOf(pj).filter(o => o.kat === kat);
+      const btn = (act, l, cls) => can2 ? `<button class="btn ${cls} sm" data-act="${act}" data-id="${pj.id}" data-kat="${kat}">${l}</button>` : '';
+      return `<section class="card pad ivc-sec"><div class="pb-blok-h"><p class="ivc-sec-h">Pengajuan ${PB_KAT[kat]}</p>${kpi3(s)}</div>
+        <div class="pb-btns">${btn('pb-add', '+ Add Pengajuan', 'btn-accent')}${can2 ? '<span class="hint">Jenis Kasbon / Direct Payment dipilih di form</span>' : (pj.closed ? '<span class="hint">Program sudah Closed — tidak dapat diajukan lagi.</span>' : '<span class="hint">Anda tidak punya hak Add Pengajuan Biaya (Role & Permission).</span>')}</div>
+        <div class="table-wrap"><table class="table"><thead><tr><th class="num">No</th><th>No. Pengajuan</th><th>Deskripsi</th><th class="money">Total</th><th>Jenis</th><th>Request By</th><th>Status</th><th>Tanggal</th><th class="act">Option</th></tr></thead><tbody>
+          ${list.length ? list.map((p, i) => `<tr class="${p.status === 'batal' || p.status === 'ditolak' ? 'is-off' : ''}"><td class="num">${i + 1}</td><td class="nowrap"><span class="code">${esc(p.nomor)}</span></td><td>${esc(p.desk)}</td><td class="money">${rp(p.total)}</td>
+            <td>${pbJenisTag(p.jenis)}</td><td>${esc(userName(p.by))}</td><td class="nowrap">${pbBadge(p.status)}</td><td class="nowrap">${tglPanjang(p.tanggal)}</td><td class="act">${rowGear(p, 'pb-view', 'pb-cancel')}</td></tr>`).join('')
+            : '<tr><td colspan="9" class="empty">Belum ada pengajuan.</td></tr>'}</tbody></table></div>
+        <div class="pb-ob"><p class="pb-ob-h">Overbudget ${PB_KAT[kat]} ${btn('ob-add', '+ Add Overbudget', 'btn-outline')}</p>
+        <div class="table-wrap"><table class="table"><thead><tr><th class="num">No</th><th>No. Overbudget</th><th>Item</th><th class="money">Amount</th><th>Status</th><th>Pembuat Pengajuan</th><th class="act">Option</th></tr></thead><tbody>
+          ${obs.length ? obs.map((o, i) => `<tr class="${o.status === 'batal' || o.status === 'ditolak' ? 'is-off' : ''}"><td class="num">${i + 1}</td><td class="nowrap"><span class="code">${esc(o.nomor)}</span></td><td>${o.items.map(d => esc(d.item) + (d.baru ? ' <span class="tag tag-manual">item baru</span>' : '')).join(', ')}</td><td class="money">${rp(o.total)}</td>
+            <td class="nowrap">${pbBadge(o.status, true)}</td><td>${esc(userName(o.by))}</td><td class="act">${rowGear(o, 'ob-view', 'ob-cancel')}</td></tr>`).join('')
+            : '<tr><td colspan="7" class="empty">Belum ada overbudget.</td></tr>'}</tbody></table></div></div></section>`;
+    };
+    return `<div class="pf-formbar"><button type="button" class="btn btn-ghost sm" data-act="pb-back">← Kembali</button><h2>Pengajuan ${esc(pj.nomor)}</h2><span class="ref">PB-FR-03, PB-FR-04</span></div>
+      ${pbHead(pj)}${pj.closed ? `<div class="notice"><span>Program ini sudah <b>Closed</b> (Manage Peserta) — tidak dapat diajukan biaya lagi; pengajuan yang ada tetap dapat dilihat.</span></div>` : ''}${blok('fixed')}${blok('variable')}
+      <p class="hint">Menyusul: pencairan oleh Finance, pelaporan realisasi, jurnal. Program yang sudah <b>Closed</b> (Manage Peserta) tidak dapat diajukan lagi.</p>`;
+  };
+
+  // Form Add Pengajuan (PB-FR-05 – PB-FR-11): satu tombol, jenis dipilih di form.
+  function pbForm(pj, kat) {
+    if (!canAjukan(pj)) return toast('Anda tidak punya hak mengajukan untuk program ini', 'warn');
+    state.pbf = { pj: pj.id, kat, jenis: '', d: { desk: '', bank: '', norek: '', nmRek: '', rows: {}, files: [] } };
+    state.view = 'pbForm'; render(); window.scrollTo(0, 0);
+  }
+  function pbSetJenis(j) {
+    const F = state.pbf, d = F.d; F.jenis = j;
+    if (j === 'kasbon' && !d.bank && !d.norek) {
+      const last = db.pb.filter(p => p.by === state.me && p.jenis === 'kasbon').slice(-1)[0];
+      Object.assign(d, last ? { bank: last.bank, norek: last.norek, nmRek: last.nmRek } : { nmRek: meUser().nama || '' });
+    }
+    render();
+  }
+  const pbRowCalc = (it, r) => { const qty = Number(r.qty) || 0, harga = r.harga === undefined ? it.harga : Number(r.harga) || 0; return { qty, harga, total: Math.round(qty * harga) }; };
+  const viewPbForm = () => {
+    if (!state.pbf) { state.view = 'pb'; return viewPb(); }
+    const F = state.pbf, pj = pjById(F.pj), d = F.d, items = pbItems(pj, F.kat), me = meUser(), katSisa = sumBy(items, 'sisa');
+    const sec = (n, title, hint, body) => `<section class="card pad ivc-sec"><p class="ivc-sec-h"><span class="ivc-no">${n}</span>${title}${hint ? ` <span class="muted">${hint}</span>` : ''}</p>${body}</section>`;
+    const jenisPick = Object.keys(PB_JENIS).map(j => `<label class="pb-radio ${F.jenis === j ? 'on' : ''}"><input type="radio" name="jenis" value="${j}" ${F.jenis === j ? 'checked' : ''}> <b>${PB_JENIS[j]}</b><small>${j === 'kasbon' ? 'uang muka ke rekening pengaju' : 'bayar langsung ke rekening vendor / penerima'}</small></label>`).join('');
+    const s1 = sec(1, 'Data Pengajuan', 'Request By dan tanggal dari sistem', `<div class="grid3">
+      ${field('Jenis Pengajuan' + req, `<div class="pb-radios">${jenisPick}</div><span class="hint">Pengajuan PO tidak ada</span>`, '', 'span2')}
+      ${field('Kategori', `<div class="static">${PB_KAT[F.kat]}</div>`)}
+      ${field('Request By', `<div class="static">${esc(me.nama || '—')}</div>${inTim(pj) ? '' : `<span class="warn"><i>!</i>${esc(me.nama || 'User')} bukan tim program ini</span>`}`)}
+      ${field('Tanggal', `<input class="input" value="${tglPanjang(todayIso)}" readonly>`)}
+      <div></div>
+      ${field('Deskripsi / Keterangan' + req, `<textarea class="input" name="desk" rows="2" placeholder="Deskripsi / Keterangan">${esc(d.desk)}</textarea>`, '', 'span3')}</div>`);
+    const s2 = sec(2, 'Informasi Pengajuan', 'posisi budget per item', `<div class="table-wrap"><table class="table pb-info"><thead>
+      <tr><th rowspan="2">No.</th><th rowspan="2">Item</th><th colspan="3" class="grp">Estimasi</th><th colspan="2" class="grp">Terpakai</th><th colspan="2" class="grp">Overbudget</th><th rowspan="2" class="money">Sisa</th></tr>
+      <tr><th class="money">Qty</th><th class="money">Price / Unit</th><th class="money">Total Budget</th><th class="money">Qty</th><th class="money">Total Terpakai</th><th class="money">Qty</th><th class="money">Total</th></tr></thead><tbody>
+      ${items.map((it, i) => `<tr><td>${i + 1}</td><td>${esc(it.item)}${it.baru ? ' <span class="tag tag-manual">item baru</span>' : `<br><span class="muted">${esc(it.satuan)}</span>`}</td><td class="money">${it.baru ? '—' : fmtQty(it.qty)}</td><td class="money">${rp(it.harga)}</td><td class="money">${it.baru ? '—' : rp(it.est)}</td>
+        <td class="money">${fmtQty(it.usedQty)}</td><td class="money">${it.usedTot ? rp(it.usedTot) : '—'}</td><td class="money">${fmtQty(it.obQty)}</td><td class="money">${it.obTot ? rp(it.obTot) : '—'}</td><td class="money"><b class="${it.sisa <= 0 ? 'neg' : ''}">${rp(it.sisa)}</b></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="4"><b>Total</b></td><td class="money"><b>${rp(sumBy(items, 'est'))}</b></td><td></td><td class="money"><b>${rp(sumBy(items, 'usedTot'))}</b></td><td></td><td class="money"><b>${rp(sumBy(items, 'obTot'))}</b></td><td class="money"><b>${rp(sumBy(items, 'sisa'))}</b></td></tr></tfoot></table></div>
+      <span class="hint">Budget dari Penjualan Program Final — Event = 1, Day = durasi, Peserta/Event = target peserta, Peserta/Day = peserta × durasi. Terpakai = pengajuan Menunggu Approval + Disetujui.</span>`);
+    const s3 = sec(3, 'Pengajuan', `isi Qty; Price / Unit boleh berbeda — budget dicek per kategori (sisa ${PB_KAT[F.kat]} ${rp(katSisa)})`, `<div class="table-wrap"><table class="table pb-in"><thead><tr><th>No.</th><th>Item</th><th class="money">Sisa</th><th class="money">Qty</th><th class="money">Price / Unit</th><th class="money">Total Pengajuan</th></tr></thead><tbody>
+      ${items.map((it, i) => { const r = d.rows[it.key] || {}, c = pbRowCalc(it, r), off = katSisa <= 0;
+        return `<tr class="${off ? 'pb-off' : ''}"><td>${i + 1}</td><td>${esc(it.item)}<br><span class="muted">${it.baru ? 'item baru (overbudget)' : `${esc(it.satuan)} · sisa qty ${fmtQty(it.sisaQty)}`}</span></td><td class="money">${rp(it.sisa)}</td>
+          <td class="money"><div class="field"><input class="input sm" type="number" min="0" step="0.5" name="q-${it.key}" value="${r.qty || ''}" ${off ? 'disabled' : ''} placeholder="0"></div></td>
+          <td class="money"><div class="field">${moneyIn(`name="h-${it.key}" ${off ? 'disabled' : ''}`, c.harga)}</div></td>
+          <td class="money"><b id="pbt-${it.key}">${c.total ? rp(c.total) : '—'}</b><br><span class="pb-over" id="pbo-${it.key}" ${c.total > it.sisa ? '' : 'hidden'}>melebihi sisa item</span></td></tr>`; }).join('')}</tbody>
+      <tfoot><tr><td colspan="5"><b>Grand Total</b></td><td class="money"><b id="pb-grand">${rp(items.reduce((t, it) => t + pbRowCalc(it, d.rows[it.key] || {}).total, 0))}</b></td></tr><tr><td colspan="5">Sisa ${PB_KAT[F.kat]} <span class="muted">· setelah pengajuan ini</span></td><td class="money">${rp(katSisa)}<br><b id="pb-after">${rp(katSisa - items.reduce((t, it) => t + pbRowCalc(it, d.rows[it.key] || {}).total, 0))}</b></td></tr></tfoot></table></div>
+      <span class="hint">Budget mencukupi = Grand Total ≤ sisa total ${PB_KAT[F.kat]} (per kategori, bukan per item). Satu item boleh melebihi sisa item-nya. Sisa kategori tidak cukup? Ajukan Overbudget dahulu.</span><div class="field" id="pb-err"></div>`);
+    const dp = F.jenis === 'dp';
+    const s4 = sec(4, dp ? 'Rekening Penerima & Bukti Tagihan' : 'Rekening Tujuan & Bukti', !F.jenis ? 'pilih jenis pengajuan dahulu' : dp ? 'rekening vendor / penerima; bukti tagihan wajib' : 'rekening pengaju; bukti opsional', `<div class="grid2">
+      <div>${field('Bank' + req, `<input class="input" name="bank" value="${esc(d.bank)}" placeholder="mis. BCA">`)}
+        ${field('No. Rekening' + req, `<input class="input" name="norek" value="${esc(d.norek)}" inputmode="numeric" placeholder="Nomor rekening">`)}
+        ${field('Nama Rekening' + req, `<input class="input" name="nmRek" value="${esc(d.nmRek)}" placeholder="Atas nama">`)}</div>
+      <div>${field('Bukti Penggunaan' + (dp ? req : ' <span class="muted">(opsional untuk Kasbon)</span>'), `<label class="pb-drop"><input type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png" hidden><b>Tarik &amp; letakkan file di sini</b> atau klik untuk memilih file<span class="hint">PDF, JPG, PNG · maks. 5 MB per file</span></label>
+        <div class="hint" id="pb-files">${d.files.length ? esc(d.files.join(', ')) : 'Belum ada file'}</div>`)}</div></div>`);
+    return `<div class="pf-formbar"><button type="button" class="btn btn-ghost sm" data-act="pbf-back">← Kembali</button><h2>Add Pengajuan — ${PB_KAT[F.kat]}</h2><span class="ref">PB-FR-05 – PB-FR-11</span></div>
+      ${pbHead(pj)}<form id="pb-page" novalidate>${s1}${s2}${s3}${s4}
+      <div class="form-actions"><button type="button" class="btn btn-ghost" data-act="pbf-back">Back</button><button type="submit" class="btn btn-primary">Save</button></div></form>`;
+  };
+  function pbBind() {
+    const form = $('#pb-page'); if (!form) return;
+    const F = state.pbf, d = F.d, pj = pjById(F.pj), items = pbItems(pj, F.kat);
+    const refresh = () => { let g = 0;
+      items.forEach(it => { const c = pbRowCalc(it, d.rows[it.key] || {}); g += c.total; const el = $('#pbt-' + it.key); if (el) el.textContent = c.total ? rp(c.total) : '—'; });
+      $('#pb-grand').textContent = rp(g); const katSisa = sumBy(items, 'sisa'), af = $('#pb-after'); af.textContent = rp(katSisa - g); af.classList.toggle('neg', g > katSisa);
+      items.forEach(it => { const o = $('#pbo-' + it.key); if (o) o.hidden = !(pbRowCalc(it, d.rows[it.key] || {}).total > it.sisa); }); };
+    form.addEventListener('input', e => {
+      const t = e.target, n = t.name || '';
+      if (n.startsWith('q-') || n.startsWith('h-')) { const k = n.slice(2), r = d.rows[k] = d.rows[k] || {};
+        if (n[0] === 'q') r.qty = t.value; else r.harga = num(digits(t.value)); refresh(); }
+      else if (['desk', 'bank', 'norek', 'nmRek'].includes(n)) d[n] = t.value;
+    });
+    form.addEventListener('change', e => {
+      if (e.target.name === 'jenis') pbSetJenis(e.target.value);
+      else if (e.target.name === 'files') { d.files = [...e.target.files].map(f => f.name); $('#pb-files').textContent = d.files.join(', ') || 'Belum ada file'; }
+    });
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      form.querySelectorAll('.has-err').forEach(el => el.classList.remove('has-err'));
+      form.querySelectorAll('.err').forEach(el => el.remove());
+      const f = form.elements; let ok = true;
+      if (!F.jenis) ok = invalid(form.querySelector('.pb-radios'), 'Pilih jenis pengajuan: Kasbon atau Direct Payment');
+      if (!d.desk.trim()) ok = invalid(f.desk, 'Deskripsi wajib diisi');
+      const rows = [];
+      pbItems(pj, F.kat).forEach(it => { const c = pbRowCalc(it, d.rows[it.key] || {});
+        if (c.qty < 0) ok = invalid(f[`q-${it.key}`], 'Qty tidak boleh minus');
+        if (c.total > 0) { rows.push({ key: it.key, item: it.item, qty: c.qty, harga: c.harga, total: c.total }); } });
+      const katSisa = sumBy(pbItems(pj, F.kat), 'sisa');
+      if (!rows.length) { ok = false; $('#pb-err').innerHTML = '<div class="err"><i>!</i>Isi Qty minimal satu item.</div>'; }
+      else if (sumBy(rows, 'total') > katSisa) { ok = false; $('#pb-err').innerHTML = `<div class="err"><i>!</i>Grand Total ${rp(sumBy(rows, 'total'))} melebihi sisa ${PB_KAT[F.kat]} ${rp(katSisa)} — ajukan Overbudget dahulu.</div>`; }
+      if (!d.bank.trim()) ok = invalid(f.bank, 'Bank wajib diisi');
+      if (!d.norek.trim()) ok = invalid(f.norek, 'No. Rekening wajib diisi');
+      if (!d.nmRek.trim()) ok = invalid(f.nmRek, 'Nama Rekening wajib diisi');
+      if (F.jenis === 'dp' && !d.files.length) ok = invalid(f.files, 'Bukti tagihan wajib untuk Direct Payment');
+      if (!ok) { toast('Lengkapi isian yang wajib', 'warn'); return; }
+      const rec = { id: uid(), nomor: lmiNo(PB_KODE[F.jenis], todayIso), pj: pj.id, kat: F.kat, jenis: F.jenis, tanggal: todayIso, desk: d.desk.trim(), items: rows, total: sumBy(rows, 'total'),
+        bank: d.bank.trim(), norek: d.norek.trim(), nmRek: d.nmRek.trim(), files: d.files, status: 'menunggu', by: state.me, apprBy: '', apprAt: '', alasanTolak: '' };
+      db.pb.push(rec); toast(`${PB_JENIS[F.jenis]} ${rec.nomor} diajukan — ${rp(rec.total)}, menunggu approval Manajemen`);
+      state.pbf = null; state.pbPj = pj.id; go('pbProg');
+    });
+  }
+
+  // Add Overbudget (PB-FR-12, PB-FR-13): item costing dan/atau item baru.
+  function obForm(pj, kat) {
+    if (!canAjukan(pj)) return toast('Anda tidak punya hak mengajukan untuk program ini', 'warn');
+    const items = pbItems(pj, kat);
+    let nb = 0;
+    const nbRow = i => `<tr data-nb="${i}"><td><div class="field"><input class="input sm" name="nbn-${i}" placeholder="Nama item baru"></div></td><td class="money muted">item baru</td>
+      <td class="money"><div class="field"><input class="input sm" type="number" min="0" step="0.5" name="nbq-${i}" placeholder="0"></div></td>
+      <td class="money"><div class="field">${moneyIn(`name="nbh-${i}"`, '')}</div></td><td class="money" id="nbt-${i}">—</td></tr>`;
+    openModal({ title: `Add Overbudget — ${PB_KAT[kat]} · ${esc(pj.nomor)}`, wide: true, saveLabel: 'Ajukan',
+      body: `<p class="hint top">Tambahan budget untuk item costing, atau <b>item baru</b> di luar costing. Setelah <b>disetujui Manajemen</b>, budget bertambah dan dapat diajukan sebagai Kasbon / Direct Payment.</p>
+        <div class="table-wrap"><table class="table pb-in"><thead><tr><th>Item</th><th class="money">Sisa</th><th class="money">Qty tambahan</th><th class="money">Price / Unit</th><th class="money">Total</th></tr></thead><tbody id="ob-body">
+        ${items.map(it => `<tr><td>${esc(it.item)}<br><span class="muted">${it.baru ? 'item baru' : esc(it.satuan)}</span></td><td class="money">${rp(it.sisa)}</td>
+          <td class="money"><div class="field"><input class="input sm" type="number" min="0" step="0.5" name="oq-${it.key}" placeholder="0"></div></td>
+          <td class="money"><div class="field">${moneyIn(`name="oh-${it.key}"`, it.harga)}</div></td><td class="money" id="obt-${it.key}">—</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td colspan="4"><button type="button" class="btn btn-outline sm" id="ob-nb">+ Item baru</button> <b style="float:right">Total overbudget</b></td><td class="money"><b id="ob-grand">${rp(0)}</b></td></tr></tfoot></table></div>
+        <div class="field" id="ob-err"></div>${field('Alasan' + req, '<textarea class="input" name="alasan" rows="2" placeholder="Mengapa budget perlu ditambah"></textarea>')}`,
+      onMount: form => {
+        const val = n => form.elements[n] ? form.elements[n].value : '';
+        const recalc = () => { let g = 0;
+          items.forEach(it => { const t = Math.round((Number(val(`oq-${it.key}`)) || 0) * (num(digits(val(`oh-${it.key}`))) || 0)); g += t; $('#obt-' + it.key).textContent = t ? rp(t) : '—'; });
+          for (let i = 0; i < nb; i++) { const t = Math.round((Number(val(`nbq-${i}`)) || 0) * (num(digits(val(`nbh-${i}`))) || 0)); g += t; $('#nbt-' + i).textContent = t ? rp(t) : '—'; }
+          $('#ob-grand').textContent = rp(g); };
+        form.addEventListener('input', recalc);
+        form.querySelector('#ob-nb').addEventListener('click', () => { form.querySelector('#ob-body').insertAdjacentHTML('beforeend', nbRow(nb)); form.elements[`nbn-${nb}`].focus(); nb++; });
+      },
+      onSave: f => {
+        let ok = true; const rows = [];
+        items.forEach(it => { const q2 = Number(f[`oq-${it.key}`].value) || 0, h = num(digits(f[`oh-${it.key}`].value)) || 0;
+          if (q2 < 0) ok = invalid(f[`oq-${it.key}`], 'Qty tidak boleh minus');
+          if (q2 > 0 && h > 0) rows.push({ key: it.key, item: it.item, baru: false, qty: q2, harga: h, total: Math.round(q2 * h) }); });
+        for (let i = 0; i < nb; i++) {
+          const nm = f[`nbn-${i}`].value.trim(), q2 = Number(f[`nbq-${i}`].value) || 0, h = num(digits(f[`nbh-${i}`].value)) || 0;
+          if (!nm && !q2 && !h) continue;
+          if (!nm) { ok = invalid(f[`nbn-${i}`], 'Nama item wajib'); continue; }
+          if (!(q2 > 0 && h > 0)) { ok = invalid(f[`nbq-${i}`], 'Isi Qty dan Price / Unit'); continue; }
+          rows.push({ key: 'o' + uid(), item: nm, baru: true, qty: q2, harga: h, total: Math.round(q2 * h) });
+        }
+        if (!rows.length) { ok = false; $('#ob-err').innerHTML = '<div class="err"><i>!</i>Isi Qty tambahan dan Price / Unit minimal satu item.</div>'; }
+        if (!f.alasan.value.trim()) ok = invalid(f.alasan, 'Alasan wajib diisi');
+        if (!ok) return false;
+        const rec = { id: uid(), nomor: lmiNo('OB', todayIso), pj: pj.id, kat, tanggal: todayIso, alasan: f.alasan.value.trim(), items: rows, total: sumBy(rows, 'total'), status: 'menunggu', by: state.me, apprBy: '', apprAt: '', alasanTolak: '' };
+        db.ob.push(rec); toast(`Overbudget ${rec.nomor} diajukan — ${rp(rec.total)}`);
+      } });
+  }
+
+  // Lihat / proses approval (PB-FR-14, PB-FR-15, PB-FR-18).
+  const pbRiwayat = r => {
+    const li = [`Diajukan <b>${esc(userName(r.by))}</b> · ${tglPanjang(r.tanggal)}`];
+    if (r.status === 'disetujui' || r.status === 'paid') li.push(`Disetujui <b>${esc(userName(r.apprBy))}</b> · ${esc(r.apprAt)}${r.jenis ? ' — Waiting Payment' : ''}`);
+    if (r.status === 'paid') li.push(`Paid — ditandai <b>${esc(userName(r.paidBy))}</b> · tanggal bayar ${tglPanjang(r.paidAt)}${r.paidKet ? ` · ${esc(r.paidKet)}` : ''}`);
+    if (r.status === 'ditolak') li.push(`Ditolak <b>${esc(userName(r.apprBy))}</b> · ${esc(r.apprAt)} — alasan: ${esc(r.alasanTolak)}`);
+    if (r.status === 'batal') li.push('Dibatalkan pengaju');
+    return `<ol class="pb-hist">${li.map(x => `<li>${x}</li>`).join('')}</ol>`; };
+  function pbDetailBody(r, isOb) {
+    const pj = pjById(r.pj), s = pbSum(pj, r.kat);
+    return `<div class="summary">${sumRow('No. Program', `${jenisTag(pj.jenis)} <span class="code">${esc(pj.nomor)}</span> · ${esc(paketOf(mpOf(pj)).judul)}`)}
+      ${sumRow(isOb ? 'No. Overbudget' : 'No. Pengajuan', `<span class="code">${esc(r.nomor)}</span> ${isOb ? '' : pbJenisTag(r.jenis)} · ${PB_KAT[r.kat]}`)}${sumRow('Status', pbBadge(r.status, isOb))}${isOb ? '' : sumRow('Progres', pbProgress(r))}
+      ${sumRow(isOb ? 'Alasan' : 'Deskripsi', esc(isOb ? r.alasan : r.desk))}${sumRow('Request By', esc(userName(r.by)))}
+      ${isOb ? '' : sumRow('Rekening tujuan', `${esc(r.bank)} · ${esc(r.norek)} · a.n. ${esc(r.nmRek)}`) + sumRow('Bukti', r.files.length ? esc(r.files.join(', ')) : '<span class="muted">—</span>')}
+      ${sumRow(`Posisi budget ${PB_KAT[r.kat]}`, `Budget ${rp(s.budget)} · Aktual ${rp(s.used)} · Sisa ${rp(s.sisa)}`)}</div>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Item</th><th class="money">Qty</th><th class="money">Price / Unit</th><th class="money">Total</th></tr></thead><tbody>
+      ${r.items.map(d => `<tr><td>${esc(d.item)}${d.baru ? ' <span class="tag tag-manual">item baru</span>' : ''}</td><td class="money">${fmtQty(d.qty)}</td><td class="money">${rp(d.harga)}</td><td class="money">${rp(d.total)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="3"><b>Total</b></td><td class="money"><b>${rp(r.total)}</b></td></tr></tfoot></table></div>
+      <p class="qtn-h">Riwayat status</p>${pbRiwayat(r)}`;
+  }
+  const pbView = (r, isOb) => openModal({ title: `${isOb ? 'Overbudget' : PB_JENIS[r.jenis]} ${esc(r.nomor)}`, wide: true, info: true, body: pbDetailBody(r, isOb) });
+  function pbProcess(r, isOb) {
+    if (!canApprove()) return toast('Anda tidak punya hak Manage di Approval Pengajuan (Role & Permission)', 'warn');
+    if (r.by === state.me) return toast('Pengaju tidak dapat memproses pengajuannya sendiri', 'warn');
+    openModal({ title: `Approval ${isOb ? 'Overbudget' : PB_JENIS[r.jenis]} ${esc(r.nomor)}`, wide: true, saveLabel: 'Simpan Keputusan',
+      body: `${pbDetailBody(r, isOb)}<div class="grid2">${field('Keputusan' + req, '<select class="input" name="kep"><option value="setuju">Setujui</option><option value="tolak">Tolak</option></select>')}
+        ${field('Alasan tolak', '<textarea class="input" name="alasan" rows="2" placeholder="Wajib bila ditolak"></textarea>')}</div>`,
+      onSave: f => {
+        if (f.kep.value === 'tolak' && !f.alasan.value.trim()) return invalid(f.alasan, 'Alasan wajib bila ditolak');
+        Object.assign(r, { status: f.kep.value === 'setuju' ? 'disetujui' : 'ditolak', apprBy: state.me, apprAt: isoNow().slice(0, 16), alasanTolak: f.kep.value === 'tolak' ? f.alasan.value.trim() : '' });
+        toast(`${r.nomor} ${r.status === 'disetujui' ? 'disetujui' : 'ditolak'}`);
+      } });
+  }
+  function pbCancel(r) {
+    openModal({ title: 'Batalkan pengajuan', danger: true, saveLabel: 'Batalkan', cancelLabel: 'Kembali',
+      body: `<p style="margin:0 0 14px">Batalkan <b>${esc(r.nomor)}</b> (${rp(r.total)})? Budget yang dipesan kembali tersedia. Tindakan ini tidak dapat diurungkan.</p>`,
+      onSave: () => { r.status = 'batal'; toast(`${r.nomor} dibatalkan`); } });
+  }
+
+  // Approval Pengajuan (PB-FR-14): 1 level, hak Manage di menu ini (default Manajemen).
+  const viewPbAppr = () => {
+    const pbW = db.pb.filter(p => p.status === 'menunggu'), obW = db.ob.filter(o => o.status === 'menunggu');
+    const tabs = [['pb', 'Pengajuan', pbW.length], ['ob', 'Overbudget', obW.length]].map(([t, l, n]) =>
+      `<button class="tab ${state.pbApprTab === t ? 'active' : ''}" data-act="pb-appr-tab" data-tab="${t}">${l}<span class="nav-count">${n}</span></button>`).join('');
+    return `${pageHead('Approval Pengajuan', 'Pengajuan Kasbon / Direct Payment dan Overbudget yang <b>Menunggu Approval</b>. Approval 1 level oleh Manajemen; alasan wajib bila ditolak. Overbudget yang disetujui menambah budget item atau membuat item baru. Pencairan oleh Finance menyusul.', 'PB-FR-14, PB-FR-15')}
+      ${canApprove() ? '' : '<div class="notice"><span>Anda dapat melihat daftar, tetapi tidak punya hak <b>Manage</b> (proses approval) di Role & Permission.</span></div>'}
+      <div class="card"><div class="tabs">${tabs}</div>${toolbar('Cari nomor pengajuan, program, pengaju…', false)}<div id="list">${listPbAppr()}</div></div>`;
+  };
+  function listPbAppr() {
+    const isOb = state.pbApprTab === 'ob';
+    const rows = (isOb ? db.ob : db.pb).filter(r => r.status === 'menunggu' && matches([r.nomor, pjById(r.pj).nomor, userName(r.by), r.desk || r.alasan]));
+    return listBlock(rows, [
+      NO_COL,
+      { label: isOb ? 'No. Overbudget' : 'No. Pengajuan', cls: 'nowrap', render: r => `<span class="code">${esc(r.nomor)}</span><br><span class="muted">${tglPanjang(r.tanggal)}</span>` },
+      { label: 'No. Program', cls: 'nowrap', render: r => { const pj = pjById(r.pj); return `${jenisTag(pj.jenis)} <span class="code">${esc(pj.nomor)}</span><br><span class="muted">${esc(paketOf(mpOf(pj)).judul)}</span>`; } },
+      { label: 'Kategori / Jenis', render: r => `${PB_KAT[r.kat]}${isOb ? '' : `<br>${pbJenisTag(r.jenis)}`}` },
+      { label: isOb ? 'Alasan' : 'Deskripsi', render: r => esc(isOb ? r.alasan : r.desk) },
+      { label: 'Total', cls: 'money', render: r => rp(r.total) },
+      { label: 'Request By', render: r => esc(userName(r.by)) },
+      { label: 'Action', cls: 'act', render: r => gearMenu(r, [[isOb ? 'ob-view' : 'pb-view', 'Lihat']].concat(canApprove() && r.by !== state.me ? [[isOb ? 'ob-proc' : 'pb-proc', 'Proses (Setujui / Tolak)']] : [])) }
+    ]);
+  }
+
   // ---------- Jejak data & Activity Log (LOG-FR-01 – LOG-FR-08; input/Master - Buat Program/2026-10-30-histori-activity-log/) ----------
   // Setiap record menyimpan Dibuat oleh/tanggal-jam dan Diubah oleh/tanggal-jam. Setiap perubahan data (tambah, edit, hapus,
   // aktif/nonaktif, finalkan, batal, kirim, deal) tercatat di Activity Log beserta field sebelum/sesudah.
@@ -3366,17 +4297,18 @@
     ['jenisProduk', 'Master Data', 'Jenis Produk'], ['jenisSertifikasi', 'Master Data', 'Jenis Sertifikat'], ['jenisBidang', 'Master Data', 'Jenis Bidang'],
     ['paket', 'Master Data', 'Product Combine'], ['peserta', 'Master Data', 'Master Peserta'], ['company', 'Master Data', 'Master Company'],
     ['trainer', 'Master Data', 'Master Trainer'], ['ketQtn', 'Master Data', 'Template Keterangan Quotation'], ['kfTpl', 'Master Data', 'Template Formulir Konfirmasi'],
-    ['rate.fixed', 'Master Data', 'Master Rate — Fixed Cost'], ['rate.variable', 'Master Data', 'Master Rate — Variable Cost'], ['user', 'Master Data', 'Master User'],
-    ['mprog', 'Penjualan Program', 'Master Program'], ['quot', 'Penjualan Program', 'Penjualan Program'], ['qtn', 'Quotation', 'Quotation'], ['inv', 'Invoice', 'Invoicing']
+    ['rate.fixed', 'Master Data', 'Master Rate — Fixed Cost'], ['rate.variable', 'Master Data', 'Master Rate — Variable Cost'], ['user', 'Master Data', 'Master User'], ['role', 'Master Data', 'Master Role'],
+    ['mprog', 'Penjualan Program', 'Master Program'], ['quot', 'Penjualan Program', 'Penjualan Program'], ['qtn', 'Quotation', 'Quotation'], ['inv', 'Invoice', 'Invoicing'],
+    ['pb', 'Pengajuan Biaya', 'Pengajuan'], ['ob', 'Pengajuan Biaya', 'Overbudget']
   ];
   const STAMP_KEYS = ['createdBy', 'createdAt', 'updatedBy', 'updatedAt'];
-  const LOG_AKSI = ['Tambah', 'Edit', 'Hapus', 'Aktifkan', 'Nonaktifkan', 'Finalkan', 'Batalkan', 'Kirim & Cetak', 'Deal', 'Cetak'];
-  const STATUS_AKSI = { final: 'Finalkan', batal: 'Batalkan', terkirim: 'Kirim & Cetak', deal: 'Deal' };
+  const LOG_AKSI = ['Tambah', 'Edit', 'Hapus', 'Aktifkan', 'Nonaktifkan', 'Finalkan', 'Batalkan', 'Kirim & Cetak', 'Deal', 'Cetak', 'Setujui', 'Tolak', 'Tandai Paid', 'Export', 'Close Program'];
+  const STATUS_AKSI = { final: 'Finalkan', batal: 'Batalkan', terkirim: 'Kirim & Cetak', deal: 'Deal', disetujui: 'Setujui', ditolak: 'Tolak', paid: 'Tandai Paid' };
   const FIELD_LBL = { nama: 'Nama', kode: 'Kode', nomor: 'Nomor', judul: 'Judul', aktif: 'Status aktif', status: 'Status', item: 'Item', cost: 'Default Cost',
     hargaJual: 'Harga jual / peserta', targetPeserta: 'Target peserta', targetProfit: 'Target profit', durasi: 'Durasi', biaya: 'Item biaya', peserta: 'Peserta',
     diskon: 'Diskon', lain: 'Biaya lain-lain', allin: 'Harga all-in', skema: 'Skema harga', ppn: 'PPN', tanggal: 'Tanggal', berlaku: 'Berlaku sampai',
     tglMulai: 'Tanggal mulai', tglSelesai: 'Tanggal selesai', lokasi: 'Lokasi', waktu: 'Waktu', company: 'Company', instansi: 'Instansi', telp: 'Telepon', email: 'Email',
-    alamat: 'Alamat', up: 'u.p.', sales: 'Sales', tujuan: 'Tujuan', ket: 'Keterangan', kf: 'Formulir Konfirmasi', teks: 'Teks', def: 'Default', noPo: 'Nomor PO', noFaktur: 'Nomor Faktur', perlakuan: 'Perlakuan PPN', ppnPerlakuan: 'Perlakuan PPN', setor: 'Bukti setor WAPU', coaPenjualan: 'COA Penjualan', cara: 'Cara tagih' };
+    alamat: 'Alamat', up: 'u.p.', sales: 'Sales', tujuan: 'Tujuan', ket: 'Keterangan', kf: 'Formulir Konfirmasi', teks: 'Teks', def: 'Default', noFaktur: 'Nomor Faktur', perlakuan: 'Perlakuan PPN', ppnPerlakuan: 'Perlakuan PPN', setor: 'Bukti setor WAPU', coaPenjualan: 'COA Penjualan', cara: 'Cara tagih', desk: 'Deskripsi', items: 'Item pengajuan', total: 'Total', bank: 'Bank', norek: 'No. Rekening', nmRek: 'Nama Rekening', files: 'Bukti', alasan: 'Alasan', alasanTolak: 'Alasan tolak', apprBy: 'Approval oleh', apprAt: 'Waktu approval', kat: 'Kategori', jenis: 'Jenis', by: 'Request By', user: 'Akun login', paidBy: 'Paid oleh', paidAt: 'Tanggal bayar', paidKet: 'Keterangan bayar', role: 'Role', ovr: 'Override Permission', sistem: 'Bawaan sistem' };
   db.logs = [];
   const pad2 = n => String(n).padStart(2, '0');
   const isoNow = (d = new Date()) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
@@ -3385,20 +4317,23 @@
   const loginUsers = () => db.user.filter(u => u.akun && u.aktif).length ? db.user.filter(u => u.akun && u.aktif) : db.user;
   state.me = (loginUsers()[0] || {}).id;
   const meName = () => (db.user.find(u => u.id === state.me) || {}).nama || 'Pengguna';
-  // Activity Log & Lihat Riwayat hanya untuk group Manajemen dan Admin Developer (LOG-FR-09).
-  const LOG_GROUPS = ['Manajemen', 'Admin Developer'];
-  const canLog = () => LOG_GROUPS.includes((db.user.find(u => u.id === state.me) || {}).group);
+  // Activity Log & Lihat Riwayat hanya untuk Manajemen dan Superadmin (LOG-FR-09); Admin bila diberi hak di Role & Permission.
+  const canLog = () => can('actlog') && (isSuper() || isAdmin() || isMgmt());
   // Log disimpan 60 hari; yang lebih lama dihapus otomatis oleh sistem (LOG-NFR-06).
   const LOG_DAYS = 60;
   const auditList = key => key.startsWith('rate.') ? db.rate[key.slice(5)] : db[key];
   const refOf = r => r.nomor || r.kode || r.nama || r.judul || r.item || (r.teks ? String(r.teks).slice(0, 40) : `#${r.id}`);
-  const bare = r => { const o = {}; Object.keys(r).forEach(k => { if (!STAMP_KEYS.includes(k)) o[k] = r[k]; }); return o; };
+  // closed (Close Program) dicatat sendiri oleh Manage Peserta, tidak ikut audit otomatis Penjualan Program.
+  const bare = r => { const o = {}; Object.keys(r).forEach(k => { if (!STAMP_KEYS.includes(k) && k !== 'closed') o[k] = r[k]; }); return o; };
   const showVal = v => v === true ? 'Ya' : v === false ? 'Tidak' : v === '' || v == null ? '—'
     : Array.isArray(v) ? `${v.length} baris` : typeof v === 'object' ? 'diubah' : typeof v === 'number' && v >= 1000 ? fmtRibu(v) : String(v);
   function fieldChanges(o, n) {
     const keys = [...new Set([...Object.keys(o || {}), ...Object.keys(n || {})])].filter(k => !STAMP_KEYS.includes(k) && k !== 'id');
     return keys.filter(k => JSON.stringify((o || {})[k]) !== JSON.stringify((n || {})[k])).map(k => {
-      const a = (o || {})[k], b = (n || {})[k];
+      let a = (o || {})[k], b = (n || {})[k];
+      // Role disimpan sebagai id Master Role; Override Permission ditampilkan sebagai jumlah hak.
+      if (k === 'role') { a = a && (roleById(a) || {}).nama || a; b = b && (roleById(b) || {}).nama || b; }
+      if (k === 'ovr') { a = a ? `${akCount(a)} hak` : ''; b = b ? `${akCount(b)} hak` : ''; }
       const same = Array.isArray(a) && Array.isArray(b) && a.length === b.length;
       return { f: FIELD_LBL[k] || k, old: o ? (same ? `${a.length} baris` : showVal(a)) : '', new: n ? (same ? `${b.length} baris (isi berubah)` : showVal(b)) : '' };
     });
@@ -3453,7 +4388,7 @@
 
   // ---------- Activity Log (LOG-FR-03 – LOG-FR-07) ----------
   state.logF = { modul: 'all', aksi: 'all', user: 'all', from: '', to: '', refId: null, ref: '' };
-  const aksiBadge = a => `<span class="badge log-${a === 'Tambah' ? 'add' : a === 'Hapus' || a === 'Batalkan' || a === 'Nonaktifkan' ? 'del' : a === 'Edit' ? 'edit' : 'other'}">${esc(a)}</span>`;
+  const aksiBadge = a => `<span class="badge log-${a === 'Tambah' ? 'add' : a === 'Hapus' || a === 'Batalkan' || a === 'Nonaktifkan' || a === 'Tolak' ? 'del' : a === 'Edit' ? 'edit' : 'other'}">${esc(a)}</span>`;
   function viewActLog() {
     const F = state.logF;
     const mods = [...new Set(AUDIT_SRC.map(s => s[1]))];
@@ -3462,7 +4397,7 @@
       + selectFilter('lf-aksi', 'Filter aksi', F.aksi, [['all', 'Semua aksi'], ...LOG_AKSI.map(a => [a, a])])
       + selectFilter('lf-user', 'Filter pengguna', F.user, [['all', 'Semua pengguna'], ...users.map(u => [u, u])])
       + `<label class="lf-date">Dari <input type="date" class="input sm" id="lf-from" value="${F.from}"></label><label class="lf-date">s.d. <input type="date" class="input sm" id="lf-to" value="${F.to}"></label>`;
-    return `${pageHead('Activity Log', `Semua pergerakan data di sistem: siapa, kapan (tanggal & jam), modul, aksi, data, dan field yang berubah (sebelum → sesudah). Catatan tidak dapat diubah atau dihapus pengguna; disimpan <b>${LOG_DAYS} hari</b>, lalu dihapus otomatis oleh sistem. Hanya untuk Manajemen dan Admin Developer.`, 'LOG-FR-03 – LOG-FR-07')}
+    return `${pageHead('Activity Log', `Semua pergerakan data di sistem: siapa, kapan (tanggal & jam), modul, aksi, data, dan field yang berubah (sebelum → sesudah). Catatan tidak dapat diubah atau dihapus pengguna; disimpan <b>${LOG_DAYS} hari</b>, lalu dihapus otomatis oleh sistem. Hanya untuk Manajemen dan Superadmin (Admin bila diberi hak di Role &amp; Permission).`, 'LOG-FR-03 – LOG-FR-07')}
       ${F.refId ? `<div class="notice"><span>Riwayat data <b>${esc(F.ref)}</b> saja.</span><button class="btn btn-ghost sm" data-act="log-clear-ref">Tampilkan semua</button></div>` : ''}
       <div class="card">${toolbar('Cari data, keterangan, atau pengguna…', false, filters)}<div id="list">${listActLog()}</div></div>`;
   }
@@ -3493,15 +4428,15 @@
 
   function renderMe() {
     const box = $('#me-box'); if (!box) return;
-    box.innerHTML = `<label>Login sebagai <select id="me-sel" class="input sm">${loginUsers().map(u => `<option value="${u.id}" ${u.id === state.me ? 'selected' : ''}>${esc(u.nama)}</option>`).join('')}</select></label>`;
+    box.innerHTML = `<label>Login sebagai <select id="me-sel" class="input sm">${loginUsers().map(u => `<option value="${u.id}" ${u.id === state.me ? 'selected' : ''}>${esc(u.nama)} · ${esc(roleOf(u))}</option>`).join('')}</select></label>`;
   }
 
   // ---------- Render ----------
-  const LIST = { paket: listPaket, peserta: listPeserta, company: listCompany, trainer: listTrainer, ketQtn: listKetQtn, kfTpl: listKfTpl, user: listUser, rate: listRate, mprog: listMprog, quot: listQuot, qtn: listQtn, ivc: listIvc, actlog: listActLog };
+  const LIST = { paket: listPaket, katalog: listKatalog, peserta: listPeserta, company: listCompany, trainer: listTrainer, ketQtn: listKetQtn, kfTpl: listKfTpl, user: listUser, role: listRole, rate: listRate, mprog: listMprog, quot: listQuot, qtn: listQtn, ivc: listIvc, pb: () => (state.pbTab === 'diajukan' ? listPbSent() : listPbProg()), pbAppr: listPbAppr, mpst: listMpst, akses: listAkses, actlog: listActLog };
   const currentList = () => MASTERS[state.view] ? listMaster(state.view) : LIST[state.view]();
   const VIEWS = {
     dashboard: viewDashboard, paket: viewPaket, combine: viewCombine, katalog: viewKatalog, peserta: viewPeserta, company: viewCompany, trainer: viewTrainer, ketQtn: viewKetQtn, kfTpl: viewKfTpl,
-    user: viewUser, rate: viewRate, mprog: viewMprog, quot: viewQuot, qtn: viewQtn, qtnDetail: viewQtnDetail, mpForm: viewCostForm, qtForm: viewCostForm, ivc: viewIvc, ivcForm: viewIvcForm, actlog: viewActLog
+    user: viewUser, role: viewRole, rate: viewRate, mprog: viewMprog, quot: viewQuot, qtn: viewQtn, qtnDetail: viewQtnDetail, mpForm: viewCostForm, qtForm: viewCostForm, ivc: viewIvc, ivcForm: viewIvcForm, pb: viewPb, pbProg: viewPbProg, pbForm: viewPbForm, pbAppr: viewPbAppr, mpst: viewMpst, akses: viewAkses, actlog: viewActLog
   };
 
   function render() {
@@ -3509,16 +4444,28 @@
     renderNav();
     renderMe();
     const v = state.view;
+    const navKey = SUBVIEW[v] ? SUBVIEW[v][0] : v;
+    if (!can(navKey)) { $('#view').innerHTML = `${pageHead('Tidak ada akses', `Role <b>${esc(meRole() || '—')}</b> tidak punya hak View untuk menu ini. Atur di Master Data › Role & Permission, atau beri hak khusus user ini lewat Override Permission di Master User.`, 'FR-57 · FR-65')}`; return; }
     $('#view').innerHTML = MASTERS[v] ? viewMaster(v) : VIEWS[v]();
     if (state.view === 'ivcForm') ivcBind();
+    if (state.view === 'pbForm') pbBind();
   }
 
   // ---------- Events ----------
   const mpById = el => db.mprog.find(x => x.id === +el.dataset.id);
   const qtById = el => db.quot.find(x => x.id === +el.dataset.id);
   const qtnById = el => db.qtn.find(x => x.id === +el.dataset.id);
+  const wideNav = () => window.matchMedia('(min-width: 901px)').matches; // batas sama dengan @media sidebar di style.css
   const ACTIONS = {
-    'nav-open': () => document.body.classList.add('nav-open'),
+    // Layar lebar: tombol menu memunculkan lagi sidebar yang disembunyikan; layar sempit: membuka drawer (FR-66).
+    'nav-open': () => {
+      if (wideNav()) { document.body.classList.remove('nav-hidden'); $('#nav-hide') && $('#nav-hide').focus(); }
+      else document.body.classList.add('nav-open');
+    },
+    'nav-hide': () => {
+      if (wideNav()) { document.body.classList.add('nav-hidden'); $('#menu-btn').focus(); }
+      else document.body.classList.remove('nav-open');
+    },
     'hist-open': el => { const id = +el.dataset.id, l = db.logs.find(x => x.refId === id); go('actlog'); state.logF.refId = id; state.logF.ref = l ? l.ref : `#${id}`; render(); },
     'log-detail': el => logDetail(db.logs.find(x => x.id === +el.dataset.id)),
     'log-clear-ref': () => { state.logF.refId = null; state.page = 1; render(); },
@@ -3526,6 +4473,7 @@
     'nav-module': el => { const m = el.dataset.module; state.navOpen[m] = !state.navOpen[m]; renderNav(); },
     'master-add': () => masterForm(state.view),
     'master-edit': el => masterForm(state.view, findRec(state.view, +el.dataset.id)),
+    'kt-print': () => katalogPrint(),
     'paket-edit': el => paketForm(db.paket.find(r => r.id === +el.dataset.id)),
     toggle: el => {
       const list = state.view === 'paket' ? db.paket : state.view === 'rate' ? db.rate[state.rateTab] : db[state.view];
@@ -3600,8 +4548,35 @@
     'ivc-view': el => ivcView(db.inv.find(x => x.id === +el.dataset.id)),
     'ivc-print': el => ivcPrint(db.inv.find(x => x.id === +el.dataset.id)),
     'ivc-setor': el => ivcSetor(db.inv.find(x => x.id === +el.dataset.id)),
+    'mp-tab': el => { state.mpTab = el.dataset.tab; state.page = 1; render(); },
+    'mp-open': el => { state.mpPj = +el.dataset.id; state.q = ''; state.page = 1; render(); window.scrollTo(0, 0); },
+    'mp-back': () => { state.mpPj = null; state.q = ''; state.page = 1; render(); },
+    'mp-close': el => mpClose(db.quot.find(x => x.id === +el.dataset.id)),
+    'mp-print': el => mpPrintPeserta(db.quot.find(x => x.id === +el.dataset.id)),
+    'mp-hadir': el => mpPrintHadir(db.quot.find(x => x.id === +el.dataset.id)),
+    'mp-xls': el => mpXls(db.quot.find(x => x.id === +el.dataset.id)),
     'ivc-tab': el => { state.ivcTab = el.dataset.tab; state.ivcProg = 'all'; state.ivcYear = 'all'; state.page = 1; render(); },
     'ivc-excel': () => toast('Export Excel belum tersambung (mockup)'),
+    // Role & Permission & Pengajuan Biaya
+    'ak-edit': el => akEdit(+el.dataset.role),
+    'role-add': () => roleForm(),
+    'role-edit': el => roleForm(roleById(+el.dataset.id)),
+    'role-akses': el => akEdit(+el.dataset.id),
+    'role-del': el => roleDel(roleById(+el.dataset.id)),
+    'pb-open': el => { state.pbPj = +el.dataset.id; go('pbProg'); },
+    'pb-back': () => go('pb'),
+    'pb-tab': el => { state.pbTab = el.dataset.tab; state.q = ''; state.page = 1; render(); },
+    'pb-paid': el => pbPaid(db.pb.find(x => x.id === +el.dataset.id)),
+    'pb-add': el => pbForm(pjById(+el.dataset.id), el.dataset.kat),
+    'ob-add': el => obForm(pjById(+el.dataset.id), el.dataset.kat),
+    'pbf-back': () => { const id = state.pbf ? state.pbf.pj : state.pbPj; state.pbf = null; state.pbPj = id; go('pbProg'); },
+    'pb-view': el => pbView(db.pb.find(x => x.id === +el.dataset.id), false),
+    'ob-view': el => pbView(db.ob.find(x => x.id === +el.dataset.id), true),
+    'pb-proc': el => pbProcess(db.pb.find(x => x.id === +el.dataset.id), false),
+    'ob-proc': el => pbProcess(db.ob.find(x => x.id === +el.dataset.id), true),
+    'pb-cancel': el => pbCancel(db.pb.find(x => x.id === +el.dataset.id)),
+    'ob-cancel': el => pbCancel(db.ob.find(x => x.id === +el.dataset.id)),
+    'pb-appr-tab': el => { state.pbApprTab = el.dataset.tab; state.q = ''; state.page = 1; render(); },
     'qtn-open': el => { state.qtnPj = +el.dataset.id; state.q = ''; state.status = 'all'; state.jenis = 'all'; state.page = 1; render(); window.scrollTo(0, 0); },
     'qtn-back': () => { state.qtnPj = null; state.q = ''; state.status = 'all'; state.jenis = 'all'; state.page = 1; render(); },
     'qtn-tab': el => { state.qtnTab = el.dataset.tab; state.status = 'all'; state.page = 1; render(); },
@@ -3712,6 +4687,8 @@
     if (t.id === 'me-sel') { state.me = +t.value; toast(`Login sebagai ${meName()} (mockup)`); if (state.view === 'actlog' && !canLog()) go('dashboard'); else render(); }
     if (t.id === 'fprog') { state.ivcProg = t.value; state.page = 1; $('#list').innerHTML = currentList(); }
     if (t.id === 'fyear') { state.ivcYear = t.value; state.page = 1; $('#list').innerHTML = currentList(); }
+    if (t.id === 'kt-bidang' || t.id === 'kt-sert') { state[t.id === 'kt-bidang' ? 'ktBidang' : 'ktSert'] = t.value; state.page = 1; $('#list').innerHTML = currentList(); }
+    if (t.id === 'fpbj' || t.id === 'fpbs') { state[t.id === 'fpbj' ? 'pbJ' : 'pbS'] = t.value; state.page = 1; $('#list').innerHTML = currentList(); }
     if (t.id === 'fjenis') { state.jenis = t.value; state.page = 1; $('#list').innerHTML = currentList(); }
     if (t.dataset.field && state.form) {
       state.form.rows[+t.dataset.row][t.dataset.field] = Number(t.value) || '';
