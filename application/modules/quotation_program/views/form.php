@@ -1,3 +1,4 @@
+<script>window.BASE_URL = '<?= base_url(); ?>';</script>
 <script src="<?= base_url('assets/labmania/js/wilayah.js'); ?>"></script>
 <?php
 $q = $q ?? [];

@@ -1,4 +1,5 @@
 <!-- Script Helper Wilayah -->
+<script>window.BASE_URL = '<?= base_url(); ?>';</script>
 <script src="<?= base_url('assets/labmania/js/wilayah.js'); ?>"></script>
 
 <div class="page-head">
