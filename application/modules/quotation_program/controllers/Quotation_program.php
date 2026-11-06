@@ -339,7 +339,6 @@ class Quotation_program extends Labmania_Controller
         }
         if (!$err && !filter_var(trim($p['email']), FILTER_VALIDATE_EMAIL)) $err = 'Format email tidak valid';
         if (!$err && !preg_match('/^\d{9,15}$/', preg_replace('/[\s\-+]/', '', $p['no_telp']))) $err = 'Nomor hanya angka, 9–15 digit';
-        if (!$err && !empty($p['npwp_instansi']) && !preg_match('/^(\d{15}|\d{16})$/', preg_replace('/\D/', '', $p['npwp_instansi']))) $err = 'NPWP Instansi 15 atau 16 digit angka';
 
         $res = $err ? ['status' => 0, 'msg' => $err] : $this->md_model->save_peserta($p);
         return $this->output->set_content_type('application/json')->set_output(json_encode($res));

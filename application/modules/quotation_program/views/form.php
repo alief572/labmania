@@ -573,7 +573,7 @@ function openNewPeserta() {
     ${f('Gender <span class="req">*</span>', '<select class="input" id="np-gender"><option value="">— Pilih —</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>')}
     ${f('Company', `<select class="input" id="np-company"><option value="">— Tanpa company —</option>${co}</select>`)}
     ${f('Instansi/Perusahaan <span class="req">*</span>', '<input class="input" id="np-instansi" maxlength="150">')}
-    ${f('NPWP Instansi', '<input class="input" id="np-npwp" placeholder="15 atau 16 digit">', 'span2')}
+    ${f('NPWP Instansi', '<input class="input" id="np-npwp" placeholder="Opsional">', 'span2')}
     ${f('Bidang <span class="req">*</span>', `<select class="input" id="np-bidang"><option value="">— Pilih Jenis Bidang —</option>${bid}</select>`)}
     ${f('Provinsi <span class="req">*</span>', '<select class="input" id="np-prov"></select>')}
     ${f('Kota/Kabupaten <span class="req">*</span>', '<select class="input" id="np-kab"></select>')}

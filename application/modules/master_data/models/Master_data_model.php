@@ -418,7 +418,6 @@ class Master_data_model extends CI_Model
         if (!in_array($t('gender'), ['L', 'P'], true)) $e['gender'] = 'Gender wajib diisi';
         if (!isset($e['email']) && !filter_var($t('email'), FILTER_VALIDATE_EMAIL)) $e['email'] = 'Format email tidak valid';
         if (!isset($e['no_telp']) && !preg_match('/^\+?\d{9,15}$/', preg_replace('/[\s-]/', '', $t('no_telp')))) $e['no_telp'] = 'Nomor hanya angka, 9–15 digit';
-        if ($t('npwp_instansi') !== '' && !preg_match('/^(\d{15}|\d{16})$/', preg_replace('/[.\-\s]/', '', $t('npwp_instansi')))) $e['npwp_instansi'] = 'NPWP Instansi 15 atau 16 digit angka';
         if (!isset($e['nama']) && mb_strlen($t('nama')) > 100) $e['nama'] = 'Nama Peserta maksimal 100 karakter';
         if (!isset($e['instansi']) && mb_strlen($t('instansi')) > 150) $e['instansi'] = 'Instansi/Perusahaan maksimal 150 karakter';
         return $e;
