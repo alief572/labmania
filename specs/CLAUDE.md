@@ -115,6 +115,27 @@ still wins. The client's own terms and the mockup's existing visual system
 filters purposeless additions, it does not restyle the product. Check colour
 pairs with `.claude/skills/antislop-human/contrast-check.py`.
 
+## Packages stay separate
+
+Modules are grouped into packages, and adding or changing one package must not
+touch another (the user asked on 05-11-2026). Current packages: **Master -
+Quotation** (Master Data, Master Program, Penjualan Program, Quotation) and
+**Invoice - Pengajuan** (Invoice, Manage Peserta, Pengajuan Biaya). Shared by
+all: Master User, Master Role, Role & Permission, sidebar, Activity Log.
+
+- **Mockup:** one file per module in `ui-mockup/produk/` (`mod-*.js`);
+  `core.js` holds shared helpers and data, `main.js` the LIST / VIEWS /
+  ACTIONS wiring. Edit only the module file being worked on plus `main.js`
+  wiring if needed. Keep the script order in `Labmania.html`: seed data uses
+  `uid()` at load, so reordering shifts ids.
+- **Final packages:** `final/<paket>/` is rebuilt only for the package the user
+  names: `py -3 final/build_final.py "<paket>"`. Never rebuild every package
+  "to be safe". A new package = a new entry in `PAKET` there and in
+  `PAKET_MENU` in `core.js`. Package folder names use `-`, never `&`.
+- **Before committing:** check `git status` that no file of another package
+  changed; if a shared file (`core.js`, `main.js`, `fr-nfr.md`, ERD, workbook)
+  changed, say which packages it affects.
+
 ## Context — read only when relevant, not up front
 
 - **Building or fixing code** → `context/coder-only/README.md`, then only its

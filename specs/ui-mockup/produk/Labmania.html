@@ -26,7 +26,7 @@
       <nav id="nav"></nav>
       <div class="sidebar-foot">
         <div id="me-box" class="me-box"></div>
-        Mockup draf 14i · 05-11-2026<br>
+        Mockup draf 14j · 05-11-2026<br>
         Acuan: <code>specs/docs/fr-nfr*.md</code>
       </div>
     </aside>
@@ -48,6 +48,17 @@
   <div id="modal-root"></div>
   <div class="toasts" id="toasts" aria-live="polite"></div>
 
-  <script src="app.js"></script>
+  <!-- Satu file per modul: mengubah satu modul tidak menyentuh file modul lain. core.js pertama, main.js terakhir. -->
+  <script src="core.js"></script>
+  <script src="mod-master-data.js"></script>
+  <script src="mod-program.js"></script>
+  <script src="mod-dashboard.js"></script>
+  <script src="mod-quotation.js"></script>
+  <script src="mod-invoice.js"></script>
+  <script src="mod-manage-peserta.js"></script>
+  <script src="mod-role-permission.js"></script>
+  <script src="mod-pengajuan-biaya.js"></script>
+  <script src="mod-activity-log.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>
