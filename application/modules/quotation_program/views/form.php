@@ -413,7 +413,7 @@ function loadPreview() {
     .then(blob => {
       if (pvUrl) URL.revokeObjectURL(pvUrl);
       pvUrl = URL.createObjectURL(blob);
-      frame.src = pvUrl;
+      frame.src = pvUrl + '#toolbar=0&navpanes=0&scrollbar=1'; // sembunyikan toolbar viewer (cetak/unduh); shortcut shortcut: Ctrl+P browser tetap bisa
       msg.style.display = 'none'; frame.style.display = 'block';
     })
     .catch(e => { msg.textContent = e.message || 'Terjadi kesalahan jaringan'; });

@@ -226,7 +226,7 @@ class Quotation_model extends CI_Model
         $status = ($post['status'] ?? '') === 'terkirim' ? 'terkirim' : 'draft';
 
         $header = [
-            'id_penjualan'           => $idPj,
+            'id_penjualan'           => (int)$pj['id'],
             'tanggal'                => !empty($post['tanggal']) ? $post['tanggal'] : date('Y-m-d'),
             'berlaku_sampai'         => !empty($post['berlaku_sampai']) ? $post['berlaku_sampai'] : date('Y-m-d', strtotime('+30 days')),
             'id_sales'               => !empty($post['id_sales']) ? (int)$post['id_sales'] : $userId,
