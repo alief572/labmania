@@ -159,7 +159,7 @@ class ExpenseJournalStore
     private $locking = false;
     private $maintenance = false;
 
-    public function __construct(mysqli $db, $source = 'db_consultant_new', $finance = 'db_sendigs_ss', $gl = 'db_sendigs_gl_ss')
+    public function __construct(mysqli $db, $source = 'db_labmania', $finance = 'db_sendigs_ss', $gl = 'db_sendigs_gl_ss')
     {
         foreach ([$source, $finance, $gl] as $name) {
             if (!preg_match('/^[a-zA-Z0-9_]+$/D', $name)) {
@@ -508,7 +508,7 @@ function expenseRepairConnect()
     require dirname(__DIR__) . '/application/config/development/database.php';
     $main = $db['default'];
     $finance = $db['sendigs_finance'];
-    if ($main['database'] !== 'db_consultant_new' || $finance['database'] !== 'db_sendigs_ss'
+    if (!in_array($main['database'], ['db_labmania', 'db_consultant_new'], true) || $finance['database'] !== 'db_sendigs_ss'
         || $db['gl_sendigs']['database'] !== 'db_sendigs_gl_ss' || $main['hostname'] !== $finance['hostname']
         || ($main['port'] ?? 3306) != ($finance['port'] ?? 3306)) {
         throw new RuntimeException('Expected consultant/finance/GL schemas on one server');

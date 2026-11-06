@@ -139,7 +139,7 @@ if (in_array('--integration', $argv, true)) {
     try {
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
         // This fixture connects only to the local Docker database, never the development config.
-        $db = new mysqli('mysql8', 'root', 'root', 'db_consultant_new');
+        $db = new mysqli('mysql8', 'root', 'root', 'db_labmania');
         $db->set_charset('utf8mb4');
         $db->query("CREATE TEMPORARY TABLE er_repair_test_journal (
             id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, no_jurnal VARCHAR(255), tgl_jurnal DATE,
@@ -217,7 +217,7 @@ if (in_array('--integration', $argv, true)) {
         echo "PASS MySQL receipt-write rollback and refusal to restore changed/posted data\n";
         $lockTable = 'er_repair_lock_test_' . bin2hex(random_bytes(5));
         $db->query("CREATE TABLE `$lockTable` LIKE er_repair_test_journal");
-        $secondConnection = new mysqli('mysql8', 'root', 'root', 'db_consultant_new');
+        $secondConnection = new mysqli('mysql8', 'root', 'root', 'db_labmania');
         $lockedStore = new class($db, $lockTable) extends ExpenseJournalStore {
             public $fixture;
             private $table;

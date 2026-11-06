@@ -1,10 +1,13 @@
 <?php if (!defined('BASEPATH')) exit('No direct script access allowed');
+require_once APPPATH . 'libraries/PHPExcel.php';
 date_default_timezone_set("Asia/Bangkok");
 
 function get_root3()
 {
 	$explodeURL = explode('/', base_url());
-	return $_SERVER['DOCUMENT_ROOT'] . '/' . $explodeURL[3];
+	$sub = $explodeURL[3] ?? '';
+	$docRoot = $_SERVER['DOCUMENT_ROOT'] ?? (defined('FCPATH') ? FCPATH : '');
+	return rtrim($docRoot, '/') . ($sub !== '' ? '/' . $sub : '');
 }
 
 function get_root3LinkLive()

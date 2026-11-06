@@ -33,8 +33,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  **/
+#[\AllowDynamicProperties]
 class MX_Loader extends CI_Loader
 {
+	public $controller;
 	protected $_module;
 
 	public $_ci_plugins = array();
@@ -151,7 +153,7 @@ class MX_Loader extends CI_Loader
 		if (isset($this->_ci_classes[$class]) && $_alias = $this->_ci_classes[$class])
 			return $this;
 
-		($_alias = strtolower($object_name)) or $_alias = $class;
+		$_alias = ($object_name !== NULL && $object_name !== '') ? strtolower($object_name) : $class;
 
 		list($path, $_library) = Modules::find($library, $this->_module, 'libraries/');
 

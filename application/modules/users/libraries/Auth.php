@@ -65,8 +65,7 @@ class Auth
     public function login($username = "", $password = "")
     {
         if ($this->is_login()) {
-            redirect('/');
-            // redirect('https://sentral.dutastudy.com/metalsindo_dev/');
+            redirect('dashboard_labmania');
         }
 
         $user     = $this->ci->users_model->find_by(array('username' => $username));
@@ -109,12 +108,11 @@ class Auth
             $this->ci->users_model->update($this->user_id(), array('login_terakhir' => date('Y-m-d H:i:s'), 'ip' => $ip_address));
 
             $requested_page = $this->ci->session->userdata('requested_page');
-            if ($requested_page != '') {
-                //redirect($requested_page);
-                redirect("/");
+            if ($requested_page != '' && strpos($requested_page, 'login') === false) {
+                redirect($requested_page);
             }
 
-            redirect("/");
+            redirect('dashboard_labmania');
         }
 
         $this->ci->template->set_message(lang('users_wrong_password'), 'danger');

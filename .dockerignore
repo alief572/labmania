@@ -1,0 +1,14 @@
+.git
+.gitignore
+.dockerignore
+.vscode
+.kiro
+node_modules
+bower_components
+nbproject
+tests
+graphify-out
+specs
+md
+*.log
+docker/mysql/data

@@ -12,6 +12,7 @@
  * @license			http://philsturgeon.co.uk/code/dbad-license
  * @link			http://getsparks.org/packages/template/show
  */
+#[\AllowDynamicProperties]
 class Template
 {
 	private $_module = '';
@@ -28,6 +29,7 @@ class Template
 	private $_page_icon = '';
 	private $_metadata = array();
 
+	private $_body = '';
 	private $_partials = array();
 
 	private $_breadcrumbs = array();
@@ -793,7 +795,7 @@ class Template
 
 		// If message is empty, check the $tMessage property.
 		if (empty($tmessage)) {
-			if (empty(self::$tMessage['tmessage'])) {
+			if (empty(self::$tMessage) || empty(self::$tMessage['tmessage'])) {
 				return '';
 			}
 
