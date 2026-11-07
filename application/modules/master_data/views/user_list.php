@@ -19,10 +19,10 @@
       <option value="on">Aktif</option>
       <option value="off">Nonaktif</option>
     </select>
-    <select class="input sm" id="u-dept" aria-label="Filter department">
-      <option value="all">Semua department</option>
-      <?php foreach (array_keys($department) as $d): ?>
-        <option value="<?= htmlspecialchars($d); ?>"><?= htmlspecialchars($d); ?></option>
+    <select class="input sm" id="u-role" aria-label="Filter role">
+      <option value="all">Semua role</option>
+      <?php foreach ($groups as $g): ?>
+        <option value="<?= (int)$g['id_group']; ?>"><?= htmlspecialchars($g['nm_group']); ?></option>
       <?php endforeach; ?>
     </select>
   </div>
@@ -31,12 +31,11 @@
 
 <script>
 var GROUPS = <?= json_encode($groups); ?>;
-var DEPARTMENT = <?= json_encode($department); ?>;
-var JABATAN = <?= json_encode($jabatan); ?>;
 var GENDER = <?= json_encode($gender); ?>;
 var AGAMA = <?= json_encode($agama); ?>;
 var EMP_TYPE = <?= json_encode($tipe); ?>;
 var CAN_LOG = <?= can_view_activity_log() ? 'true' : 'false'; ?>;
+var SUPERADMIN = 1; // id_group Superadmin (bawaan sistem)
 var CAN_UBAH = <?= lm_can('master_data.users', 'ubah') ? 'true' : 'false'; ?>, CAN_AKTIF = <?= lm_can('master_data.users', 'aktif') ? 'true' : 'false'; ?>;
 var LOG_URL = <?= json_encode(site_url('activity_log_labmania')); ?>;
 
@@ -67,11 +66,11 @@ function field(label, control, cls) { return '<div class="field ' + (cls || '') 
 // ---------- Daftar ----------
 var USER_DT = null;
 
-// Daftar memakai DataTables server-side (users_data); filter Status & Department ikut dikirim ke server.
+// Daftar memakai DataTables server-side (users_data); filter Status & Role ikut dikirim ke server.
 function renderUsers() {
   document.getElementById('u-list').innerHTML =
-    '<div class="table-wrap"><table class="table" id="data-table" data-filter="#u-status,#u-dept" data-filter-name="status,dept"><thead><tr>' +
-      '<th class="num">No</th><th class="nowrap">Employee ID</th><th>Nama</th><th>Department / Division</th><th>Jabatan</th><th>Akun login</th><th class="nowrap">Status</th><th class="hist">Dibuat / Diubah</th><th class="act">Action</th>' +
+    '<div class="table-wrap"><table class="table" id="data-table" data-filter="#u-status,#u-role" data-filter-name="status,role"><thead><tr>' +
+      '<th class="num">No</th><th class="nowrap">Employee ID</th><th>Nama</th><th>Role</th><th>Akun login</th><th class="nowrap">Status</th><th class="hist">Dibuat / Diubah</th><th class="act">Action</th>' +
     '</tr></thead><tbody></tbody></table></div>';
   // Ikon gear diisi klien setelah tiap draw (server hanya mengirim tombolnya).
   $('#data-table').on('draw.dt', function () { $('#data-table .gear[data-uact="gear"]:empty').html(GEAR); });
@@ -169,17 +168,53 @@ function postJson(url, data, form, done) {
 }
 
 // ---------- Form Tambah / Edit User (FR-37, FR-38) ----------
-function divOptions(dept, sel) {
-  return '<option value="">Choose one</option>' + (dept ? opts(DEPARTMENT[dept] || [], sel) : '');
+// Override Permission (FR-65): hak role tampil tercentang dan terkunci; hak lain dapat ditambahkan
+function loadOverride(form, idUser) {
+  var gid = form.elements.id_group.value, body = form.querySelector('[data-ovr-body]');
+  if (!gid || String(gid) === String(SUPERADMIN)) {
+    body.innerHTML = '<p class="muted">' + (gid ? 'Superadmin sudah memiliki semua hak.' : 'Pilih Role terlebih dahulu.') + '</p>';
+    countOverride(form);
+    return;
+  }
+  body.innerHTML = '<p class="muted">Memuat…</p>';
+  $.post(<?= json_encode(site_url('master_data/override_matrix')); ?>, { id_group: gid, id_user: idUser || '' }, function (res) {
+    var cols = Object.keys(res.aksi), h = '<div style="max-height:260px;overflow:auto"><table class="table"><thead><tr><th>Menu</th>' +
+      cols.map(function (k) { return '<th class="nowrap">' + esc(res.aksi[k]) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    res.matrix.forEach(function (mod) {
+      h += '<tr><td colspan="' + (cols.length + 1) + '"><b>' + esc(mod.judul) + '</b></td></tr>';
+      mod.items.forEach(function (m) {
+        h += '<tr data-menu="' + m.id + '"><td>' + esc(m.judul) + '</td>' + cols.map(function (k) {
+          if (m.berlaku.indexOf(k) < 0) return '<td class="muted">—</td>';
+          var dariRole = m.role.indexOf(k) >= 0, on = dariRole || m.override.indexOf(k) >= 0;
+          return '<td><input type="checkbox" data-aksi="' + k + '" ' + (dariRole ? 'data-role="1" disabled title="Dari role"' : 'name="override[' + m.id + '][]" value="' + k + '"') +
+            (on ? ' checked' : '') + ' aria-label="' + esc(m.judul + ' — ' + res.aksi[k]) + '"></td>';
+        }).join('') + '</tr>';
+      });
+    });
+    body.innerHTML = h + '</tbody></table></div>';
+    countOverride(form);
+  }, 'json').fail(function () { body.innerHTML = '<p class="muted">Gagal memuat Override Permission.</p>'; });
+}
+function countOverride(form) {
+  form.querySelector('[data-ovr-n]').textContent = form.querySelectorAll('[data-ovr-body] input[name]:checked').length;
+}
+function onOverrideChange(e, form) {
+  var t = e.target, tr = t.closest('tr');
+  if (!t.dataset.aksi) return;
+  var lihat = tr.querySelector('input[data-aksi="lihat"]');
+  if (t.dataset.aksi === 'lihat' && !t.checked) tr.querySelectorAll('input[name]').forEach(function (x) { x.checked = false; });
+  else if (t.checked && lihat && !lihat.disabled) lihat.checked = true;
+  countOverride(form);
 }
 function userForm(rec) {
-  var r = rec || { kode: '', nama: '', nik: '', tmp_lahir: '', tgl_lahir: '', department: '', division: '', jabatan: '', gender: '', agama: '',
-    telp: '', email: '', alamat: '', npwp: '', tgl_masuk: '', tipe: '', jobdesc: '', aktif: 1, id_user: null, username: '', id_group: '' };
+  var r = rec || { kode: '', nama: '', nik: '', tmp_lahir: '', tgl_lahir: '', id_group: '', gender: '', agama: '',
+    telp: '', email: '', alamat: '', npwp: '', tgl_masuk: '', tipe: '', jobdesc: '', aktif: 1, id_user: null, username: '' };
   var hasAkun = !!r.id_user;
   var akunOn = rec ? hasAkun : true;
   function inp(name, val, extra) { return '<input class="input" name="' + name + '" value="' + esc(val) + '" ' + (extra || '') + '>'; }
   function sel(name, list, val) { return '<select class="input" name="' + name + '"><option value="">Choose one</option>' + opts(list, val) + '</select>'; }
-  var groupOpts = '<option value="">Choose one</option>' + GROUPS.map(function (g) {
+  var isSuper = String(r.id_group) === String(SUPERADMIN);
+  var groupOpts = '<option value="">Choose one</option>' + GROUPS.filter(function (g) { return isSuper || String(g.id_group) !== String(SUPERADMIN); }).map(function (g) {
     return '<option value="' + g.id_group + '"' + (String(g.id_group) === String(r.id_group) ? ' selected' : '') + '>' + esc(g.nm_group) + '</option>';
   }).join('');
   var aktif = r.aktif == 1;
@@ -193,9 +228,7 @@ function userForm(rec) {
         field('Personal ID Number', inp('nik', r.nik, 'placeholder="NIK" inputmode="numeric" maxlength="16"')) +
         field('Birth Place', inp('tmp_lahir', r.tmp_lahir, 'placeholder="Birth Place" maxlength="50"')) +
         field('Birth Date', inp('tgl_lahir', r.tgl_lahir, 'type="date"')) +
-        field('Department' + REQ, '<select class="input" name="dept"><option value="">Choose one</option>' + opts(Object.keys(DEPARTMENT), r.department) + '</select>') +
-        field('Division' + REQ, '<select class="input" name="div" ' + (r.department ? '' : 'disabled') + '>' + divOptions(r.department, r.division) + '</select><span class="hint ' + (r.department ? 'hidden' : '') + '" data-divhint>Pilih Department terlebih dahulu.</span>') +
-        field('Jabatan' + REQ, sel('jabatan', JABATAN, r.jabatan)) +
+        field('Role' + REQ, '<select class="input" name="id_group"' + (isSuper ? ' disabled' : '') + '>' + groupOpts + '</select>' + (isSuper ? '<span class="hint">Role Superadmin tidak dapat diganti</span>' : '')) +
         field('Gender' + REQ, sel('gender', GENDER, r.gender)) +
         field('Religion', sel('agama', AGAMA, r.agama)) +
       '</div><div>' +
@@ -214,27 +247,27 @@ function userForm(rec) {
         (hasAkun ? '<span class="hint">Akun yang sudah ada tidak dihapus; nonaktifkan lewat Status.</span>' : ''), 'span2') +
       '<div class="grid2 span2 ' + (akunOn ? '' : 'hidden') + '" data-akun>' +
         field('Username' + REQ, inp('username', r.username, 'autocomplete="off" maxlength="50" placeholder="huruf kecil, angka, titik"')) +
-        field('Permission Group' + REQ, '<select class="input" name="id_group">' + groupOpts + '</select>') +
         field('Password' + (hasAkun ? '' : REQ), '<input class="input" name="password" type="password" autocomplete="new-password">' + (hasAkun ? '<span class="hint">Kosongkan bila tidak diubah</span>' : '<span class="hint">Minimal 8 karakter</span>')) +
         field('Konfirmasi Password' + (hasAkun ? '' : REQ), '<input class="input" name="password2" type="password" autocomplete="new-password">') +
+      '<details class="span2"><summary>Override Permission — <span data-ovr-n>0</span> hak tambahan</summary>' +
+        '<p class="hint">Menambah hak menu di luar hak Role. Hak dari Role tercentang dan terkunci; Override tidak mengurangi hak Role.</p>' +
+        '<div data-ovr-body></div></details>' +
       '</div></div>',
     onMount: function (form) {
       var f = form.elements;
-      f.dept.addEventListener('change', function (e) {
-        f.div.innerHTML = divOptions(e.target.value, '');
-        f.div.disabled = !e.target.value;
-        form.querySelector('[data-divhint]').classList.toggle('hidden', !!e.target.value);
-      });
       f.akun.addEventListener('change', function (e) { form.querySelector('[data-akun]').classList.toggle('hidden', !e.target.checked); });
+      f.id_group.addEventListener('change', function () { loadOverride(form, r.id_user); });
+      form.addEventListener('change', function (e) { onOverrideChange(e, form); });
+      loadOverride(form, r.id_user);
     },
     onSave: function (f, form) {
       var v = {};
-      ['kode', 'nama', 'nik', 'tmp_lahir', 'tgl_lahir', 'dept', 'div', 'jabatan', 'gender', 'agama', 'telp', 'email', 'alamat', 'npwp', 'tgl_masuk', 'tipe', 'jobdesc', 'username', 'id_group'].forEach(function (k) { v[k] = f[k].value.trim(); });
+      ['kode', 'nama', 'nik', 'tmp_lahir', 'tgl_lahir', 'id_group', 'gender', 'agama', 'telp', 'email', 'alamat', 'npwp', 'tgl_masuk', 'tipe', 'jobdesc', 'username'].forEach(function (k) { v[k] = f[k].value.trim(); });
       v.aktif = f.aktif.value;
       var akun = f.akun.checked || hasAkun;
       var pw = f.password.value, pw2 = f.password2.value;
       var ok = true;
-      var LBL = { kode: 'Employee ID', nama: 'Employee Name', dept: 'Department', div: 'Division', jabatan: 'Jabatan', gender: 'Gender', telp: 'Phone Number', tipe: 'Employee Type' };
+      var LBL = { kode: 'Employee ID', nama: 'Employee Name', id_group: 'Role', gender: 'Gender', telp: 'Phone Number', tipe: 'Employee Type' };
       Object.keys(LBL).forEach(function (k) { if (!v[k]) ok = invalid(f[k], LBL[k] + ' wajib diisi'); });
       if (v.nik && !/^\d{16}$/.test(v.nik)) ok = invalid(f.nik, 'NIK 16 digit angka');
       if (v.telp && !/^\+?\d{9,15}$/.test(v.telp)) ok = invalid(f.telp, 'Nomor hanya angka (boleh diawali +), 9–15 digit');
@@ -245,12 +278,12 @@ function userForm(rec) {
         var needPw = !hasAkun;
         if (!v.username) ok = invalid(f.username, 'Username wajib diisi');
         else if (!/^[a-z0-9._]{3,50}$/.test(v.username)) ok = invalid(f.username, 'Huruf kecil, angka, titik, atau garis bawah; 3–50 karakter');
-        if (!v.id_group) ok = invalid(f.id_group, 'Permission Group wajib diisi');
         if ((needPw || pw) && pw.length < 8) ok = invalid(f.password, 'Password minimal 8 karakter');
         if ((needPw || pw) && pw !== pw2) ok = invalid(f.password2, 'Konfirmasi password tidak sama');
       }
       if (!ok) return false;
-      var data = $.extend({ id: rec ? rec.id : '', akun: akun ? 1 : 0, password: pw, password2: pw2 }, v);
+      var data = $.param($.extend({ id: rec ? rec.id : '', akun: akun ? 1 : 0, password: pw, password2: pw2 }, v)) +
+        (akun ? '&' + $(form).find('[data-ovr-body] input[name]:checked').serialize() : '');
       postJson('<?= site_url("master_data/save_user"); ?>', data, form);
     }
   });

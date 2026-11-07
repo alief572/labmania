@@ -50,8 +50,12 @@ if (!function_exists('lm_access_map')) {
                 ->join('ms_menu m', 'm.id = a.id_menu AND m.aktif = 1')
                 ->join('user_groups ug', 'ug.id_group = a.id_group')
                 ->where('ug.id_user', $uid)->get()->result_array();
+            // Override Permission per user (FR-65): hanya menambah hak role
+            $extra = $ci->db->select('m.kode, a.aksi')->from('ms_user_akses a')
+                ->join('ms_menu m', 'm.id = a.id_menu AND m.aktif = 1')
+                ->where('a.id_user', $uid)->get()->result_array();
             $map = [];
-            foreach ($rows as $r) $map[$r['kode']][$r['aksi']] = true;
+            foreach (array_merge($rows, $extra) as $r) $map[$r['kode']][$r['aksi']] = true;
             $cache[$uid] = $map;
         }
         return $cache[$uid];
