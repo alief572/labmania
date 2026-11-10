@@ -53,6 +53,7 @@ class Master_data extends Labmania_Controller
         'toggle_template_konfirmasi' => ['master_data.template_konfirmasi', 'aktif', true],
         'users' => ['master_data.users', 'lihat'],
         'users_data' => ['master_data.users', 'lihat', true],
+        'override_matrix' => ['master_data.users', 'lihat', true],
         'save_user' => ['master_data.users', 'simpan', true],
         'toggle_user' => ['master_data.users', 'aktif', true],
         'reset_password_user' => ['master_data.users', 'ubah', true],
@@ -305,14 +306,13 @@ class Master_data extends Labmania_Controller
     public function users_data()
     {
         list($t, $f, $rows) = $this->md_model->ssp_datatable('ms_user_karyawan', 'e', $this->ssp_params(), [
-            'select'  => 'e.*, u.username, g.id_group, g.nm_group',
+            'select'  => 'e.*, u.username, g.nm_group, (SELECT COUNT(*) FROM ms_user_akses oa WHERE oa.id_user = e.id_user) AS n_override',
             'join'    => [['users u', 'u.id_user = e.id_user AND IFNULL(u.deleted, 0) = 0', false],
-                          ['(SELECT id_user, MIN(id_group) AS id_group FROM user_groups GROUP BY id_user) ug', 'ug.id_user = u.id_user', false],
-                          ['`groups` g', 'g.id_group = ug.id_group', false]],
+                          ['`groups` g', 'g.id_group = e.id_group', false]],
             'status'  => 'e.aktif',
-            'filters' => ['dept' => 'e.department'],
-            'search'  => ['e.kode', 'e.nama', 'e.email', 'e.telp', 'u.username'],
-            'order'   => [1 => 'e.kode', 2 => 'e.nama', 3 => 'e.department', 4 => 'e.jabatan', 5 => 'u.username', 6 => 'e.aktif'],
+            'filters' => ['role' => 'e.id_group'],
+            'search'  => ['e.kode', 'e.nama', 'e.email', 'e.telp', 'u.username', 'g.nm_group'],
+            'order'   => [1 => 'e.kode', 2 => 'e.nama', 3 => 'g.nm_group', 4 => 'u.username', 5 => 'e.aktif'],
             'default' => 'e.id',
         ]);
         $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
@@ -331,9 +331,8 @@ class Master_data extends Labmania_Controller
                 $i + 1,
                 '<span class="code">' . $e($r['kode'] ?: '—') . '</span>',
                 $e($r['nama']) . '<br><span class="muted">' . $e($r['email'] ?: $r['telp']) . '</span>',
-                $e($r['department'] ?: '—') . '<br><span class="muted">' . $e($r['division']) . '</span>',
-                $e($r['jabatan'] ?: '—') . '<br><span class="muted">' . $e($r['tipe']) . '</span>',
-                $r['id_user'] ? '<span class="code">' . $e($r['username']) . '</span><br><span class="muted">' . $e($r['nm_group']) . '</span>' : '<span class="muted">Tanpa akun</span>',
+                $e($r['nm_group'] ?: '—') . '<br><span class="muted">' . $e($r['tipe']) . '</span>',
+                $r['id_user'] ? '<span class="code">' . $e($r['username']) . '</span>' . ((int)$r['n_override'] ? '<br><span class="muted">Override ' . (int)$r['n_override'] . ' hak</span>' : '') : '<span class="muted">Tanpa akun</span>',
                 $this->badge_aktif($on),
                 hist_cell($r),
                 $menu ? '<button class="gear" data-uact="gear" aria-haspopup="menu" aria-label="Opsi"></button><template>' . $menu . '</template>' : '',
@@ -793,13 +792,18 @@ class Master_data extends Labmania_Controller
         $m = $this->md_model;
         $data = [
             'groups'     => $m->get_groups(),
-            'department' => $m->user_department,
-            'jabatan'    => $m->user_jabatan,
             'gender'     => $m->user_gender,
             'agama'      => $m->user_agama,
             'tipe'       => $m->user_tipe,
         ];
         $this->template->render('user_list', $data);
+    }
+
+    // Matriks Override Permission untuk Role terpilih (hak role tampil terkunci)
+    public function override_matrix()
+    {
+        $res = $this->md_model->override_matrix((int)$this->input->post('id_group'), (int)$this->input->post('id_user'));
+        return $this->output->set_content_type('application/json')->set_output(json_encode(['matrix' => $res, 'aksi' => lm_aksi_list()]));
     }
 
     public function save_user()

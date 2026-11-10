@@ -925,30 +925,95 @@ class Master_data_model extends CI_Model
     // =========================================================================
 
     // Daftar pilihan contoh (Q-25: isi final menyusul dari data Labmania)
-    public $user_department = [
-        'Manajemen'            => ['Direksi'],
-        'Marketing & Sales'    => ['Sales Public', 'Sales B2B', 'Marketing'],
-        'Operasional Training' => ['Penyelenggaraan', 'Trainer'],
-        'Keuangan & Admin'     => ['Keuangan', 'Administrasi'],
-    ];
-    public $user_jabatan = ['Direktur', 'Manager', 'Supervisor', 'Staff', 'Admin'];
     public $user_gender  = ['Laki-laki', 'Perempuan'];
     public $user_agama   = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'];
     public $user_tipe    = ['Tetap', 'Kontrak', 'Magang', 'Freelance'];
+
+    const ID_SUPERADMIN = 1; // group admin = Superadmin (FR-56): bawaan sistem, tidak dipilih untuk user lain
 
     public function get_groups()
     {
         return $this->db->select('id_group, nm_group')->order_by('id_group', 'ASC')->get('groups')->result_array();
     }
 
+    // Matriks Override Permission satu user: modul -> menu -> aksi berlaku, hak dari role ($idGroup), hak override ($idUser)
+    public function override_matrix($idGroup, $idUser)
+    {
+        $berlaku = [];
+        foreach ($this->db->get('ms_menu_aksi')->result_array() as $r) $berlaku[(int)$r['id_menu']][] = $r['aksi'];
+        $role = [];
+        foreach ($this->db->get_where('ms_group_akses', ['id_group' => (int)$idGroup])->result_array() as $r) $role[(int)$r['id_menu']][$r['aksi']] = true;
+        $ovr = [];
+        if ($idUser) foreach ($this->db->get_where('ms_user_akses', ['id_user' => (int)$idUser])->result_array() as $r) $ovr[(int)$r['id_menu']][$r['aksi']] = true;
+
+        $menus = $this->db->where('aktif', 1)->order_by('urutan', 'ASC')->order_by('id', 'ASC')->get('ms_menu')->result_array();
+        $byParent = [];
+        foreach ($menus as $m) $byParent[(int)$m['parent_id']][] = $m;
+
+        $out = [];
+        foreach ($byParent[0] ?? [] as $top) {
+            $rows = [];
+            foreach (($top['link'] === '#') ? ($byParent[(int)$top['id']] ?? []) : [$top] as $m) {
+                $mid = (int)$m['id'];
+                if (empty($berlaku[$mid])) continue;
+                $rows[] = ['id' => $mid, 'judul' => $m['judul'], 'berlaku' => $berlaku[$mid], 'role' => array_keys($role[$mid] ?? []), 'override' => array_keys($ovr[$mid] ?? [])];
+            }
+            if ($rows) $out[] = ['judul' => $top['judul'], 'items' => $rows];
+        }
+        return $out;
+    }
+
+    // Simpan override ($akses: [id_menu => [aksi]]); hak yang sudah dari role dibuang, aksi apa pun menyertakan Lihat. Mengembalikan [tersimpan, perubahan-log] atau string galat.
+    private function save_override($idUser, $idGroup, $akses)
+    {
+        $berlaku = [];
+        foreach ($this->db->get('ms_menu_aksi')->result_array() as $r) $berlaku[(int)$r['id_menu']][$r['aksi']] = true;
+        $judul = [];
+        foreach ($this->db->get('ms_menu')->result_array() as $m) $judul[(int)$m['id']] = $m['judul'];
+        $role = [];
+        foreach ($this->db->get_where('ms_group_akses', ['id_group' => (int)$idGroup])->result_array() as $r) $role[(int)$r['id_menu']][$r['aksi']] = true;
+
+        $baru = [];
+        foreach ($akses as $idMenu => $list) {
+            $idMenu = (int)$idMenu;
+            if (!isset($judul[$idMenu]) || !is_array($list)) return 'Data Override Permission tidak valid';
+            foreach ($list as $a) {
+                if (!is_string($a) || empty($berlaku[$idMenu][$a])) return 'Data Override Permission tidak valid';
+                $baru[$idMenu][$a] = true;
+                if (!empty($berlaku[$idMenu]['lihat'])) $baru[$idMenu]['lihat'] = true;
+            }
+        }
+        foreach ($baru as $idMenu => $list) {
+            foreach ($list as $a => $_) if (!empty($role[$idMenu][$a])) unset($baru[$idMenu][$a]);
+        }
+
+        $lama = [];
+        foreach ($this->db->get_where('ms_user_akses', ['id_user' => (int)$idUser])->result_array() as $r) $lama[(int)$r['id_menu']][$r['aksi']] = true;
+
+        $label = lm_aksi_list();
+        $changes = [];
+        foreach ($berlaku as $idMenu => $aksiList) {
+            foreach ($aksiList as $a => $_) {
+                $o = !empty($lama[$idMenu][$a]);
+                $n = !empty($baru[$idMenu][$a]);
+                if ($o !== $n) $changes['Override ' . $judul[$idMenu] . ' - ' . ($label[$a] ?? $a)] = ['old' => $o ? 'Ya' : 'Tidak', 'new' => $n ? 'Ya' : 'Tidak'];
+            }
+        }
+
+        $this->db->delete('ms_user_akses', ['id_user' => (int)$idUser]);
+        foreach ($baru as $idMenu => $list) {
+            foreach (array_keys($list) as $a) $this->db->insert('ms_user_akses', ['id_user' => (int)$idUser, 'id_menu' => $idMenu, 'aksi' => $a]);
+        }
+        return $changes;
+    }
+
     // Satu baris per karyawan (employees) + akun login (users) + group akses
     public function get_users($id = null)
     {
-        $this->db->select('e.*, u.username, g.id_group, g.nm_group', false);
+        $this->db->select('e.*, u.username, g.nm_group', false);
         $this->db->from('ms_user_karyawan e');
         $this->db->join('users u', 'u.id_user = e.id_user AND IFNULL(u.deleted, 0) = 0', 'left');
-        $this->db->join('(SELECT id_user, MIN(id_group) AS id_group FROM user_groups GROUP BY id_user) ug', 'ug.id_user = u.id_user', 'left', false);
-        $this->db->join('`groups` g', 'g.id_group = ug.id_group', 'left', false);
+        $this->db->join('`groups` g', 'g.id_group = e.id_group', 'left', false);
 
         if ($id) return $this->db->where('e.id', $id)->get()->row_array();
         return $this->db->order_by('e.id', 'ASC')->get()->result_array();
@@ -969,19 +1034,18 @@ class Master_data_model extends CI_Model
         $hasAkun = $old && !empty($old['id_user']);
 
         // --- Validasi (FR-37, FR-38) ---
-        $req = ['kode' => 'Employee ID', 'nama' => 'Employee Name', 'dept' => 'Department', 'div' => 'Division',
-                'jabatan' => 'Jabatan', 'gender' => 'Gender', 'telp' => 'Phone Number', 'tipe' => 'Employee Type'];
+        $req = ['nama' => 'Employee Name', 'id_group' => 'Role'];
         foreach ($req as $k => $label) {
             if (($v[$k] ?? '') === '') return $fail($label . ' wajib diisi');
         }
-        if (empty($this->user_department[$v['dept']]) || !in_array($v['div'], $this->user_department[$v['dept']], true)) {
-            return $fail('Division tidak sesuai dengan Department');
-        }
-        if ($id) $v['kode'] = $old['kode'];
-        $dupKode = $this->db->where('kode', $v['kode'])->where('id <>', (int)$id)->count_all_results('ms_user_karyawan');
-        if ($dupKode) return $fail('Employee ID sudah dipakai');
+        $idGroup = (int)$v['id_group'];
+        $oldRole = $old ? (int)$old['id_group'] : 0;
+        if ($oldRole === self::ID_SUPERADMIN) $idGroup = self::ID_SUPERADMIN; // role Superadmin tidak dapat diganti
+        elseif ($idGroup === self::ID_SUPERADMIN) return $fail('Role Superadmin tidak dapat dipilih');
+        if (!$this->db->get_where('groups', ['id_group' => $idGroup])->row_array()) return $fail('Role tidak ditemukan');
+        $v['kode'] = $old ? $old['kode'] : null; // Employee ID: dibuat otomatis saat tambah (di bawah), tidak dapat diubah
         if (($v['nik'] ?? '') !== '' && !preg_match('/^\d{16}$/', $v['nik'])) return $fail('NIK 16 digit angka');
-        if (!preg_match('/^\+?\d{9,15}$/', $v['telp'])) return $fail('Nomor telepon hanya angka (boleh diawali +), 9–15 digit');
+        if (($v['telp'] ?? '') !== '' && !preg_match('/^\+?\d{9,15}$/', $v['telp'])) return $fail('Nomor telepon hanya angka (boleh diawali +), 9–15 digit');
         if (($v['email'] ?? '') !== '' && !filter_var($v['email'], FILTER_VALIDATE_EMAIL)) return $fail('Format email tidak valid');
         if (($v['npwp'] ?? '') !== '' && !preg_match('/^(\d{15}|\d{16})$/', preg_replace('/[.\-\s]/', '', $v['npwp']))) return $fail('NPWP 15 atau 16 digit angka');
         if (!empty($v['tgl_lahir']) && !empty($v['tgl_masuk']) && $v['tgl_masuk'] < $v['tgl_lahir']) return $fail('Join Date sebelum Birth Date');
@@ -991,7 +1055,6 @@ class Master_data_model extends CI_Model
             if (!preg_match('/^[a-z0-9._]{3,50}$/', $v['username'] ?? '')) return $fail('Username: huruf kecil, angka, titik, atau garis bawah; 3–50 karakter');
             $dupUser = $this->db->where('username', $v['username'])->where('id_user <>', $hasAkun ? (int)$old['id_user'] : 0)->count_all_results('users');
             if ($dupUser) return $fail('Username sudah dipakai');
-            if (empty($v['id_group']) || !$this->db->get_where('groups', ['id_group' => (int)$v['id_group']])->row_array()) return $fail('Group Akses wajib diisi');
             $needPw = !$hasAkun;
             if (($needPw || $pw !== '') && strlen($pw) < 8) return $fail('Password minimal 8 karakter');
             if (($needPw || $pw !== '') && $pw !== $pw2) return $fail('Konfirmasi password tidak sama');
@@ -1004,17 +1067,15 @@ class Master_data_model extends CI_Model
             'nik'        => ($v['nik'] ?? '') !== '' ? $v['nik'] : null,
             'tmp_lahir'  => ($v['tmp_lahir'] ?? '') ?: null,
             'tgl_lahir'  => ($v['tgl_lahir'] ?? '') ?: null,
-            'department' => $v['dept'],
-            'division'   => $v['div'],
-            'jabatan'    => $v['jabatan'],
-            'gender'     => $v['gender'],
+            'id_group'   => $idGroup,
+            'gender'     => ($v['gender'] ?? '') ?: null,
             'agama'      => ($v['agama'] ?? '') ?: null,
-            'telp'       => $v['telp'],
+            'telp'       => ($v['telp'] ?? '') ?: null,
             'email'      => ($v['email'] ?? '') ?: null,
             'alamat'     => ($v['alamat'] ?? '') ?: null,
             'npwp'       => ($v['npwp'] ?? '') ?: null,
             'tgl_masuk'  => ($v['tgl_masuk'] ?? '') ?: null,
-            'tipe'       => $v['tipe'],
+            'tipe'       => ($v['tipe'] ?? '') ?: null,
             'jobdesc'    => ($v['jobdesc'] ?? '') ?: null,
             'aktif'      => $aktif,
         ];
@@ -1025,6 +1086,9 @@ class Master_data_model extends CI_Model
             $dataEmp['updated_date'] = $now;
             $this->db->where('id', $id)->update('ms_user_karyawan', $dataEmp);
         } else {
+            // ponytail: MAX+1 tanpa lock; bentrok dua simpan serentak ditolak UNIQUE(kode) -> "Gagal menyimpan", ulangi. Tambah lock/sequence bila ramai.
+            $max = (int)$this->db->query("SELECT MAX(CAST(SUBSTRING(kode, 5) AS UNSIGNED)) AS m FROM ms_user_karyawan WHERE kode REGEXP '^USR-[0-9]+$'")->row()->m;
+            $v['kode'] = $dataEmp['kode'] = 'USR-' . str_pad($max + 1, 3, '0', STR_PAD_LEFT);
             $dataEmp['created_by']   = $userId;
             $dataEmp['created_date'] = $now;
             $this->db->insert('ms_user_karyawan', $dataEmp);
@@ -1037,7 +1101,7 @@ class Master_data_model extends CI_Model
                 'username'    => $v['username'],
                 'nm_lengkap'  => $v['nama'],
                 'email'       => ($v['email'] ?? '') ?: null,
-                'hp'          => $v['telp'],
+                'hp'          => ($v['telp'] ?? '') ?: null,
                 'alamat'      => ($v['alamat'] ?? '') ?: null,
                 'st_aktif'    => $aktif,
             ];
@@ -1053,8 +1117,16 @@ class Master_data_model extends CI_Model
                 $this->db->where('id', $id)->update('ms_user_karyawan', ['id_user' => $idUser]);
             }
             $this->db->where('id_user', $idUser)->delete('user_groups');
-            $this->db->insert('user_groups', ['id_user' => $idUser, 'id_group' => (int)$v['id_group']]);
-            $logAkun = ['username' => $v['username'], 'id_group' => (int)$v['id_group'], 'password_diganti' => $pw !== ''];
+            $this->db->insert('user_groups', ['id_user' => $idUser, 'id_group' => $idGroup]);
+            $logAkun = ['username' => $v['username'], 'password_diganti' => $pw !== ''];
+
+            // Override Permission (FR-65): tidak untuk Superadmin (sudah semua hak)
+            $ovr = $idGroup === self::ID_SUPERADMIN ? [] : (is_array($post['override'] ?? null) ? $post['override'] : []);
+            $detail = $this->save_override($idUser, $idGroup, $ovr);
+            if (is_string($detail)) {
+                $this->db->trans_rollback();
+                return $fail($detail);
+            }
         }
         $this->db->trans_complete();
         if (!$this->db->trans_status()) return $fail('Gagal menyimpan data user');
@@ -1064,6 +1136,7 @@ class Master_data_model extends CI_Model
         $payload = $isEdit
             ? ['old' => $old, 'new' => array_merge($old, $dataEmp, $logAkun)]
             : array_merge($dataEmp, $logAkun);
+        if (!empty($detail)) $payload['detail_changes'] = $detail;
         write_log('Master User', $isEdit ? 'Edit' : 'Tambah', ($isEdit ? 'Update' : 'Tambah') . ' User ' . $v['kode'], $payload, 'ms_user_karyawan', $id, $v['kode']);
 
         return ['status' => 1, 'msg' => 'User ' . $v['kode'] . ($isEdit ? ' diperbarui' : ' ditambahkan') . ($pw !== '' && $isEdit ? ' (password diganti)' : '')];
