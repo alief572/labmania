@@ -1,0 +1,264 @@
+# Kebutuhan Fungsional & Non-Fungsional — Modul Penjualan Program Labmania
+
+- **Versi:** **TO BE** draf 1g — 09-11-2026 (berangkat dari as is draf 12b, `docs/fr-nfr-penjualan-program.md`)
+- **Perubahan to be:** `input/Master - Buat Program/2026-11-07-surat-kerja-trainer/` — **Trainer wajib** dipilih (PJ-FR-23, Q-PJ-20), dipakai untuk **Surat Kerja Trainer** (`docs-to-be/fr-nfr-sales-order.md` SO-FR-11 – SO-FR-14). Paket Produk menampilkan **Varian** (`docs-to-be/fr-nfr.md` FR-01). Bagian lain sama dengan as is. **Reschedule** Penjualan Program Final sebelum ada quotation Deal, dengan alasan wajib dan riwayat jadwal `input/Master - Buat Program/2026-11-08-jawaban-reschedule/` (PJ-FR-26 – PJ-FR-28, UC-65). **Jam Pembelajaran** (JP) wajib diisi dan dicetak di Penawaran quotation `input/Master - Buat Program/2026-11-09-jam-pembelajaran-berlaku-quotation/` (PJ-FR-29).
+- **Sumber:** `input/Master - Buat Program/2026-10-23-requirements-3-modul/` (*Penjualan Program - Labmania.xlsx*: sheet *Requirements Quotation*, *Field Quotation*), `input/Master - Buat Program/2026-10-23-konfirmasi-3-modul/`, `input/Master - Buat Program/2026-10-23-arah-penjualan-program/`, `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/`, `input/Master - Buat Program/2026-10-23-simulasi-bep/`, `input/Master - Buat Program/2026-10-23-tanpa-diskon/`, `input/Master - Buat Program/2026-10-25-jalur-public-b2b/`, `input/Master - Buat Program/2026-10-25-quotation-so-persiapan-invoice/`, `input/Master - Buat Program/2026-10-25-surat-penawaran-rencana-aktual/`, `input/Master - Buat Program/2026-10-28-input-simulasi-company-b2b/`, `input/Master - Buat Program/2026-10-28-konfirmasi-simulasi-company-b2b/`, `input/Master - Buat Program/2026-10-28-jawaban-pertanyaan-program/`, `input/Master - Buat Program/2026-10-28-quotation-company-personal/`, `input/Master - Buat Program/2026-10-23-layout-program-public/` (layout), `input/Master - Buat Program/2026-10-29-master-trainer/`, `input/Master - Buat Program/2026-10-30-b2b-quotation-allin-min10/`
+- **Status:** DRAF TO BE — menunggu konfirmasi Labmania; as is `docs/fr-nfr-penjualan-program.md` tetap acuan program sampai to be disetujui
+- **Modul terkait:** hulu Master Program → `docs/fr-nfr-master-program.md`; Master Data → `docs/fr-nfr.md` (Master Rate); hilir **Quotation** untuk Public **dan** B2B → `docs-to-be/fr-nfr-quotation.md` `[QCP-1]`; ~~Sales Order tidak ada `[B2B-3]`~~ **to be:** quotation Deal membentuk **Sales Order**, dan tiap program mendapat **Surat Kerja Trainer** → `docs-to-be/fr-nfr-sales-order.md`
+- **Use case kanonis:** `docs/workbook.xlsx` sheet *UC Non-BPMN*
+- **ERD:** `docs/diagrams/erd.drawio` halaman *ERD Penjualan Program*
+- **Mockup:** `ui-mockup/produk/index.html` → modul Penjualan Program (layout form mengikuti `input/Master - Buat Program/labmania.html`)
+
+Penomoran memakai awalan **PJ-**. Kode UC satu urutan untuk seluruh workbook; kode yang dihapus tidak dipakai ulang.
+
+| Penanda | Arti |
+|---|---|
+| `[QT-n]` | *Penjualan Program - Labmania.xlsx* sheet *Requirements Quotation* bagian 1 No n |
+| `[QT-FIELD]` | sheet *Field Quotation* |
+| `[USR-3M]` | penjelasan user, `input/Master - Buat Program/2026-10-23-requirements-3-modul/` |
+| `[K3M-n]` | konfirmasi, `input/Master - Buat Program/2026-10-23-konfirmasi-3-modul/` — butir n |
+| `[ARH-n]` | arah modul, `input/Master - Buat Program/2026-10-23-arah-penjualan-program/` — butir n |
+| `[REV-n]` | revisi, `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/` — butir n |
+| `[SIMX]` | tampilan simulasi, `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/` (`input/Master - Buat Program/simulasi_hasil.html`) |
+| `[TDK-1]` | Penjualan Program tanpa diskon, `input/Master - Buat Program/2026-10-23-tanpa-diskon/` |
+| `[BEP-1]` | permintaan data BEP, `input/Master - Buat Program/2026-10-23-simulasi-bep/` |
+| `[JLR-n]` | jalur Public vs B2B, `input/Master - Buat Program/2026-10-25-jalur-public-b2b/` — pesan n |
+| `[INV-1]` | Quotation & SO = persiapan invoice, `input/Master - Buat Program/2026-10-25-quotation-so-persiapan-invoice/` |
+| `[SPA-n]` | surat penawaran & Rencana vs Aktual, `input/Master - Buat Program/2026-10-25-surat-penawaran-rencana-aktual/` — butir n |
+| `[ISC-n]` | input simulasi ganda & Company B2B, `input/Master - Buat Program/2026-10-28-input-simulasi-company-b2b/` — butir n |
+| `[KSC-n]` | konfirmasi (1) input simulasi ganda, (2) Company wajib B2B, `input/Master - Buat Program/2026-10-28-konfirmasi-simulasi-company-b2b/` |
+| `[JPP-n]` | jawaban 15 pertanyaan, `input/Master - Buat Program/2026-10-28-jawaban-pertanyaan-program/` — butir n |
+| `[B2B-n]` | `input/Master - Buat Program/2026-10-30-b2b-quotation-allin-min10/` — jawaban n: (1) B2B = company, harga per peserta / all-in di Quotation, (2) minimal 10 peserta dari Penjualan Program sampai Quotation, (3) Sales Order tidak ada, (4) B2B tanpa Formulir Konfirmasi, (5) B2B satu quotation |
+| `[BTS-1]` | hanya biaya terpakai yang tampil, `input/Master - Buat Program/2026-10-28-biaya-terpakai-saja/` |
+| `[QCP-1]` | Public & B2B masuk Quotation (ke Company atau Personal), `input/Master - Buat Program/2026-10-28-quotation-company-personal/` |
+| `[STD]` | standar proyek di `AGENTS.md` |
+| `[USULAN]` | usulan analis, **belum** dinyatakan klien |
+
+---
+
+## 1. Ringkasan Kebutuhan
+
+**Penjualan Program** = rencana **satu acara** dari satu Master Program. Pengguna **menarik Master
+Program berstatus Final**, memilih jenis **Public** atau **B2B**, mengisi tanggal dan lokasi acara,
+lalu **semua angka boleh disesuaikan** tanpa mengubah master `[QT-1]`, `[QT-5]`, `[USR-3M]`.
+
+**Penjualan Program adalah tahap menuju finalisasi** `[INV-1]`: peserta, harga, dan costing dirancang
+dan disesuaikan di sini sampai Final. **Quotation adalah persiapan invoice**; saat
+masuk ke sana, jumlah peserta **sudah fix** dan tidak ada lagi target atau simulasi `[INV-1]`.
+Penjualan Program **Final** dapat **dicetak sebagai surat penawaran**; Final adalah tanda verifikasi di
+sistem dan pemicu ke Quotation `[SPA-1]`. Selisih peserta rencana vs fix **diterima** dan dipantau lewat
+**laporan Rencana vs Aktual** `[SPA-2]`.
+
+> **To be 07-11-2026** `input/Master - Buat Program/2026-11-07-sales-order/`: Sales Order kembali ada sebagai dokumen setelah quotation Deal (`docs-to-be/fr-nfr-sales-order.md`); Penjualan Program tetap masuk ke Quotation seperti di bawah.
+>
+> **Pembaruan 30-10-2026** `[B2B-3]`: **Sales Order tidak ada.** Public **dan** B2B Final sama-sama masuk ke **Quotation**
+> (`docs/fr-nfr-quotation.md`) `[QCP-1]`: B2B ke Company penjualannya (satu quotation, minimal 10 peserta, harga per peserta
+> atau all-in), Public ke Company atau Personal (berkali-kali).
+
+**Form dan simulasi sama untuk Public dan B2B** `[JLR-1]`. Jenis hanya menentukan **jalur setelah
+Final** `[JLR-3]`:
+
+```
+Master Program (Final) ──tarik──► Penjualan Program (Draft → Final) ──┬─► Public: Quotation — 1 : banyak ─┐
+                                   menuju finalisasi                    │                                  ├─► Invoice (menyusul)
+                                   form & simulasi SAMA                 │   (peserta fix, persiapan invoice)│
+                                   jenis = penanda jalur                └─► B2B:    Quotation — 1 : 1     ─┘
+```
+
+| | **Public → Quotation** | **B2B → Quotation** |
+|---|---|---|
+| Relasi ke Penjualan Program | Satu Penjualan Program → **banyak** quotation `[JLR-2]` | Satu Penjualan Program → **satu** quotation `[B2B-5]` |
+| Customer | Company atau Personal (calon peserta) `[QDA-2]` | **Satu Company** dari Master Company, **dipilih di Penjualan Program** dan diteruskan ke Quotation `[ISC-2]`, `[B2B-1]` |
+| Jumlah peserta | Bebas | **Minimal 10** — target Penjualan Program dan peserta quotation `[B2B-2]` |
+| Harga | Per peserta; diskon Rupiah per peserta di Quotation `[QDA-3]` | Di Quotation: **per peserta** atau **all-in 1 company** `[B2B-1]` |
+
+Yang **tidak** ada di Penjualan Program: skema harga all-in / harga paket — ada di **Quotation** B2B `[B2B-1]`.
+Yang membedakan form B2B dari Public: **Company** (PJ-FR-22) `[ISC-2]` dan **target peserta minimal 10** (PJ-FR-25) `[B2B-2]`. Mandays tidak dipakai `[JLR-1]`.
+
+Menu: modul **Penjualan Program**, sub modul **Penjualan Program** (sub modul kedua, setelah Master Program;
+menu: Daftar Penjualan Program) `input/Master - Buat Program/2026-10-28-gabung-menu-penjualan-program/`. Laporan **Rencana vs Aktual** (PJ-FR-21) menggantikan konsep As Is vs Aktual `[SPA-2]`.
+
+### 1.1 Cakupan
+
+| Termasuk | Tidak termasuk (ditunda / modul lain) |
+|---|---|
+| Penjualan Program Public & B2B dari Master Program Final, satu form | Modul **Quotation** (Public & B2B): peserta, diskon, skema all-in B2B, Deal/Batal per peserta, surat quotation, realisasi peserta fix `[ARH-5]`, `[B2B-1]` |
+| Tanggal & lokasi acara; costing per penjualan (salin & sesuaikan) | Modul **Invoice** (menyusul) |
+| Simulasi per peserta (sama dengan Master Program) | Mandays `[ARH-1]`, `[JLR-1]`; diskon `[TDK-1]` |
+| Status Draft → Final, atau Batal; cetak surat penawaran | Approval `[QT-16]` |
+| Laporan Rencana vs Aktual (data aktual dari Quotation) | |
+
+### 1.2 Istilah
+
+| Istilah | Arti |
+|---|---|
+| Penjualan Program | Rencana satu acara dari satu Master Program, berjenis Public atau B2B, dengan Nomor Penjualan dan status. |
+| Jenis | Public atau B2B. Keduanya ke Quotation setelah Final; form sama, kecuali B2B wajib Company dan target peserta minimal 10. |
+| Titik impas (BEP) | Jumlah peserta minimal agar tidak rugi, dan harga minimal per peserta pada jumlah peserta yang direncanakan. |
+
+---
+
+## 2. Aktor
+
+| Aktor | Peran | Sumber |
+|---|---|---|
+| *Belum ditetapkan* (kemungkinan Sales / Marketing) | Menyusun, memfinalkan, dan membatalkan Penjualan Program | Q-PJ-02 |
+| Quotation (modul) | Menerima Penjualan Program Public dan B2B berstatus Final | `[QCP-1]`, `[B2B-3]` |
+
+---
+
+## 3. Tabel Use Case
+
+| Kode | Nama Use Case | User | Modul | Sub Modul | Input | Deskripsi | Output | Entity/Objek Terkait | FR |
+|---|---|---|---|---|---|---|---|---|---|
+| UC-22 | Menyusun Penjualan Program | Manajemen | Penjualan Program | Penjualan | Master Program Final, jenis (Public / B2B), tanggal & lokasi acara, durasi, target peserta, harga jual / peserta, target profit, costing | Aktor memilih Master Program Final dan jenis Public atau B2B. Sistem menyalin durasi, target peserta, harga jual standar, target profit, dan costing dari Master Program. Aktor mengisi tanggal & lokasi, menyesuaikan angka dan item biaya (semua nominal dapat diedit, termasuk biaya lain). Form dan simulasi sama untuk kedua jenis; simulasi dihitung ulang setiap angka berubah. Aktor menyimpan sebagai Draft. | Penjualan Program Draft dengan Nomor Penjualan | Penjualan Program, Biaya Penjualan Program, Master Program, Rate Fixed Cost, Rate Variable Cost, Satuan | PJ-FR-01 – PJ-FR-10 |
+| UC-29 | Memfinalkan Penjualan Program | Manajemen | Penjualan Program | Penjualan | Penjualan Program berstatus Draft | Aktor menekan "Finalkan". Sistem menampilkan popup ringkasan (jenis, durasi, target peserta, harga jual / peserta, pendapatan, HPP, profit, titik impas) dan peringatan bila profit minus. Setelah dikonfirmasi status menjadi Final dan terkunci; Public dan B2B siap masuk ke Quotation. | Penjualan Program Final, terkunci | Penjualan Program | PJ-FR-14 – PJ-FR-16 |
+| UC-30 | Mencetak Surat Penawaran | Manajemen | Penjualan Program | Penjualan | Penjualan Program berstatus Final | Aktor membuka Penjualan Program Final dan menekan "Cetak Surat Penawaran". Sistem menampilkan surat penawaran dari angka Final untuk dicetak. | Surat penawaran | Penjualan Program | PJ-FR-20 |
+| UC-31 | Melihat Laporan Rencana vs Aktual | Manajemen | Penjualan Program | Laporan | Penjualan Program Final, peserta fix dari Quotation | Aktor membuka laporan dan memilih penjualan / periode. Sistem menampilkan rencana, aktual, dan selisih (peserta, pendapatan, HPP, profit). | Laporan Rencana vs Aktual | Penjualan Program, Biaya Penjualan Program | PJ-FR-21 |
+| UC-26 | Membatalkan Penjualan Program | Manajemen | Penjualan Program | Penjualan | Penjualan Program berstatus Draft | Aktor memilih Batalkan dan mengonfirmasi. Status menjadi Batal dan tidak dapat diubah. | Penjualan Program berstatus Batal | Penjualan Program | PJ-FR-14, PJ-FR-17 |
+| UC-65 | Reschedule Penjualan Program | Sales/Marketing pemilik Penjualan Program | Penjualan Program | Penjualan | Penjualan Program Final tanpa quotation Deal; tanggal mulai baru, trainer, alasan, **file evidence** | Aktor menekan "Reschedule" di menu gear atau halaman Lihat. Sistem menampilkan jadwal sekarang dan jumlah reschedule sebelumnya. Aktor mengisi tanggal mulai baru (tanggal selesai dihitung dari durasi), memilih ulang trainer bila perlu, mengisi alasan, dan **mengunggah evidence** (JPG/PNG/DOC/DOCX/PDF), lalu menyimpan. Sistem menyimpan jadwal lama dan baru beserta alasan dan evidence, mengganti jadwal penjualan, dan mencatat Activity Log. | Jadwal baru dan satu baris riwayat reschedule | Penjualan Program, Penjualan Program Reschedule, Quotation | PJ-FR-26 – PJ-FR-28 |
+
+> Semua UC belum lolos uji admission no. 1 (aktor bernama) — Q-PJ-02.
+> Dihapus dan tidak dipakai ulang: UC-24, UC-25, UC-27 (draf 3); UC-28 (draf 4, `[REV-3]`); **UC-23** Menyusun Penjualan Program B2B (draf 8 — digabung ke UC-22 karena form sama `[JLR-1]`).
+
+---
+
+## 4. Kebutuhan Fungsional (FR)
+
+### 4.1 Penjualan Program
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PJ-FR-01 | **Daftar Penjualan Program**: No, Nomor, Jenis (Public/B2B; nama Company untuk B2B), Master Program (judul + nomor), Pelaksanaan (tanggal & lokasi), Target peserta, Harga jual / peserta, Status, Action (menu gear). Dapat disaring per jenis dan status. **To be:** filter **Tahun** dan **Bulan** menurut **tanggal mulai acara** program `input/Master - Buat Program/2026-11-07-filter-tahun-bulan/` (acuan tanggal acara dikonfirmasi `input/Master - Buat Program/2026-11-08-lingkup-pdf-filter-reschedule/`) + `[USULAN]` (pilihan tahun dari data, bulan Januari – Desember, masing-masing ada "Semua"; program tanpa tanggal hanya tampil bila keduanya Semua; kembali ke Semua saat pindah menu). | `[QT-1]`, `input/Master - Buat Program/2026-11-07-filter-tahun-bulan/` + `[USULAN]` (kolom daftar) |
+| PJ-FR-02 | Penjualan Program dibuat dengan memilih **Master Program berstatus Final**. Master Program Draft/Batal tidak muncul. | `[QT-1]`, `[QT-FIELD]` |
+| PJ-FR-03 | Pengguna memilih **jenis penjualan** (Public atau B2B) **saat membuat** Penjualan Program. Jenis hanya menentukan jalur setelah Final (PJ-FR-16); **form, field, dan simulasi sama** untuk kedua jenis. Jenis tidak dapat diubah setelah disimpan. | `[QT-2]`, `[JLR-1]`, `[JLR-3]` + `[USULAN]` (jenis terkunci) |
+| PJ-FR-04 | Saat Master Program dipilih, sistem **menyalin** durasi, target peserta, harga jual standar / peserta, target profit, dan semua item costing (termasuk biaya lain). | `[QT-1]`, `[QT-5]`, `[JLR-2]` |
+| PJ-FR-05 | Semua angka hasil salinan **dapat diedit**: target peserta, harga jual / peserta, target profit, nominal semua item biaya, menambah/menghapus item dari Master Rate, dan menambah biaya lain. Perubahan hanya berlaku di Penjualan Program itu dan **tidak mengubah Master Program**. **Durasi** tidak diedit manual — dihitung dari tanggal (PJ-FR-06) `[JPP-6]`. Hanya item **terpakai** yang tampil; item bernilai 0 dibuang saat disimpan (MP-FR-07) `[BTS-1]`. | `[QT-5]`, `[USR-3M]`, `[K3M-2]`, `[REV-1]`, `[JLR-2]` |
+| PJ-FR-06 | Penjualan Program memuat **tanggal mulai** dan **tanggal selesai** (keduanya wajib) dan **lokasi acara** (teks bebas). **Durasi (hari) dihitung otomatis** = tanggal selesai − tanggal mulai + 1, tidak diisi manual; sebelum tanggal lengkap, durasi sementara = durasi Master Program. Tanggal selesai tidak boleh sebelum tanggal mulai. | `[USR-3M]`, `[JPP-6]` + `[USULAN]` (rumus inklusif, tanggal wajib) |
+| PJ-FR-07 | **Nomor Penjualan** otomatis saat pertama disimpan, **dibedakan untuk Public dan B2B** `[JPP-7]`. Format sementara: Public `PJP-YYMM-NNN`, B2B `PJB-YYMM-NNN`, nomor urut ulang tiap bulan per jenis (mis. PJB-2610-001). Format final: Q-PJ-08. | `[JPP-7]` + `[USULAN]` (format) |
+| PJ-FR-08 | Costing memakai model dan layout yang sama dengan Master Program: Fixed Cost per Event/Day, Variable Cost per Peserta/Event dan Peserta/Day, biaya lain. Biaya trainer dihitung per event (1 event = 1 trainer). | `[QT-5]`, `fr-nfr.md` FR-25 |
+| PJ-FR-09 | Input harga (Public dan B2B): **Harga jual / peserta**, **Target peserta**, **Target profit** (opsional). Tidak ada skema all-in, harga paket, atau diskon di sini. Peserta, diskon, dan skema all-in B2B diisi di Quotation; Company B2B di PJ-FR-22; target peserta B2B minimal 10 (PJ-FR-25). Input simulasi (durasi, target peserta, harga jual / peserta, target profit) tampil **di bagian 1 dan di bagian 4 (Simulasi Hasil)**, terikat ke **satu nilai** — cukup diisi sekali di salah satu tempat, tempat lain ikut berubah. | `[QT-6]`, `[ARH-5]`, `[TDK-1]`, `[JLR-2]`, `[ISC-1]`, `[KSC-1]` |
+| PJ-FR-10 | **Simulasi** sama dengan Master Program (MP-FR-10, rumus `fr-nfr-master-program.md` bagian 8), untuk Public dan B2B: (1) **Titik impas (BEP)** — BEP jumlah peserta dan BEP harga jual; (2) **Hasil rencana** — Pendapatan, Biaya (HPP), Profit dan margin %, target profit tercapai/kurang, minimal peserta untuk capai target; (3) **Posisi di skala jumlah peserta**; (4) **Rincian** yang dapat dibuka/tutup, ditulis **sederhana dan mudah dipahami** (langkah hitung dalam bahasa sehari-hari, tabel profit pendek). Peringatan: profit minus, BEP di atas target peserta, profit < target profit. | `[QT-9]`, `[REV-4]`, `[BEP-1]`, `[SIMX]`, `[JLR-1]`, `[JLR-3]` |
+
+| PJ-FR-22 | Penjualan Program **B2B** memuat **Company** yang dipilih dari **Master Company** (`customer`, `fr-nfr.md` FR-30 – FR-32) di bagian 1. **Wajib** untuk B2B sebelum disimpan; Public tidak memilih company. Hanya Company **aktif** yang dapat dipilih `[JPP-3]`. Company tidak ditambah dari form ini — dibuat di Master Company, lalu dipilih `[JPP-2]`. Company dapat diubah selama Draft, terkunci setelah Final `[JPP-1]`. Company tampil di daftar (PJ-FR-01), popup Finalkan (PJ-FR-15), dan surat penawaran (PJ-FR-20), serta menjadi Company tujuan Quotation B2B `[B2B-1]`. | `[ISC-2]`, `[KSC-2]`, `[JPP-1]` – `[JPP-3]` + `[USULAN]` (isi tampilan) |
+| PJ-FR-23 | Penjualan Program (Public & B2B) memuat **Trainer** yang dipilih dari **Master Trainer** aktif (dropdown dapat dicari, menampilkan bidang keahlian) — **satu trainer** per penjualan, karena 1 event = 1 trainer `[K3M-1]`. **To be: wajib** dipilih saat membuat Penjualan Program (Public & B2B), karena trainer menjadi tujuan **Surat Kerja Trainer** `input/Master - Buat Program/2026-11-07-surat-kerja-trainer/` (menggantikan "Opsional `[USULAN]`"); simpan ditolak dengan pesan "Pilih trainer". Terkunci setelah Final seperti field lain. Trainer tampil di daftar Penjualan Program (kolom Pelaksanaan) dan surat penawaran `[USULAN]`. Honor Trainer tetap item Master Rate, tidak terhubung ke trainer (Q-PJ-20). | `input/Master - Buat Program/2026-10-29-master-trainer/`, `[K3M-1]` |
+| PJ-FR-24 | Penjualan Program memuat **Waktu** pelaksanaan (teks, mis. "09.00–15.15 WIB"), opsional; dicetak di Penawaran (Deskripsi) dan Formulir Konfirmasi ("pukul …") quotation. | `input/Master - Buat Program/2026-10-29-cetak-quotation-snk-konfirmasi/` + `[USULAN]` (field di Penjualan Program, Q-PJ-21) |
+| PJ-FR-25 | Penjualan Program **B2B**: **Target peserta minimal 10**, berlaku sampai Quotation (peserta quotation B2B minimal 10, QTN-FR-21). Tidak dapat disimpan bila target < 10; target bawaan dari Master Program di bawah 10 dinaikkan ke 10 saat jenis B2B dipilih `[USULAN]`. Public tanpa batas minimal. | `[B2B-2]`, `[JPP-13]` + `[USULAN]` (naik otomatis) |
+
+> PJ-FR-11 – PJ-FR-13 (Company, skema harga, perhitungan B2B) **dihapus** pada draf 8 `[JLR-2]` dan tidak dipakai ulang; skema all-in kini di Quotation B2B (QTN-FR-20) `[B2B-1]`; Sales Order tidak ada `[B2B-3]`.
+
+### 4.2 Status
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PJ-FR-14 | Status: **Draft → Final**, atau **Batal** (bagian 6). Penjualan baru tersimpan Draft; selama Draft semua isian dapat diubah. Tidak ada approval. | `[ARH-4]`, `[QT-16]` |
+| PJ-FR-15 | Aksi **"Finalkan"** memunculkan popup ringkasan (jenis, durasi, target peserta, harga jual / peserta, pendapatan, HPP, profit, titik impas) dan peringatan bila profit minus. Setelah dikonfirmasi status **Final** dan Penjualan Program **terkunci**. | `[ARH-4]`, `[QT-12]` (pola popup) |
+| PJ-FR-16 | Penjualan Program **Final**, **Public maupun B2B, masuk ke modul Quotation** (Public boleh banyak quotation; B2B satu quotation ke Company penjualan `[B2B-5]`) `[QCP-1]`; aksi "+ Buat Quotation" di daftar, kolom target menampilkan jumlah peserta Deal. *(Rumusan lama: Public → Quotation, B2B → Sales Order (satu SO).)* Final adalah **tanda verifikasi** dan **pemicu** ke Quotation `[SPA-1]`; angka Final menjadi dasar quotation, persiapan invoice `[INV-1]`. **Sales Order tidak ada** `[B2B-3]`. | `[ARH-4]`, `[JLR-2]`, `[INV-1]`, `[SPA-1]` |
+| PJ-FR-17 | Hanya Penjualan Program **Draft** yang dapat **dibatalkan** (status Batal, tidak dapat diubah). Penjualan Program **Final tidak dapat dibatalkan** `[JPP-5]`. | `[QT-12]` (pola batal), `[JPP-5]` |
+| PJ-FR-26 | **Reschedule** (to be): Penjualan Program **Final** yang **belum punya quotation Deal** dapat dijadwalkan ulang lewat aksi **Reschedule** (menu gear daftar dan halaman Lihat), oleh **Sales/Marketing pemilik** penjualan itu; hak aksi diatur di **Role & Permission** `input/Master - Buat Program/2026-11-08-jawaban-reschedule-lanjutan/` (usulan: hak **Manage** pada menu Daftar Penjualan Program `[USULAN]`). Reschedule **hanya mengganti tanggal dan trainer** `input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/`; waktu dan lokasi tidak diubah lewat reschedule. Isian: **tanggal mulai baru** (wajib, tidak sebelum hari ini), **tanggal selesai** dihitung otomatis = tanggal mulai baru + durasi − 1 (durasi tetap, sehingga costing Final tidak berubah), **trainer** (dapat dipilih ulang, dari Master Trainer aktif `input/Master - Buat Program/2026-11-08-jawaban-reschedule-lanjutan/`), **alasan** (wajib, maks. 500 karakter), dan **evidence** (wajib, minimal satu file, boleh lebih dari satu; tipe **JPG, PNG, DOC/DOCX, PDF** `input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/`; maks. 5 MB per file `[USULAN]`, Q-PJ-26). Minimal satu dari tanggal atau trainer harus berubah. **Tidak ada batas** jumlah reschedule dan **tanpa approval**; status tetap Final. Bila sudah ada quotation Deal, aksi tidak tampil dan halaman Lihat menjelaskan alasannya; reschedule setelah Deal mungkin terjadi, aturannya ditunda (Q-PJ-22). | `input/Master - Buat Program/2026-11-08-jawaban-reschedule/` + `[USULAN]` (syarat belum Deal, durasi tetap, batas karakter, tanggal ≥ hari ini) |
+| PJ-FR-27 | **Efek reschedule**: jadwal baru langsung dipakai di semua tempat yang membaca jadwal Penjualan Program: daftar dan detail Quotation (semua status selain Batal), PDF quotation, link **Konfirmasi Kehadiran** dan **Formulir Konfirmasi**, surat penawaran (PJ-FR-20), Dashboard, serta filter Tahun/Bulan. Tidak ada notifikasi otomatis ke customer; customer melihat jadwal baru dari dokumen yang ikut berubah. Invoice tidak terdampak karena reschedule terjadi sebelum Deal. | `input/Master - Buat Program/2026-11-08-jawaban-reschedule/` |
+| PJ-FR-28 | **Riwayat reschedule**: halaman Lihat Penjualan Program menampilkan bagian **Riwayat Reschedule** (bila ada) dengan kolom Waktu, Oleh, Jadwal lama, Jadwal baru, Alasan, **Evidence** (nama file, dapat dibuka/diunduh `input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/`), terbaru di atas. Activity Log mencatat aksi **Reschedule** di modul Penjualan Program dengan perubahan tanggal/trainer (lama → baru; trainer tampil sebagai nama), alasan di keterangan, dan nama file evidence. | `input/Master - Buat Program/2026-11-08-jawaban-reschedule/` + `[USULAN]` (kolom) |
+| PJ-FR-29 | **Jam Pembelajaran** (to be): isian angka diketik manual di bagian 1 form Penjualan Program (Public & B2B), dengan satuan tetap **"JP"** di sebelah kanan isian `input/Master - Buat Program/2026-11-09-jam-pembelajaran-berlaku-quotation/`. Bilangan bulat ≥ 1, **wajib**; terkunci setelah Final seperti field lain dan tidak diubah oleh Reschedule. Tampil di halaman Lihat dan daftar (kolom Pelaksanaan, mis. "16 JP"), dan **dicetak di Penawaran quotation** (kolom Deskripsi, QTN-FR-14 `docs-to-be/fr-nfr-quotation.md`). | `input/Master - Buat Program/2026-11-09-jam-pembelajaran-berlaku-quotation/` + `[USULAN]` (bilangan bulat, wajib, tampil di Lihat/daftar, Q-PJ-25) |
+
+> PJ-FR-18 dan PJ-FR-19 (As Is vs Penjualan, laporan) **dihapus** pada draf 4 `[REV-3]` dan tidak dipakai ulang.
+
+### 4.3 Surat penawaran & laporan
+
+| ID | Kebutuhan | Sumber |
+|---|---|---|
+| PJ-FR-20 | Penjualan Program **Final** dapat **dicetak sebagai surat penawaran** (tombol "Cetak Surat Penawaran" di halaman Lihat). Isi minimal: Nomor Penjualan, judul program, tanggal & lokasi, durasi, harga jual / peserta, jumlah peserta, total. Penjualan Draft/Batal tidak dapat dicetak. B2B ditujukan ke **Company** penjualan (nama, PIC, alamat — PJ-FR-22) `[ISC-2]`; Public juga dapat dicetak (**sementara**), ditujukan ke calon peserta `[JPP-4]`. | `[SPA-1]`, `[ISC-2]`, `[JPP-4]` + `[USULAN]` (isi surat) |
+| PJ-FR-21 | **Laporan Rencana vs Aktual** per Penjualan Program Final: **Rencana** = angka Final Penjualan Program; **Aktual** = jumlah peserta fix dari Quotation (Public, akumulasi) / SO (B2B). Kolom: peserta, pendapatan, HPP, profit — rencana, aktual, selisih. Harga jual / peserta tidak berubah; selisih peserta hanya memengaruhi pendapatan, biaya variable, dan profit. Data aktual tersedia setelah modul Quotation ada. | `[SPA-2]` + `[USULAN]` (kolom & rumus aktual: Fixed Cost tetap, Variable Cost × peserta aktual) |
+
+### 4.4 Catatan untuk modul berikutnya (ditunda, bukan cakupan saat ini)
+
+| Modul | Yang sudah disampaikan | Sumber |
+|---|---|---|
+| Quotation (Public & B2B) | **Sudah dikerjakan** → `docs/fr-nfr-quotation.md` `[QCP-1]`. Draf 2 (29-10-2026, `input/Master - Buat Program/2026-10-29-quotation-diskon-aksi/`): Public berkali-kali, diskon Rupiah, aksi Kirim dan Cetak / Deal / Batalkan / Confirmation Letter. Catatan lama: **Persiapan invoice**, peserta sudah fix `[INV-1]`. Dibagikan ke **banyak** calon peserta dari satu Penjualan Program; tidak terikat company. Dari sumber lama: diskon per peserta, surat quotation; **Deal/Batal per peserta masih ada** `[JPP-15]`. Harga jual / peserta tidak berubah; selisih peserta hanya memengaruhi profit `[SPA-2]`. | `[JLR-2]`, `[ARH-5]`, `[INV-1]`, `[SPA-2]` |
+| ~~Sales Order (B2B)~~ | **Dihapus** `[B2B-3]` — Sales Order tidak ada; B2B lewat Quotation (satu quotation, minimal 10 peserta, harga per peserta / all-in). Catatan lama di bawah hanya arsip. Catatan lama: **Persiapan invoice**, peserta sudah fix `[INV-1]`. **Satu** SO per Penjualan Program; terikat **satu Company** — diambil dari Penjualan Program (PJ-FR-22) `[ISC-2]`; memuat **detail harga per peserta** (harga per peserta × jumlah peserta = harga paket). **Minimal 10 peserta wajib** `[JPP-13]`. Status (usulan sementara `[JPP-14]`): Draft → Final → Invoice, atau Batal dari Draft. Dipicu oleh Penjualan Program Final `[SPA-1]`. Perbedaan peserta dengan rencana tidak masalah karena company yang mendanai `[SPA-2]`. | `[JLR-2]`, `[JLR-3]`, `[K3M-3]`, `[INV-1]`, `[SPA-n]` |
+
+---
+
+## 5. Kebutuhan Non-Fungsional (NFR)
+
+| ID | Kategori | Kebutuhan | Kriteria uji | Lingkup | Sumber |
+|---|---|---|---|---|---|
+| PJ-NFR-01 | Audit | Simpan, ubah costing, finalkan, dan batal dicatat `write_log()` modul "Penjualan Program"; ubah costing dengan `detail_changes` per item. **Jejak data & Activity Log**: semua tabel modul ini memakai kolom `created_by`, `created_date`, `updated_by`, `updated_date` (+ `deleted_by`, `deleted_date` bila dapat dihapus); daftar menampilkan kolom "Dibuat / Diubah"; semua aksi tampil di modul **Activity Log** (`docs/fr-nfr-activity-log.md` LOG-FR-01 – LOG-FR-08) `input/Master - Buat Program/2026-10-30-histori-activity-log/`. | Ubah 1 harga item + durasi → 1 log dengan 2 perubahan | UC-22, UC-26, UC-29 | `[STD]` |
+| PJ-NFR-02 | Integritas data | Mengedit Penjualan Program tidak pernah mengubah Master Program (costing disalin ke tabel penjualan). | Ubah harga item di penjualan → `master_program_biaya` tetap | PJ-FR-05 | `[QT-5]` |
+| PJ-NFR-03 | Integritas data | Penjualan Program Final/Batal tidak dapat diubah di server. | Request ubah ke penjualan Final ditolak (403/422) | PJ-FR-15 – PJ-FR-17 | `[ARH-4]` |
+| PJ-NFR-04 | Integritas data | Simpan header + biaya dalam satu transaksi; finalkan memeriksa status di dalam transaksi. | Dua klik Finalkan bersamaan → satu log | UC-22, UC-29 | `[USULAN]` |
+| PJ-NFR-05 | Akurasi | Simulasi memakai **satu fungsi hitung** yang sama dengan Master Program (klien dan server). Uang DECIMAL(15,2), tampil rupiah tanpa desimal, isian uang dengan pemisah ribuan titik saat diketik (`fr-nfr.md` NFR-12); titik impas peserta dibulatkan ke atas; "tidak tercapai" bila harga per peserta ≤ biaya variable / peserta. | Angka sama dengan Master Program untuk input yang sama | PJ-FR-10 | `[JLR-1]` + `[USULAN]` |
+| PJ-NFR-06 | Validasi | Master Program dan jenis wajib; durasi, target peserta, dan **Jam Pembelajaran** (PJ-FR-29) bilangan bulat > 0, **target peserta B2B ≥ 10** `[B2B-2]`; harga jual / peserta wajib; tanggal selesai ≥ tanggal mulai. | Jenis kosong ditolak; tanggal selesai < mulai ditolak | PJ-FR-03, PJ-FR-06, PJ-FR-09, PJ-FR-29 | `[USULAN]` |
+| PJ-NFR-07 | Keamanan | Menu & aksi (buat, ubah, finalkan, batal, **reschedule**) mengikuti permission aplikasi (Role & Permission). | Tanpa hak finalkan → tombol tidak tampil, request ditolak | Semua UC | `[USULAN]` |
+| PJ-NFR-09 | Integritas data | Surat penawaran dan laporan Rencana vs Aktual hanya membaca angka Penjualan Program Final, tidak mengubahnya. | Cetak / buka laporan → data penjualan tetap | PJ-FR-20, PJ-FR-21 | `[USULAN]` |
+| PJ-NFR-08 | Platform | CI3 HMVC, MySQL, Bootstrap + jQuery; nama tabel/kolom = ERD. Tidak memakai `tr_penawaran` (modul quotation lama aplikasi). | Code review | Semua | `[STD]` |
+| PJ-NFR-10 | Integritas data | Reschedule hanya mengubah `tgl_mulai`, `tgl_selesai`, `id_trainer` di `penjualan_program` dan menambah satu baris `penjualan_program_reschedule` beserta baris `penjualan_program_reschedule_evidence` (file) dalam **satu transaksi**; tipe dan ukuran file diperiksa di server (bukan hanya ekstensi); server memeriksa status Final dan tidak adanya quotation Deal di dalam transaksi. Pengecualian terhadap PJ-NFR-03 hanya untuk aksi ini. | Request reschedule ke penjualan yang punya quotation Deal ditolak (422); alasan kosong atau tanpa evidence ditolak; file .exe berganti nama .pdf ditolak | PJ-FR-26 – PJ-FR-28, UC-65 | `[USULAN]` |
+
+---
+
+## 6. Status Penjualan Program
+
+| Dari | Aksi | Ke | Jenis | Syarat / efek | Sumber |
+|---|---|---|---|---|---|
+| — | Simpan penjualan baru | Draft | Semua | Nomor dibuat | `[USULAN]` |
+| Draft | Finalkan (konfirmasi popup) | Final | Public | Terkunci; dapat dibuatkan Quotation (Company / Personal) | `[ARH-4]`, `[QCP-1]` |
+| Draft | Finalkan (konfirmasi popup) | Final | B2B | Terkunci; dapat dibuatkan **satu** Quotation ke Company penjualan | `[QCP-1]`, `[B2B-5]` |
+| Draft | Batalkan | Batal | Semua | — | `[USULAN]` |
+| Final | Reschedule (tanggal/trainer; alasan dan evidence wajib) | Final | Semua | Hanya bila belum ada quotation Deal; jadwal diganti, riwayat ditambah (PJ-FR-26) | `input/Master - Buat Program/2026-11-08-jawaban-reschedule/` |
+
+Final dan Batal tidak kembali ke Draft. Final tidak dapat dibatalkan `[JPP-5]`.
+
+---
+
+## 7. Pertanyaan Terbuka
+
+| ID | Pertanyaan | Mempengaruhi |
+|---|---|---|
+| Q-PJ-02 | Aktor saat ini **Manajemen** `[JPP-11]`. Pengguna lain (user) yang ikut menyusun / memfinalkan / membatalkan — menyusul. | UC-22, UC-26, UC-29 – UC-31 |
+| Q-PJ-08 | Format **final** Nomor Penjualan (sementara `PJP-YYMM-NNN` / `PJB-YYMM-NNN`, PJ-FR-07) `[JPP-7]`. | PJ-FR-07 |
+| Q-PJ-16 | ~~Status final Sales Order~~ **Gugur** `[B2B-3]`: Sales Order tidak ada. **To be:** Sales Order kembali ada, dibentuk dari quotation Deal (bukan dari Penjualan Program); status di `docs-to-be/fr-nfr-sales-order.md`. | — |
+| Q-PJ-20 | ~~**Trainer** wajib dipilih atau boleh kosong?~~ **Terjawab (to be)** `input/Master - Buat Program/2026-11-07-surat-kerja-trainer/`: **wajib** dipilih saat membuat Penjualan Program. Masih terbuka: apakah Honor Trainer berbeda per trainer (diambil dari Master Trainer), atau tetap dari Master Rate? | PJ-FR-23 |
+| Q-PJ-21 | **Waktu** (jam) pelaksanaan: cukup teks bebas di Penjualan Program (usulan), atau jam mulai–selesai terpisah / berbeda per hari? | PJ-FR-24 |
+| Q-PJ-22 | Bila **sudah ada quotation Deal** (SO sudah terbentuk) tetapi acara terpaksa diundur, apa yang dilakukan? **Ditunda** `input/Master - Buat Program/2026-11-08-jawaban-reschedule-lanjutan/`: kemungkinannya ada, keputusan menyusul. Sampai diputuskan, Reschedule ditolak setelah Deal. | PJ-FR-26, `fr-nfr-sales-order.md` |
+| Q-PJ-23 | ~~Tanpa approval? Siapa pemilik?~~ **Terjawab** `input/Master - Buat Program/2026-11-08-jawaban-reschedule-lanjutan/`: tanpa approval; hak diatur lewat **Role & Permission**. Masih usulan: hak = Manage pada Daftar Penjualan Program. | PJ-FR-26, UC-65, PJ-NFR-07 |
+| Q-PJ-24 | ~~Trainer boleh diganti saat reschedule?~~ **Terjawab** `input/Master - Buat Program/2026-11-08-jawaban-reschedule-lanjutan/`: **boleh**. | PJ-FR-23, PJ-FR-26 |
+| Q-PJ-25 | **Jam Pembelajaran**: cukup bilangan bulat (usulan) atau boleh pecahan (mis. 7,5 JP)? Wajib diisi (usulan) atau opsional? Perlu disalin dari Master Program seperti durasi? | PJ-FR-29 |
+| Q-PJ-26 | Evidence reschedule `input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/`: batas ukuran **5 MB per file** dan jumlah file tidak dibatasi (usulan)? Evidence berupa apa saja (mis. surat/chat dari customer, konfirmasi venue)? | PJ-FR-26 |
+
+**Sudah terjawab** (23-10-2026): item Fix / mode harga tidak ada lagi, semua nominal dapat diedit (`[K3M-2]`, `[REV-1]`); diskon (Public & B2B) ditunda (`[TDK-1]`); setelah Final → Quotation / Sales Order (`[ARH-4]`). **(25-10-2026, `[JLR-n]`)**: Penjualan Program sama untuk kedua jenis; jenis dipilih saat membuat Penjualan Program; Mandays tidak dipakai (Q-PJ-04 gugur); dokumen B2B = Sales Order. `[SPA-n]`: penawaran = cetak Penjualan Program Final (Q-PJ-16 lama); selisih peserta diterima dan dipantau lewat laporan Rencana vs Aktual (Q-PJ-14, Q-PJ-17 lama). **(28-10-2026, `[ISC-n]`)**: Company B2B dipilih di Penjualan Program dari Master Company (Q-PJ-18 terjawab → PJ-FR-22). **(28-10-2026, `[JPP-n]`)**: nama menu sesuai (Q-PJ-01); aktor Manajemen (Q-PJ-02, sebagian); durasi otomatis dari tanggal (Q-PJ-03); Public juga dicetak, sementara (Q-PJ-19); hanya Draft yang dibatalkan (Q-PJ-12); SO minimal 10 peserta wajib (Q-PJ-15); Quotation masih Deal/Batal per peserta (Q-PJ-17). **Ditunda ke modul Quotation** `[ARH-5]`: diskon per peserta, Deal/Batal per peserta, surat quotation (Q-PJ-11), realisasi peserta fix.
+
+---
+
+## 8. Riwayat Perubahan
+
+| Versi | Tanggal | Perubahan |
+|---|---|---|
+| draf 1 | 23-10-2026 | Penyusunan awal dari *Penjualan Program - Labmania.xlsx* sebagai modul Quotation (Public multi-peserta, B2B Deal). |
+| draf 2 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-konfirmasi-3-modul/`: item Fix dapat diedit; B2B variable per peserta, jumlah peserta default/min 10; kunci costing setelah peserta Deal; diskon per peserta Rp / %. |
+| draf 3 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-arah-penjualan-program/` — ditulis ulang sebagai **Penjualan Program** dengan status Draft → Final / Batal; Final Public → Quotation, B2B → Sales Order (ditunda); fitur quotation ditunda; diskon B2B; As Is vs Penjualan; UC-24, UC-25, UC-27 dihapus; UC-29 baru. |
+| draf 4 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/`: B2B punya **skema harga** per peserta (default) atau all-in — harga paket tidak wajib (PJ-FR-04, PJ-FR-12, PJ-FR-13, PJ-NFR-06); As Is vs Penjualan dan laporannya dihapus (PJ-FR-18, PJ-FR-19, UC-28 dihapus; Q-PJ-14 baru); simulasi ditata ulang agar mudah dibaca (PJ-FR-10); tidak ada mode harga (PJ-FR-05). |
+| draf 5 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-bep/`: simulasi ditambah **Data BEP** — perhitungan BEP, tabel profit menurut jumlah peserta, dan batas peserta untuk B2B all-in (PJ-FR-10). |
+| draf 6 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-simulasi-hasil-html/`: tampilan simulasi mengikuti `input/Master - Buat Program/simulasi_hasil.html` (PJ-FR-10); B2B all-in memakai harga paket minimal & maksimal peserta pada kotak BEP dan skala. |
+| draf 6a | 23-10-2026 | Istilah "sumbangan per peserta" dihapus atas permintaan user (chat 23-10-2026); BEP peserta ditulis langsung sebagai Fixed Cost ÷ (harga − biaya variable per peserta). |
+| draf 7 | 23-10-2026 | `input/Master - Buat Program/2026-10-23-tanpa-diskon/`: **diskon dihapus untuk sementara** (Public & B2B) — PJ-FR-12, PJ-FR-13, PJ-FR-15, PJ-NFR-06, UC-23, UC-29; Q-PJ-13 gugur. |
+| draf 8 | 25-10-2026 | `input/Master - Buat Program/2026-10-25-jalur-public-b2b/`: **form & simulasi sama** untuk Public dan B2B; jenis hanya penanda jalur (PJ-FR-03). Company, skema all-in, harga paket, jumlah peserta min 10 keluar ke **Sales Order** (ditunda) — PJ-FR-11 – PJ-FR-13 dihapus, bagian 4.3 baru. UC-23 digabung ke UC-22. Target peserta disalin dari Master Program (default 10). Rincian simulasi disederhanakan (PJ-FR-10). Q-PJ-04 gugur; Q-PJ-15, Q-PJ-16 baru. |
+| draf 8a | 25-10-2026 | `input/Master - Buat Program/2026-10-25-quotation-so-persiapan-invoice/`: Penjualan Program = tahap menuju finalisasi; Quotation & SO = persiapan invoice, peserta sudah fix (bagian 1, PJ-FR-16, bagian 4.3). Usulan status SO Dikirim → Deal dan usulan Aktual di Q-PJ-14 dicabut; Q-PJ-16 ditulis ulang; Q-PJ-17 baru. |
+| draf 8b | 25-10-2026 | `input/Master - Buat Program/2026-10-25-surat-penawaran-rencana-aktual/`: Penjualan Program Final dapat dicetak sebagai **surat penawaran** dan memicu SO (PJ-FR-16, PJ-FR-20, UC-30 baru); **laporan Rencana vs Aktual** (PJ-FR-21, UC-31 baru) menggantikan As Is vs Aktual; Q-PJ-14 terjawab; Q-PJ-16, Q-PJ-17 ditulis ulang; Q-PJ-18, Q-PJ-19 baru; bagian 4.3 → 4.4. |
+| draf 8c | 28-10-2026 | `input/Master - Buat Program/2026-10-28-input-simulasi-company-b2b/`: input simulasi tampil di bagian 1 **dan** bagian 4, tersinkron (PJ-FR-09); **Company B2B dipilih di Penjualan Program** dari Master Company (PJ-FR-22 baru; PJ-FR-01, PJ-FR-20, bagian 1, 4.4); Q-PJ-18 terjawab. ERD: `penjualan_program.id_customer` kembali. |
+| draf 8d | 28-10-2026 | `input/Master - Buat Program/2026-10-28-konfirmasi-simulasi-company-b2b/`: input simulasi ganda (PJ-FR-09) dan Company wajib untuk B2B (PJ-FR-22) dikonfirmasi klien. |
+| draf 9 | 28-10-2026 | `input/Master - Buat Program/2026-10-28-jawaban-pertanyaan-program/`: aktor Manajemen (UC); durasi otomatis dari tanggal, tanggal wajib (PJ-FR-05, PJ-FR-06); nomor dibedakan Public/B2B, format sementara (PJ-FR-07); hanya Draft dibatalkan (PJ-FR-17, bagian 6); surat Public sementara boleh (PJ-FR-20); Company aktif, tidak ditambah dari form (PJ-FR-22); SO min 10 wajib, status SO sementara, Quotation Deal/Batal per peserta (4.4). Q-PJ-01, -03, -12, -15, -17, -19 terjawab; Q-PJ-02, -08, -16 ditulis ulang. |
+| draf 9a | 28-10-2026 | `input/Master - Buat Program/2026-10-28-gabung-menu-penjualan-program/`: Master Program & Penjualan Program satu modul menu **Penjualan Program**; sub modul Penjualan → Penjualan Program (bagian 1). |
+| draf 9b | 28-10-2026 | `input/Master - Buat Program/2026-10-28-biaya-terpakai-saja/`: hanya item biaya terpakai yang tampil; item bernilai 0 dibuang saat disimpan (PJ-FR-05). |
+| draf 10 | 28-10-2026 | `input/Master - Buat Program/2026-10-28-quotation-company-personal/`: Public **dan** B2B Final masuk ke **Quotation** (PJ-FR-16, bagian 1, 4.4, 6); modul Quotation di `docs/fr-nfr-quotation.md`. Sales Order menunggu Q-QTN-03. |
+| draf 11 | 29-10-2026 | `input/Master - Buat Program/2026-10-29-master-trainer/`: field **Trainer** dari Master Trainer (PJ-FR-23); Q-PJ-20 baru. |
+| draf 11a | 29-10-2026 | `input/Master - Buat Program/2026-10-29-cetak-quotation-snk-konfirmasi/`: field **Waktu** pelaksanaan (PJ-FR-24) untuk cetak quotation; Q-PJ-21 baru. |
+| draf 12 | 30-10-2026 | `input/Master - Buat Program/2026-10-30-b2b-quotation-allin-min10/`: **Sales Order tidak ada** — B2B juga ke Quotation, satu quotation (bagian 1, 1.1, 1.2, 2, UC-29, PJ-FR-16, PJ-FR-22, 4.4, 6); B2B **target peserta minimal 10** sampai Quotation (PJ-FR-25 baru, PJ-NFR-06); skema all-in pindah ke Quotation B2B. Q-PJ-16 gugur. Draf 11a: `input/backup/fr-nfr-penjualan-program_sebelum-b2b-quotation_30-10-2026.md`. |
+| draf 12a | 30-10-2026 | `input/Master - Buat Program/2026-10-30-format-rupiah-titik/`: isian uang dengan pemisah ribuan titik (PJ-NFR-05). |
+| draf 12b | 30-10-2026 | `input/Master - Buat Program/2026-10-30-histori-activity-log/`: kolom jejak (created/updated/deleted) di semua tabel dan modul **Activity Log** — rujukan ke `docs/fr-nfr-activity-log.md` di NFR audit; mockup draf 12. |
+| **to be draf 1** | 07-11-2026 | Dokumen to be dipisah ke `docs-to-be/`, berangkat dari as is draf 12b. `input/Master - Buat Program/2026-11-07-surat-kerja-trainer/`: **Trainer wajib** (PJ-FR-23; Q-PJ-20 terjawab sebagian) untuk Surat Kerja Trainer. |
+| **to be draf 1a** | 07-11-2026 | `input/Master - Buat Program/2026-11-07-sales-order/`: catatan "Sales Order tidak ada" diberi keterangan to be (modul terkait, bagian 2, Q-PJ-16): Sales Order kembali ada dari quotation Deal; Surat Kerja Trainer per program. |
+| **to be draf 1b** | 07-11-2026 | `input/Master - Buat Program/2026-11-07-filter-tahun-bulan/`: filter **Tahun** dan **Bulan** (tanggal mulai acara program) di daftar Penjualan Program (PJ-FR-01). |
+| **to be draf 1c** | 08-11-2026 | `input/Master - Buat Program/2026-11-08-lingkup-pdf-filter-reschedule/`: acuan filter Tahun/Bulan = tanggal acara program **dikonfirmasi** (PJ-FR-01). |
+| **to be draf 1d** | 08-11-2026 | `input/Master - Buat Program/2026-11-08-jawaban-reschedule/`: **Reschedule** Penjualan Program Final sebelum Deal, alasan wajib, tanpa batas jumlah, tanpa approval (PJ-FR-26 – PJ-FR-28 baru, UC-65, PJ-NFR-10, bagian 6, Q-PJ-22 – Q-PJ-24). ERD to be: tabel `penjualan_program_reschedule`. |
+| **to be draf 1e** | 08-11-2026 | `input/Master - Buat Program/2026-11-08-jawaban-reschedule-lanjutan/`: Q-PJ-23 terjawab (hak Reschedule lewat Role & Permission), Q-PJ-24 terjawab (trainer boleh diganti saat reschedule), Q-PJ-22 ditunda (PJ-FR-26, PJ-FR-28, PJ-NFR-10). ERD to be: `penjualan_program_reschedule.id_trainer_lama`, `id_trainer_baru`. |
+| **to be draf 1f** | 09-11-2026 | `input/Master - Buat Program/2026-11-09-jam-pembelajaran-berlaku-quotation/`: isian **Jam Pembelajaran** dengan satuan JP, dicetak di Penawaran quotation (PJ-FR-29 baru, PJ-NFR-06, Q-PJ-25). ERD to be: `penjualan_program.jam_pembelajaran`. |
+| **to be draf 1g** | 09-11-2026 | `input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/`: **Reschedule hanya tanggal dan trainer** (waktu, lokasi tidak lagi), **evidence wajib** JPG/PNG/DOC/DOCX/PDF (UC-65, PJ-FR-26, PJ-FR-28, PJ-NFR-10, bagian 6, Q-PJ-26 baru). Master Program sumber penjualan dapat memuat lebih dari satu Product (`docs-to-be/fr-nfr-master-program.md`). ERD to be: `penjualan_program_reschedule_evidence`. |
