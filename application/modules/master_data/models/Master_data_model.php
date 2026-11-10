@@ -1034,8 +1034,7 @@ class Master_data_model extends CI_Model
         $hasAkun = $old && !empty($old['id_user']);
 
         // --- Validasi (FR-37, FR-38) ---
-        $req = ['kode' => 'Employee ID', 'nama' => 'Employee Name', 'id_group' => 'Role',
-                'gender' => 'Gender', 'telp' => 'Phone Number', 'tipe' => 'Employee Type'];
+        $req = ['nama' => 'Employee Name', 'id_group' => 'Role'];
         foreach ($req as $k => $label) {
             if (($v[$k] ?? '') === '') return $fail($label . ' wajib diisi');
         }
@@ -1044,11 +1043,9 @@ class Master_data_model extends CI_Model
         if ($oldRole === self::ID_SUPERADMIN) $idGroup = self::ID_SUPERADMIN; // role Superadmin tidak dapat diganti
         elseif ($idGroup === self::ID_SUPERADMIN) return $fail('Role Superadmin tidak dapat dipilih');
         if (!$this->db->get_where('groups', ['id_group' => $idGroup])->row_array()) return $fail('Role tidak ditemukan');
-        if ($id) $v['kode'] = $old['kode'];
-        $dupKode = $this->db->where('kode', $v['kode'])->where('id <>', (int)$id)->count_all_results('ms_user_karyawan');
-        if ($dupKode) return $fail('Employee ID sudah dipakai');
+        $v['kode'] = $old ? $old['kode'] : null; // Employee ID: dibuat otomatis saat tambah (di bawah), tidak dapat diubah
         if (($v['nik'] ?? '') !== '' && !preg_match('/^\d{16}$/', $v['nik'])) return $fail('NIK 16 digit angka');
-        if (!preg_match('/^\+?\d{9,15}$/', $v['telp'])) return $fail('Nomor telepon hanya angka (boleh diawali +), 9–15 digit');
+        if (($v['telp'] ?? '') !== '' && !preg_match('/^\+?\d{9,15}$/', $v['telp'])) return $fail('Nomor telepon hanya angka (boleh diawali +), 9–15 digit');
         if (($v['email'] ?? '') !== '' && !filter_var($v['email'], FILTER_VALIDATE_EMAIL)) return $fail('Format email tidak valid');
         if (($v['npwp'] ?? '') !== '' && !preg_match('/^(\d{15}|\d{16})$/', preg_replace('/[.\-\s]/', '', $v['npwp']))) return $fail('NPWP 15 atau 16 digit angka');
         if (!empty($v['tgl_lahir']) && !empty($v['tgl_masuk']) && $v['tgl_masuk'] < $v['tgl_lahir']) return $fail('Join Date sebelum Birth Date');
@@ -1071,14 +1068,14 @@ class Master_data_model extends CI_Model
             'tmp_lahir'  => ($v['tmp_lahir'] ?? '') ?: null,
             'tgl_lahir'  => ($v['tgl_lahir'] ?? '') ?: null,
             'id_group'   => $idGroup,
-            'gender'     => $v['gender'],
+            'gender'     => ($v['gender'] ?? '') ?: null,
             'agama'      => ($v['agama'] ?? '') ?: null,
-            'telp'       => $v['telp'],
+            'telp'       => ($v['telp'] ?? '') ?: null,
             'email'      => ($v['email'] ?? '') ?: null,
             'alamat'     => ($v['alamat'] ?? '') ?: null,
             'npwp'       => ($v['npwp'] ?? '') ?: null,
             'tgl_masuk'  => ($v['tgl_masuk'] ?? '') ?: null,
-            'tipe'       => $v['tipe'],
+            'tipe'       => ($v['tipe'] ?? '') ?: null,
             'jobdesc'    => ($v['jobdesc'] ?? '') ?: null,
             'aktif'      => $aktif,
         ];
@@ -1089,6 +1086,9 @@ class Master_data_model extends CI_Model
             $dataEmp['updated_date'] = $now;
             $this->db->where('id', $id)->update('ms_user_karyawan', $dataEmp);
         } else {
+            // ponytail: MAX+1 tanpa lock; bentrok dua simpan serentak ditolak UNIQUE(kode) -> "Gagal menyimpan", ulangi. Tambah lock/sequence bila ramai.
+            $max = (int)$this->db->query("SELECT MAX(CAST(SUBSTRING(kode, 5) AS UNSIGNED)) AS m FROM ms_user_karyawan WHERE kode REGEXP '^USR-[0-9]+$'")->row()->m;
+            $v['kode'] = $dataEmp['kode'] = 'USR-' . str_pad($max + 1, 3, '0', STR_PAD_LEFT);
             $dataEmp['created_by']   = $userId;
             $dataEmp['created_date'] = $now;
             $this->db->insert('ms_user_karyawan', $dataEmp);
@@ -1101,7 +1101,7 @@ class Master_data_model extends CI_Model
                 'username'    => $v['username'],
                 'nm_lengkap'  => $v['nama'],
                 'email'       => ($v['email'] ?? '') ?: null,
-                'hp'          => $v['telp'],
+                'hp'          => ($v['telp'] ?? '') ?: null,
                 'alamat'      => ($v['alamat'] ?? '') ?: null,
                 'st_aktif'    => $aktif,
             ];

@@ -223,21 +223,21 @@ function userForm(rec) {
     title: rec ? 'Edit User ' + esc(rec.kode || rec.nama) : 'Add New User',
     wide: true,
     body: '<div class="grid2"><div>' +
-        field('Employee ID' + REQ, inp('kode', r.kode, 'placeholder="Employee ID" maxlength="20" ' + (rec && rec.kode ? 'readonly' : '')) + (rec && rec.kode ? '<span class="hint">Tidak dapat diubah</span>' : '')) +
+        field('Employee ID', inp('kode', r.kode, 'placeholder="Otomatis" readonly') + '<span class="hint">' + (rec && rec.kode ? 'Tidak dapat diubah' : 'Dibuat otomatis saat disimpan') + '</span>') +
         field('Employee Name' + REQ, inp('nama', r.nama, 'placeholder="Employee Name" maxlength="100"')) +
         field('Personal ID Number', inp('nik', r.nik, 'placeholder="NIK" inputmode="numeric" maxlength="16"')) +
         field('Birth Place', inp('tmp_lahir', r.tmp_lahir, 'placeholder="Birth Place" maxlength="50"')) +
         field('Birth Date', inp('tgl_lahir', r.tgl_lahir, 'type="date"')) +
         field('Role' + REQ, '<select class="input" name="id_group"' + (isSuper ? ' disabled' : '') + '>' + groupOpts + '</select>' + (isSuper ? '<span class="hint">Role Superadmin tidak dapat diganti</span>' : '')) +
-        field('Gender' + REQ, sel('gender', GENDER, r.gender)) +
+        field('Gender',sel('gender', GENDER, r.gender)) +
         field('Religion', sel('agama', AGAMA, r.agama)) +
       '</div><div>' +
-        field('Phone Number' + REQ, inp('telp', r.telp, 'placeholder="+62..." inputmode="tel"')) +
+        field('Phone Number',inp('telp', r.telp, 'placeholder="+62..." inputmode="tel"')) +
         field('Email', inp('email', r.email, 'type="email" placeholder="email@domain.com"')) +
         field('Address', '<textarea class="input" name="alamat" rows="2" placeholder="Address" maxlength="255">' + esc(r.alamat) + '</textarea>') +
         field('NPWP', inp('npwp', r.npwp, 'placeholder="NPWP Number" inputmode="numeric"')) +
         field('Join Date', inp('tgl_masuk', r.tgl_masuk, 'type="date"')) +
-        field('Employee Type' + REQ, sel('tipe', EMP_TYPE, r.tipe)) +
+        field('Employee Type',sel('tipe', EMP_TYPE, r.tipe)) +
         field('Job Desc.', '<textarea class="input" name="jobdesc" rows="2" placeholder="Job Description" maxlength="500">' + esc(r.jobdesc) + '</textarea>') +
         field('Status' + REQ, '<div class="static"><label><input type="radio" name="aktif" value="1" ' + (aktif ? 'checked' : '') + '> Active</label>' +
           ' &nbsp; <label><input type="radio" name="aktif" value="0" ' + (aktif ? '' : 'checked') + '> Non Active</label></div>') +
@@ -267,7 +267,7 @@ function userForm(rec) {
       var akun = f.akun.checked || hasAkun;
       var pw = f.password.value, pw2 = f.password2.value;
       var ok = true;
-      var LBL = { kode: 'Employee ID', nama: 'Employee Name', id_group: 'Role', gender: 'Gender', telp: 'Phone Number', tipe: 'Employee Type' };
+      var LBL = { nama: 'Employee Name', id_group: 'Role' };
       Object.keys(LBL).forEach(function (k) { if (!v[k]) ok = invalid(f[k], LBL[k] + ' wajib diisi'); });
       if (v.nik && !/^\d{16}$/.test(v.nik)) ok = invalid(f.nik, 'NIK 16 digit angka');
       if (v.telp && !/^\+?\d{9,15}$/.test(v.telp)) ok = invalid(f.telp, 'Nomor hanya angka (boleh diawali +), 9–15 digit');
