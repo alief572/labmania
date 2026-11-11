@@ -360,7 +360,7 @@
     if (kind === 'mp' && p.status === 'final') lockInfo = 'Master Program <b>Final</b> — terkunci dan tersedia di pilihan Penjualan Program. Penyesuaian harga/costing dilakukan di Penjualan Program. Master Program Final tidak dapat dibatalkan atau disalin; perubahan master: buat Master Program baru.';
     if (kind === 'mp' && p.status === 'batal') lockInfo = 'Master Program dibatalkan — tidak muncul lagi di pilihan Penjualan Program. Penjualan yang sudah terbentuk tidak terpengaruh.';
     if (qt && p.status === 'final') lockInfo = `Penjualan Program <b>Final</b> — terkunci. Buat <b>Quotation</b> dari menu Quotation (${b2b ? 'ke Company penjualan' : 'ke Company atau Personal'}) — persiapan invoice dengan peserta yang sudah fix.`
-      + (canResched(p) ? ' Jadwal masih dapat diubah lewat <b>Reschedule</b> selama belum ada quotation Deal.' : hasDeal(p) ? ` Sudah ada quotation Deal, jadi jadwal tidak dapat di-reschedule.${q('Q-PJ-22', 'Reschedule setelah Deal mungkin terjadi; aturannya diputuskan nanti. Sementara ditolak.')}` : '');
+      + (canResched(p) ? ` Jadwal masih dapat diubah lewat <b>Reschedule</b> selama acara belum berjalan${hasDeal(p) ? '; Sales Order program ini ikut berubah dan nomornya mendapat revisi' : ''}.` : p.closed ? ' Program sudah Closed, jadi jadwal tidak dapat di-reschedule.' : p.tglMulai && todayIso >= p.tglMulai ? ' Acara sudah berjalan, jadi jadwal tidak dapat di-reschedule.' : '');
     if (qt && p.status === 'batal') lockInfo = 'Penjualan Program dibatalkan dan tidak dapat diubah.';
 
     const header = `<div class="csec"><p class="csec-h">Header</p><div class="grid3">
@@ -593,7 +593,10 @@
   const EVID_EXT = ['jpg', 'jpeg', 'png', 'doc', 'docx', 'pdf'], EVID_MAX = 5 * 1024 * 1024;
   const hasDeal = pj => qtnOfPj(pj).some(k => k.status === 'deal');
   // Hak: Manage pada menu Daftar Penjualan Program di Role & Permission (jawaban Q-PJ-23).
-  const canResched = pj => pj.status === 'final' && !hasDeal(pj) && can('quot', 'm');
+  // Boleh juga setelah Deal, selama acara belum berjalan dan program belum Closed; SO tidak dihapus tetapi naik revisi
+  // (input/Master - Buat Program/2026-11-11-reschedule-setelah-deal/).
+  const canResched = pj => pj.status === 'final' && !pj.closed && !!pj.tglMulai && todayIso < pj.tglMulai && can('quot', 'm');
+  const QPJ22 = q('Q-PJ-22', 'Terjawab sebagian: reschedule setelah Deal boleh selama acara belum berjalan; SO tetap dengan revisi. Masih dikonfirmasi: peserta yang tidak bisa ikut di tanggal baru, invoice yang sudah terbit/dibayar, dan surat konfirmasi yang memuat tanggal lama. Sementara: peserta, invoice, dan surat tidak berubah.');
   const addHari = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const jadwalTxt = (mulai, selesai, waktu, lokasi, trainer) => `${fmtRange(mulai, selesai)}${waktu ? ` · ${esc(waktu)}` : ''} · ${esc(lokasi || '—')}${trainer ? ` · Trainer: ${esc((trainerById(trainer) || {}).nama || '—')}` : ''}`;
 
@@ -609,13 +612,14 @@
   }
 
   function qtResched(rec) {
-    if (!canResched(rec)) { toast('Reschedule hanya untuk Penjualan Program Final yang belum punya quotation Deal', 'warn'); return; }
+    if (!canResched(rec)) { toast('Reschedule hanya untuk Penjualan Program Final yang acaranya belum berjalan', 'warn'); return; }
     const d = Number(rec.durasi) || 1;
-    const qtn = qtnOfPj(rec).filter(k => k.status !== 'batal').length;
+    const qtn = qtnOfPj(rec).filter(k => k.status !== 'batal').length, sos = soOfPj(rec);
+    const soNote = sos.length ? `<div class="notice"><span>Program ini sudah punya <b>${sos.length} Sales Order</b> (${sos.map(s => `<span class="code">${esc(soNomor(s))}</span>`).join(', ')}). Sales Order tidak dihapus: jadwalnya ikut berubah dan nomornya naik revisi bila tanggal diganti. Ganti trainer saja tidak menaikkan revisi. Kirim ulang PDF Sales Order ke customer setelah disimpan.</span><span class="ref">SO-FR-16${QPJ22}</span></div>` : '';
     openModal({
       title: `Reschedule ${esc(rec.nomor)}`, wide: true,
       body: `<p class="hint top">Jadwal baru langsung dipakai di quotation, link Konfirmasi Kehadiran, dan Formulir Konfirmasi${qtn ? ` (${qtn} quotation aktif)` : ''}. Yang dapat diganti hanya <b>tanggal</b> dan <b>trainer</b>; waktu dan lokasi tetap. Durasi tetap ${d} hari, jadi tanggal selesai mengikuti tanggal mulai. Harga dan costing tidak berubah.${q('Q-PJ-23', 'Terjawab: tanpa approval; hak Reschedule diatur di Role & Permission (usulan: Manage pada Daftar Penjualan Program).')}</p>
-        <div class="summary">${sumRow('Jadwal sekarang', jadwalTxt(rec.tglMulai, rec.tglSelesai, rec.waktu, rec.lokasi, rec.trainer))}${sumRow('Sudah di-reschedule', `${(rec.reschedule || []).length} kali`)}</div>
+        ${soNote}<div class="summary">${sumRow('Jadwal sekarang', jadwalTxt(rec.tglMulai, rec.tglSelesai, rec.waktu, rec.lokasi, rec.trainer))}${sumRow('Sudah di-reschedule', `${(rec.reschedule || []).length} kali`)}</div>
         <div class="grid2 gap-t">
           ${field('Tanggal mulai baru' + req, `<input class="input" type="date" name="tglMulai" id="rs-mulai" value="${esc(rec.tglMulai)}" min="${todayIso}" required>`)}
           ${field('Tanggal selesai', `<output class="static" id="rs-selesai" for="rs-mulai">${fmtTgl(rec.tglSelesai) || '—'}</output><span class="hint">otomatis: mulai + ${d - 1} hari</span>`)}
@@ -650,7 +654,14 @@
         rec.reschedule = (rec.reschedule || []).concat([{ lama, baru, alasan, evidence: files.map(x => x.name), oleh: meName(), waktuUbah: isoNow().slice(0, 16) }]);
         Object.assign(rec, baru);
         syncPf(rec);
-        toast(`${rec.nomor} di-reschedule ke ${fmtRange(mulai, selesai)}`);
+        // SO-FR-16: tanggal berubah = semua SO program naik satu revisi; nomor dasar tetap.
+        const naik = mulai !== lama.tglMulai ? sos : [];
+        naik.forEach(s => {
+          const dulu = soNomor(s);
+          s.rev = (s.rev || 0) + 1; s.revAt = isoNow().slice(0, 16);
+          logAct('Quotation', 'Sales Order', 'Revisi', soNomor(s), s.id, `Revisi Sales Order ${dulu} → ${soNomor(s)} karena reschedule ${rec.nomor}: ${alasan}`);
+        });
+        toast(`${rec.nomor} di-reschedule ke ${fmtRange(mulai, selesai)}${naik.length ? `; ${naik.length} Sales Order naik revisi` : ''}`);
       }
     });
   }

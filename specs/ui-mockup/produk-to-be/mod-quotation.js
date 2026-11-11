@@ -14,7 +14,7 @@
   const PS_STATUS = { menunggu: 'Menunggu', deal: 'Deal', batal: 'Batal' };
   const TUJUAN = { company: 'Company', personal: 'Personal' };
   const SUMBER = ['Sales', 'Media sosial', 'Website', 'Referensi / repeat order', 'Lainnya'];
-  const PS_SRC = { link: 'Link', manual: 'Manual' };
+  const PS_SRC = { link: 'Link', manual: 'Manual', company: 'Daftar PIC' };
   const PPN_RATE = 11;
   const QQTN = q('Q-QTN-01', 'Format nomor LMI/PW/MM/yy-zzz (terjawab). Masih usulan: MM/yy dari Tanggal quotation dan nomor urut di-reset tiap bulan.');
   // Pertanyaan baru dari to be (catatan penafsiran di input/Master - Buat Program/2026-11-06-to-be-kuota-link-konfirmasi/notes.md).
@@ -22,12 +22,18 @@
   const QTB2 = q('Q-TB-02', 'Link menerima isian selama quotation Draft atau Terkirim, kuota belum penuh, dan belum melewati Berlaku sampai (terjawab 09-11-2026). Masih terbuka: perlu batas tambahan H-14 sebelum acara?');
   const QTB3 = q('Q-TB-03', 'Terjawab 09-11-2026: B2B tetap punya Confirmation Letter, sama seperti Public (formulir konfirmasi + pernyataan).');
   const QTB4 = q('Q-TB-04', 'Usulan: data peserta milik quotation, tidak disimpan ke Master Peserta. Perlu disalin ke Master Peserta setelah Deal?');
-  const QTB5 = q('Q-TB-05', 'Tafsiran: Confirmation Letter = dokumen output quotation, dibentuk dari isian Konfirmasi Kehadiran (satu halaman per peserta).');
+  const QTB5 = q('Q-TB-05', 'Terjawab 10-11-2026: tanda tangan basah diperlukan. Calon peserta mencetak surat konfirmasi dari link, menandatangani, lalu mengunggahnya (wajib). Sales melihat surat yang diunggah.');
+  const QTB9 = q('Q-TB-09', 'Usulan: surat konfirmasi diunggah satu berkas PDF, JPG, atau PNG, maksimal 5 MB. Bila surat yang diunggah salah atau tidak terbaca, peserta mengisi ulang lewat link, atau Sales dapat mengganti berkasnya?');
   const QTB8 = q('Q-TB-08', 'Peserta hanya lewat link. Bila link sudah tertutup (kuota penuh, lewat Berlaku sampai, atau Terkirim dengan kuota penuh) dan ada calon peserta tambahan: dibuatkan quotation baru (usulan), atau kuota quotation boleh dinaikkan setelah Terkirim?');
   // Nomor dokumen (input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/): LMI/{kode}/MM/yy-zzz,
   // kode PW = Penawaran, INV = Invoice. MM/yy dari tanggal dokumen; urutan per kode & bulan (usulan: reset tiap bulan).
   const lmiNo = (kode, iso, peek = false) => { const t = iso || todayIso, mm = t.slice(5, 7), yy = t.slice(2, 4), key = `${kode}${yy}${mm}`, n = (codeSeq[key] || 0) + 1; if (!peek) codeSeq[key] = n; return `LMI/${kode}/${mm}/${yy}-${String(n).padStart(3, '0')}`; };
   const qtnNo = (iso, peek = false) => lmiNo('PW', iso, peek);
+  // B2B (input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/): hanya all-in; harga paket mencakup s.d. 25 peserta,
+  // peserta ke-26 dst + Rp300.000/orang. Nilai disimpan per quotation agar perubahan aturan tidak mengubah quotation lama (usulan).
+  const B2B_PAKET = 25, B2B_TAMBAH = 300000;
+  const QB2B = q('Q-QTN-21', 'Usulan: batas 25 peserta dan tambahan Rp300.000/orang disimpan per quotation (nilai saat dibuat). Perlu dapat diubah di Master Data? Tambahan ikut dikenai PPN (masuk DPP) dan tidak ikut didiskon (usulan)?');
+  const QKCO = q('Q-QTN-22', 'Usulan: template surat konfirmasi B2B (atas nama company + lampiran daftar peserta) belum punya kode dokumen Labmania. Kode dan nomor revisinya? PIC mengirim daftar satu kali; perubahan daftar setelah dikirim lewat Sales (usulan)?');
   const QDISK = q('Q-QTN-06', 'Diskon Rupiah per peserta (usulan, mengikuti labmania.html) atau total per quotation?');
   const QALLIN = q('Q-QTN-15', 'All-in hanya untuk B2B dan boleh diskon (terjawab; mockup: Rupiah total). Masih terbuka: di Penawaran dicetak satu baris paket (usulan)? Invoice B2B mengikuti skema: all-in = 1 invoice, per peserta = 1 invoice per peserta.');
   // Default Berlaku sampai = 31 Desember tahun Tanggal quotation (QTN-FR-04).
@@ -51,9 +57,12 @@
     const pj = pjOfQtn(k), harga = pj ? Number(pj.hargaJual) || 0 : 0, n = rows ? rows.length : Math.max(Number(k.kuota) || 0, 0);
     const lain = Math.max(Number(k.lain) || 0, 0);
     if (isAllin(k)) {
-      const sub = Math.max(Number(k.allin) || 0, 0), diskTot = Math.min(Math.max(Number(k.diskon) || 0, 0), sub), dpp = sub - diskTot;
+      // Paket s.d. maks peserta; kelebihan × tarif masuk Sub Total (diskon hanya dari harga paket).
+      const paket = Math.max(Number(k.allin) || 0, 0), maks = Number(k.paketMaks) || B2B_PAKET, tarif = k.tambahPs == null ? B2B_TAMBAH : Number(k.tambahPs) || 0;
+      const lebih = Math.max(n - maks, 0), tambah = lebih * tarif, sub = paket + tambah;
+      const diskTot = Math.min(Math.max(Number(k.diskon) || 0, 0), paket), dpp = sub - diskTot;
       const ppn = k.ppn ? Math.round(dpp * PPN_RATE / 100) : 0;
-      return { allin: true, harga, disk: 0, net: n ? Math.round(dpp / n) : 0, n, sub, diskTot, dpp, ppn, lain, total: dpp + ppn + lain };
+      return { allin: true, harga, disk: 0, net: n ? Math.round(dpp / n) : 0, n, paket, maks, tarif, lebih, tambah, sub, diskTot, dpp, ppn, lain, total: dpp + ppn + lain };
     }
     const disk = Math.min(Math.max(Number(k.diskon) || 0, 0), harga), sub = n * harga, diskTot = n * disk, dpp = sub - diskTot;
     const ppn = k.ppn ? Math.round(dpp * PPN_RATE / 100) : 0;
@@ -89,24 +98,29 @@
   const kuotaPenuh = k => psAktif(k).length >= (Number(k.kuota) || 0);
   // Link berlaku sampai tanggal Berlaku sampai quotation; mulai hari berikutnya tertutup (input/Master - Buat Program/2026-11-09-link-berlaku-quotation/).
   const linkLewat = k => !!k.berlaku && todayIso > k.berlaku;
-  const linkBuka = k => (k.status === 'draft' || k.status === 'terkirim') && !kuotaPenuh(k) && !linkLewat(k);
+  // B2B: link diisi satu kali oleh PIC company; tertutup setelah daftar peserta dikirim (input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/).
+  const linkBuka = k => (k.status === 'draft' || k.status === 'terkirim') && !linkLewat(k) && (isB2bQtn(k) ? !k.konfCo : !kuotaPenuh(k));
   const linkStatus = k => k.status === 'deal' ? 'Ditutup: quotation sudah Deal' : k.status === 'batal' ? 'Ditutup: quotation Batal'
     : linkLewat(k) ? `Ditutup: masa berlaku quotation berakhir ${fmtTgl(k.berlaku)}`
+    : isB2bQtn(k) ? (k.konfCo ? `Ditutup: daftar ${k.peserta.length} peserta sudah dikirim PIC company ${fmtStamp(k.konfCo.tgl)}` : 'Menunggu PIC company mengirim daftar peserta')
     : kuotaPenuh(k) ? `Ditutup: kuota ${k.kuota} peserta sudah terisi` : `Menerima isian · ${psAktif(k).length} dari ${k.kuota} kuota terisi`;
   // B2B memakai template formulir dan Confirmation Letter seperti Public (input/Master - Buat Program/2026-11-09-b2b-tetap-confirmation-letter/).
   // Isian cadangan bila quotation lama belum punya template formulir.
   const B2B_ISIAN = ['nama', 'jabatan', 'wa', 'email'];
-  const isianOf = k => k.kf ? KF_FIELDS.filter(([x]) => k.kf.isian.includes(x) || x === 'nama').concat((k.kf.extra || []).map(l => [`x:${l}`, l]))
+  // B2B: kolom daftar peserta yang diminta ke PIC; Nama Lengkap selalu ada, lainnya opsional per quotation.
+  const B2B_KOLOM = [['jabatan', 'Jabatan'], ['email', 'Email'], ['wa', 'Nomor WhatsApp'], ['nik', 'NIK']];
+  const kolomOf = k => B2B_KOLOM.filter(([x]) => (k.kolomB2b || []).includes(x));
+  const isianOf = k => isB2bQtn(k) ? [['nama', 'Nama Lengkap*'], ...kolomOf(k)] : k.kf ? KF_FIELDS.filter(([x]) => k.kf.isian.includes(x) || x === 'nama').concat((k.kf.extra || []).map(l => [`x:${l}`, l]))
     : KF_FIELDS.filter(([x]) => B2B_ISIAN.includes(x));
   const ISIAN_TYPE = { email: 'email', wa: 'tel', hp: 'tel', habis: 'date' };
   const pad2q = n => String(n).padStart(2, '0');
   const stampNow = (d = new Date()) => `${d.getFullYear()}-${pad2q(d.getMonth() + 1)}-${pad2q(d.getDate())} ${pad2q(d.getHours())}:${pad2q(d.getMinutes())}`;
   const fmtStamp = s => { if (!s) return '—'; const [d, t] = s.split(' '); const [y, m, dd] = d.split('-'); return `${dd}-${m}-${y}${t ? ` ${t.slice(0, 5)}` : ''}`; };
   // Simpan satu isian link sebagai peserta quotation.
-  function qpsAdd(k, data, src, tgl = stampNow()) {
+  function qpsAdd(k, data, src, tgl = stampNow(), surat = null) {
     const co = k.tujuan === 'company' ? db.company.find(c => c.id === k.company) : null;
     if (co && !data.instansi) data.instansi = co.nama;
-    const p = { id: uid(), qtn: k.id, src, tgl, kode: '', company: '', nama: data.nama, instansi: data.instansi || '', telp: data.wa || data.hp || '', email: data.email || '', data };
+    const p = { id: uid(), qtn: k.id, src, tgl, kode: '', company: '', nama: data.nama, instansi: data.instansi || '', telp: data.wa || data.hp || '', email: data.email || '', data, surat };
     db.qps.push(p);
     k.peserta.push({ id: p.id, st: 'menunggu' });
     return p;
@@ -121,11 +135,19 @@
         const m = db.peserta.find(x => x.id === r.id) || {}, co = db.company.find(c => c.id === m.company);
         const data = { nama: m.nama || '', instansi: co ? co.nama : m.instansi || '', alamat: co ? `${co.alamat}, ${co.kota}` : [m.kota, m.provinsi].filter(Boolean).join(', '), wa: m.telp || '', email: m.email || '' };
         const p = { id: uid(), qtn: k.id, src: 'link', tgl: `${addDays(k.tanggal, 1 + (i % 3))} ${pad2q(9 + i % 8)}:${pad2q((i * 7) % 60)}`, kode: '', company: '', nama: data.nama, instansi: data.instansi, telp: data.wa, email: data.email, data };
+        p.surat = { nama: `Surat_Konfirmasi_${(data.nama || 'peserta').replace(/[^\w]+/g, '_')}.${i % 2 ? 'jpg' : 'pdf'}`, ukuran: 180000 + i * 23000, tipe: i % 2 ? 'image/jpeg' : 'application/pdf', contoh: true };
+        if (isB2bQtn(k)) { p.src = 'company'; p.tgl = `${addDays(k.tanggal, 2)} 10:20`; delete p.surat; }
         db.qps.push(p); map[r.id] = p.id; r.id = p.id;
       });
       db.inv.filter(i => i.qtn === k.id).forEach(i => { i.peserta = i.peserta.map(id => map[id] || id); });
       if (k.kuota === undefined) k.kuota = Math.max(k.peserta.length, isB2bQtn(k) ? B2B_MIN : 1) + (k.status === 'terkirim' || k.status === 'draft' ? 1 : 0);
       if (!k.link) k.link = { token: `Q${pad2q(ki + 1)}${k.nomor.slice(-3)}`, dibuat: k.tanggal };
+      if (isB2bQtn(k) && k.peserta.length && !k.konfCo) {
+        const co = db.company.find(c => c.id === k.company) || {};
+        k.kolomB2b = k.kolomB2b || ['email'];
+        k.konfCo = { nama: co.nama || '', alamat: k.alamat || '', pic: co.picNama || '', jab: co.picJabatan || '', hp: co.picTelp || '', email: co.picEmail || '', tgl: `${addDays(k.tanggal, 2)} 10:20`,
+          surat: { nama: `Konfirmasi_${(co.nama || 'company').replace(/[^\w]+/g, '_')}.pdf`, ukuran: 412000, tipe: 'application/pdf', contoh: true } };
+      }
       if (k.tujuan === 'personal' && !k.kepada) k.kepada = (db.qps.find(x => x.id === (k.peserta[0] || {}).id) || {}).nama || '';
     });
   }
@@ -291,22 +313,27 @@
     const list = k.peserta.filter(r => F === 'all' || psStOf(k, r) === F).filter(r => { const p = pesertaById(r.id) || {}; return !state.qvQ || [p.nama, pesertaCo(p), p.email, p.telp].some(x => String(x || '').toLowerCase().includes(state.qvQ.toLowerCase())); });
     const chips = [['all', 'Semua', k.peserta.length], ...['deal', 'menunggu', 'batal'].map(st => [st, PS_STATUS[st], cnt(st)]).filter(x => x[2])]
       .map(([st, l, n]) => `<button type="button" class="tab ${F === st ? 'active' : ''}" data-act="qv-filter" data-s="${st}">${l}<span class="nav-count">${n}</span></button>`).join('');
-    const doc = 'Confirmation Letter';
+    const doc = 'surat konfirmasi';
     const head = `<div class="dp-head">
-        <p class="dp-sum"><b>${k.peserta.length}</b> peserta, semua mengisi lewat link Konfirmasi Kehadiran</p>
+        <p class="dp-sum"><b>${k.peserta.length}</b> peserta, ${isB2bQtn(k) ? 'dikirim PIC company lewat link' : 'semua mengisi lewat link Konfirmasi Kehadiran'}</p>
         <div class="dp-btns">
           <button type="button" class="btn btn-outline" data-act="qps-xls" data-id="${k.id}" ${k.peserta.length ? '' : 'disabled'}>Unduh Excel</button>
           <button type="button" class="btn btn-outline" data-act="qtn-cl" data-id="${k.id}" ${psAktif(k).length ? '' : 'disabled'}>Confirmation Letter (semua)</button>
         </div></div>`;
-    const foot = `<p class="lk-foot muted">Pertanyaan terbuka: ${QTB4}${QTB8}</p>`;
+    const foot = `<p class="lk-foot muted">Pertanyaan terbuka: ${QTB4}${QTB8}${QTB9}${isB2bQtn(k) ? QKCO : ''}</p>`;
+    // B2B: satu konfirmasi company (PIC + surat) untuk seluruh daftar peserta.
+    const co = k.konfCo, coBox = isB2bQtn(k) ? `<div class="card pad dp-co"><p class="ivc-sec-h">Konfirmasi company <span class="tobe">To be</span></p>${co
+      ? `<p><b>${esc(co.nama)}</b> · PIC ${esc(co.pic)}${co.jab ? ` (${esc(co.jab)})` : ''} · ${esc(co.hp || '—')} · ${esc(co.email || '')}<br><span class="muted">${suratMeta(k, pesertaById(k.peserta[0].id))}</span></p>
+        <div class="dp-btns"><button type="button" class="btn btn-outline sm" data-act="qps-prev" data-id="${k.peserta[0].id}">Lihat surat konfirmasi</button><button type="button" class="btn btn-ghost sm" data-act="qps-pdf" data-id="${k.peserta[0].id}">Unduh</button></div>`
+      : '<p class="muted">PIC company belum mengirim daftar peserta. Bagikan link ke PIC company.</p>'}</div>` : '';
     if (!k.peserta.length) {
       return `<div class="dp-empty card pad">
-        <h3>Belum ada calon peserta yang mengisi</h3>
-        <p class="muted">Bagikan link Konfirmasi Kehadiran ke calon peserta. Peserta hanya dapat masuk lewat link.</p>
+        <h3>${isB2bQtn(k) ? 'Belum ada daftar peserta dari company' : 'Belum ada calon peserta yang mengisi'}</h3>
+        <p class="muted">${isB2bQtn(k) ? 'Bagikan link Konfirmasi Kehadiran ke PIC company. PIC mengisi daftar peserta sekaligus.' : 'Bagikan link Konfirmasi Kehadiran ke calon peserta. Peserta hanya dapat masuk lewat link.'}</p>
         <div class="dp-empty-act"><button type="button" class="btn btn-primary" data-act="qtn-link-copy" data-id="${k.id}">Salin link</button></div></div>${foot}`;
     }
     const cols = ['Peserta', 'Instansi', 'Kontak', 'Masuk lewat', 'Status', ...(k.status === 'deal' ? ['Invoice'] : []), 'Aksi'];
-    return `${head}
+    return `${head}${coBox}
       <div class="card"><div class="dp-tools"><div class="tabs qv-tabs">${chips}</div>
         <div class="search">${SEARCH_ICON}<input type="search" class="input" id="qv-q" placeholder="Cari nama, instansi, email, WhatsApp…" value="${esc(state.qvQ || '')}" aria-label="Cari peserta"></div></div>
       <div class="table-wrap"><table class="table dp-table"><thead><tr><th class="num">No</th>${cols.map(c => `<th${c === 'Aksi' ? ' class="act"' : ''}>${c}</th>`).join('')}</tr></thead><tbody>
@@ -318,7 +345,7 @@
           <td data-l="Masuk lewat">${srcTag(p)} <span class="muted">${fmtStamp(p.tgl)}</span></td>
           <td data-l="Status">${psBadge(st)}</td>
           ${k.status === 'deal' ? `<td data-l="Invoice">${inv ? `<button class="btn btn-ghost sm" data-act="ivc-view" data-id="${inv.id}">${esc(inv.nomor)}</button>` : st === 'deal' ? '<span class="badge st-ivc-uninvoiced">Uninvoiced</span>' : '—'}</td>` : ''}
-          <td class="act dp-act"><button type="button" class="btn btn-ghost sm" data-act="qps-prev" data-id="${p.id}" aria-label="Lihat ${doc} ${esc(p.nama)}">Lihat</button><button type="button" class="btn btn-ghost sm" data-act="qps-pdf" data-id="${p.id}" aria-label="Unduh PDF ${doc} ${esc(p.nama)}">PDF</button></td></tr>`; }).join('')
+          <td class="act dp-act"><button type="button" class="btn btn-ghost sm" data-act="qps-prev" data-id="${p.id}" aria-label="Lihat ${doc} ${esc(p.nama)}">Lihat</button><button type="button" class="btn btn-ghost sm" data-act="qps-pdf" data-id="${p.id}" aria-label="Unduh ${doc} ${esc(p.nama)}">Unduh</button></td></tr>`; }).join('')
         : `<tr><td colspan="${cols.length + 1}" class="empty">Tidak ada peserta yang cocok. Ubah filter status atau kata pencarian.</td></tr>`}</tbody></table></div></div>
       ${foot}`;
   }
@@ -338,7 +365,7 @@
     const LANGKAH = {
       draft: 'Periksa isi quotation, lalu kirim ke customer. Link Konfirmasi Kehadiran sudah bisa dibagikan.',
       terkirim: 'Tunggu calon peserta mengisi link. Setelah peserta pasti ikut, tandai Deal.',
-      deal: ivcStatus(k) !== 'invoiced' ? `Peserta sudah Deal dan Sales Order ${esc((soOfQtn(k) || {}).nomor || '')} sudah dibuat. Lanjutkan di menu Sales Order: cetak SO, lalu tandai siap dibuatkan invoice. Confirmation Letter ada di tab Data Peserta.` : 'Semua peserta Deal sudah ditagih.',
+      deal: ivcStatus(k) !== 'invoiced' ? `Peserta sudah Deal dan Sales Order ${esc(soOfQtn(k) ? soNomor(soOfQtn(k)) : '')} sudah dibuat. Lanjutkan di menu Sales Order: cetak SO, lalu tandai siap dibuatkan invoice. Confirmation Letter ada di tab Data Peserta.` : 'Semua peserta Deal sudah ditagih.',
       batal: 'Quotation dibatalkan dan link Konfirmasi Kehadiran ditutup.'
     };
     const alur = ['draft', 'terkirim', 'deal'].map((s, i, arr) => { const pos = arr.indexOf(k.status), cls = k.status === 'batal' ? '' : i < pos ? 'done' : i === pos ? 'on' : '';
@@ -354,7 +381,7 @@
       <button type="button" class="tab ${tab === 'detail' ? 'active' : ''}" role="tab" aria-selected="${tab === 'detail'}" data-act="qv-tab" data-tab="detail">Detail Quotation</button>
       <button type="button" class="tab ${tab === 'peserta' ? 'active' : ''}" role="tab" aria-selected="${tab === 'peserta'}" data-act="qv-tab" data-tab="peserta">Data Peserta<span class="nav-count">${k.peserta.length}</span><span class="tobe">To be</span></button></div>`;
     const harga = `<div class="totals">${v.allin
-      ? `<div class="tr"><span>Harga all-in <span class="muted">kuota ${v.n} peserta</span></span><span>${rp(v.sub)}</span></div><div class="tr"><span>Diskon <span class="muted">Rupiah total</span></span><span>− ${rp(v.diskTot)}</span></div>`
+      ? `${b2bHargaRows(v)}<div class="tr"><span>Diskon <span class="muted">Rupiah total, dari harga paket</span></span><span>− ${rp(v.diskTot)}</span></div>`
       : `<div class="tr"><span>Subtotal <span class="muted">kuota ${v.n} peserta × ${rp(v.harga)}</span></span><span>${rp(v.sub)}</span></div><div class="tr"><span>Diskon <span class="muted">${v.n} × ${rp(v.disk)}</span></span><span>− ${rp(v.diskTot)}</span></div>`}
       <div class="tr"><span>Setelah diskon</span><span>${rp(v.dpp)}</span></div><div class="tr"><span>PPN ${k.ppn ? `${PPN_RATE}%` : '<span class="muted">(tidak dikenakan)</span>'}</span><span>${rp(v.ppn)}</span></div>
       <div class="tr"><span>Biaya lain-lain</span><span>${rp(v.lain)}</span></div><div class="tr grand"><span><b>Grand total quotation</b></span><span><b>${rp(v.total)}</b></span></div>
@@ -364,7 +391,7 @@
         ${invOfQtn(k).map(i => `<tr><td><span class="code">${esc(i.nomor)}</span></td><td>${tglPanjang(i.tanggal)}</td><td>${i.cara === 'peserta' ? esc((pesertaById(i.peserta[0]) || {}).nama || '—') : `${i.peserta.length} peserta`}</td><td>${PERLAKUAN[i.perlakuan]}</td><td class="money">${rp(i.total)}</td>
           <td class="act"><button class="btn btn-ghost sm" data-act="ivc-view" data-id="${i.id}">Lihat</button><button class="btn btn-ghost sm" data-act="ivc-print" data-id="${i.id}">Print</button></td></tr>`).join('')}</tbody></table></div>
         <p class="hint">${ivcStatus(k) === 'invoiced' ? 'Semua peserta Deal sudah ditagih.' : `${ivcSisaPs(k).length} peserta Deal belum ditagih.`}</p>`
-      : `<p class="hint">Belum ada invoice. Invoice dibuat dari Sales Order <b>${esc((soOfQtn(k) || {}).nomor || '—')}</b> setelah ditandai siap dibuatkan invoice (menu Sales Order).</p>`) : '';
+      : `<p class="hint">Belum ada invoice. Invoice dibuat dari Sales Order <b>${esc(soOfQtn(k) ? soNomor(soOfQtn(k)) : '—')}</b> setelah ditandai siap dibuatkan invoice (menu Sales Order).</p>`) : '';
     const body = tab === 'peserta' ? dataPesertaTab(k)
       : `<div class="qtn-grid">${sec(1, 'Data Quotation', '', kv([['Nomor', `<span class="code">${esc(k.nomor)}</span>`], ['Tanggal', tglPanjang(k.tanggal)], ['Berlaku sampai', tglPanjang(k.berlaku)], ['Sales', esc(s.nama || '—')], ['Sumber informasi', esc(k.sumber || '—')], ['Kuota peserta', `${k.kuota} peserta`], ...(isB2bQtn(k) ? [['Skema harga', isAllin(k) ? 'All-in 1 company' : 'Per peserta']] : [])]))}
         ${sec(2, 'Ditujukan Kepada', '', kv([['Tujuan', tujuanTag(k.tujuan)], ['Kepada', esc(kepadaOf(k))], ['u.p.', esc(k.tujuan === 'company' ? k.up || '—' : kepadaOf(k))], ['Alamat', esc(k.alamat || '—')], ...(k.tujuan === 'company' ? [['Perlakuan PPN', PERLAKUAN[ivcPerlakuan(k)]]] : [])]))}</div>
@@ -412,21 +439,22 @@
         <td data-l="Quotation"><button class="btn btn-ghost sm code" data-act="qtn-view-ps" data-id="${k.id}">${esc(k.nomor)}</button><br><span class="muted">${esc(kepadaOf(k))}</span></td>
         <td data-l="Masuk lewat">${srcTag(p)} <span class="muted">${fmtStamp(p.tgl)}</span></td>
         <td data-l="Status">${psBadge(st)}</td>
-        <td class="act">${gearMenu({ id: p.id }, [['qps-prev', 'Lihat Confirmation Letter']])}</td></tr>`).join('')
+        <td class="act">${gearMenu({ id: p.id }, [['qps-prev', 'Lihat Confirmation Letter'], ['qps-pdf', 'Unduh surat konfirmasi']])}</td></tr>`).join('')
         : '<tr><td colspan="8" class="empty">Tidak ada peserta yang cocok. Ubah filter status atau kata pencarian.</td></tr>'}</tbody></table></div>`;
   }
   // Export PDF satu batch (input/Master - Buat Program/2026-11-09-batch-cl-export-pdf/): halaman 1 daftar peserta,
-  // lalu Confirmation Letter tiap peserta (Public dan B2B). Peserta Batal tidak ikut (usulan, Q-QTN-19).
+  // lalu Confirmation Letter tiap peserta (Public dan B2B) = surat bertanda tangan yang diunggah peserta (input/Master - Buat Program/2026-11-10-surat-konfirmasi-ttd-basah/).
+  // Peserta Batal tidak ikut (usulan, Q-QTN-19).
   function bpPdf(pj) {
     const ps = bpRows(pj).filter(x => x.st !== 'batal'), pk = paketOf(mpOf(pj)), tot = ps.length + 1;
     const rekap = pdfPage(`<h3 class="pdf-title">Daftar Peserta</h3>
       <p class="pdf-mut">${esc(pj.nomor)} · ${esc(pk.judul)} · ${esc(varianTxt(pj))} · ${esc(rangePanjang(pj.tglMulai, pj.tglSelesai))} · ${esc(pj.lokasi || '')}</p>
       <table class="pdf-tbl bp-pdf-tbl"><thead><tr><th>No</th><th>Nama Lengkap</th><th>Instansi</th><th>Kontak</th><th>Quotation</th><th>Status</th></tr></thead><tbody>
       ${ps.map(({ k, p, st }, i) => `<tr><td>${i + 1}</td><td>${esc(p.nama || '')}</td><td>${esc(pesertaCo(p))}</td><td>${esc(p.telp || '')}<br>${esc(p.email || '')}</td><td>${esc(k.nomor)}</td><td>${PS_STATUS[st]}</td></tr>`).join('')}</tbody></table>
-      <p class="pdf-mut">${ps.length} peserta. Halaman berikutnya: Confirmation Letter tiap peserta, urut sesuai daftar.</p>`, pdfFoot('[kode dokumen menyusul]', `1 dari ${tot}`, '—'));
+      <p class="pdf-mut">${ps.length} peserta. Halaman berikutnya: surat konfirmasi bertanda tangan yang diunggah tiap peserta, urut sesuai daftar.</p>`, pdfFoot('[kode dokumen menyusul]', `1 dari ${tot}`, '—'));
     openModal({
       title: `Data Peserta: ${pj.nomor}`, wide: 'x',
-      body: pdfWrap(rekap + ps.map(({ k, p }) => letterOf(k, p)).join(''), `Daftar peserta + Confirmation Letter ${ps.length} peserta (tanpa peserta Batal)${QBP}`),
+      body: pdfWrap(rekap + (seen => ps.map(({ k, p }) => { if (isB2bQtn(k)) { if (seen.has(k.id)) return ''; seen.add(k.id); } return suratPage(k, p); }).join(''))(new Set()), `Daftar peserta + surat konfirmasi yang diunggah ${ps.length} peserta (tanpa peserta Batal)${QBP}`),
       onMount: pdfMount,
       saveLabel: 'Export PDF',
       onSave: () => { window.print(); logAct('Quotation', 'Data Peserta', 'Export', pj.nomor, pj.id, `Export PDF Data Peserta batch ${pj.nomor} (${ps.length} peserta)`); }
@@ -458,20 +486,23 @@
       { label: 'Quotation' + QQTN, cls: 'nowrap', render: k => `<button class="btn btn-ghost sm code" data-act="qtn-view" data-id="${k.id}">${esc(k.nomor)}</button><br><span class="muted">${fmtTgl(k.tanggal)}${k.berlaku ? ` s.d. ${fmtTgl(k.berlaku)}` : ''}<br>Sales: ${esc((salesOf(k) || {}).nama || '—')}${k.sumber ? `, ${esc(k.sumber)}` : ''}</span>` },
       { label: 'Kepada', render: k => `${tujuanTag(k.tujuan)} ${esc(kepadaOf(k))}${k.up ? `<br><span class="muted">u.p. ${esc(k.up)}</span>` : ''}` },
       { label: 'Peserta <span class="tobe">To be</span>', render: psRingkas },
-      { label: 'Nilai', cls: 'money', render: k => { const v = qtnNilai(k); return `${rp(v.total)}<br><span class="muted">kuota ${v.n} · ${v.allin ? `All-in ${rp(v.sub)}${v.diskTot ? ` − diskon ${rp(v.diskTot)}` : ''}` : `${rp(v.net)} / peserta${v.disk ? ` (diskon ${rp(v.disk)})` : ''}`}${k.ppn ? ` + PPN ${PPN_RATE}%` : ''}</span>`; } },
+      { label: 'Nilai', cls: 'money', render: k => { const v = qtnNilai(k); return `${rp(v.total)}<br><span class="muted">kuota ${v.n} · ${v.allin ? `All-in ${rp(v.paket)}${v.tambah ? ` + ${v.lebih} × ${rp(v.tarif)}` : ''}${v.diskTot ? ` − diskon ${rp(v.diskTot)}` : ''}` : `${rp(v.net)} / peserta${v.disk ? ` (diskon ${rp(v.disk)})` : ''}`}${k.ppn ? ` + PPN ${PPN_RATE}%` : ''}</span>`; } },
       { label: 'Status', cls: 'nowrap', render: k => qtnBadge(k.status) + (k.status === 'deal' ? `<br><span class="muted">${dealRows(k).length} dari ${k.peserta.length} peserta deal</span>` : `<br><span class="muted">Link ${linkBuka(k) ? 'terbuka' : 'tertutup'}</span>`) },
       { label: 'Action', cls: 'act', render: qtnGear }
     ]);
   }
 
   // ---------- Quotation: form (QTN-FR-04 – QTN-FR-08; to be: kuota menggantikan pilihan peserta) ----------
+  // Baris harga paket B2B + tambahan peserta di atas batas paket.
+  const b2bHargaRows = v => `<div class="tr"><span>Harga all-in <span class="muted">paket s.d. ${v.maks} peserta</span></span><span>${rp(v.paket)}</span></div>
+    <div class="tr"><span>Tambahan peserta <span class="muted">${v.lebih ? `${v.lebih} peserta di atas ${v.maks} × ${rp(v.tarif)}` : `tidak ada (${v.n} peserta, s.d. ${v.maks})`}</span></span><span>${rp(v.tambah)}</span></div>`;
   function qtnTotals(d) {
-    const pj = db.quot.find(x => x.id === d.pj), v = qtnNilai({ pj: d.pj, ppn: d.ppn, diskon: d.diskon, lain: d.lain, skema: d.skema, allin: d.allin, kuota: d.kuota });
+    const pj = db.quot.find(x => x.id === d.pj), v = qtnNilai({ pj: d.pj, ppn: d.ppn, diskon: d.diskon, lain: d.lain, skema: d.skema, allin: d.allin, kuota: d.kuota, paketMaks: d.paketMaks, tambahPs: d.tambahPs });
     const bepH = pj ? calc(pj).bepHarga : null;
     if (v.allin) {
       const low = bepH !== null && v.n && v.net < bepH;
-      return `<div class="tr"><span>Harga all-in <span class="muted">kuota ${v.n} peserta, satu harga untuk company</span></span><span>${rp(v.sub)}</span></div>
-      <div class="tr"><span>Diskon <span class="muted">Rupiah total</span></span><span>− ${rp(v.diskTot)}</span></div>
+      return `${b2bHargaRows(v)}
+      <div class="tr"><span>Diskon <span class="muted">Rupiah total, dari harga paket</span></span><span>− ${rp(v.diskTot)}</span></div>
       <div class="tr"><span>Setelah diskon</span><span>${rp(v.dpp)}</span></div>
       <div class="tr"><label class="chk"><input type="checkbox" name="ppn" ${d.ppn ? 'checked' : ''}> PPN ${PPN_RATE}%</label><span>${rp(v.ppn)}</span></div>
       <div class="tr"><span>Biaya lain-lain</span><span>${rp(v.lain)}</span></div>
@@ -525,16 +556,15 @@
     const target = pj ? nPeserta(pj) : 0, lain = pj ? kuotaLain(d.pj, d.id) : 0, sudah = d.isEdit ? d.terisi || 0 : 0;
     const right = `<p class="qtn-h">Kuota peserta <span class="tobe">To be</span></p>
       ${field('Kuota peserta' + req + QTB1, `<div class="kq-input"><input class="input" type="number" name="kuota" min="${b2b ? B2B_MIN : 1}" step="1" inputmode="numeric" value="${esc(d.kuota === '' || d.kuota === undefined ? '' : d.kuota)}" placeholder="${b2b ? B2B_MIN : 1}" aria-describedby="kq-help"><span>peserta</span></div>
-        <span class="hint" id="kq-help">${b2b ? `Penjualan B2B minimal ${B2B_MIN} peserta. ` : ''}${sudah ? `Sudah terisi ${sudah}; kuota tidak boleh kurang dari itu.` : 'Jumlah kursi yang ditawarkan di quotation ini.'}</span>`, E.kuota)}
+        <span class="hint" id="kq-help">${b2b ? `Penjualan B2B minimal ${B2B_MIN} peserta. Harga paket mencakup s.d. ${B2B_PAKET} peserta; peserta ke-${B2B_PAKET + 1} dan seterusnya + ${rp(B2B_TAMBAH)}/orang.${QB2B} ` : ''}${sudah ? `Sudah terisi ${sudah}; kuota tidak boleh kurang dari itu.` : 'Jumlah kursi yang ditawarkan di quotation ini.'}</span>`, E.kuota)}
       ${pj ? `<dl class="kq-stat"><div><dt>Target program</dt><dd>${target}</dd></div><div><dt>Di quotation lain</dt><dd>${lain}</dd></div><div><dt>Sisa target</dt><dd>${Math.max(target - lain, 0)}</dd></div></dl>` : ''}
       <p class="kq-info">Peserta tidak dipilih di sini. Setelah disimpan, sistem membuat <b>link Konfirmasi Kehadiran</b>. Calon peserta mengisi data dirinya lewat link; hasilnya masuk tab <b>Data Peserta</b>. Tidak ada tambah peserta manual.</p>`;
-    const allin = b2b && d.skema === 'allin';
-    const skemaHtml = b2b ? field('Skema harga' + req + QALLIN, `<div class="static seg">
-          <label><input type="radio" name="skema" value="peserta" ${allin ? '' : 'checked'}> Per peserta</label>
-          <label><input type="radio" name="skema" value="allin" ${allin ? 'checked' : ''}> All-in 1 company</label></div>
-        <span class="hint">${allin ? 'Satu harga untuk seluruh peserta company; diskon Rupiah total.' : 'Harga / peserta dari Penjualan Program × kuota, dapat diberi diskon.'}</span>`) : '';
+    // B2B hanya all-in (input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/); pilihan skema per peserta dihapus.
+    const allin = b2b;
+    const skemaHtml = b2b ? field('Skema harga' + QALLIN, `<div class="static">All-in 1 company</div>
+        <span class="hint">Satu harga paket untuk s.d. ${B2B_PAKET} peserta; diskon Rupiah total.</span>`) : '';
     const harga = allin ? `<div>${skemaHtml}
-        ${field('Harga all-in (Rp)' + req, `${moneyIn('name="allin" placeholder="0"', d.allin || '')}<span class="hint">Terisi awal harga / peserta × kuota; ubah sesuai kesepakatan.</span>`, E.allin)}
+        ${field('Harga all-in (Rp)' + req, `${moneyIn('name="allin" placeholder="0"', d.allin || '')}<span class="hint">Harga paket s.d. ${B2B_PAKET} peserta. Terisi awal harga / peserta × kuota (maks. ${B2B_PAKET}); ubah sesuai kesepakatan.</span>`, E.allin)}
         ${field('Diskon (Rp total)', `${moneyIn('name="diskon" placeholder="0"', d.diskon || '')}<span class="hint">Rupiah saja, tanpa %. Satu nilai untuk seluruh quotation, maksimal harga all-in.</span>`, E.diskon)}
         ${field('Biaya lain-lain (Rp)', `${moneyIn('name="lain" placeholder="0"', d.lain || '')}<span class="hint">Baris "Biaya Lain-lain" di Penawaran</span>`)}
       </div><div class="totals" id="qtn-totals">${qtnTotals(d)}</div>` : `<div>${skemaHtml}
@@ -546,14 +576,15 @@
       <p class="qtn-h">Harga</p><div class="qtn-grid">${harga}</div></div>`;
   }
 
+  const b2bAllinDefault = (d, pj) => { d.skema = 'allin'; if (!d.allin) d.allin = (Number(pj.hargaJual) || 0) * Math.min(Math.max(Number(d.kuota) || 0, B2B_MIN), B2B_PAKET); };
   function qtnChange(d, form, t) {
     const n = t.name, val = t.value;
     if (n === 'pj') {
-      d.pj = Number(val) || ''; d.err = {}; d.skema = 'peserta'; d.allin = '';
+      d.pj = Number(val) || ''; d.err = {}; d.skema = 'peserta'; d.allin = ''; d.kolomB2b = d.kolomB2b || [];
       const pj = db.quot.find(x => x.id === d.pj);
       if (!d.ketTouched) d.ketItems = pj ? ketItems(pj.jenis, null) : null;
       if (!d.kfTouched) d.kf = pj ? kfNew(kfDefaultFor(pj)) : null;
-      if (pj && pj.jenis === 'b2b') { qtnSetCompany(d, pj.company, 'company'); if ((Number(d.kuota) || 0) < B2B_MIN) d.kuota = B2B_MIN; }
+      if (pj && pj.jenis === 'b2b') { qtnSetCompany(d, pj.company, 'company'); if ((Number(d.kuota) || 0) < B2B_MIN) d.kuota = B2B_MIN; b2bAllinDefault(d, pj); }
       else { d.tujuan = d.tujuan || ''; if (d.tujuan === 'company' && d.company) qtnSetCompany(d, d.company, 'company'); }
     } else if (n === 'tujuan') { d.tujuan = val; d.company = ''; d.up = ''; d.alamat = ''; d.kepada = ''; }
     else if (n === 'company') qtnSetCompany(d, Number(val) || '', 'company');
@@ -583,13 +614,29 @@
 
   // Form quotation: Data Quotation → Keterangan → Formulir Konfirmasi (isian link, Public) → Preview.
   const QTN_STEPS = [['data', 'Data Quotation'], ['ket', 'Keterangan'], ['kf', 'Formulir Konfirmasi (link)'], ['prev', 'Preview']];
-  const qtnSteps = () => QTN_STEPS;
+  const isB2bD = d => ((db.quot.find(x => x.id === d.pj) || {}).jenis) === 'b2b';
+  const qtnSteps = d => QTN_STEPS.map(([k, l]) => [k, k === 'kf' && d && isB2bD(d) ? 'Konfirmasi Company (link)' : l]);
+  // Langkah 3 B2B (input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/): link diisi satu kali oleh PIC company, berisi data
+  // company/PIC + daftar peserta (Nama wajib, kolom lain opsional), lalu surat konfirmasi company ditandatangani dan diunggah.
+  function kfB2bHtml(d) {
+    const pj = db.quot.find(x => x.id === d.pj), kol = d.kolomB2b || [];
+    const chips = `<span class="kf-chip on">Nama Lengkap <span class="muted">(wajib)</span></span>` + B2B_KOLOM.map(([k, l]) => `<label class="kf-chip ${kol.includes(k) ? 'on' : ''}"><input type="checkbox" data-kbk="${k}" ${kol.includes(k) ? 'checked' : ''}> ${esc(l)}</label>`).join('');
+    const contoh = pj ? pageKonfirmasiB2b(Object.assign({}, d, { kolomB2b: kol }), null, [], '') : '';
+    return `<div class="notice"><span><span class="tobe">To be</span> Penjualan B2B dikonfirmasi <b>atas nama company</b>. Link diisi <b>satu kali oleh PIC company</b>: data company dan PIC, lalu daftar peserta. PIC mencetak surat konfirmasi company beserta lampiran daftar peserta, menandatangani dan memberi cap, lalu wajib mengunggahnya.</span><span class="ref">QTN-FR-31${QKCO}</span></div>
+      <p class="qtn-h">Diisi PIC company</p>
+      <p class="kf-fixed">Nama Perusahaan · Alamat Perusahaan · Nama PIC · Jabatan PIC · Nomor HP / WhatsApp PIC · Email PIC <span class="muted">(terisi awal dari Master Company, dapat diubah PIC)</span></p>
+      <p class="qtn-h">Kolom daftar peserta</p>
+      <p class="hint top">Company biasanya hanya mengirim nama. Centang kolom lain bila memang dibutuhkan.</p>
+      <div class="kf-chips">${chips}</div>
+      <p class="qtn-h">Surat konfirmasi company <span class="muted">(kosong, contoh)</span></p>
+      <div class="pdf-doc kf-b2b-prev">${contoh}</div>`;
+  }
   function qtnBody(d) {
     const steps = qtnSteps(d);
     if (d.step > steps.length) d.step = steps.length;
     const nav = `<ol class="stepper">${steps.map(([, l], i) => `<li class="${d.step === i + 1 ? 'on' : d.step > i + 1 ? 'done' : ''}"><button type="button" data-q="step" data-n="${i + 1}" ${d.step === i + 1 ? 'aria-current="step"' : ''}><span>${i + 1}</span>${l}</button></li>`).join('')}</ol>`;
     const s = steps[d.step - 1][0];
-    return nav + (s === 'data' ? qtnStep1(d) : s === 'ket' ? ketHtml(d) : s === 'kf' ? kfHtml(d) : qtnPreview(d));
+    return nav + (s === 'data' ? qtnStep1(d) : s === 'ket' ? ketHtml(d) : s === 'kf' ? (isB2bD(d) ? kfB2bHtml(d) : kfHtml(d)) : qtnPreview(d));
   }
   // To be: PDF quotation = Penawaran + S&K. Formulir Konfirmasi tidak dicetak kosong; diisi lewat link.
   const qtnPages = k => pagePenawaran(k) + pagesSnk();
@@ -618,7 +665,7 @@
     if (!d.tujuan) E.tujuan = 'Pilih Company atau Personal';
     else if (d.tujuan === 'company' && !d.company) E.company = 'Company wajib dipilih';
     else if (d.tujuan === 'personal' && !String(d.kepada || '').trim()) E.kepada = 'Nama yang dituju wajib diisi';
-    const b2b = pj && pj.jenis === 'b2b', allin = b2b && d.skema === 'allin', kuota = Number(d.kuota) || 0;
+    const b2b = pj && pj.jenis === 'b2b', allin = b2b, kuota = Number(d.kuota) || 0;
     if (!kuota) E.kuota = 'Kuota peserta wajib diisi, minimal 1';
     else if (b2b && kuota < B2B_MIN) E.kuota = `Penjualan B2B minimal ${B2B_MIN} peserta`;
     else if (d.isEdit && kuota < (d.terisi || 0)) E.kuota = `Sudah ${d.terisi} peserta mengisi; kuota tidak boleh kurang dari itu`;
@@ -633,7 +680,8 @@
     return { pj: d.pj, tanggal: d.tanggal, berlaku: d.berlaku, sales: d.sales, sumber: d.sumber, tujuan: d.tujuan,
       company: d.tujuan === 'company' ? d.company : '', up: d.tujuan === 'company' ? (d.up || '').trim() : '', kepada: d.tujuan === 'personal' ? (d.kepada || '').trim() : '',
       alamat: (d.alamat || '').trim(), ppn: d.ppn, kuota: Number(d.kuota) || 0,
-      skema: jenis === 'b2b' && d.skema === 'allin' ? 'allin' : 'peserta', allin: jenis === 'b2b' && d.skema === 'allin' ? Number(d.allin) || 0 : 0,
+      skema: jenis === 'b2b' ? 'allin' : 'peserta', allin: jenis === 'b2b' ? Number(d.allin) || 0 : 0,
+      ...(jenis === 'b2b' ? { paketMaks: Number(d.paketMaks) || B2B_PAKET, tambahPs: d.tambahPs == null ? B2B_TAMBAH : Number(d.tambahPs), kolomB2b: (d.kolomB2b || []).slice() } : {}),
       diskon: Number(d.diskon) || 0, lain: Number(d.lain) || 0, ket: ketFromItems(d.ketItems, jenis),
       kf: d.kf ? clone(d.kf) : null };
   }
@@ -670,7 +718,8 @@
     const d = rec ? Object.assign(clone(rec), { err: {}, isEdit: true, terisi: psAktif(rec).length, ketItems: ketItems(pjRec.jenis, rec.ket), ketTouched: true, kf: rec.kf ? clone(rec.kf) : kfNew(kfDefaultFor(pjRec)), kfTouched: true })
       : { pj: '', tanggal: todayIso, berlaku: akhirTahun(todayIso), sales: (db.user.find(u => u.aktif) || {}).id || '', sumber: '', tujuan: '', company: '', up: '', kepada: '', alamat: '', kuota: '', ppn: true, diskon: '', lain: '', ketItems: null, ketTouched: false, err: {} };
     Object.assign(d, { step: 1, lastStep: 1, ketOpen: {}, ketEdit: null });
-    if (preset) { d.pj = preset; const pj = db.quot.find(x => x.id === preset); d.ketItems = ketItems(pj.jenis, null); d.kf = kfNew(kfDefaultFor(pj)); if (pj.jenis === 'b2b') { qtnSetCompany(d, pj.company, 'company'); d.kuota = B2B_MIN; } }
+    if (rec && pjRec.jenis === 'b2b' && rec.skema !== 'allin') b2bAllinDefault(d, pjRec); // quotation B2B lama skema per peserta
+    if (preset) { d.pj = preset; const pj = db.quot.find(x => x.id === preset); d.ketItems = ketItems(pj.jenis, null); d.kf = kfNew(kfDefaultFor(pj)); if (pj.jenis === 'b2b') { qtnSetCompany(d, pj.company, 'company'); d.kuota = B2B_MIN; d.kolomB2b = []; b2bAllinDefault(d, pj); } }
     openModal({
       title: rec ? `Edit Quotation ${rec.nomor}` : 'Buat Quotation', wide: 'x',
       body: qtnBody(d), saveLabel: 'Lanjut →',
@@ -679,6 +728,7 @@
         form.addEventListener('change', e => {
           const t = e.target;
           if (t.name === 'kfTpl') { d.kf = kfNew(kfTplById(+t.value)); d.kfTouched = true; qtnRedraw(d, form); return; }
+          if (t.dataset.kbk) { const k = t.dataset.kbk; d.kolomB2b = B2B_KOLOM.map(([x]) => x).filter(x => x === k ? t.checked : (d.kolomB2b || []).includes(x)); qtnRedraw(d, form); return; }
           if (t.dataset.kfi) { const k = t.dataset.kfi; d.kf.isian = KF_FIELDS.map(([x]) => x).filter(x => x === k ? t.checked : d.kf.isian.includes(x)); d.kfTouched = true; qtnRedraw(d, form); return; }
           if (t.name === 'kfPernyataan' || t.dataset.kfNew !== undefined) return;
           if (t.dataset.kc) { d.ketItems[t.dataset.kc][+t.dataset.i].on = t.checked; d.ketTouched = true; qtnRedraw(d, form); return; }
@@ -768,7 +818,9 @@
       <table class="pdf-tbl"><thead><tr><th>No Catalog</th><th>Item</th><th>Deskripsi</th><th class="r">Kts.</th><th class="r">Harga</th><th class="r">Diskon</th><th class="r">Total Harga</th></tr></thead>
         <tbody><tr><td>${esc(pk.nomor)}</td><td>${esc(pk.judul)}</td>
           <td>${pj.durasi} hari${pj.jamPembelajaran ? ` · ${pj.jamPembelajaran} JP` : ''}<br>${rangePanjang(pj.tglMulai, pj.tglSelesai)}<br>${esc(pj.waktu || '—')}<br>${esc(pj.lokasi || '—')}${nama.length ? `<br><span class="pdf-mut">Peserta: ${esc(nama.join(', '))}</span>` : ''}</td>
-          <td class="r">${v.n} peserta</td>${v.allin ? `<td class="r">${rp(v.sub)}<br><span class="pdf-mut">all-in</span></td><td class="r">${v.diskTot ? rp(v.diskTot) : '0'}</td>` : `<td class="r">${rp(v.harga)}</td><td class="r">${v.disk ? rp(v.disk) : '0'}</td>`}<td class="r">${rp(v.sub)}</td></tr></tbody></table>
+          ${v.allin ? `<td class="r">1 paket<br><span class="pdf-mut">s.d. ${v.maks} peserta</span></td><td class="r">${rp(v.paket)}<br><span class="pdf-mut">all-in</span></td><td class="r">${v.diskTot ? rp(v.diskTot) : '0'}</td><td class="r">${rp(v.paket)}</td></tr>
+          ${v.tambah ? `<tr><td></td><td>Tambahan peserta</td><td>Peserta di atas ${v.maks} (${v.n} peserta)</td><td class="r">${v.lebih} peserta</td><td class="r">${rp(v.tarif)}</td><td class="r">0</td><td class="r">${rp(v.tambah)}</td></tr>` : ''}`
+            : `<td class="r">${v.n} peserta</td><td class="r">${rp(v.harga)}</td><td class="r">${v.disk ? rp(v.disk) : '0'}</td><td class="r">${rp(v.sub)}</td></tr>`}</tbody></table>
       <div class="pdf-2col">
         <div><div class="pdf-lbl">Keterangan</div><div class="pdf-line">Up. Ibu/Bapak ${esc(up || '—')}</div>
           <div class="pdf-small">${KET_KAT.filter(([c]) => c !== 'klausul' && ket[c].length).map(([c]) => `${KET_PDF[c]}:<ul class="pdf-dash">${ket[c].map(t => `<li>${esc(t)}</li>`).join('')}</ul>`).join('')}
@@ -828,8 +880,10 @@
   }
 
   // 3. Confirmation Letter (FR/LMI-TR-01/02/Ed.Rev-1.0). To be: satu halaman per peserta, terisi dari isian
-  // Konfirmasi Kehadiran (isian link). Tanpa isian (contoh template di Master Data) tetap tercetak kosong.
-  function pageKonfirmasi(k, p) {
+  // Konfirmasi Kehadiran. Tanpa isian (contoh template di Master Data) tetap tercetak kosong.
+  // Template ini dicetak calon peserta dari link, ditandatangani basah, lalu diunggah (input/Master - Buat Program/2026-11-10-surat-konfirmasi-ttd-basah/):
+  // tempat dan tanda tangan diisi tangan; tanggal = tanggal cetak (tgl dapat diganti token untuk konfirmasi.html).
+  function pageKonfirmasi(k, p, tgl = tglPanjang(todayIso)) {
     const pj = pjOfQtn(k), pk = paketOf(mpOf(pj)), s = salesOf(k) || {};
     const kf = k.kf || kfNew(kfDefaultFor(pj)), t = kfTplById(kf.tpl) || kfDefaultFor(pj);
     const terisi = !!(p && p.data);
@@ -837,7 +891,7 @@
       .concat((kf.extra || []).map(l => [l, terisi ? p.data[`x:${l}`] || '' : '']));
     const cat = { email: s.email || '—', telp: s.telp || '—', kegiatan: t.kegiatan, judul: pk.judul };
     const sign = terisi
-      ? `<div class="pdf-sign1">Dikonfirmasi oleh peserta lewat link, ${tglPanjang(String(p.tgl).slice(0, 10))} ${String(p.tgl).slice(11, 16)}<div class="pdf-ttd"></div>(${esc(p.nama)})<br><b>Jabatan:</b> ${esc((p.data && p.data.jabatan) || '')}</div>`
+      ? `<div class="pdf-sign1">..........................., ${tgl}<div class="pdf-ttd"></div>(${esc(p.nama)})<br><b>Jabatan:</b> ${esc((p.data && p.data.jabatan) || '')}</div>`
       : `<div class="pdf-sign1">..........., ...................... 20.....<div class="pdf-ttd"></div>(..........................................................)<br><b>Jabatan:</b></div>`;
     return pdfPage(`<h3 class="pdf-title">Konfirmasi Keikutsertaan Peserta</h3>
       ${terisi ? `<p class="pdf-mut">Quotation ${esc(k.nomor)} · ${esc(pk.judul)}</p>` : ''}
@@ -847,9 +901,73 @@
         <li>Saya <b><u>telah membaca</u></b> dan <b><u>menyetujui</u></b> syarat &amp; ketentuan yang berlaku di LabMania</li></ol>
       ${sign}
       <div class="pdf-small"><b><u>Catatan :</u></b><ul>${(t.catatan || []).map(c => `<li>${kfMark(kfFill(c, cat))}</li>`).join('')}</ul></div>`,
-      pdfFoot('FR/LMI-TR-01/02/Ed.Rev-1.0', '1 dari 1', '01/08/2023'));
+      pdfFoot('FR/LMI-TR-01/02/Ed.Rev-1.0', '1 dari 1', '01/08/2023')).replace('class="pdf-page"', 'class="pdf-page kf-page"');
   }
-  const letterOf = (k, p) => pageKonfirmasi(k, p);
+  // Surat konfirmasi B2B atas nama company + lampiran daftar peserta (input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/, format usulan).
+  // c = data company/PIC (null = kosong); list = peserta [{nama, ...kolom}]; rowsRaw/nRaw = token untuk konfirmasi.html.
+  function pageKonfirmasiB2b(k, c, list, tgl, rowsRaw, nRaw) {
+    const pj = pjOfQtn(k), pk = paketOf(mpOf(pj)), sl = salesOf(k) || {}, v = kfVars(pj), kol = kolomOf(k);
+    const x = key => c ? esc(c[key] || '') : '';
+    const n = nRaw || (list.length ? String(list.length) : '......');
+    const isi = [['Nama Perusahaan', x('nama')], ['Alamat Perusahaan', x('alamat')], ['Nama PIC', x('pic')], ['Jabatan', x('jab')], ['Nomor HP / WhatsApp', x('hp')], ['Email', x('email')]];
+    const rows = rowsRaw || (list.length ? list : Array.from({ length: 10 }, () => ({}))).map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.nama || '')}</td>${kol.map(([key]) => `<td>${esc(p[key] || '')}</td>`).join('')}</tr>`).join('');
+    const foot = h => pdfFoot('[kode dokumen menyusul]', h, '—');
+    return pdfPage(`<h3 class="pdf-title">Konfirmasi Keikutsertaan Perusahaan (In-House)</h3>
+      ${k.nomor ? `<p class="pdf-mut">Quotation ${esc(k.nomor)} · ${esc(pk.judul)}</p>` : ''}
+      <table class="pdf-form">${isi.map(([l, val]) => `<tr><td>${l}</td><td>:</td><td>${val}</td></tr>`).join('')}</table>
+      <p>Dengan ini perusahaan kami menyatakan:</p>
+      <ol class="pdf-small-ol"><li>Mengikutsertakan <b>${n} peserta</b> (daftar terlampir) pada kegiatan "<b>${esc(v.judul)}</b>" yang akan diselenggarakan pada tanggal <b>${esc(v.tanggal)}</b> pukul ${esc(v.waktu)} (${esc(v.durasi)} hari, ${esc(v.lokasi)}).</li>
+        <li>Telah <b><u>membaca</u></b> dan <b><u>menyetujui</u></b> syarat &amp; ketentuan yang berlaku di LabMania, termasuk ketentuan biaya peserta di atas ${B2B_PAKET} orang sesuai quotation.</li></ol>
+      <div class="pdf-sign1">..........................., ${tgl || '...................... 20.....'}<br>Hormat kami,<div class="pdf-ttd"></div>(${c ? x('pic') : '..........................................................'})<br><b>Jabatan:</b> ${x('jab')}<br><span class="pdf-mut">tanda tangan dan cap perusahaan</span></div>
+      <div class="pdf-small"><b><u>Catatan :</u></b><ul>
+        <li>Nama lengkap peserta pada lampiran menjadi acuan penulisan di sertifikat.</li>
+        <li>Harga paket mencakup s.d. ${B2B_PAKET} peserta; peserta ke-${B2B_PAKET + 1} dan seterusnya dikenakan tambahan ${rp(B2B_TAMBAH)}/orang.</li>
+        <li>Perubahan daftar peserta setelah konfirmasi dikirim, hubungi ${esc(sl.nama || 'Sales LabMania')}${sl.email ? ` (${esc(sl.email)})` : ''}${sl.telp ? ` di ${esc(sl.telp)}` : ''}.</li></ul></div>`,
+      foot('1 dari 2')).replace('class="pdf-page"', 'class="pdf-page kf-page"')
+      + pdfPage(`<h3 class="pdf-title">Lampiran: Daftar Peserta</h3>
+      <p class="pdf-mut">${c ? `${x('nama')} · ` : ''}${k.nomor ? `Quotation ${esc(k.nomor)} · ` : ''}${esc(pk.judul)} · ${esc(v.tanggal)}</p>
+      <table class="kf-lamp-tbl"><thead><tr><th>No</th><th>Nama Lengkap</th>${kol.map(([, l]) => `<th>${esc(l)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`,
+      foot('2 dari 2')).replace('class="pdf-page"', 'class="pdf-page kf-page kf-lamp"');
+  }
+  const b2bList = k => k.peserta.map(r => pesertaById(r.id)).filter(Boolean).map(p => p.data || { nama: p.nama });
+  function suratTemplateB2b(k) {
+    const T = { nama: '[[co]]', alamat: '[[alamat]]', pic: '[[pic]]', jab: '[[jab]]', hp: '[[hp]]', email: '[[email]]' };
+    return pageKonfirmasiB2b(k, T, [], '[[tgl]]', '[[rows]]', '[[n]]');
+  }
+
+  // Template untuk konfirmasi.html: isian diganti token [[i]] (urutan isianOf) dan [[tgl]], diisi di halaman link.
+  function suratTemplate(k) {
+    const data = {}; isianOf(k).forEach(([key], i) => { data[key] = `[[${i}]]`; });
+    return pageKonfirmasi(k, { data, nama: data.nama }, '[[tgl]]');
+  }
+
+  // Surat konfirmasi bertanda tangan yang diunggah peserta (input/Master - Buat Program/2026-11-10-surat-konfirmasi-ttd-basah/). Inilah yang dilihat
+  // Sales/marketing sebagai Confirmation Letter. Data contoh tidak punya berkas; ditampilkan surat terisi sebagai gambaran.
+  const kbOf = n => `${Math.max(1, Math.round((n || 0) / 1024))} KB`;
+  const suratUrl = f => { if (!f || !f.url) return ''; if (!f.blob) { const [h, b64] = f.url.split(','), bin = atob(b64), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); f.blob = URL.createObjectURL(new Blob([u], { type: h.slice(5).split(';')[0] })); } return f.blob; };
+  const suratFile = (k, p) => isB2bQtn(k) ? (k.konfCo || {}).surat : p.surat;
+  const suratTgl = (k, p) => isB2bQtn(k) ? (k.konfCo || {}).tgl || p.tgl : p.tgl;
+  const suratContoh = (k, p) => { const tgl = tglPanjang(String(suratTgl(k, p)).slice(0, 10));
+    return isB2bQtn(k) ? pageKonfirmasiB2b(k, k.konfCo, b2bList(k), tgl) : pageKonfirmasi(k, p, tgl); };
+  function suratIsi(k, p) {
+    const f = suratFile(k, p), url = suratUrl(f);
+    if (url && /^image\//.test(f.tipe)) return `<img class="sk-img" src="${url}" alt="Surat konfirmasi bertanda tangan dari ${esc(p.nama)}">`;
+    if (url) return `<iframe class="sk-pdf" src="${url}" title="Surat konfirmasi ${esc(p.nama)}"></iframe>`;
+    if (f && f.contoh) return `<p class="sk-note">Data contoh: berkas asli tidak ada di mockup. Di bawah ini surat terisi sebagai gambaran isi berkas.</p><div class="sk-contoh">${suratContoh(k, p)}</div>`;
+    if (f) return '<p class="sk-note">Berkas terlalu besar untuk disimpan di browser (mockup). Di aplikasi berkas tersimpan di server dan tampil di sini.</p>';
+    return `<p class="sk-note">${isB2bQtn(k) ? 'PIC company belum mengirim daftar peserta dan surat konfirmasi.' : 'Peserta ini belum mengunggah surat konfirmasi.'}</p>`;
+  }
+  const suratMeta = (k, p) => { const f = suratFile(k, p); return f ? `<span class="code">${esc(f.nama)}</span> · ${kbOf(f.ukuran)} · diunggah ${fmtStamp(suratTgl(k, p))} lewat link${isB2bQtn(k) && k.konfCo ? ` oleh PIC ${esc(k.konfCo.pic)}` : ''}` : 'Belum ada berkas'; };
+  const suratBlok = (k, p) => `<section class="sk-blok"><p class="sk-head"><b>${esc(isB2bQtn(k) ? kepadaOf(k) : p.nama)}</b> <span class="muted">${isB2bQtn(k) ? `${k.peserta.length} peserta` : esc(pesertaCo(p))} · ${suratMeta(k, p)}</span></p>${suratIsi(k, p)}</section>`;
+  // Halaman Export PDF batch: gambar dicetak satu halaman; PDF unggahan digabung server di aplikasi.
+  function suratPage(k, p) {
+    const f = suratFile(k, p), url = suratUrl(f), siapa = isB2bQtn(k) ? kepadaOf(k) : p.nama;
+    if (f && f.contoh) return suratContoh(k, p);
+    const isi = url && /^image\//.test(f.tipe) ? `<img class="sk-img" src="${url}" alt="Surat konfirmasi ${esc(siapa)}">`
+      : `<p class="pdf-mut">Berkas ${f ? `PDF <b>${esc(f.nama)}</b> digabungkan di sini saat Export PDF di aplikasi.` : 'belum diunggah.'}</p>`;
+    return `<section class="pdf-page sk-page"><p class="pdf-mut">${esc(siapa)} · Quotation ${esc(k.nomor)} · ${f ? esc(f.nama) : '—'}</p>${isi}</section>`;
+  }
 
   // Pratinjau PDF: halaman A4 berurutan + tombol cetak/simpan PDF (window.print, CSS @media print).
   const pdfWrap = (pages, info) => `<div class="pdf-tools"><span class="muted">${info}</span>
@@ -883,12 +1001,31 @@
     return `${k.dokKet ? `<p class="dok-ket"><span class="muted">Keterangan:</span> ${esc(k.dokKet)}</p>` : ''}<div class="table-wrap"><table class="table"><thead><tr><th class="num">No</th><th>Nama file</th><th>Ukuran</th><th>Diunggah</th></tr></thead><tbody>
       ${d.map((x, i) => `<tr><td class="num">${i + 1}</td><td><span class="code">${esc(x.nama)}</span></td><td class="nowrap">${x.ukuran ? `${Math.max(1, Math.round(x.ukuran / 1024))} KB` : '—'}</td><td class="nowrap">${esc(x.oleh || '—')}<br><span class="muted">${fmtStamp(x.tgl)}</span></td></tr>`).join('')}</tbody></table></div>`;
   }
+  // Peserta Deal ke Master Peserta (QTN-FR-33, input/Master - Buat Program/2026-11-11-peserta-deal-ke-master-peserta/).
+  // Cocok NIK, lalu email, lalu No. WA: hanya field kosong yang diisi. Tidak cocok: peserta baru (Belum lengkap bila ada yang kosong).
+  // Bidang dari Product program (kosong bila Bidang Product berbeda-beda); Provinsi/Kota dari Master Company bila quotation ke Company.
+  function mpSyncDeal(k) {
+    const pj = pjOfQtn(k), co = k.tujuan === 'company' ? db.company.find(c => c.id === k.company) : null;
+    const bidangs = [...new Set(paketList(mpOf(pj) || {}).map(x => x.bidang).filter(Boolean))];
+    const hasil = { baru: 0, cocok: 0 };
+    dealRows(k).forEach(r => {
+      const p = pesertaById(r.id); if (!p || p.idPeserta) return;
+      const d = p.data || {}, nik = digits(d.nik), email = String(p.email || d.email || '').trim().toLowerCase(), wa = digits(p.telp || d.wa || d.hp);
+      const isi = { nama: p.nama, nik: d.nik || '', telp: p.telp || d.wa || d.hp || '', email: p.email || d.email || '', instansi: co ? co.nama : p.instansi || d.instansi || '',
+        company: co ? co.id : '', npwp: co ? co.npwp || '' : '', bidang: bidangs.length === 1 ? bidangs[0] : '', provinsi: co ? co.provinsi || '' : '', kota: co ? co.kota || '' : '', gender: '' };
+      const m = (nik && db.peserta.find(x => digits(x.nik) === nik)) || (email && db.peserta.find(x => String(x.email || '').toLowerCase() === email))
+        || (wa && db.peserta.find(x => digits(x.telp) === wa));
+      if (m) { Object.keys(isi).forEach(f => { if (!m[f] && isi[f]) m[f] = isi[f]; }); p.idPeserta = m.id; hasil.cocok++; }
+      else { const n = Object.assign({ id: uid(), kode: nextCode('PS'), asal: k.nomor }, isi); db.peserta.push(n); p.idPeserta = n.id; hasil.baru++; }
+    });
+    return hasil;
+  }
   let dealFiles = [];
   function qtnDeal(k) {
     const pj = pjOfQtn(k), list = psAktif(k);
     openModal({
       title: `Deal: ${k.nomor}`, wide: true,
-      body: `<p class="hint top">${esc(kepadaOf(k))} · ${esc(paketOf(mpOf(pj)).judul)} (${esc(pj.nomor)}). Peserta diambil dari <b>Data Peserta</b> quotation ini (isian link). Centang yang <b>deal</b>; yang tidak dicentang menjadi <b>Batal</b>. Setelah Deal, link Konfirmasi Kehadiran ditutup dan <b>Sales Order</b> dibuat otomatis.${isB2bQtn(k) ? ` Penjualan B2B: minimal ${B2B_MIN} peserta deal.` : ''}${q('Q-QTN-07', 'Deal untuk seluruh quotation, atau tetap memilih peserta yang deal? Usulan: centang, default semua.')}</p>
+      body: `<p class="hint top">${esc(kepadaOf(k))} · ${esc(paketOf(mpOf(pj)).judul)} (${esc(pj.nomor)}). Peserta diambil dari <b>Data Peserta</b> quotation ini (isian link). Centang yang <b>deal</b>; yang tidak dicentang menjadi <b>Batal</b>. Setelah Deal, link Konfirmasi Kehadiran ditutup, <b>Sales Order</b> dibuat otomatis, dan peserta Deal disimpan ke <b>Master Peserta</b>.${isB2bQtn(k) ? ` Penjualan B2B: minimal ${B2B_MIN} peserta deal.` : ''}${q('Q-QTN-07', 'Deal untuk seluruh quotation, atau tetap memilih peserta yang deal? Usulan: centang, default semua.')}</p>
         ${list.length ? `<div class="ps-pick">${list.map(r => { const p = pesertaById(r.id) || {};
           return `<label class="ps-row"><input type="checkbox" name="deal" value="${r.id}" checked><span><b>${esc(p.nama)}</b> ${srcTag(p)}<br><span class="muted">${esc(pesertaCo(p))} · ${esc(p.telp || '—')}</span></span></label>`; }).join('')}</div>`
           : `<p class="dash-empty">Belum ada peserta di Data Peserta. Bagikan link Konfirmasi Kehadiran dahulu.</p>`}
@@ -921,7 +1058,9 @@
         k.peserta.forEach(r => { r.st = on.includes(r.id) ? 'deal' : 'batal'; });
         k.status = 'deal';
         const so = soCreate(k); // to be: 1 quotation Deal = 1 Sales Order
-        toast(`${k.nomor} Deal: ${on.length} peserta deal${k.peserta.length - on.length ? `, ${k.peserta.length - on.length} batal` : ''}. Sales Order ${so.nomor} dibuat.`);
+        const mp = mpSyncDeal(k);
+        logAct('Quotation', 'Quotation', 'Deal', k.nomor, k.id, `Deal ${k.nomor}: ${on.length} peserta deal, Sales Order ${so.nomor}. Master Peserta: ${mp.baru} baru, ${mp.cocok} dicocokkan`);
+        toast(`${k.nomor} Deal: ${on.length} peserta deal${k.peserta.length - on.length ? `, ${k.peserta.length - on.length} batal` : ''}. Sales Order ${so.nomor} dibuat. Master Peserta: ${mp.baru} baru, ${mp.cocok} sudah terdaftar.`);
       }
     });
   }
@@ -935,17 +1074,16 @@
     });
   }
 
-  // Confirmation Letter = dokumen output quotation (to be): satu halaman per peserta dari isian Konfirmasi Kehadiran.
+  // Confirmation Letter (to be): surat konfirmasi bertanda tangan yang diunggah tiap peserta lewat link.
   // Deal: peserta Deal saja; sebelum Deal: semua peserta yang sudah mengisi.
   function qtnConfirm(k) {
-    const rows = k.status === 'deal' ? dealRows(k) : psAktif(k), ps = rows.map(r => pesertaById(r.id)).filter(Boolean);
+    const rows = k.status === 'deal' ? dealRows(k) : psAktif(k), all = rows.map(r => pesertaById(r.id)).filter(Boolean), ps = isB2bQtn(k) ? all.slice(0, 1) : all;
     openModal({
       title: `Confirmation Letter: ${k.nomor}`, wide: 'x',
-      body: pdfWrap(ps.map(p => pageKonfirmasi(k, p)).join(''), `${ps.length} peserta ${k.status === 'deal' ? 'Deal' : 'yang sudah mengisi'}, satu halaman per peserta, terisi dari Konfirmasi Kehadiran${QTB5}`),
-      onMount: pdfMount,
-      saveLabel: 'Cetak',
-      onSave: () => { logAct('Quotation', 'Quotation', 'Cetak', k.nomor, k.id, `Cetak Confirmation Letter ${k.nomor} (${ps.length} peserta)`); toast(`Confirmation Letter ${k.nomor} dicetak (mockup)`); }
+      body: `<p class="hint top">${isB2bQtn(k) ? `Surat konfirmasi company yang diunggah PIC lewat link, dengan lampiran daftar ${k.peserta.length} peserta.` : `Surat konfirmasi bertanda tangan yang diunggah ${ps.length} peserta ${k.status === 'deal' ? 'Deal' : 'yang sudah mengisi'} lewat link.`}${QTB5}</p>${ps.map(p => suratBlok(k, p)).join('')}`,
+      info: true
     });
+    logAct('Quotation', 'Data Peserta', 'Lihat', k.nomor, k.id, `Lihat Confirmation Letter ${k.nomor} (${ps.length} peserta)`);
   }
 
   // ---------- Link Konfirmasi Kehadiran & Data Peserta (to be) ----------
@@ -965,7 +1103,10 @@
       buka: k.status === 'draft' || k.status === 'terkirim', berlaku: k.berlaku || '', status: QTN_STATUS[k.status], b2b, sales: (salesOf(k) || {}).nama || '',
       instansi: co ? co.nama : '',
       isian: isianOf(k).map(([key, label]) => ({ key, label: label.replace('*', ''), type: ISIAN_TYPE[key] || 'text', wajib: key === 'nama' })),
-      pernyataan: kfText((k.kf || kfNew(kfDefaultFor(pj))).pernyataan, pj)
+      pernyataan: kfText((k.kf || kfNew(kfDefaultFor(pj))).pernyataan, pj),
+      surat: b2b ? suratTemplateB2b(k) : suratTemplate(k),
+      ...(b2b ? { kolom: kolomOf(k).map(([key, label]) => ({ key, label, type: ISIAN_TYPE[key] || 'text' })), sudahKirim: !!k.konfCo, paketMaks: Number(k.paketMaks) || B2B_PAKET, tambahPs: k.tambahPs == null ? B2B_TAMBAH : Number(k.tambahPs),
+        company: co ? { nama: co.nama, alamat: k.alamat || `${co.alamat}, ${co.kota}`, pic: co.picNama || '', jab: co.picJabatan || '', hp: co.picTelp || '', email: co.picEmail || '' } : {} } : {})
     });
   }
   const linkPublishAll = () => db.qtn.forEach(linkPublish);
@@ -983,7 +1124,13 @@
         if (linkDiambil.has(x.id)) return;
         linkDiambil.add(x.id); x.imp = true;
         if (!linkBuka(k)) { x.ditolak = linkStatus(k); return; }
-        const p = qpsAdd(k, x.data, 'link', x.tgl);
+        if (x.tipe === 'b2b') { // satu kiriman PIC = semua peserta company + surat company
+          x.peserta.forEach(ps => qpsAdd(k, Object.assign({ instansi: x.co.nama }, ps), 'company', x.tgl, null));
+          k.konfCo = Object.assign({}, x.co, { tgl: x.tgl, surat: x.surat || null });
+          logAct('Quotation', 'Data Peserta', 'Tambah', k.nomor, k.id, `Daftar ${x.peserta.length} peserta dari PIC ${x.co.pic} (${x.co.nama}) lewat link`);
+          n += x.peserta.length; return;
+        }
+        const p = qpsAdd(k, x.data, 'link', x.tgl, x.surat || null);
         logAct('Quotation', 'Data Peserta', 'Tambah', k.nomor, k.id, `Konfirmasi Kehadiran lewat link: ${p.nama}`);
         n++;
       });
@@ -993,20 +1140,37 @@
     if (n) { toast(`${n} isian Konfirmasi Kehadiran baru masuk ke Data Peserta`); render(); }
     return n;
   }
-  // Preview / Download PDF per peserta: Confirmation Letter peserta itu.
-  function qpsPreview(p, cetak) {
-    const k = db.qtn.find(x => x.id === p.qtn);
-    openModal({ title: `Confirmation Letter: ${p.nama}`, wide: 'x', info: true,
-      body: pdfWrap(letterOf(k, p), `${PS_SRC[p.src]} · ${fmtStamp(p.tgl)} · Quotation ${esc(k.nomor)}`), onMount: pdfMount });
-    if (cetak) { logAct('Quotation', 'Data Peserta', 'Cetak', k.nomor, k.id, `Download PDF ${p.nama}`); window.print(); }
+  // Lihat / Unduh per peserta: surat konfirmasi bertanda tangan yang diunggah peserta itu.
+  function qpsPreview(p, unduh) {
+    const k = db.qtn.find(x => x.id === p.qtn), f = suratFile(k, p), url = suratUrl(f), siapa = isB2bQtn(k) ? kepadaOf(k) : p.nama;
+    if (unduh) {
+      if (!f) { toast('Surat konfirmasi belum diunggah', 'warn'); return; }
+      if (url) {
+        const a = document.createElement('a'); a.href = url; a.download = f.nama; document.body.appendChild(a); a.click(); a.remove();
+        logAct('Quotation', 'Data Peserta', 'Unduh', k.nomor, k.id, `Unduh surat konfirmasi ${siapa}`);
+        toast(`${f.nama} diunduh`);
+      } else if (f.contoh) {
+        // Data contoh tidak punya berkas asli: tampilkan surat terisi yang dapat disimpan sebagai PDF.
+        openModal({ title: `Unduh surat konfirmasi: ${siapa}`, wide: 'x', info: true, onMount: pdfMount, cancelLabel: 'Tutup',
+          body: pdfWrap(suratContoh(k, p), `Data contoh: berkas asli <span class="code">${esc(f.nama)}</span> tidak ada di mockup. Simpan surat terisi ini lewat <b>Cetak / Simpan PDF</b>. Di aplikasi, tombol Unduh langsung mengunduh berkas yang diunggah${isB2bQtn(k) ? ' PIC' : ' peserta'}.`) });
+        logAct('Quotation', 'Data Peserta', 'Unduh', k.nomor, k.id, `Unduh surat konfirmasi ${siapa} (data contoh)`);
+      } else {
+        toast(`${f.nama} lebih besar dari batas penyimpanan browser, jadi tidak dapat diunduh di mockup. Di aplikasi berkas tersimpan di server dan dapat diunduh.`, 'warn');
+      }
+      return;
+    }
+    openModal({ title: `Confirmation Letter: ${siapa}`, wide: 'x', info: true,
+      body: `<div class="pdf-tools"><span class="muted">${suratMeta(k, p)} · Quotation ${esc(k.nomor)}${isB2bQtn(k) ? ' · surat company untuk semua peserta quotation ini' : ''}</span>
+        ${f ? `<button type="button" class="btn btn-ghost sm" data-act="qps-pdf" data-id="${p.id}">Unduh berkas</button>` : ''}</div>${suratIsi(k, p)}` });
+    logAct('Quotation', 'Data Peserta', 'Lihat', k.nomor, k.id, `Lihat surat konfirmasi ${siapa}`);
   }
   // Download semua isian sebagai Excel (pola sama dengan Export Excel Manage Peserta).
   function qpsXls(k) {
     const cols = isianOf(k), cell = v => `<td>${esc(v || '')}</td>`;
-    const html = `<table><tr><td colspan="${cols.length + 4}"><b>Data Peserta ${esc(k.nomor)}</b> · ${esc(paketOf(mpOf(pjOfQtn(k))).judul)} · kuota ${k.kuota}</td></tr>
-      <tr><th>No</th>${cols.map(([, l]) => `<th>${esc(l.replace('*', ''))}</th>`).join('')}<th>Masuk lewat</th><th>Waktu</th><th>Status</th></tr>
+    const html = `<table><tr><td colspan="${cols.length + 5}"><b>Data Peserta ${esc(k.nomor)}</b> · ${esc(paketOf(mpOf(pjOfQtn(k))).judul)} · kuota ${k.kuota}</td></tr>
+      <tr><th>No</th>${cols.map(([, l]) => `<th>${esc(l.replace('*', ''))}</th>`).join('')}<th>Surat konfirmasi</th><th>Masuk lewat</th><th>Waktu</th><th>Status</th></tr>
       ${k.peserta.map((r, i) => { const p = pesertaById(r.id) || { data: {} };
-        return `<tr>${cell(i + 1)}${cols.map(([key]) => (key === 'wa' || key === 'hp') ? `<td style="mso-number-format:'\\@'">${esc(p.data[key] || '')}</td>` : cell(p.data[key] || (key === 'instansi' ? p.instansi : ''))).join('')}${cell(PS_SRC[p.src])}${cell(fmtStamp(p.tgl))}${cell(PS_STATUS[psStOf(k, r)])}</tr>`; }).join('')}</table>`;
+        return `<tr>${cell(i + 1)}${cols.map(([key]) => (key === 'wa' || key === 'hp') ? `<td style="mso-number-format:'\\@'">${esc(p.data[key] || '')}</td>` : cell(p.data[key] || (key === 'instansi' ? p.instansi : ''))).join('')}${cell((suratFile(k, p) || {}).nama || '')}${cell(PS_SRC[p.src])}${cell(fmtStamp(p.tgl))}${cell(PS_STATUS[psStOf(k, r)])}</tr>`; }).join('')}</table>`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' }));
     a.download = `Data_Peserta_${k.nomor.replace(/[^\w-]+/g, '_')}.xls`;

@@ -12,7 +12,7 @@ Folder ini berisi rancangan **to be** yang terpisah dari dokumen **as is** di `d
 
 | File | Pasangan as is | Isi to be |
 |---|---|---|
-| `fr-nfr.md` | `docs/fr-nfr.md` (draf 11x) | Master Data: **Varian Pelaksanaan kembali**, Product Combine 4 atribut; **Lingkup** per paket di Katalog Produk; Master Peserta bukan sumber peserta Quotation |
+| `fr-nfr.md` | `docs/fr-nfr.md` (draf 11x) | Master Data: **Varian Pelaksanaan kembali**, Product Combine 4 atribut; **Lingkup** per paket di Katalog Produk; Master Peserta bukan sumber peserta Quotation, tetapi **peserta Deal disimpan ke Master Peserta** saat Deal |
 | `fr-nfr-quotation.md` | `docs/fr-nfr-quotation.md` (draf 10a) | Quotation: **Kuota peserta**, **link Konfirmasi Kehadiran**, tab **Data Peserta**, Confirmation Letter dari isian (tanpa tambah manual) |
 | `fr-nfr-sales-order.md` | — (baru; as is: "Sales Order tidak ada" `[B2B-3]`) | Sales Order di modul Quotation: 1 quotation Deal = 1 SO, daftar per program, View (quotation + surat konfirmasi dari link), Print Out SO, **Siap dibuatkan invoice**; invoice dibuat dari SO. SO = surat konfirmasi pesanan ke customer; nomor format menyusul; tidak dapat dibatalkan. Tab **Surat Kerja Trainer** |
 | `fr-nfr-master-program.md` | `docs/fr-nfr-master-program.md` (draf 11b) | Master Program memilih **satu atau lebih Product**; costing tetap satu |
@@ -30,7 +30,7 @@ Pengajuan Biaya, Activity Log) tetap memakai dokumen as is di `docs/`, dengan ca
 |---|---|---|
 | 1 | Master **Varian Pelaksanaan** kembali (In House Training, Workshop, Workshop Berbasis Kompetensi, Workshop Lisensi BSN); Product Combine = Produk + Bidang + Varian + Sertifikat; kombinasi unik atas 4 atribut | `fr-nfr.md` FR-01, FR-02, FR-07 – FR-10, FR-12, FR-22, FR-26, FR-43, UC-04, UC-05, lampiran 7 · ERD `ms_varian_pelaksanaan`, `paket_produk.id_varian_pelaksanaan` |
 | 2 | Form quotation: pilihan peserta diganti **Kuota peserta** | `fr-nfr-quotation.md` QTN-FR-05 – QTN-FR-08, QTN-FR-21, QTN-FR-22 · ERD `quotation.kuota_peserta`, `quotation.kepada_nama` |
-| 3 | Peserta quotation **tidak** dari Master Peserta; data ada setelah Konfirmasi Kehadiran diisi | `fr-nfr.md` FR-15 · `fr-nfr-quotation.md` QTN-FR-25 · ERD `quotation_peserta` tanpa `id_peserta` |
+| 3 | Peserta quotation **tidak** dari Master Peserta; data ada setelah Konfirmasi Kehadiran diisi. Sejak 11-11-2026 peserta **Deal** disimpan ke Master Peserta (baris MP) | `fr-nfr.md` FR-15 · `fr-nfr-quotation.md` QTN-FR-25 · ERD `quotation_peserta.id_peserta` diisi saat Deal |
 | 4 | **Link Konfirmasi Kehadiran** dibuat otomatis saat quotation disimpan, khusus quotation itu; tiap calon peserta mengisi sendiri | QTN-FR-23 – QTN-FR-25, QTN-NFR-08, QTN-NFR-10 · ERD `quotation.link_token`, `link_dibuat` · BPMN pool Calon Peserta |
 | 5 | Hasil isian masuk tab **Data Peserta** quotation, dengan preview dan download | QTN-FR-26, QTN-FR-28, QTN-NFR-09 |
 | 6 | ~~Sales tetap dapat menambah peserta manual~~ **dibatalkan** `input/Master - Buat Program/2026-11-09-peserta-hanya-lewat-link/`: peserta hanya lewat link | ~~QTN-FR-27~~, Q-TB-08 |
@@ -50,11 +50,16 @@ Pengajuan Biaya, Activity Log) tetap memakai dokumen as is di `docs/`, dengan ca
 | PR | Menu **Product Combine** → **Product**; Master Program memilih **lebih dari satu Product**, costing tetap satu; **Reschedule** hanya tanggal + trainer dengan **evidence** wajib JPG/PNG/DOC/DOCX/PDF (`input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/`) | `fr-nfr.md` · `fr-nfr-master-program.md` MP-FR-01 – MP-FR-03 · `fr-nfr-penjualan-program.md` PJ-FR-26, PJ-FR-28, Q-PJ-26 · ERD `master_program_produk`, `penjualan_program_reschedule_evidence` |
 | DD | **Dokumen dari customer** (PO, SPK, dokumen apa pun) **wajib diunggah saat Deal**, tampil di Sales Order (`input/Master - Buat Program/2026-11-09-dokumen-deal/`) | `fr-nfr-quotation.md` UC-35, QTN-FR-11, Q-QTN-20 · `fr-nfr-sales-order.md` SO-FR-05 · ERD `quotation_dokumen` |
 | CL | **B2B tetap punya Confirmation Letter** (formulir konfirmasi + pernyataan seperti Public) (`input/Master - Buat Program/2026-11-09-b2b-tetap-confirmation-letter/`) | `fr-nfr-quotation.md` QTN-FR-13, QTN-FR-19, QTN-FR-25, Q-TB-03 · `fr-nfr-sales-order.md` SO-FR-05 |
+| FC | **Format cetak resmi Labmania**: Surat Kerja Trainer dicetak sebagai **Surat Tugas** `FR/LMI-TR-05/01`; **Daftar Hadir** `FR/LMI-TR-05/17` (A4 landscape, 10 baris/halaman, Hari/Tanggal = tanggal program, satu set per hari, `input/Master - Buat Program/2026-11-10-daftar-hadir-tanggal-program/`); **Name Table** baru di Manage Peserta, satu peserta satu lembar (`input/Master - Buat Program/2026-11-10-format-cetak-skt-hadir-name-table/`) | `fr-nfr-sales-order.md` SO-FR-14, SO-FR-15, Q-SKT-04 · `fr-nfr-manage-peserta.md` MP-FR-04, MP-FR-07, MP-FR-10, MP-FR-11, UC-51, Q-MPS-04 · tanpa perubahan ERD |
+| TT | **Surat konfirmasi bertanda tangan basah**: di link Konfirmasi Kehadiran calon peserta mencetak surat yang sudah terisi, menandatangani, lalu **wajib mengunggahnya**; Sales/marketing melihat surat yang diunggah (`input/Master - Buat Program/2026-11-10-surat-konfirmasi-ttd-basah/`) | `fr-nfr-quotation.md` UC-56, QTN-FR-13, QTN-FR-16, QTN-FR-25, QTN-FR-28, QTN-FR-29 · `fr-nfr-sales-order.md` SO-FR-05 · ERD `quotation_peserta.surat_konfirmasi` |
+| B2 | **B2B hanya all-in**: harga paket s.d. **25 peserta**, peserta ke-26 dst **+ Rp300.000/orang**, minimal 10 tetap; **konfirmasi atas nama company**: link diisi satu kali oleh **PIC company** (data company & PIC + daftar peserta), satu **surat konfirmasi company** + lampiran, tanda tangan & cap, unggah wajib — menggantikan baris CL "B2B sama dengan Public" (`input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/`). Dampak: invoice B2B jadi satu ke company (paket Invoice - Pengajuan, belum diubah) | `fr-nfr-quotation.md` QTN-FR-20, QTN-FR-31, QTN-FR-32, UC-68, Q-QTN-21, Q-QTN-22 · `fr-nfr-sales-order.md` SO-FR-05, SO-FR-08 · ERD `quotation.paket_maks_peserta`, `tambahan_per_peserta`, `kolom_peserta_b2b`, `quotation_konfirmasi_company` |
+| RD | **Reschedule setelah Deal** selama acara belum berjalan dan program belum Closed; Sales Order **tidak dihapus**, jadwalnya ikut berubah, nomor SO mendapat **revisi** (`SO-001 Rev-1`) (`input/Master - Buat Program/2026-11-11-reschedule-setelah-deal/`). Masih dikonfirmasi: peserta yang tidak bisa ikut, invoice yang sudah terbit, surat konfirmasi bertanggal lama (Q-PJ-22) | `fr-nfr-penjualan-program.md` PJ-FR-26, PJ-FR-27, PJ-NFR-10, Q-PJ-22 · `fr-nfr-sales-order.md` SO-FR-16, Q-SO-06 · ERD `sales_order.revisi` |
+| MP | **Peserta Deal ke Master Peserta**: saat Deal, peserta Deal disimpan ke Master Peserta (cocok NIK/email/WA: hanya mengisi field kosong; tidak cocok: peserta baru). Link tidak berubah; **Bidang** dari Product program dan **Provinsi/Kota** dari Master Company terisi otomatis; field lain dilengkapi admin, ditandai **Belum lengkap** (`input/Master - Buat Program/2026-11-11-peserta-deal-ke-master-peserta/`) | `fr-nfr.md` FR-15, FR-16, UC-07 · `fr-nfr-quotation.md` QTN-FR-11, QTN-FR-33, Q-TB-04, Q-QTN-23 · ERD `ms_peserta.nik`, `quotation_peserta.id_peserta` |
 
 ## Dampak ke modul yang dokumennya tetap as is
 
 Dicatat di sini, belum ditulis ulang, karena paket **Invoice - Pengajuan** dipisah dari paket **Master - Quotation**.
-Perlu diputuskan bersama Q-TB-04 sebelum to be dibangun.
+Q-TB-04 terjawab 11-11-2026: peserta Deal disimpan ke Master Peserta (QTN-FR-33).
 
 | Modul (dokumen as is) | Yang terdampak di to be |
 |---|---|
@@ -70,7 +75,7 @@ persis seperti sebelum 29-10-2026.
 
 ## Penomoran
 
-Nomor baru di dokumen to be tidak memakai ulang kode as is: UC-56 – UC-64, QTN-FR-22 – QTN-FR-28,
+Nomor baru di dokumen to be tidak memakai ulang kode as is: UC-56 – UC-68, QTN-FR-22 – QTN-FR-33,
 QTN-NFR-08 – QTN-NFR-10, Q-TB-01 – Q-TB-07, FR-67 – FR-68, Q-38, Q-39, PJ-FR-29, Q-PJ-25, SO-FR-01 – SO-FR-14, SO-NFR-01 – SO-NFR-06, Q-SO-01 – Q-SO-05, Q-SKT-01 – Q-SKT-03. Bila as is menambah nomor sebelum to be disetujui, nomor to be yang
 bentrok diganti saat penggabungan.
 

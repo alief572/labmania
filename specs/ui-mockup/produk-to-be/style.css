@@ -885,6 +885,31 @@ textarea.input { font-family: inherit; }
 .pdf-sign1 { margin: 26px 0 18px auto; width: 300px; text-align: center; }
 .pdf-sign1 .pdf-ttd { width: auto; border: 0; height: 56px; }
 .pdf-page .pdf-small { border: 0; font-size: 12px; }
+/* Formulir / Surat Konfirmasi Keikutsertaan (FR/LMI-TR-01/02): mengikuti template Word Labmania, A4 dengan margin
+   kiri-kanan 2,5 cm dan Calibri 11 pt (input/Master - Buat Program/Tamplate Formulir Konfirmasi Workshop.doc). */
+.kf-page { font-family: Calibri, Carlito, Arial, sans-serif; font-size: 11pt; line-height: 1.3; padding: 8mm 25mm 10mm; }
+.kf-page .pdf-small { font-size: 11pt; }
+.kf-page .pdf-form td { padding: 4px 6px 4px 0; }
+.kf-page .pdf-form td:first-child { width: 72mm; }
+.kf-page .pdf-form td:last-child { min-width: 70mm; }
+.kf-page .pdf-sign1 { margin: 18px 0 12px auto; width: 75mm; }
+.kf-page .pdf-sign1 .pdf-ttd { height: 22mm; }
+.kf-page .pdf-small ul { padding-left: 20px; text-align: justify; }
+/* Surat Tugas (Surat Kerja Trainer, format FR/LMI-TR-05/01, 10-11-2026) */
+.st-page { font-family: Calibri, Carlito, Arial, sans-serif; font-size: 13px; }
+.st-kop { justify-content: center; border-bottom-width: 2px; }
+.st-kop .pdf-kop-t { text-align: center; }
+.st-kop .pdf-kop-t span { font-size: 9.5px; }
+.st-title { font-size: 14px; margin-bottom: 18px; }
+.st-title span { display: block; font-weight: 400; font-size: 13px; }
+.st-p { text-align: justify; margin: 12px 0; }
+.st-kv td:first-child { width: 100px; }
+.st-tbl { width: 100%; border-collapse: collapse; margin: 6px 0 14px; }
+.st-tbl th, .st-tbl td { border: 1px solid #555; padding: 3px 6px; height: 22px; }
+.st-tbl th { text-align: center; }
+.st-tbl td:first-child { width: 36px; text-align: center; }
+.st-sign { margin: 24px 0 0 auto; width: 230px; text-align: center; }
+.st-sign .pdf-ttd { margin: 0 auto 4px; border-bottom: 0; }
 @media screen and (max-width: 860px) { .pdf-page { padding: 20px; min-height: 0; } .pdf-2col { grid-template-columns: 1fr; } }
 
 /* Cetak / Simpan PDF: hanya halaman PDF yang tercetak */
@@ -896,7 +921,16 @@ textarea.input { font-family: inherit; }
   .modal-body { padding: 0; overflow: visible; }
   .pdf-doc { background: none; padding: 0; max-height: none; overflow: visible; }
   .pdf-page { box-shadow: none; margin: 0; width: 210mm; min-height: 297mm; page-break-after: always; break-after: page; }
+  .pdf-page.land { page: land; width: 297mm; min-height: 210mm; }
+  .nt-page { height: 210mm; min-height: 0; aspect-ratio: auto; }
+  .kf-page { height: 297mm; min-height: 0; overflow: hidden; }
+  .kf-page.kf-lamp { height: auto; min-height: 297mm; overflow: visible; }
+  .kf-lamp-tbl tr { break-inside: avoid; }
+  .nt-page .nt-flip { border-top: 0; }
+  /* Dokumen landscape: wadah modal ikut halaman land agar tidak muncul halaman portrait kosong di awal */
+  html:has(.pdf-page.land), html:has(.pdf-page.land) body, html:has(.pdf-page.land) #modal-root, html:has(.pdf-page.land) #modal-root * { page: land; }
 }
+@page land { size: A4 landscape; margin: 0; }
 
 /* Katalog Produk (FR-14, FR-60 – FR-63) — layar */
 .kt-sum { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 12px 16px 0; font-size: 13px; }
@@ -1188,9 +1222,27 @@ textarea.input { font-family: inherit; }
 .mp-info td:last-child { min-width: 0; border-bottom: 0; }
 .mp-tbl td { padding: 7px 6px; border-bottom: 1px solid #ddd; }
 .mp-tbl td:first-child, .mp-tbl th:first-child { width: 34px; text-align: center; }
-.mp-hadir td.mp-ttd { width: 105px; height: 30px; font-size: 11px; color: #555; vertical-align: top; border-left: 1px solid #ddd; }
-.mp-sign { display: flex; justify-content: space-between; margin-top: 22px; font-size: 12.5px; text-align: center; }
-.mp-sign .pdf-ttd { margin: 6px auto 4px; border-bottom: 0; height: 56px; }
+
+/* Halaman A4 landscape (Daftar Hadir, Name Table; format Labmania 10-11-2026) */
+.pdf-page.land { width: 1123px; min-height: 794px; }
+.dh-kop { display: flex; justify-content: space-between; align-items: center; }
+.dh-kop .pdf-logo { font-size: 36px; }
+.dh-kop b { font-size: 17px; }
+.dh-page .pdf-body { padding-top: 6px; }
+.dh-info { border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
+.dh-info td { padding: 1px 0; }
+.dh-info td:first-child { width: 100px; }
+.dh-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dh-tbl th { font-weight: 700; font-size: 13px; padding: 6px; border: 1px solid #888; }
+.dh-tbl td { height: 31px; padding: 2px 6px; border: 1px solid #888; }
+.dh-tbl td:first-child { width: 40px; text-align: center; font-weight: 700; font-size: 11px; }
+.dh-tbl td:nth-child(6) { width: 130px; }
+.dh-tbl td:nth-child(7) { width: 80px; }
+.nt-page { padding: 0; min-height: 0; aspect-ratio: 297 / 210; display: grid; grid-template-rows: 1fr 1fr; font-family: 'Times New Roman', Times, serif; color: #000; }
+.nt-half { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 7% 24px 0; text-align: center; }
+.nt-half b { font-size: 53px; line-height: 1.2; }
+.nt-half span { font-size: 50px; line-height: 1.2; }
+.nt-flip { transform: rotate(180deg); border-top: 1px dashed #bbb; }
 
 /* ---------- To be (06-11-2026) ----------
    Penanda bagian yang berubah dibanding mockup as is (input/Master - Buat Program/2026-11-06-to-be-kuota-link-konfirmasi/).
@@ -1339,6 +1391,46 @@ textarea.input { font-family: inherit; }
 .konf-ok h1 { margin: 0; }
 .konf-ok-mark { width: 36px; height: 36px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 700; flex: none; }
 @media (max-width: 600px) { .konf-main .pub-head { flex-direction: column; } }
+/* Surat konfirmasi bertanda tangan basah (input/Master - Buat Program/2026-11-10-surat-konfirmasi-ttd-basah/) */
+.konf-langkah { margin: 0 0 12px; padding-left: 20px; }
+.konf-langkah li { margin-bottom: 6px; }
+.konf-langkah li div { margin-top: 8px; }
+.konf-cetak-btn { min-height: 44px; }
+.konf-file { padding: 8px; min-height: 44px; }
+.konf-cetak { display: none; }
+@media print {
+  .konf-body > :not(.konf-cetak) { display: none !important; }
+  .konf-body .konf-cetak { display: block; }
+}
+/* B2B: konfirmasi atas nama company (input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/) */
+.ps-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.ps-row { display: flex; align-items: flex-start; gap: 8px; margin: 0; flex-wrap: wrap; }
+.ps-no { flex: none; width: 24px; padding-top: 10px; text-align: right; color: var(--ink-70); font-size: 13px; }
+.ps-cells { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+.ps-row .btn { min-height: 40px; }
+.ps-row .err { flex-basis: 100%; margin-left: 32px; }
+.ps-tools { margin-bottom: 8px; }
+.ps-tempel { margin: 4px 0 10px; }
+.ps-tempel summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; color: var(--navy); }
+.ps-tempel textarea { width: 100%; margin: 6px 0; }
+.kf-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.kf-fixed { margin: 0 0 14px; font-size: 13px; }
+.kf-b2b-prev { max-height: 52vh; }
+.kf-lamp-tbl { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
+.kf-lamp-tbl th, .kf-lamp-tbl td { border: 1px solid #111; padding: 5px 6px; text-align: left; vertical-align: top; }
+.kf-lamp-tbl th { background: #E4E6EB; }
+.kf-lamp-tbl td:first-child, .kf-lamp-tbl th:first-child { width: 10mm; text-align: center; }
+.dp-co { margin-bottom: 12px; }
+.dp-co p { margin: 0 0 8px; }
+.sk-blok { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+.sk-blok:first-of-type { border-top: 0; margin-top: 0; }
+.sk-head { margin: 0 0 8px; }
+.sk-img { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border: 1px solid var(--line); background: #fff; }
+.sk-pdf { display: block; width: 100%; height: 70vh; border: 1px solid var(--line); background: #fff; }
+.sk-note { margin: 0 0 8px; padding: 8px 12px; border: 1px dashed var(--navy-100); border-radius: 8px; background: var(--navy-50); font-size: 13px; }
+.sk-contoh { background: #E9ECF2; padding: 12px; border-radius: 8px; max-height: 60vh; overflow: auto; }
+.sk-page .sk-img { max-height: 255mm; border: 0; }
+@media print { .sk-page { display: flex; flex-direction: column; gap: 6px; } }
 .dp-sum { margin: 0; font-size: 13.5px; }
 .lk-state { margin: 0 0 14px; }
 /* Export PDF batch: daftar peserta rapat, tidak memakai jarak baris tabel Penawaran */

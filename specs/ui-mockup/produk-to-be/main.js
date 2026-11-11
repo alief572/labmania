@@ -69,8 +69,9 @@
     'peserta-edit': el => pesertaForm(db.peserta.find(r => r.id === +el.dataset.id)),
     'peserta-del': el => {
       const r = db.peserta.find(x => x.id === +el.dataset.id);
-      const dipakai = db.qtn.find(k => k.peserta.some(x => x.id === r.id));
-      if (dipakai) return toast(`Peserta ${r.kode} sudah ada di Quotation ${dipakai.nomor} — tidak dapat dihapus`, 'warn');
+      // To be: peserta yang terhubung lewat Deal (quotation_peserta.id_peserta) tidak dapat dihapus.
+      const qp = db.qps.find(x => x.idPeserta === r.id), dipakai = qp ? db.qtn.find(k => k.id === qp.qtn) : db.qtn.find(k => k.peserta.some(x => x.id === r.id));
+      if (dipakai) return toast(`Peserta ${r.kode} sudah Deal di Quotation ${dipakai.nomor}, tidak dapat dihapus`, 'warn');
       confirmDelete(`${r.kode} — ${r.nama}`, () => { db.peserta.splice(db.peserta.indexOf(r), 1); toast(`Peserta ${r.kode} dihapus`); });
     },
     'company-add': () => companyForm(),
@@ -155,6 +156,7 @@
     'mp-close': el => mpClose(db.quot.find(x => x.id === +el.dataset.id)),
     'mp-print': el => mpPrintPeserta(db.quot.find(x => x.id === +el.dataset.id)),
     'mp-hadir': el => mpPrintHadir(db.quot.find(x => x.id === +el.dataset.id)),
+    'mp-nametable': el => mpPrintNameTable(db.quot.find(x => x.id === +el.dataset.id)),
     'mp-xls': el => mpXls(db.quot.find(x => x.id === +el.dataset.id)),
     'ivc-tab': el => { state.ivcTab = el.dataset.tab; state.ivcProg = 'all'; state.ivcYear = 'all'; state.page = 1; render(); },
     'ivc-excel': () => toast('Export Excel belum tersambung (mockup)'),

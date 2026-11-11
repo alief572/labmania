@@ -14,6 +14,9 @@
   const SO_BADGE = { open: 'st-draft', siap: 'st-ivc-uninvoiced', invoiced: 'st-ivc-invoiced' };
   let soSeq = 0; // nomor sementara sampai format SO dari Labmania ada (Q-SO-01)
   const soNo = () => `SO-${String(++soSeq).padStart(3, '0')}`;
+  // Nomor tampil: nomor dasar + " Rev-n" setelah program di-reschedule dengan tanggal baru (SO-FR-16, format usulan Q-SO-06).
+  const soNomor = s => `${s.nomor}${s.rev ? ` Rev-${s.rev}` : ''}`;
+  const QSO6 = q('Q-SO-06', 'Usulan: penanda " Rev-n" di belakang nomor SO, naik satu setiap reschedule yang mengubah tanggal program (ganti trainer saja tidak). Sesuai dengan format nomor SO Labmania?');
   const soOfQtn = k => db.so.find(s => s.qtn === k.id);
   const qtnOfSo = s => db.qtn.find(k => k.id === s.qtn);
   const soById = id => db.so.find(s => s.id === id);
@@ -38,7 +41,8 @@
   // mendapat Sales Order pertama (usulan, Q-SKT-02). Nomor sementara SKT-nnn sampai format dari Labmania ada (Q-SKT-01).
   const QSKT1 = q('Q-SKT-01', 'Terjawab: format nomor menyusul. Mockup memakai nomor sementara SKT-nnn.');
   const QSKT2 = q('Q-SKT-02', 'Terjawab: 1 Penjualan Program = 1 surat, aksi View dan Print Out seperti SO. Masih terbuka: dibuat otomatis saat SO pertama (usulan) sudah benar? Bila trainer diganti, surat dibuat ulang?');
-  const QSKT3 = q('Q-SKT-03', 'Terjawab: tanpa honor dan rundown; ditandatangani atas nama PT LabMania Indonesia Jaya. Tata letak masih usulan.');
+  const QSKT3 = q('Q-SKT-03', 'Terjawab: tanpa honor dan rundown; ditandatangani atas nama PT LabMania Indonesia Jaya. Format cetak: Surat Tugas FR/LMI-TR-05/01 (10-11-2026).');
+  const QSKT4 = q('Q-SKT-04', 'Terjawab 10-11-2026: Hari/Tanggal = tanggal program, tanggal tanda tangan = tanggal print. NIK trainer dan nama Operational Manager sementara kosong, diisi tangan.');
   db.skt = [];
   let sktSeq = 0;
   const sktOfPj = id => db.skt.find(x => x.pj === id);
@@ -93,7 +97,7 @@
   }
   function listSo() {
     const rows = soProgs().filter(pj => (state.jenis === 'all' || pj.jenis === state.jenis) && ymOk(pj.tglMulai)
-      && matches([pj.nomor, paketOf(mpOf(pj)).judul, pj.lokasi, ...soOfPj(pj).flatMap(s => { const k = qtnOfSo(s); return [s.nomor, k.nomor, kepadaOf(k)]; })]));
+      && matches([pj.nomor, paketOf(mpOf(pj)).judul, pj.lokasi, ...soOfPj(pj).flatMap(s => { const k = qtnOfSo(s); return [soNomor(s), k.nomor, kepadaOf(k)]; })]));
     if (!soProgs().length) return '<div class="empty-state"><h2>Belum ada Sales Order</h2><p>Sales Order terbentuk saat quotation ditandai Deal di Daftar Quotation.</p></div>';
     return listBlock(rows, [
       NO_COL,
@@ -120,7 +124,7 @@
     const rows = soOfPj(pj).sort((a, b) => a.id - b.id);
     return listBlock(rows, [
       NO_COL,
-      { label: 'Nomor SO', cls: 'nowrap', render: s => `<button type="button" class="btn btn-ghost sm" data-act="so-view" data-id="${s.id}">${esc(s.nomor)}</button><br><span class="muted">${tglPanjang(s.tanggal)}</span>` },
+      { label: 'Nomor SO', cls: 'nowrap', render: s => `<button type="button" class="btn btn-ghost sm" data-act="so-view" data-id="${s.id}">${esc(soNomor(s))}</button><br><span class="muted">${tglPanjang(s.tanggal)}</span>` },
       { label: 'No. Quotation', cls: 'nowrap', render: s => `<span class="code">${esc(qtnOfSo(s).nomor)}</span>` },
       { label: 'Kepada', render: s => { const k = qtnOfSo(s); return `${tujuanTag(k.tujuan)} ${esc(kepadaOf(k))}${k.tujuan === 'company' && k.up ? `<br><span class="muted">u.p. ${esc(k.up)}</span>` : ''}`; } },
       { label: 'Peserta deal', render: s => { const d = dealRows(qtnOfSo(s)), nm = d.slice(0, 2).map(r => (pesertaById(r.id) || {}).nama).filter(Boolean);
@@ -157,18 +161,18 @@
       ${ps.map((p, n) => `<tr><td class="num">${n + 1}</td><td data-l="Peserta"><b>${esc(p.nama)}</b>${p.data && p.data.jabatan ? `<br><span class="muted">${esc(p.data.jabatan)}</span>` : ''}</td>
         <td data-l="Instansi">${esc(pesertaCo(p))}</td><td data-l="Kontak">${esc(p.telp || '—')}<br><span class="muted">${esc(p.email || '')}</span></td>
         <td data-l="Masuk lewat">${srcTag(p)} <span class="muted">${fmtStamp(p.tgl)}</span></td>
-        <td class="act dp-act"><button type="button" class="btn btn-ghost sm" data-act="qps-prev" data-id="${p.id}" aria-label="Lihat Confirmation Letter ${esc(p.nama)}">Lihat</button><button type="button" class="btn btn-ghost sm" data-act="qps-pdf" data-id="${p.id}" aria-label="Unduh PDF ${esc(p.nama)}">PDF</button></td></tr>`).join('')}
+        <td class="act dp-act"><button type="button" class="btn btn-ghost sm" data-act="qps-prev" data-id="${p.id}" aria-label="Lihat Confirmation Letter ${esc(p.nama)}">Lihat</button><button type="button" class="btn btn-ghost sm" data-act="qps-pdf" data-id="${p.id}" aria-label="Unduh surat konfirmasi ${esc(p.nama)}">Unduh</button></td></tr>`).join('')}
       </tbody></table></div>` : '<p class="dash-empty">Tidak ada peserta Deal.</p>';
     const inv = invOfQtn(k);
-    return `${pageHead(`Sales Order ${esc(s.nomor)}`, `${esc(kepadaOf(k))} · ${esc(pk.judul)} · ${esc(varianTxt(pj))} · program <span class="code">${esc(pj.nomor)}</span>`, 'SO-FR-05',
+    return `${pageHead(`Sales Order ${esc(soNomor(s))}`, `${esc(kepadaOf(k))} · ${esc(pk.judul)} · ${esc(varianTxt(pj))} · program <span class="code">${esc(pj.nomor)}</span>`, 'SO-FR-05',
       `<button type="button" class="btn btn-ghost" data-act="so-prog" data-id="${pj.id}">← Sales Order ${esc(pj.nomor)}</button>`)}
       ${panel}
-      <div class="qtn-grid">${sec(1, 'Data Sales Order', '', kv([['Nomor SO', `<span class="code">${esc(s.nomor)}</span> <span class="muted">(sementara, format menyusul)</span>${QSO1}`], ['Tanggal', `${tglPanjang(s.tanggal)}${QSO2}`], ['Status', soBadge(s)], ['Dari quotation', `<span class="code">${esc(k.nomor)}</span> · Deal`], ['Sales', esc(sl.nama || '—')], ['Penjualan Program', `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}`]]))}
+      <div class="qtn-grid">${sec(1, 'Data Sales Order', '', kv([['Nomor SO', `<span class="code">${esc(soNomor(s))}</span> <span class="muted">(sementara, format menyusul)</span>${QSO1}`], ['Tanggal', `${tglPanjang(s.tanggal)}${QSO2}`], ['Revisi', `${s.rev ? `Rev-${s.rev} · karena reschedule program ${tglPanjang(s.revAt.slice(0, 10))} <button type="button" class="btn btn-ghost sm" data-act="qt-open" data-id="${pj.id}">Lihat riwayat reschedule</button>` : 'Belum pernah direvisi'}${QSO6}`], ['Status', soBadge(s)], ['Dari quotation', `<span class="code">${esc(k.nomor)}</span> · Deal`], ['Sales', esc(sl.nama || '—')], ['Penjualan Program', `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}`]]))}
         ${sec(2, 'Ditujukan Kepada', '', kv([['Tujuan', tujuanTag(k.tujuan)], ['Kepada', esc(kepadaOf(k))], ['u.p.', esc(k.tujuan === 'company' ? k.up || '—' : kepadaOf(k))], ['Alamat', esc(k.alamat || '—')], ...(k.tujuan === 'company' ? [['Perlakuan PPN', PERLAKUAN[ivcPerlakuan(k)]]] : [])]))}</div>
       ${sec(3, 'Program', '', kv([['Paket', `${esc(pk.nomor)} · ${esc(pk.judul)}`], ['Varian', esc(varianTxt(pj))], ['Sertifikat', esc(findRec('jenisSertifikasi', pk.sertifikasi).nama)], ['Jadwal', `${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''}`], ['Lokasi', esc(pj.lokasi || '—')], ...(isB2bQtn(k) ? [['Skema harga', isAllin(k) ? 'All-in 1 company' : 'Per peserta']] : [])]))}
       ${sec(4, 'Harga', 'dari peserta Deal', harga)}
       ${sec(5, 'Dokumen Deal', 'dokumen dari customer yang diunggah saat quotation ditandai Deal', dokList(k))}
-      ${sec(6, 'Peserta Deal & Confirmation Letter', 'diisi calon peserta lewat link Konfirmasi Kehadiran di quotation (Public dan B2B)',
+      ${sec(6, 'Peserta Deal & Confirmation Letter', 'surat bertanda tangan yang diunggah calon peserta lewat link Konfirmasi Kehadiran (Public dan B2B)',
         `<p class="hint top"><button type="button" class="btn btn-outline sm" data-act="qtn-cl" data-id="${k.id}" ${ps.length ? '' : 'disabled'}>Confirmation Letter (semua peserta Deal)</button></p>${psTbl}`)}
       ${sec(7, 'Invoice', st === 'open' ? 'belum dapat dibuat: Sales Order belum ditandai siap' : '', inv.length
         ? `<p>${inv.map(i => `<button type="button" class="btn btn-ghost sm" data-act="ivc-view" data-id="${i.id}">${esc(i.nomor)}</button>`).join(' ')}</p>`
@@ -186,7 +190,7 @@
       <h3 class="pdf-title">SALES ORDER</h3>
       <div class="pdf-2col">
         <div class="pdf-box"><div class="pdf-lbl">Kepada</div><b>${esc(kepadaOf(k))}</b><br>${esc(k.alamat || '—')}${k.tujuan === 'company' && k.up ? `<br>u.p. ${esc(k.up)}` : ''}</div>
-        <div class="pdf-box"><table class="pdf-kv"><tr><td>No. Sales Order</td><td>: ${esc(s.nomor)}</td></tr><tr><td>Tanggal</td><td>: ${tglPanjang(todayIso)}</td></tr>
+        <div class="pdf-box"><table class="pdf-kv"><tr><td>No. Sales Order</td><td>: ${esc(soNomor(s))}</td></tr><tr><td>Tanggal</td><td>: ${tglPanjang(todayIso)}</td></tr>
           <tr><td>No. Penawaran</td><td>: ${esc(k.nomor)}</td></tr><tr><td>No. Program</td><td>: ${esc(pj.nomor)}</td></tr></table></div>
       </div>
       <table class="pdf-tbl"><thead><tr><th>No Catalog</th><th>Item</th><th>Deskripsi</th><th class="r">Kts.</th><th class="r">Harga</th><th class="r">Diskon</th><th class="r">Total Harga</th></tr></thead>
@@ -207,11 +211,11 @@
   }
   function soPrint(s) {
     openModal({
-      title: `Print Out Sales Order ${esc(s.nomor)}`, wide: 'x',
-      body: pdfWrap(pageSo(s), `PDF Sales Order ${esc(s.nomor)} dari quotation ${esc(qtnOfSo(s).nomor)}: 1 halaman. Tata letak usulan${QSO4}`),
+      title: `Print Out Sales Order ${esc(soNomor(s))}`, wide: 'x',
+      body: pdfWrap(pageSo(s), `PDF Sales Order ${esc(soNomor(s))} dari quotation ${esc(qtnOfSo(s).nomor)}: 1 halaman. Tata letak usulan${QSO4}`),
       onMount: pdfMount, cancelLabel: 'Tutup', saveLabel: 'Cetak / Simpan PDF',
       onSave: () => {
-        logAct('Quotation', 'Sales Order', 'Cetak', s.nomor, s.id, `Cetak Sales Order ${s.nomor}`);
+        logAct('Quotation', 'Sales Order', 'Cetak', soNomor(s), s.id, `Cetak Sales Order ${soNomor(s)}`);
         window.print();
         return false;
       }
@@ -220,18 +224,18 @@
 
   // ---------- Siap dibuatkan invoice (SO-FR-07) ----------
   function soSiap(s) {
-    if (soStatus(s) !== 'open') { toast(`${s.nomor} sudah ${SO_ST[soStatus(s)].toLowerCase()}`, 'warn'); return; }
+    if (soStatus(s) !== 'open') { toast(`${soNomor(s)} sudah ${SO_ST[soStatus(s)].toLowerCase()}`, 'warn'); return; }
     const k = qtnOfSo(s);
     openModal({
       title: 'Siap dibuatkan invoice',
-      body: `<p style="margin:0 0 10px">Tandai <b>${esc(s.nomor)}</b> (${esc(kepadaOf(k))}, ${dealRows(k).length} peserta deal, ${rp(soNilai(s).total)}) siap dibuatkan invoice?</p>
+      body: `<p style="margin:0 0 10px">Tandai <b>${esc(soNomor(s))}</b> (${esc(kepadaOf(k))}, ${dealRows(k).length} peserta deal, ${rp(soNilai(s).total)}) siap dibuatkan invoice?</p>
         <p class="hint">Setelah ditandai, Sales Order ini muncul di menu <b>Invoicing</b> tab Uninvoiced dan Finance dapat membuat invoice-nya.${QSO3}</p>`,
       saveLabel: 'Siap dibuatkan invoice',
-      onSave: () => { Object.assign(s, { status: 'siap', siapBy: meName(), siapAt: isoNow() }); toast(`${s.nomor} siap dibuatkan invoice`); }
+      onSave: () => { Object.assign(s, { status: 'siap', siapBy: meName(), siapAt: isoNow() }); toast(`${soNomor(s)} siap dibuatkan invoice`); }
     });
   }
 
-  // ---------- View & Print Out Surat Kerja Trainer (SO-FR-13 – SO-FR-14; tanpa honor & rundown, ttd atas nama LabMania; tata letak usulan) ----------
+  // ---------- View & Print Out Surat Kerja Trainer (SO-FR-13 – SO-FR-14; tanpa honor & rundown, format Surat Tugas FR/LMI-TR-05/01) ----------
   const sktById = id => db.skt.find(x => x.id === id);
   function viewSktDetail() {
     const r = sktById(state.sktView);
@@ -250,30 +254,36 @@
       ${sec(3, 'Program yang ditugaskan', '', kv([['Paket', `${esc(pk.nomor)} · ${esc(pk.judul)}`], ['Varian', esc(varianTxt(pj))], ['Sertifikat', esc(findRec('jenisSertifikasi', pk.sertifikasi).nama)], ['Jadwal', `${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''} (${pj.durasi} hari)`], ['Lokasi', esc(pj.lokasi || '—')], ...(pj.jenis === 'b2b' ? [['Company', esc((db.company.find(x => x.id === pj.company) || {}).nama || '—')]] : []), ['Peserta deal', `${pesertaDealPj(pj)} peserta dari ${sos.length} Sales Order`]]))}`;
   }
   function sktView(r) { state.sktView = r.id; state.view = 'sktDetail'; render(); window.scrollTo(0, 0); }
+  // Format Labmania "Surat Tugas" FR/LMI-TR-05/01/Ed.Rev-1.0 (input/FR LMI TR 05-01 Surat Tugas OK (1).doc;
+  // input/Master - Buat Program/2026-11-10-format-cetak-skt-hadir-name-table/). Judul tercetak SURAT TUGAS; menu tetap Surat Kerja Trainer.
+  // Tanggal tanda tangan = tanggal cetak; Hari/Tanggal = jadwal program. NIK trainer & nama Operational Manager belum ada di data (Q-SKT-04): titik-titik.
+  const SKT_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const sktHari = iso => SKT_HARI[new Date(`${iso}T00:00:00`).getDay()];
+  const SKT_KOP = `<div class="pdf-kop st-kop"><div class="pdf-logo">L<i>A</i>B<small>M A N I A</small></div><div class="pdf-kop-t"><b>PT. LABMANIA INDONESIA JAYA</b>
+    <span>Ruby Commercial No. TC25 Summarecon Bekasi</span><span>Jalan Bulevar Selatan, Marga Mulya, Bekasi Utara, Kota Bks, Jawa Barat 17143</span>
+    <span>www.labmaniaindonesia.id ; Email: labjourneypartner@labmaniaindonesia.id ; Customer Care: 0821-2429-3839</span></div></div>`;
   function pageSkt(r) {
     const pj = db.quot.find(x => x.id === r.pj), pk = paketOf(mpOf(pj)), t = trainerById(pj.trainer) || {};
-    const row = (l, v) => `<tr><td>${l}</td><td>: ${v}</td></tr>`;
-    return pdfPage(`
-      <h3 class="pdf-title">SURAT KERJA TRAINER</h3>
-      <div class="pdf-2col">
-        <div class="pdf-box"><div class="pdf-lbl">Kepada Yth.</div><b>${esc(t.nama || '—')}</b><br>${esc(t.alamat || '—')}<br>${esc(t.telp || '')}${t.email ? ` · ${esc(t.email)}` : ''}</div>
-        <div class="pdf-box"><table class="pdf-kv">${row('Nomor', esc(r.nomor))}${row('Tanggal', tglPanjang(todayIso))}${row('No. Program', esc(pj.nomor))}</table></div>
-      </div>
-      <p>Dengan hormat,</p>
-      <p>PT LabMania Indonesia Jaya menugaskan Saudara/i sebagai <b>trainer</b> pada kegiatan berikut:</p>
-      <table class="pdf-kv pdf-skt">${row('Program', esc(pk.judul))}${row('Varian', esc(varianTxt(pj)))}${row('Sertifikat', esc(findRec('jenisSertifikasi', pk.sertifikasi).nama))}
-        ${row('Tanggal', `${rangePanjang(pj.tglMulai, pj.tglSelesai)} (${pj.durasi} hari)`)}${row('Waktu', esc(pj.waktu || '—'))}${row('Lokasi', esc(pj.lokasi || '—'))}
-        ${pj.jenis === 'b2b' ? row('Peserta dari', esc((db.company.find(x => x.id === pj.company) || {}).nama || '—')) : ''}${row('Jumlah peserta', `${pesertaDealPj(pj)} peserta (per tanggal cetak)`)}</table>
-      <p>Mohon Saudara/i mempersiapkan materi dan hadir sesuai jadwal di atas. Bila ada perubahan, tim LabMania akan menghubungi Saudara/i.</p>
-      <div class="pdf-2col pdf-sign">
-        <div>Bekasi, ${tglPanjang(todayIso)}<br>Hormat kami,<br>PT LabMania Indonesia Jaya<div class="pdf-ttd"></div>(..........................................)</div>
-        <div><br>Diterima oleh Trainer,<div class="pdf-ttd"></div><b>${esc(t.nama || '')}</b></div>
-      </div>`, pdfFoot('[kode dokumen menyusul]', 'Halaman 1 dari 1', '—'));
+    const dot = '..............................', keg = `${esc(varianTxt(pj))} "${esc(pk.judul)}"`;
+    const hari = pj.tglMulai ? (pj.tglSelesai && pj.tglSelesai !== pj.tglMulai ? `${sktHari(pj.tglMulai)} s.d. ${sktHari(pj.tglSelesai)}` : sktHari(pj.tglMulai)) : dot;
+    const kosong = Array.from({ length: 9 }, () => '<tr><td></td><td></td><td></td><td></td></tr>').join('');
+    return `<section class="pdf-page st-page">${SKT_KOP}<div class="pdf-body">
+      <h3 class="pdf-title st-title"><u>SURAT TUGAS</u><span>No. ${esc(r.nomor)}</span></h3>
+      <p class="st-p">Menindaklanjuti kegiatan ${keg}, saya yang bertanda tangan di bawah ini:</p>
+      <table class="pdf-kv st-kv"><tr><td>Nama</td><td>: ${dot}</td></tr><tr><td>Jabatan</td><td>: Operational Manager</td></tr></table>
+      <p class="st-p">Dengan ini menugaskan kepada :</p>
+      <table class="st-tbl"><thead><tr><th>No.</th><th>Nama</th><th>NIK</th><th>Jabatan</th></tr></thead>
+        <tbody><tr><td>1</td><td>${esc(t.nama || '')}</td><td></td><td>Trainer</td></tr>${kosong}</tbody></table>
+      <p class="st-p">sebagaimana ditugaskan sebagai <b>Trainer</b> dalam acara ${keg} bertempat di ${esc(pj.lokasi || dot)} yang dilaksanakan pada :</p>
+      <table class="pdf-kv st-kv"><tr><td>Hari/ Tanggal</td><td>: ${hari}/ ${rangePanjang(pj.tglMulai, pj.tglSelesai)}</td></tr><tr><td>Waktu</td><td>: ${esc(pj.waktu || dot)}</td></tr></table>
+      <p class="st-p">Demikian Surat Tugas ini dibuat agar yang bersangkutan dapat melaksanakan dengan baik dan penuh tanggung jawab.</p>
+      <div class="st-sign">Bekasi, ${tglPanjang(todayIso)}<br>Operational Manager<div class="pdf-ttd"></div>(${dot})</div>
+      </div>${pdfFoot('FR/LMI-TR-05/01/Ed.Rev-1.0', '1 dari 1', '01/08/2023')}</section>`;
   }
   function sktPrint(r) {
     openModal({
       title: `Print Out Surat Kerja Trainer ${esc(r.nomor)}`, wide: 'x',
-      body: pdfWrap(pageSkt(r), `PDF Surat Kerja Trainer ${esc(r.nomor)}: 1 halaman. Tata letak usulan${QSKT3}`),
+      body: pdfWrap(pageSkt(r), `PDF Surat Kerja Trainer ${esc(r.nomor)}: 1 halaman, format Surat Tugas Labmania. Tanggal tanda tangan = tanggal cetak${QSKT4}`),
       onMount: pdfMount, cancelLabel: 'Tutup', saveLabel: 'Cetak / Simpan PDF',
       onSave: () => { logAct('Quotation', 'Surat Kerja Trainer', 'Cetak', r.nomor, r.id, `Cetak Surat Kerja Trainer ${r.nomor}`); window.print(); return false; }
     });

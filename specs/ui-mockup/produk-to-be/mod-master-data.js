@@ -449,24 +449,33 @@
   // ---------- Master Peserta (FR-15 – FR-17) ----------
   const Q16 = q('Q-16', 'Apakah Peserta dan Company juga hanya boleh dinonaktifkan? Mockup mengikuti mockup klien: Edit/Delete.');
 
-  const viewPeserta = () => `${pageHead('Master Peserta', 'Data peserta pelatihan/sertifikasi, dikelompokkan menurut Jenis Bidang. Peserta dapat terdaftar di satu Company; di Quotation ke Company hanya peserta company itu yang dapat dipilih.', 'FR-15 · FR-16 · FR-17',
+  // To be (input/Master - Buat Program/2026-11-11-peserta-deal-ke-master-peserta/): peserta Deal quotation masuk ke sini
+  // saat Deal. Field wajib yang tidak ada di link boleh kosong sampai dilengkapi admin lewat Edit.
+  const PS_WAJIB = { nama: 'Nama Peserta', gender: 'Gender', instansi: 'Instansi/Perusahaan', bidang: 'Bidang', provinsi: 'Provinsi', kota: 'Kota/Kabupaten', telp: 'No Telp/WhatsApp', email: 'Email' };
+  const psKurang = r => Object.keys(PS_WAJIB).filter(k => !r[k]).map(k => PS_WAJIB[k]);
+  const QQTN23 = q('Q-QTN-23', 'Usulan: pencocokan NIK, lalu email, lalu No. WhatsApp. Daftar B2B yang hanya berisi nama selalu menjadi peserta baru, sehingga bisa tercatat dua kali. Perlu fitur gabungkan peserta?');
+  const viewPeserta = () => `${pageHead('Master Peserta', 'Data peserta pelatihan/sertifikasi, dikelompokkan menurut Jenis Bidang. Peserta yang Deal di quotation masuk otomatis saat Deal; yang bertanda Belum lengkap dilengkapi lewat Edit.', 'FR-15 · FR-16 · FR-17',
     '<button class="btn btn-accent" data-act="peserta-add">+ Tambah Peserta</button>')}
-    <div class="card">${toolbar('Cari kode, nama, instansi, atau bidang…', false)}<div id="list">${listPeserta()}</div></div>`;
+    <div class="card">${toolbar('Cari kode, nama, instansi, NIK, atau bidang…', false,
+      selectFilter('fjenis', 'Filter kelengkapan data', state.jenis, [['all', 'Semua kelengkapan'], ['lengkap', 'Lengkap'], ['belum', 'Belum lengkap']]))}<div id="list">${listPeserta()}</div></div>`;
 
   function listPeserta() {
-    const rows = db.peserta.filter(r => matches([r.kode, r.nama, r.instansi, findRec('jenisBidang', r.bidang).nama, r.kota, r.provinsi]));
+    const rows = db.peserta.filter(r => (state.jenis === 'all' || (state.jenis === 'belum') === !!psKurang(r).length)
+      && matches([r.kode, r.nama, r.instansi, r.nik, (findRec('jenisBidang', r.bidang) || {}).nama, r.kota, r.provinsi, r.asal]));
     return listBlock(rows, [
       NO_COL,
       { label: 'Kode Peserta' + Q01, render: r => `<span class="code">${esc(r.kode)}</span>` },
-      { label: 'Nama Peserta', render: r => `${esc(r.nama)}<br><span class="muted">${esc(r.instansi)}</span>` },
-      { label: 'Bidang', render: r => { const b = findRec('jenisBidang', r.bidang); return esc(b.nama) + (b.aktif ? '' : ' <span class="muted">(nonaktif)</span>'); } },
-      { label: 'Lokasi' + q('Q-07b', 'Kolom Lokasi menampilkan Provinsi, Kota, atau keduanya? Mockup menampilkan keduanya.'), render: r => `${esc(r.kota)}<br><span class="muted">${esc(r.provinsi)}</span>` },
+      { label: 'Nama Peserta' + QQTN23, render: r => { const kurang = psKurang(r);
+        return `${esc(r.nama)}${kurang.length ? ` <span class="badge st-ps-menunggu" title="Belum diisi: ${esc(kurang.join(', '))}">Belum lengkap</span>` : ''}<br><span class="muted">${esc(r.instansi || '—')}</span>${r.asal ? `<br><span class="muted">Dari Deal ${esc(r.asal)}</span>` : ''}`; } },
+      { label: 'Bidang', render: r => { const b = findRec('jenisBidang', r.bidang); return b ? esc(b.nama) + (b.aktif ? '' : ' <span class="muted">(nonaktif)</span>') : '<span class="muted">Belum diisi</span>'; } },
+      { label: 'Lokasi' + q('Q-07b', 'Kolom Lokasi menampilkan Provinsi, Kota, atau keduanya? Mockup menampilkan keduanya.'), render: r => r.provinsi ? `${esc(r.kota || '—')}<br><span class="muted">${esc(r.provinsi)}</span>` : '<span class="muted">Belum diisi</span>' },
       { label: 'Action' + Q16, cls: 'act', render: r => gearMenu(r, [['peserta-edit', 'Edit'], ['peserta-del', 'Delete', true]]) }
     ]);
   }
 
   function pesertaForm(rec) {
-    const r = rec || { nama: '', gender: '', company: '', instansi: '', npwp: '', bidang: '', provinsi: '', kota: '', telp: '', email: '' };
+    const r = rec || { nama: '', gender: '', company: '', instansi: '', npwp: '', nik: '', bidang: '', provinsi: '', kota: '', telp: '', email: '' };
+    const kurang = rec ? psKurang(rec) : [];
     const coOpts = db.company.filter(c => c.aktif || c.id === r.company)
       .map(c => `<option value="${c.id}" ${c.id === r.company ? 'selected' : ''}>${esc(c.nama)}${c.aktif ? '' : ' (nonaktif)'}</option>`).join('');
     const bidangOpts = db.jenisBidang.filter(b => b.aktif || b.id === r.bidang)
@@ -475,7 +484,8 @@
     openModal({
       title: rec ? `Edit Peserta ${rec.kode}` : 'Tambah Master Peserta',
       wide: true,
-      body: `<p class="hint top">Semua field wajib diisi, kecuali Company dan NPWP Instansi.</p><div class="grid2">
+      body: `<p class="hint top">Semua field wajib diisi, kecuali Company, NPWP Instansi, dan NIK.</p>
+        ${kurang.length ? `<div class="notice"><span>Peserta ini masuk dari Deal ${esc(rec.asal || 'quotation')} dan <b>belum lengkap</b>. Lengkapi: ${esc(kurang.join(', '))}.</span></div>` : ''}<div class="grid2">
         ${field('Kode Peserta' + Q01, `<input class="input" value="${esc(rec ? rec.kode : peekCode('PS'))}" readonly>`, '', 'span2')}
         ${field('Nama Peserta' + req, `<input class="input" name="nama" value="${esc(r.nama)}" maxlength="100">`)}
         ${field('Gender' + req, `<select class="input" name="gender"><option value="">— Pilih —</option>${opts(['Laki-laki', 'Perempuan'], r.gender)}</select>`)}
@@ -487,6 +497,7 @@
         ${field('Kota/Kabupaten' + req, `<select class="input" name="kota" ${r.provinsi ? '' : 'disabled'}>${kotaOptions(r.provinsi, r.kota)}</select><span class="hint">Tersaring menurut provinsi</span>`)}
         ${field('No Telp/WhatsApp' + req, `<input class="input" name="telp" inputmode="tel" value="${esc(r.telp)}" placeholder="08xxxxxxxxxx">`)}
         ${field('Email' + req, `<input class="input" name="email" type="email" value="${esc(r.email)}" placeholder="nama@domain.com">`)}
+        ${field('NIK <span class="muted">(opsional)</span>', `<input class="input" name="nik" inputmode="numeric" value="${esc(r.nik || '')}" maxlength="20"><span class="hint">Terisi dari isian link bila peserta mengisinya</span>`)}
       </div>`,
       onMount: form => {
         bindKota(form);
@@ -498,10 +509,9 @@
       },
       onSave: f => {
         const v = {};
-        ['nama', 'gender', 'instansi', 'npwp', 'bidang', 'provinsi', 'kota', 'telp', 'email'].forEach(k => { v[k] = f[k].value.trim(); });
+        ['nama', 'gender', 'instansi', 'npwp', 'nik', 'bidang', 'provinsi', 'kota', 'telp', 'email'].forEach(k => { v[k] = f[k].value.trim(); });
         let ok = true;
-        const labels = { nama: 'Nama Peserta', gender: 'Gender', instansi: 'Instansi/Perusahaan', bidang: 'Bidang', provinsi: 'Provinsi', kota: 'Kota/Kabupaten', telp: 'No Telp/WhatsApp', email: 'Email' };
-        Object.keys(labels).forEach(k => { if (!v[k]) ok = invalid(f[k], `${labels[k]} wajib diisi`); });
+        Object.keys(PS_WAJIB).forEach(k => { if (!v[k]) ok = invalid(f[k], `${PS_WAJIB[k]} wajib diisi`); });
         // NFR-06 (usulan): format email & nomor telepon.
         if (v.email && !EMAIL_RE.test(v.email)) ok = invalid(f.email, 'Format email tidak valid');
         if (v.telp && !telpOk(v.telp)) ok = invalid(f.telp, 'Nomor hanya angka, 9–15 digit');

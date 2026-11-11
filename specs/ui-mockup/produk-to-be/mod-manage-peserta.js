@@ -3,7 +3,7 @@
    urutan muat ada di Labmania.html (core.js pertama, main.js terakhir). */
 'use strict';
   // ---------- Manage Peserta (MP-FR-01 – MP-FR-10; input/Invoice & Pengajuan/2026-11-04-manage-peserta/) ----------
-  // Setelah Deal quotation: peserta Deal per Penjualan Program Final dilist, dicetak (Daftar Peserta, Daftar Hadir), diekspor; program dapat di-Close.
+  // Setelah Deal quotation: peserta Deal per Penjualan Program Final dilist, dicetak (Daftar Peserta, Daftar Hadir, Name Table), diekspor; program dapat di-Close.
   const QMP = (n, t) => q(`Q-MPS-${String(n).padStart(2, '0')}`, t);
   const mpProgs = () => db.quot.filter(x => x.status === 'final');
   const mpDone = pj => !!pj.closed || pjSelesai(pj); // tab Selesai: acara lewat atau sudah Closed
@@ -21,9 +21,9 @@
       const info = `${jenisTag(pj.jenis)} <b>${esc(mpJudul(pj))}</b> · ${fmtRange(pj.tglMulai, pj.tglSelesai)} (${Number(pj.durasi) || 1} hari) · ${esc(pj.lokasi || '—')}
         <br>Trainer <b>${esc(tr ? tr.nama : '—')}</b>${co ? ` · Company <b>${esc(co.nama)}</b>` : ''} · Peserta Deal <b>${n}</b> / ${nPeserta(pj)} · ${mpStatus(pj)}`;
       const dis = n ? '' : 'disabled title="Belum ada peserta Deal"';
-      return `${pageHead(`Peserta — ${esc(pj.nomor)}`, info, 'MP-FR-04 – MP-FR-08',
+      return `${pageHead(`Peserta — ${esc(pj.nomor)}`, info, 'MP-FR-04 – MP-FR-08, MP-FR-11',
         `<button class="btn btn-ghost" data-act="mp-back">← Semua Program</button><button class="btn btn-ghost" data-act="mp-xls" data-id="${pj.id}" ${dis}>Export Excel</button>
-         <button class="btn btn-ghost" data-act="mp-hadir" data-id="${pj.id}" ${dis}>Cetak Daftar Hadir</button><button class="btn btn-accent" data-act="mp-print" data-id="${pj.id}" ${dis}>Cetak Daftar Peserta</button>`)}
+         <button class="btn btn-ghost" data-act="mp-nametable" data-id="${pj.id}" ${dis}>Cetak Name Table</button><button class="btn btn-ghost" data-act="mp-hadir" data-id="${pj.id}" ${dis}>Cetak Daftar Hadir</button><button class="btn btn-accent" data-act="mp-print" data-id="${pj.id}" ${dis}>Cetak Daftar Peserta</button>`)}
         ${pj.closed ? `<div class="notice"><span>Program <b>Closed</b> oleh ${esc(pj.closed.by)} pada ${fmtWaktu(pj.closed.at)} — peserta tetap dapat dilihat, dicetak, dan diekspor.</span></div>` : ''}
         <div class="card"><div class="tabs">${[['peserta', 'Daftar Peserta'], ['sertifikat', 'Sertifikat']].map(([t, l]) => `<button class="tab ${state.mpvTab === t ? 'active' : ''}" data-act="mpv-tab" data-tab="${t}">${l}</button>`).join('')}</div>
         ${toolbar(state.mpvTab === 'sertifikat' ? 'Cari nama, instansi, quotation, atau nomor sertifikat…' : 'Cari kode, nama, instansi, kontak, atau nomor quotation…', false)}<div id="list">${listMpst()}</div>
@@ -32,7 +32,7 @@
     const tabCnt = t => mpProgs().filter(x => (t === 'done') === mpDone(x)).length;
     const tabs = [['ongoing', 'On going'], ['done', 'Selesai']].map(([t, l]) =>
       `<button class="tab ${state.mpTab === t ? 'active' : ''}" data-act="mp-tab" data-tab="${t}">${l}<span class="nav-count">${tabCnt(t)}</span></button>`).join('');
-    return `${pageHead('Manage Peserta', 'Setiap Penjualan Program Final beserta peserta yang sudah <b>Deal</b> di quotation. Buka <b>Lihat Peserta</b> untuk daftar, cetak Daftar Peserta / Daftar Hadir, dan export Excel. <b>Close Program</b> menutup program setelah selesai.', 'MP-FR-01 – MP-FR-03')}
+    return `${pageHead('Manage Peserta', 'Setiap Penjualan Program Final beserta peserta yang sudah <b>Deal</b> di quotation. Buka <b>Lihat Peserta</b> untuk daftar, cetak Daftar Peserta / Daftar Hadir / Name Table, dan export Excel. <b>Close Program</b> menutup program setelah selesai.', 'MP-FR-01 – MP-FR-03')}
       <div class="card"><div class="tabs">${tabs}<span class="tabs-note">${QMP(1, 'Tab Selesai = tanggal selesai acara sudah lewat atau program sudah Closed (usulan, sama dengan Quotation).')}</span></div>
         ${toolbar('Cari nomor, judul program, lokasi, atau trainer…', false,
           selectFilter('fjenis', 'Filter jenis program', state.jenis, [['all', 'Public & B2B'], ['public', 'Program Public'], ['b2b', 'Program B2B']]))}
@@ -92,7 +92,7 @@
       }
     });
   }
-  // Cetak (MP-FR-06, MP-FR-07): template usulan — Labmania belum punya format (input/Invoice & Pengajuan/2026-11-04-manage-peserta/).
+  // Cetak Daftar Peserta (MP-FR-06): template usulan, Labmania belum punya format (input/Invoice & Pengajuan/2026-11-04-manage-peserta/).
   const MP_PER_PAGE = 18;
   const mpChunks = list => { const out = []; for (let i = 0; i < list.length; i += MP_PER_PAGE) out.push(list.slice(i, i + MP_PER_PAGE)); return out.length ? out : [[]]; };
   const mpInfoTbl = (pj, extra = []) => {
@@ -111,18 +111,40 @@
     openModal({ title: `Daftar Peserta ${esc(pj.nomor)}`, wide: 'x', info: true, body: pdfWrap(html, `Daftar Peserta · ${list.length} peserta · template usulan${QMP(3, 'Format Daftar Peserta belum ada dari Labmania; ini template usulan (kolom: No, Nama, Instansi, No. WA, Email). Perlu kode dokumen / kolom lain?')}`), onMount: pdfMount });
     logAct('Manage Peserta', 'Manage Peserta', 'Cetak', pj.nomor, pj.id, `Cetak Daftar Peserta ${pj.nomor}`);
   }
+  // Daftar Hadir (MP-FR-07): format Labmania FR/LMI-TR-05/17/Ed.Rev-1.0, A4 landscape, 10 baris per halaman
+  // (input/FR LMI TR 05 17 Daftar Hadir Peserta OKk - Copy.pdf). Hari/Tanggal = tanggal program: satu set per hari pelaksanaan
+  // (input/Master - Buat Program/2026-11-10-daftar-hadir-tanggal-program/); baris kosong bernomor menggenapkan halaman terakhir tiap set.
+  const MP_HADIR_ROWS = 10;
+  const MP_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const MP_KOP_L = '<div class="dh-kop"><div class="pdf-logo">L<i>A</i>B<small>M A N I A</small></div><b>PT LABMANIA INDONESIA</b></div>';
   function mpPrintHadir(pj) {
-    const list = mpPeserta(pj), hari = Math.max(1, Number(pj.durasi) || 1), tr = trainerById(pj.trainer);
+    const list = mpPeserta(pj), nPage = Math.max(1, Math.ceil(list.length / MP_HADIR_ROWS)), hari = Math.max(1, Number(pj.durasi) || 1);
     const html = Array.from({ length: hari }, (_, d) => {
-      const tgl = pj.tglMulai ? addDays(pj.tglMulai, d) : '', chunks = mpChunks(list);
-      return chunks.map((ch, pi) => pdfPage(`<h3 class="pdf-title">DAFTAR HADIR PESERTA</h3>${mpInfoTbl(pj, [['Hari ke', `${d + 1} dari ${hari}${tgl ? ` — ${tglPanjang(tgl)}` : ''}`]])}
-        <table class="pdf-tbl mp-tbl mp-hadir"><thead><tr><th>No</th><th>Nama Peserta</th><th>Instansi / Company</th><th colspan="2">Tanda Tangan</th></tr></thead>
-        <tbody>${ch.map(({ p }, i) => { const no = pi * MP_PER_PAGE + i + 1; return `<tr><td>${no}</td><td>${esc(p.nama)}</td><td>${esc(pesertaCo(p))}</td><td class="mp-ttd">${no % 2 ? `${no}.` : ''}</td><td class="mp-ttd">${no % 2 ? '' : `${no}.`}</td></tr>`; }).join('')}</tbody></table>
-        ${pi === chunks.length - 1 ? `<div class="mp-sign"><div>Trainer<div class="pdf-ttd"></div><b>(${esc(tr ? tr.nama : '..............................')})</b></div><div>Penyelenggara<div class="pdf-ttd"></div><b>(..............................)</b></div></div>` : ''}`,
-        MP_FOOT('FR/LMI-TR-… (usulan)', pi + 1, chunks.length))).join('');
+      const tgl = pj.tglMulai ? addDays(pj.tglMulai, d) : '';
+      const info = [['Jenis Kegiatan', varianTxt(pj)], ['Judul Kegiatan', mpJudul(pj)], ['Hari/Tanggal', tgl ? `${MP_HARI[new Date(`${tgl}T00:00:00`).getDay()]}/ ${tglPanjang(tgl)}` : ''], ['Tempat', pj.lokasi || '']];
+      return Array.from({ length: nPage }, (_, pi) => {
+        const rows = Array.from({ length: MP_HADIR_ROWS }, (_, i) => {
+          const no = pi * MP_HADIR_ROWS + i + 1, x = list[no - 1], p = x ? x.p : null;
+          return `<tr><td>${no}</td><td>${p ? esc(p.nama) : ''}</td><td>${p ? esc(pesertaCo(p)) : ''}</td><td>${p ? esc(p.telp || '') : ''}</td><td>${p ? esc(p.email || '') : ''}</td><td></td><td></td></tr>`;
+        }).join('');
+        return `<section class="pdf-page land dh-page">${MP_KOP_L}<div class="pdf-body">
+          <h3 class="pdf-title">DAFTAR HADIR PESERTA</h3>
+          <table class="dh-info">${info.map(([l, v]) => `<tr><td>${l}</td><td>: ${esc(v)}</td></tr>`).join('')}</table>
+          <table class="dh-tbl"><thead><tr><th>No.</th><th>Nama</th><th>Instansi</th><th>No. HP</th><th>Email</th><th>Tanda Tangan</th><th>Ket.</th></tr></thead><tbody>${rows}</tbody></table>
+          </div>${pdfFoot('FR/LMI-TR-05/17/Ed.Rev-1.0', `${pi + 1} dari ${nPage}`, '01/08/2023')}</section>`;
+      }).join('');
     }).join('');
-    openModal({ title: `Daftar Hadir ${esc(pj.nomor)}`, wide: 'x', info: true, body: pdfWrap(html, `Daftar Hadir · ${hari} hari × ${list.length} peserta · template usulan${QMP(4, 'Format Daftar Hadir belum ada dari Labmania; ini template usulan: satu lembar per hari pelaksanaan, tanda tangan selang-seling, tanda tangan Trainer & Penyelenggara. Perlu kolom jam masuk / sesi pagi-siang?')}`), onMount: pdfMount });
+    openModal({ title: `Daftar Hadir ${esc(pj.nomor)}`, wide: 'x', info: true, body: pdfWrap(html, `Daftar Hadir · ${hari} hari × ${list.length} peserta · ${hari * nPage} halaman A4 landscape · format Labmania FR/LMI-TR-05/17, satu set per hari pelaksanaan (tanggal program)`), onMount: pdfMount });
     logAct('Manage Peserta', 'Manage Peserta', 'Cetak', pj.nomor, pj.id, `Cetak Daftar Hadir ${pj.nomor}`);
+  }
+  // Name Table (MP-FR-11): format Labmania input/Name Table.pptx, A4 landscape, satu peserta satu lembar.
+  // Dilipat di tengah: separuh bawah Nama + Instansi, separuh atas isi sama diputar 180 derajat. Tanpa logo dan tanggal.
+  function mpPrintNameTable(pj) {
+    const list = mpPeserta(pj);
+    const half = (p, flip) => `<div class="nt-half${flip ? ' nt-flip' : ''}"><b>${esc(p.nama)}</b><span>${esc(pesertaCo(p))}</span></div>`;
+    const html = list.map(({ p }) => `<section class="pdf-page land nt-page">${half(p, true)}${half(p, false)}</section>`).join('');
+    openModal({ title: `Name Table ${esc(pj.nomor)}`, wide: 'x', info: true, body: pdfWrap(html, `Name Table · ${list.length} lembar A4 landscape (satu peserta satu lembar), dilipat di garis tengah · format Labmania`), onMount: pdfMount });
+    logAct('Manage Peserta', 'Manage Peserta', 'Cetak', pj.nomor, pj.id, `Cetak Name Table ${pj.nomor}`);
   }
   // Export Excel (MP-FR-08): mockup mengunduh tabel HTML ber-ekstensi .xls (aplikasi: PhpSpreadsheet .xlsx).
   function mpXls(pj) {

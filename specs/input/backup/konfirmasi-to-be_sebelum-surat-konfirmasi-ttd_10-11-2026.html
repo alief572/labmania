@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konfirmasi Kehadiran Peserta · LabMania (Mockup To Be)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="konf-body">
+  <!-- To be (input/Master - Buat Program/2026-11-06-to-be-kuota-link-konfirmasi/): halaman yang dibuka calon peserta dari
+       link Konfirmasi Kehadiran quotation. Mockup tanpa server: konfigurasi link dibaca dari localStorage yang ditulis
+       mockup utama (Labmania.html), isian dikirim balik lewat localStorage dan masuk ke tab Data Peserta quotation. -->
+  <header class="konf-top"><span class="konf-brand">LabMania</span><span class="konf-sub">Konfirmasi Kehadiran Peserta</span></header>
+  <main class="konf-main" id="konf" aria-live="polite"><p class="muted">Memuat formulir…</p></main>
+  <footer class="konf-foot">PT LabMania Indonesia Jaya · Mockup to be, data contoh</footer>
+
+  <script>
+  'use strict';
+  (function () {
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const telpOk = v => /^\+?\d{9,15}$/.test(v.replace(/[\s-]/g, ''));
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const token = new URLSearchParams(location.search).get('t') || '';
+    const box = $('#konf');
+    const kunci = { link: `labmania-tobe:link:${token}`, isian: `labmania-tobe:isian:${token}` };
+
+    const pesan = (judul, isi) => { box.innerHTML = `<h1>${esc(judul)}</h1><div class="pub-closed">${isi}</div>`; };
+    const hariIni = stamp().slice(0, 10);
+    const tglId = iso => iso ? iso.split('-').reverse().join('-') : '';
+    const lewat = cfg => !!cfg.berlaku && hariIni > cfg.berlaku;
+    const sisa = cfg => { const list = lsGet(kunci.isian) || []; return Math.max(cfg.kuota - cfg.terisi - list.filter(x => !x.imp).length, 0); };
+    const head = (cfg, n) => `<div class="pub-head"><div><b>${esc(cfg.judul)}</b><small>${esc(cfg.jadwal)}${cfg.waktu ? ` · ${esc(cfg.waktu)}` : ''} · ${esc(cfg.lokasi || 'lokasi menyusul')}</small>
+      <small>Quotation ${esc(cfg.nomor)} · ${esc(cfg.kepada)}${cfg.berlaku ? ` · formulir berlaku s.d. ${esc(tglId(cfg.berlaku))}` : ''}</small></div>${n !== undefined ? `<span class="konf-sisa"><b>${n}</b> kursi tersisa</span>` : ''}</div>`;
+
+    function form(cfg) {
+      const n = sisa(cfg);
+      if (!cfg.buka || lewat(cfg) || n <= 0) {
+        box.innerHTML = `<h1>Konfirmasi Kehadiran</h1>${head(cfg)}<div class="pub-closed"><p><b>Formulir ini sudah ditutup.</b></p>
+          <p>${!cfg.buka ? `Quotation berstatus ${esc(cfg.status)}.` : lewat(cfg) ? `Masa berlaku quotation berakhir ${esc(tglId(cfg.berlaku))}.` : `Kuota ${esc(cfg.kuota)} peserta sudah terisi.`} Hubungi Sales LabMania${cfg.sales ? ` (${esc(cfg.sales)})` : ''} bila Anda belum terdaftar.</p></div>`;
+        return;
+      }
+      const fields = cfg.isian.map(f => {
+        const id = `f-${f.key.replace(/[^\w-]/g, '_')}`, val = f.key === 'instansi' && cfg.instansi ? cfg.instansi : '';
+        const ph = f.type === 'email' ? 'nama@domain.com' : f.type === 'tel' ? '08xxxxxxxxxx' : '';
+        return `<div class="field"><label for="${id}">${esc(f.label)}${f.wajib ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label>
+          <input class="input" id="${id}" name="${esc(f.key)}" type="${esc(f.type)}" value="${esc(val)}" maxlength="150" ${ph ? `placeholder="${ph}"` : ''} ${f.type === 'tel' ? 'inputmode="tel"' : ''} ${f.wajib ? 'required aria-required="true"' : ''}>
+          ${f.key === 'nama' ? '<span class="hint">Nama lengkap menjadi acuan penulisan di sertifikat.</span>' : ''}</div>`;
+      }).join('');
+      box.innerHTML = `<h1>Konfirmasi Kehadiran</h1>${head(cfg, n)}
+        <p class="konf-lead">Isi data diri Anda sebagai calon peserta. Satu formulir untuk satu orang; bila mendaftarkan beberapa orang, kirim satu per satu.</p>
+        <form id="konf-form" novalidate>
+          <section class="konf-sec"><h2>1. Data diri</h2><p class="konf-req"><span class="req" aria-hidden="true">*</span> wajib diisi</p>
+            <div class="grid2">${fields}</div></section>
+          <section class="konf-sec"><h2>2. Pernyataan</h2>
+            ${`<p>Dengan ini saya menyatakan:</p><ol class="pdf-small-ol konf-pernyataan"><li>${cfg.pernyataan}</li><li>Saya telah membaca dan menyetujui syarat &amp; ketentuan yang berlaku di LabMania.</li></ol>`}
+            <div class="field"><label class="chk konf-setuju" for="f-setuju"><input type="checkbox" id="f-setuju" name="setuju"> Saya menyetujui pernyataan di atas.</label></div></section>
+          <button type="submit" class="btn btn-primary konf-kirim">Kirim konfirmasi</button>
+        </form>`;
+      $('#konf-form').addEventListener('submit', e => { e.preventDefault(); kirim(cfg, e.target); });
+      const first = box.querySelector('.input'); if (first) first.focus();
+    }
+
+    function salah(el, msg) {
+      const w = el.closest('.field'); w.classList.add('has-err');
+      w.insertAdjacentHTML('beforeend', `<div class="err" role="alert"><i>!</i>${esc(msg)}</div>`);
+      return false;
+    }
+    function kirim(cfg, f) {
+      f.querySelectorAll('.has-err').forEach(x => x.classList.remove('has-err'));
+      f.querySelectorAll('.err').forEach(x => x.remove());
+      const data = {}; let ok = true;
+      cfg.isian.forEach(fi => {
+        const el = f.elements[fi.key], v = el.value.trim(); data[fi.key] = v;
+        if (fi.wajib && !v) ok = salah(el, `${fi.label} wajib diisi`);
+        else if (fi.type === 'email' && v && !EMAIL_RE.test(v)) ok = salah(el, 'Format email tidak valid');
+        else if (fi.type === 'tel' && v && !telpOk(v)) ok = salah(el, 'Nomor hanya angka, 9 sampai 15 digit');
+      });
+      if (!f.elements.setuju.checked) ok = salah(f.elements.setuju, 'Centang persetujuan untuk mengirim');
+      if (!ok) { const x = f.querySelector('.has-err input'); if (x) x.focus(); return; }
+      const now = lsGet(kunci.link) || cfg;
+      if (!now.buka || lewat(now) || sisa(now) <= 0) { form(now); return; }
+      const list = lsGet(kunci.isian) || [];
+      list.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, tgl: stamp(), data });
+      if (!lsSet(kunci.isian, list)) { pesan('Gagal mengirim', '<p>Browser menolak menyimpan data. Coba lagi, atau kirim data Anda ke Sales LabMania.</p>'); return; }
+      box.innerHTML = `<div class="konf-ok"><span class="konf-ok-mark" aria-hidden="true">✓</span><h1>Terima kasih, ${esc(data.nama)}</h1></div>${head(cfg)}
+        <div class="pub-closed"><p><b>Konfirmasi kehadiran Anda sudah kami terima.</b></p>
+          <p>Data Anda masuk ke quotation ${esc(cfg.nomor)}. Sales LabMania${cfg.sales ? ` (${esc(cfg.sales)})` : ''} akan menghubungi Anda bila ada yang perlu dilengkapi.</p></div>
+        <p class="konf-lagi"><button type="button" class="btn btn-outline" id="konf-lagi">Isi untuk peserta lain</button></p>
+        <p class="hint">Mockup: kembali ke tab Labmania untuk melihat isian ini di tab Data Peserta.</p>`;
+      $('#konf-lagi').addEventListener('click', () => form(lsGet(kunci.link) || cfg));
+      $('#konf-lagi').focus();
+    }
+
+    if (!token) { pesan('Link tidak lengkap', '<p>Alamat link tidak memuat kode quotation. Buka link persis seperti yang dikirim Sales LabMania.</p>'); return; }
+    const cfg = lsGet(kunci.link);
+    if (!cfg) {
+      pesan('Link tidak ditemukan', `<p>Kode <b>${esc(token)}</b> tidak dikenali.</p>
+        <p class="hint">Mockup: buka Labmania.html di browser yang sama, lalu buka detail quotation-nya sekali agar link aktif. Data mockup hilang saat Labmania.html dimuat ulang, kecuali data contoh.</p>`);
+      return;
+    }
+    form(cfg);
+  })();
+  </script>
+</body>
+</html>
