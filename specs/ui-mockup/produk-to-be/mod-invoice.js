@@ -182,7 +182,7 @@
       { label: 'Program', render: k => { const pj = pjOfQtn(k); return `${esc(paketOf(mpOf(pj)).judul)}<br>${jenisTag(pj.jenis)} <span class="muted">${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.lokasi ? ` · ${esc(pj.lokasi)}` : ''}</span>`; } },
       { label: 'Sales', render: k => esc((salesOf(k) || {}).nama || '—') },
       { label: 'Pembayaran', render: k => isTop(k)
-        ? (n => `TOP ${k.termin.length} termin<br><span class="muted">berikutnya Termin ${n} (${k.termin[n - 1].persen}%)</span>`)(ivcSisaTermin(k)[0])
+        ? (n => `TOP ${k.termin.length} termin<br><span class="muted">berikutnya Termin ${n} (${pctTxt(k.termin[n - 1].persen)}%)</span>`)(ivcSisaTermin(k)[0])
         : `Full payment<br><span class="muted">${isB2bQtn(k) ? '1 invoice ke company' : `${dealRows(k).length} peserta deal`}</span>` },
       { label: 'Nilai quotation', cls: 'money', render: k => rp(qtnNilai(k, dealRows(k)).total) },
       { label: 'Status', cls: 'nowrap', render: () => ivcBadge('uninvoiced') },
@@ -280,8 +280,8 @@
           <td>${b2b ? `Paket all-in<br><span class="muted">${u.ps.length} peserta (ditagih ke company)</span>` : `${u.ps.length} peserta<br><span class="muted">${esc(psNames.slice(0, 4).join(', '))}${psNames.length > 4 ? `, +${psNames.length - 4} lainnya` : ''}</span>`}</td>
           <td class="money">${v.allin ? `All-in ÷ ${v.n}<br><span class="muted">≈ ${rp(Math.round(per))}</span>` : rp(v.harga)}</td>
           <td class="money">${v.allin ? `${rp(v.diskTot)}<br><span class="muted">total quotation</span>` : `${rp(v.disk)}<br><span class="muted">per peserta</span>`}</td>
-          <td class="money"><b>${rp(u.penjualan)}</b>${u.termin ? `<br><span class="muted">${k.termin[u.termin - 1].persen}% dari ${rp(v.dpp)}</span>` : ''}</td></tr></tbody></table></div>
-        ${u.termin ? `<div class="notice"><span><b>Termin ${u.termin} dari ${k.termin.length}</b> (${k.termin[u.termin - 1].persen}%): ${esc(k.termin[u.termin - 1].ket)}. Termin lain ditagih dengan invoice terpisah.</span></div>` : ''}
+          <td class="money"><b>${rp(u.penjualan)}</b>${u.termin ? `<br><span class="muted">${pctTxt(k.termin[u.termin - 1].persen)}% dari ${rp(v.dpp)}</span>` : ''}</td></tr></tbody></table></div>
+        ${u.termin ? `<div class="notice"><span><b>Termin ${u.termin} dari ${k.termin.length}</b> (${pctTxt(k.termin[u.termin - 1].persen)}%): ${esc(k.termin[u.termin - 1].ket)}. Termin lain ditagih dengan invoice terpisah.</span></div>` : ''}
         ${done.length && !b2b && !u.termin ? `<p class="hint">Peserta yang sudah ditagih: ${esc(done.join(', '))}.</p>` : ''}`)
         + sec(n0 + 2, 'Perhitungan Invoice' + QIVC(8, 'PPN quotation = 11% × DPP, PPN invoice = (Penjualan × 11/12) × 12%. Nilainya sama, tetapi pembulatan bisa beda Rp 1. Pembulatan per tahap perlu dikonfirmasi ke tim pajak.'), 'Penjualan → DPP → PPN → Total Tagihan', calcCard(h, d.pl))
         + sec(n0 + 3, 'Jurnal' + QIVC(14, 'Kode COA dari file acuan: 1102-01-01, 2104-01-07, 1106-01-XX, 2104-01-XX; COA Penjualan 0000-00-00. Kode final Labmania?'), 'pilih COA Penjualan; debit dan credit harus balance', `${jrTable(jr)}<div class="field" id="ivc-err"></div>`);
@@ -423,7 +423,7 @@
     const harga = v.allin ? `${rp(v.sub)}<br><span class="pdf-mut">all-in ${v.n} peserta</span>` : rp(v.harga);
     const disk = v.allin ? (v.diskTot ? rp(v.diskTot) : '0') : (v.disk ? `${rp(v.disk)}<br><span class="pdf-mut">per peserta</span>` : '0');
     const rows = `<tr><td>1</td><td><b>${esc(pk.judul)}</b><br>${esc(pj.durasi)} hari · ${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''}<br>${esc(pj.lokasi || '—')}
-        <br><span class="pdf-mut">No. Program ${esc(pj.nomor)} · Quotation ${esc(k.nomor)}</span>${names.length && !isB2bQtn(k) ? `<br><span class="pdf-mut">Peserta: ${esc(names.join(', '))}</span>` : ''}${i.termin ? `<br><span class="pdf-mut">Termin ${i.termin} dari ${k.termin.length} (${k.termin[i.termin - 1].persen}%): ${esc(k.termin[i.termin - 1].ket)}</span>` : ''}</td>
+        <br><span class="pdf-mut">No. Program ${esc(pj.nomor)} · Quotation ${esc(k.nomor)}</span>${names.length && !isB2bQtn(k) ? `<br><span class="pdf-mut">Peserta: ${esc(names.join(', '))}</span>` : ''}${i.termin ? `<br><span class="pdf-mut">Termin ${i.termin} dari ${k.termin.length} (${pctTxt(k.termin[i.termin - 1].persen)}%): ${esc(k.termin[i.termin - 1].ket)}</span>` : ''}</td>
         <td class="r">${isB2bQtn(k) ? `1 paket<br><span class="pdf-mut">${n} peserta</span>` : `${n} peserta`}</td><td class="r">${perPs ? rp(v.harga) : harga}</td><td class="r">${perPs ? (v.disk ? rp(v.disk) : '0') : disk}</td><td class="r">${rp(i.penjualan)}</td></tr>
       ${i.lain ? `<tr><td>2</td><td>Biaya lain-lain</td><td class="r">—</td><td class="r">—</td><td class="r">—</td><td class="r">${rp(i.lain)}</td></tr>` : ''}`;
     const pl = i.perlakuan, bayar = i.piutang;

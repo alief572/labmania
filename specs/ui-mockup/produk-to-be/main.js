@@ -137,6 +137,7 @@
     'rf-view': el => rfView(rfById(+el.dataset.id)),
     'rf-proses': el => rfProses(rfById(+el.dataset.id)),
     'rf-appr': el => rfAppr(rfById(+el.dataset.id)),
+    'rf-fix': el => rfFix(rfById(+el.dataset.id)),
     'rfappr-tab': el => { state.rfApprTab = el.dataset.tab; state.page = 1; render(); },
     'qps-keluar': el => qpsKeluar(db.qps.find(x => x.id === +el.dataset.id)),
     'qps-surat': el => qpsSurat(db.qps.find(x => x.id === +el.dataset.id)),
@@ -346,7 +347,7 @@
     }
     if (t.id === 'qt-mp') { state.pf.p.mp = Number(t.value) || ''; render(); }
     if (t.id === 'mp-prod-add') { state.pf.p.paket = t.value ? [+t.value] : []; state.pf.errors = {}; render(); } // Master Program = satu Product (13-11-2026)
-    if (t.id === 'pj-mp-add' && t.value) { const m = mprogById(+t.value), mps = pfStore(); mps.push(mpsEntry(m)); pfLoad(mps.length - 1); render(); toast(`${m.nomor} ditambahkan; costing-nya tampil di bagian 2 – 4`); }
+    if (t.id === 'pj-mp-add' && t.value) { const m = mprogById(+t.value), mps = pfStore(); mps.push(mpsEntry(m, mps[mps.length - 1])); pfLoad(mps.length - 1); render(); toast(`${m.nomor} ditambahkan; costing-nya tampil di bagian 2 – 4`); }
   });
 
   document.addEventListener('keydown', e => {

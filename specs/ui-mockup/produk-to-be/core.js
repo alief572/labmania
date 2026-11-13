@@ -241,10 +241,13 @@
   // Nominal × faktor satuan: Event / Peserta/Event = 1, Day / Peserta/Day = durasi (fr-nfr-master-program.md bagian 8).
   const perUnit = (b, d) => (Number(b.harga) || 0) * ((b.satuan === 'Day' || b.satuan === 'Peserta/Day') ? d : 1);
 
+  // Penjualan Program dengan beberapa Master Program (p.mps): biaya per hari memakai durasi Master Program masing-masing
+  // (input/Master - Buat Program/2026-11-13-jawaban-multi-master-refund-top/ [JMR-1]); sisanya sama.
   function calc(p) {
-    const d = Number(p.durasi) || 0, n = nPeserta(p);
-    const fixed = p.biaya.filter(b => b.tipe === 'fixed').reduce((s, b) => s + perUnit(b, d), 0);
-    const varPer = p.biaya.filter(b => b.tipe === 'variable').reduce((s, b) => s + perUnit(b, d), 0);
+    const n = nPeserta(p);
+    const parts = p.mps && p.mps.length ? p.mps.map(m => ({ d: Number(m.durasi != null ? m.durasi : p.durasi) || 0, biaya: m.biaya || [] })) : [{ d: Number(p.durasi) || 0, biaya: p.biaya }];
+    const sumT = tipe => parts.reduce((t, x) => t + x.biaya.filter(b => b.tipe === tipe).reduce((s, b) => s + perUnit(b, x.d), 0), 0);
+    const fixed = sumT('fixed'), varPer = sumT('variable');
     const totalVar = varPer * n;
     const hpp = fixed + totalVar;
     const harga = Number(p.hargaJual) || 0;
@@ -311,10 +314,13 @@
   }));
   seedQT(Object.assign(fromMP(mp1, 'b2b'), { company: db.company[1].id, hargaJual: 700000, targetPeserta: 15, jamPembelajaran: 16, tglMulai: '2026-11-24', tglSelesai: '2026-11-25', lokasi: 'In house — Surabaya' }));
   // Penjualan Program berisi dua Master Program, costing masing-masing (input/Master - Buat Program/2026-11-13-multi-master-batal-top-refund/ butir 1).
-  const fromMPs = (list, jenis) => { const q = fromMP(list[0], jenis), mps = list.map(m => ({ mp: m.id, biaya: clone(m.biaya), hargaJual: m.hargaJual, targetProfit: m.targetProfit }));
+  // Tiap Master Program punya tanggal, JP, trainer, dan asisten sendiri ([JMR-1]); trainer & asisten diisi di mod-sales-order.js.
+  const fromMPs = (list, jenis, jadwal) => { const q = fromMP(list[0], jenis), mps = list.map((m, i) => Object.assign({ mp: m.id, biaya: clone(m.biaya), hargaJual: m.hargaJual, targetProfit: m.targetProfit,
+      jamPembelajaran: m.jamPembelajaran, trainer: '', asisten: '' }, jadwal[i], { durasi: Math.round((Date.parse(jadwal[i].tglSelesai) - Date.parse(jadwal[i].tglMulai)) / 864e5) + 1 }));
     return Object.assign(q, { mps, biaya: mps.flatMap((m, i) => m.biaya.map(b => Object.assign({}, b, { mpi: i }))), hargaJual: mps.reduce((t, m) => t + (Number(m.hargaJual) || 0), 0),
-      targetProfit: mps.reduce((t, m) => t + (Number(m.targetProfit) || 0), 0) || '' }); };
-  seedQT(Object.assign(fromMPs([mp1, mp4], 'public'), { status: 'final', durasi: 2, jamPembelajaran: 16, tglMulai: '2026-12-01', tglSelesai: '2026-12-02', lokasi: 'Online (Zoom)' }));
+      targetProfit: mps.reduce((t, m) => t + (Number(m.targetProfit) || 0), 0) || '', jamPembelajaran: mps.reduce((t, m) => t + (Number(m.jamPembelajaran) || 0), 0),
+      tglMulai: jadwal[0].tglMulai, tglSelesai: jadwal[jadwal.length - 1].tglSelesai }); };
+  seedQT(Object.assign(fromMPs([mp1, mp4], 'public', [{ tglMulai: '2026-12-01', tglSelesai: '2026-12-02' }, { tglMulai: '2026-12-03', tglSelesai: '2026-12-04' }]), { status: 'final', lokasi: 'Online (Zoom)' }));
 
   // ---------- State & navigation ----------
   const state = {

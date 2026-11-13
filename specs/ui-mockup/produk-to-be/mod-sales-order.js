@@ -65,7 +65,9 @@
   // Satu surat Berlaku per program. Reschedule yang mengubah tanggal/trainer/asisten: surat lama Diganti, surat baru nomor baru
   // (jawaban 12-11-2026). Surat menyimpan salinan jadwal, trainer, dan asisten saat terbit agar surat Diganti tetap tercetak apa adanya.
   const sktOfPj = id => db.skt.find(x => x.pj === id && x.status === 'berlaku');
-  const sktSnap = pj => ({ tglMulai: pj.tglMulai, tglSelesai: pj.tglSelesai, waktu: pj.waktu || '', lokasi: pj.lokasi || '', durasi: pj.durasi, trainer: pj.trainer || '', asisten: pj.asisten || '' });
+  // Beberapa Master Program ([JMR-1]): satu surat per program memuat tim tiap Master Program (usulan analis).
+  const sktSnap = pj => ({ tglMulai: pj.tglMulai, tglSelesai: pj.tglSelesai, waktu: pj.waktu || '', lokasi: pj.lokasi || '', durasi: pj.durasi, trainer: pj.trainer || '', asisten: pj.asisten || '',
+    tim: pjMulti(pj) ? pj.mps.map(m => ({ mp: mprogById(m.mp).nomor, judul: paketOf(mprogById(m.mp)).judul, tglMulai: m.tglMulai, tglSelesai: m.tglSelesai, trainer: m.trainer, asisten: m.asisten })) : null });
   function sktNew(pj, tgl, ref) {
     const r = Object.assign({ id: uid(), nomor: `SKT-${String(++sktSeq).padStart(3, '0')}`, tanggal: tgl, pj: pj.id, status: 'berlaku', ref: ref || null }, sktSnap(pj));
     db.skt.push(r);
@@ -86,6 +88,9 @@
   { const aktif = db.trainer.filter(t => t.aktif); db.quot.forEach((pj, i) => { if (!pj.trainer && aktif.length) pj.trainer = aktif[i % aktif.length].id; }); }
   // Data contoh: asisten trainer wajib (to be 12-11-2026); diisi bergantian dari Master User aktif.
   { const us = db.user.filter(u => u.aktif); db.quot.forEach((pj, i) => { if (!pj.asisten && us.length) pj.asisten = us[(i + 1) % us.length].id; }); }
+  // Data contoh beberapa Master Program: trainer & asisten berbeda per Master Program ([JMR-1]).
+  { const tr = db.trainer.filter(t => t.aktif), us = db.user.filter(u => u.aktif);
+    db.quot.filter(pjMulti).forEach(pj => { pj.mps.forEach((m, i) => { m.trainer = m.trainer || tr[i % tr.length].id; m.asisten = m.asisten || us[(i + 2) % us.length].id; }); pjJadwalAgg(pj, pj.mps); }); }
   // Data contoh: semua quotation Deal punya SO. Yang sudah ada invoice = Siap invoice; sisanya bergantian agar kedua status terlihat.
   db.qtn.filter(k => k.status === 'deal').forEach((k, i) => {
     const s = soCreate(k, k.tanggal);
@@ -149,7 +154,7 @@
       { label: 'Nomor Surat', cls: 'nowrap', render: r => `<button type="button" class="btn btn-ghost sm" data-act="skt-view" data-id="${r.id}">${esc(r.nomor)}</button><br><span class="muted">${tglPanjang(r.tanggal)}</span>` },
       { label: 'Status', cls: 'nowrap', render: r => r.status === 'berlaku' ? '<span class="badge st-terkirim">Berlaku</span>' : r.status === 'batal' ? '<span class="badge st-ps-keluar">Batal</span><br><span class="muted">program dibatalkan</span>' : `<span class="badge st-draft">Diganti</span><br><span class="muted">oleh ${esc((sktById(r.gantiOleh) || {}).nomor || '—')}</span>` },
       { label: 'Penjualan Program', cls: 'title', render: r => { const pj = db.quot.find(x => x.id === r.pj); return `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}<br>${progJudul(pj)}`; } },
-      { label: 'Trainer & Asisten', render: r => { const t = trainerById(r.trainer); return `${t ? `<b>${esc(t.nama)}</b>` : '<span class="muted">Trainer belum dipilih</span>'}<br><span class="muted">Asisten: ${esc(asistenNama(r.asisten))}</span>`; } },
+      { label: 'Trainer & Asisten', render: r => { if (r.tim) return r.tim.map(x => `<b>${esc((trainerById(x.trainer) || {}).nama || '—')}</b> <span class="muted">${esc(x.mp)} · Asisten: ${esc(asistenNama(x.asisten))}</span>`).join('<br>'); const t = trainerById(r.trainer); return `${t ? `<b>${esc(t.nama)}</b>` : '<span class="muted">Trainer belum dipilih</span>'}<br><span class="muted">Asisten: ${esc(asistenNama(r.asisten))}</span>`; } },
       { label: 'Peserta deal', cls: 'money', render: r => pesertaDealPj(db.quot.find(x => x.id === r.pj)) },
       { label: 'Action', cls: 'act', render: r => gearMenu(r, [['skt-view', 'View'], ['skt-print', 'Print Out Surat Kerja']]) }
     ]);
@@ -310,7 +315,8 @@
         <button type="button" class="btn btn-outline" data-act="so-prog" data-id="${pj.id}">Lihat Sales Order program</button></div></section>
       <div class="qtn-grid">${sec(1, 'Data Surat', '', kv([['Nomor', `<span class="code">${esc(r.nomor)}</span> <span class="muted">(sementara, format menyusul)</span>${QSKT1}`], ['Tanggal', `${tglPanjang(r.tanggal)}${QSKT2}`], ['Penjualan Program', `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}`], ...(r.gantikan ? [['Menggantikan', `<span class="code">${esc((sktById(r.gantikan) || {}).nomor || '—')}</span>${r.ref ? ` · reschedule: ${esc(r.ref.alasan)}` : ''}`]] : [])]))}
         ${sec(2, 'Trainer', 'dari Master Trainer', kv([['Nama', esc(t.nama || '—')], ['Bidang keahlian', esc((t.keahlian || []).join(', ') || '—')], ['Telepon', esc(t.telp || '—')], ['Email', esc(t.email || '—')], ['Alamat', esc(t.alamat || '—')]]))}</div>
-      ${sec(3, 'Asisten trainer', 'dari Master User', kv([['Nama', esc(a.nama || '—')], ['Role', esc(a.nama ? roleOf(a) || '—' : '—')], ['Telepon', esc(a.telp || a.hp || '—')]]))}
+      ${r.tim ? sec(3, 'Tim per Master Program', 'tiap Master Program punya jadwal, trainer, dan asisten sendiri', `<div class="table-wrap"><table class="table"><thead><tr><th>Master Program</th><th>Jadwal</th><th>Trainer</th><th>Asisten</th></tr></thead><tbody>${r.tim.map(x => `<tr><td><span class="code">${esc(x.mp)}</span> ${esc(x.judul)}</td><td>${fmtRange(x.tglMulai, x.tglSelesai)}</td><td>${esc((trainerById(x.trainer) || {}).nama || '—')}</td><td>${esc(asistenNama(x.asisten))}</td></tr>`).join('')}</tbody></table></div>`)
+        : sec(3, 'Asisten trainer', 'dari Master User', kv([['Nama', esc(a.nama || '—')], ['Role', esc(a.nama ? roleOf(a) || '—' : '—')], ['Telepon', esc(a.telp || a.hp || '—')]]))}
       ${sec(4, 'Program yang ditugaskan', '', kv([['Paket', `${esc(pk.nomor)} · ${esc(pk.judul)}`], ['Varian', esc(varianTxt(pj))], ['Sertifikat', esc(findRec('jenisSertifikasi', pk.sertifikasi).nama)], ['Jadwal', `${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''} (${pj.durasi} hari)`], ['Lokasi', esc(pj.lokasi || '—')], ...(pj.jenis === 'b2b' ? [['Company', esc((db.company.find(x => x.id === pj.company) || {}).nama || '—')]] : []), ['Peserta deal', `${pesertaDealPj(pj)} peserta dari ${sos.length} Sales Order`]]))}`;
   }
   function sktView(r) { state.sktView = r.id; state.view = 'sktDetail'; render(); window.scrollTo(0, 0); }
@@ -333,9 +339,9 @@
       <table class="pdf-kv st-kv"><tr><td>Nama</td><td>: ${dot}</td></tr><tr><td>Jabatan</td><td>: Operational Manager</td></tr></table>
       <p class="st-p">Dengan ini menugaskan kepada :</p>
       <table class="st-tbl"><thead><tr><th>No.</th><th>Nama</th><th>NIK</th><th>Jabatan</th></tr></thead>
-        <tbody><tr><td>1</td><td>${esc(t.nama || '')}</td><td></td><td>Trainer</td></tr><tr><td>2</td><td>${esc(a.nama || '')}</td><td></td><td>Asisten Trainer</td></tr>${kosong}</tbody></table>
+        <tbody>${r.tim ? r.tim.flatMap(x => [[(trainerById(x.trainer) || {}).nama, `Trainer ${x.judul}`], [asistenNama(x.asisten), `Asisten Trainer ${x.judul}`]]).map(([n, j], i) => `<tr><td>${i + 1}</td><td>${esc(n || '')}</td><td></td><td>${esc(j)}</td></tr>`).join('') : `<tr><td>1</td><td>${esc(t.nama || '')}</td><td></td><td>Trainer</td></tr><tr><td>2</td><td>${esc(a.nama || '')}</td><td></td><td>Asisten Trainer</td></tr>`}${kosong}</tbody></table>
       <p class="st-p">sebagaimana ditugaskan sebagai <b>Trainer / Asisten Trainer</b> dalam acara ${keg} bertempat di ${esc(pj.lokasi || dot)} yang dilaksanakan pada :</p>
-      <table class="pdf-kv st-kv"><tr><td>Hari/ Tanggal</td><td>: ${hari}/ ${rangePanjang(pj.tglMulai, pj.tglSelesai)}</td></tr><tr><td>Waktu</td><td>: ${esc(pj.waktu || dot)}</td></tr></table>
+      <table class="pdf-kv st-kv"><tr><td>Hari/ Tanggal</td><td>: ${hari}/ ${rangePanjang(pj.tglMulai, pj.tglSelesai)}${r.tim ? r.tim.map(x => `<br>&nbsp; ${esc(x.judul)}: ${rangePanjang(x.tglMulai, x.tglSelesai)}`).join('') : ''}</td></tr><tr><td>Waktu</td><td>: ${esc(pj.waktu || dot)}</td></tr></table>
       <p class="st-p">Demikian Surat Tugas ini dibuat agar yang bersangkutan dapat melaksanakan dengan baik dan penuh tanggung jawab.</p>
       <div class="st-sign">Bekasi, ${tglPanjang(todayIso)}<br>Operational Manager<div class="pdf-ttd"></div>(${dot})</div>
       </div>${pdfFoot('FR/LMI-TR-05/01/Ed.Rev-1.0', '1 dari 1', '01/08/2023')}</section>`;
@@ -398,7 +404,7 @@
         jurnal: ivcJurnal(hh, pl, coa, nomor, kHI, tgl) }, hh));
       Object.assign(soOfQtn(kHI) || {}, { status: 'siap', siapBy: 'Admin Sistem', siapAt: `${tgl} 09:00` });
     }
-    const ref = reschedApply(pj, { mulai: addHari(pj.tglMulai, 14), trainer: pj.trainer, asisten: pj.asisten, alasan: 'Kuota peserta belum terpenuhi (contoh)', evidence: ['Notulen-rapat-kuota.pdf'], oleh: 'Contoh User Dua', waktuUbah: `${todayIso}T09:15` });
+    const ref = reschedApply(pj, { mi: pjMulti(pj) ? -1 : 0, mulai: addHari(pj.tglMulai, 14), trainer: pj.trainer, asisten: pj.asisten, alasan: 'Kuota peserta belum terpenuhi (contoh)', evidence: ['Notulen-rapat-kuota.pdf'], oleh: 'Contoh User Dua', waktuUbah: `${todayIso}T09:15` });
     const ks = qtnOfPj(pj).filter(k => k.status !== 'batal');
     const kInv = ks.find(k => (k.status === 'deal' || k.dealUlang) && invOfQtn(k).length && k.tujuan === 'personal' && !k.peserta.some(r => RS_JAWAB[(pesertaById(r.id) || {}).nama]));
     let menit = 5;

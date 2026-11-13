@@ -102,13 +102,16 @@
   const linkLewat = k => !!k.berlaku && todayIso > k.berlaku;
   // Batas H-14 sebelum acara (Q-TB-02, input/Master - Buat Program/2026-11-12-jawaban-pertanyaan-terbuka/): link menerima isian sampai tanggal mulai − 14 hari.
   const LINK_H = 14;
-  const linkBatasH = k => { const pj = pjOfQtn(k); return pj && pj.tglMulai ? addDays(pj.tglMulai, -LINK_H) : ''; };
+  // Setelah reschedule (quotation -rev), link untuk pendaftar baru terbuka sampai H-1 jadwal baru, sama dengan konfirmasi ulang
+  // (input/Master - Buat Program/2026-11-13-jawaban-multi-master-refund-top/ [JMR-8]).
+  const linkH = k => (k.rev ? 1 : LINK_H);
+  const linkBatasH = k => { const pj = pjOfQtn(k); return pj && pj.tglMulai ? addDays(pj.tglMulai, -linkH(k)) : ''; };
   const linkLewatH = k => !!linkBatasH(k) && todayIso > linkBatasH(k);
   // B2B: link diisi satu kali oleh PIC company; tertutup setelah daftar peserta dikirim (input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/).
   const linkBuka = k => (k.status === 'draft' || k.status === 'terkirim') && !linkLewat(k) && !linkLewatH(k) && (isB2bQtn(k) ? !k.konfCo : !kuotaPenuh(k));
   const linkStatus0 = k => k.status === 'deal' ? 'Ditutup: quotation sudah Deal' : k.status === 'batal' ? 'Ditutup: quotation Batal'
     : linkLewat(k) ? `Ditutup: masa berlaku quotation berakhir ${fmtTgl(k.berlaku)}`
-    : linkLewatH(k) ? `Ditutup: batas H-${LINK_H} sebelum acara (${fmtTgl(linkBatasH(k))})`
+    : linkLewatH(k) ? `Ditutup: batas H-${linkH(k)} sebelum acara (${fmtTgl(linkBatasH(k))})`
     : isB2bQtn(k) ? (k.konfCo ? `Ditutup: daftar ${k.peserta.length} peserta sudah dikirim PIC company ${fmtStamp(k.konfCo.tgl)}` : 'Menunggu PIC company mengirim daftar peserta')
     : kuotaPenuh(k) ? `Ditutup: kuota ${k.kuota} peserta sudah terisi` : `Menerima isian · ${psAktif(k).length} dari ${k.kuota} kuota terisi`;
 
@@ -745,20 +748,30 @@
   // TOP = beberapa termin (persentase + keterangan, total 100%); satu termin = satu invoice.
   const TOP_DEF = () => [{ persen: 50, ket: 'Uang muka (DP) setelah quotation ditandatangani / PO' }, { persen: 50, ket: 'Pelunasan sebelum acara' }];
   const isTop = k => !!k && k.bayarCara === 'top' && (k.termin || []).length > 1;
-  const topSum = t => (t || []).reduce((s, x) => s + (Number(x.persen) || 0), 0);
-  const bayarTxt = k => (isTop(k) ? `TOP ${k.termin.length} termin: ${k.termin.map((t, i) => `Termin ${i + 1} ${t.persen}% (${t.ket})`).join('; ')}` : 'Full payment');
+  // Diisi rupiah, persen otomatis; atau diisi persen, rupiah otomatis ([JMR-6]). Dasar = Grand total quotation (kuota).
+  // Yang dipakai invoice = persen × nilai Deal; termin terakhir menampung selisih pembulatan (QTN-FR-44).
+  const r2 = n => Math.round(n * 100) / 100;
+  const topSum = t => r2((t || []).reduce((s, x) => s + (Number(x.persen) || 0), 0));
+  const topNom = (t, total) => (t.base === total && t.nominal !== '' && t.nominal != null ? Number(t.nominal) : Math.round(total * (Number(t.persen) || 0) / 100));
+  const pctTxt = p => String(r2(Number(p) || 0)).replace('.', ',');
+  const qtnDraftTotal = d => qtnNilai({ pj: d.pj, ppn: d.ppn, diskon: d.diskon, lain: d.lain, skema: d.skema, allin: d.allin, kuota: d.kuota, paketMaks: d.paketMaks, tambahPs: d.tambahPs }).total;
+  const tpSumTxt = (d, total) => { const n = d.termin.reduce((s, t) => s + topNom(t, total), 0);
+    return `Total ${rp(n)} (${pctTxt(topSum(d.termin))}%) dari Grand total ${rp(total)}${Math.abs(topSum(d.termin) - 100) > 0.05 ? ` · selisih ${rp(total - n)}` : ''}`; };
+  const bayarTxt = k => (isTop(k) ? `TOP ${k.termin.length} termin: ${k.termin.map((t, i) => `Termin ${i + 1} ${t.nominal ? `${rp(t.nominal)} / ` : ''}${pctTxt(t.persen)}% (${t.ket})`).join('; ')}` : 'Full payment');
   function bayarHtml(d, E) {
-    const top = d.bayarCara === 'top';
+    const top = d.bayarCara === 'top', total = top ? qtnDraftTotal(d) : 0;
     return `<p class="qtn-h">Cara pembayaran</p><div class="qtn-pay">
       <div class="pay-opt" role="radiogroup" aria-label="Cara pembayaran">${[['full', 'Full payment', 'ditagih satu kali (satu invoice) setelah Deal'], ['top', 'TOP (termin)', 'dibagi beberapa termin; satu termin = satu invoice']].map(([v, l, h]) =>
         `<label class="chk"><input type="radio" name="bayarCara" value="${v}" ${(d.bayarCara || 'full') === v ? 'checked' : ''}> <span><b>${l}</b> <span class="muted">${h}</span></span></label>`).join('')}</div>
-      ${top ? `<div class="table-wrap"><table class="table tp-tbl"><thead><tr><th class="num">Termin</th><th>Persentase</th><th>Keterangan</th><th class="act"><span class="sr-only">Hapus</span></th></tr></thead><tbody>
+      ${top ? `<p class="hint">${total ? `Isi <b>nominal</b> (persen dihitung otomatis) atau <b>persentase</b> (nominal dihitung otomatis) dari Grand total ${rp(total)}.` : 'Grand total masih Rp 0: isi <b>Kuota peserta</b> dulu supaya nominal dapat diisi, atau isi <b>persentase</b> saja.'} Bila nilai Deal berbeda dari kuota, tiap termin ditagih menurut persentasenya.</p>
+        <div class="table-wrap"><table class="table tp-tbl"><thead><tr><th class="num">Termin</th><th>Nominal (Rp)</th><th>Persentase</th><th>Keterangan</th><th class="act"><span class="sr-only">Hapus</span></th></tr></thead><tbody>
         ${d.termin.map((t, i) => `<tr><td class="num">${i + 1}</td>
-          <td><div class="input-unit"><input class="input" type="number" min="1" max="99" step="1" inputmode="numeric" data-tp-pct="${i}" value="${esc(String(t.persen))}" aria-label="Persentase termin ${i + 1}"><span class="unit">%</span></div></td>
+          <td>${moneyIn(`data-tp-rp="${i}" aria-label="Nominal termin ${i + 1}" ${total ? '' : 'disabled placeholder="isi kuota dulu"'}`, total ? topNom(t, total) : '').replace('class="input money-in"', 'class="input sm-in money-in"')}</td>
+          <td><div class="input-unit"><input class="input" type="number" min="0.01" max="99.99" step="0.01" inputmode="decimal" data-tp-pct="${i}" value="${esc(t.persen === '' ? '' : String(r2(Number(t.persen) || 0)))}" aria-label="Persentase termin ${i + 1}"><span class="unit">%</span></div></td>
           <td><input class="input" data-tp-ket="${i}" maxlength="150" value="${esc(t.ket)}" aria-label="Keterangan termin ${i + 1}" placeholder="mis. DP setelah PO"></td>
           <td class="act">${d.termin.length > 2 ? `<button type="button" class="btn btn-ghost sm danger-t" data-q="tp-del" data-i="${i}" aria-label="Hapus termin ${i + 1}">Hapus</button>` : ''}</td></tr>`).join('')}
         </tbody></table></div>
-        <div class="tp-foot"><button type="button" class="btn btn-ghost sm" data-q="tp-add">+ Tambah termin</button><span class="hint" id="tp-sum" aria-live="polite">Total ${topSum(d.termin)}% (harus 100%)</span></div>
+        <div class="tp-foot"><button type="button" class="btn btn-ghost sm" data-q="tp-add">+ Tambah termin</button><span class="hint" id="tp-sum" aria-live="polite">${tpSumTxt(d, total)}</span></div>
         ${E && E.termin ? `<div class="err"><i>!</i>${E.termin}</div>` : ''}` : ''}
     </div>`;
   }
@@ -861,8 +874,8 @@
     if (d.bayarCara === 'top') {
       const t = d.termin || [];
       if (t.length < 2) E.termin = 'TOP minimal 2 termin';
-      else if (t.some(x => !(Number(x.persen) > 0) || !String(x.ket || '').trim())) E.termin = 'Isi persentase (> 0) dan keterangan setiap termin';
-      else if (topSum(t) !== 100) E.termin = `Total persentase harus 100% (sekarang ${topSum(t)}%)`;
+      else if (t.some(x => !(Number(x.persen) > 0) || !String(x.ket || '').trim())) E.termin = 'Isi nominal atau persentase (> 0) dan keterangan setiap termin';
+      else if (Math.abs(topSum(t) - 100) > 0.05) { const tot = qtnDraftTotal(d); E.termin = `Total termin harus sama dengan Grand total (100%); sekarang ${pctTxt(topSum(t))}%, selisih ${rp(tot - t.reduce((s, x) => s + topNom(x, tot), 0))}`; }
     }
     return E;
   }
@@ -875,7 +888,7 @@
       skema: jenis === 'b2b' ? 'allin' : 'peserta', allin: jenis === 'b2b' ? Number(d.allin) || 0 : 0,
       ...(jenis === 'b2b' ? { paketMaks: Number(d.paketMaks) || B2B_PAKET, tambahPs: d.tambahPs == null ? B2B_TAMBAH : Number(d.tambahPs), kolomB2b: (d.kolomB2b || []).slice() } : {}),
       diskon: Number(d.diskon) || 0, lain: Number(d.lain) || 0, ket: ketFromItems(d.ketItems, jenis),
-      bayarCara: d.bayarCara === 'top' ? 'top' : 'full', termin: d.bayarCara === 'top' ? (d.termin || []).map(x => ({ persen: Number(x.persen) || 0, ket: String(x.ket || '').trim() })) : [],
+      bayarCara: d.bayarCara === 'top' ? 'top' : 'full', termin: d.bayarCara === 'top' ? (tot => (d.termin || []).map(x => ({ persen: r2(Number(x.persen) || 0), nominal: topNom(x, tot), ket: String(x.ket || '').trim() })))(qtnDraftTotal(d)) : [],
       kf: d.kf ? clone(d.kf) : null };
   }
   function qtnGo(d, form, rec, n) {
@@ -936,7 +949,15 @@
           if (t.name === 'kuota') { d.kuota = t.value === '' ? '' : Math.max(Math.floor(Number(t.value) || 0), 0); form.querySelector('#qtn-totals').innerHTML = qtnTotals(d); }
           if (t.name === 'kfPernyataan') { d.kf.pernyataan = t.value; d.kfTouched = true; const pj = db.quot.find(x => x.id === d.pj), pv = form.querySelector('#kf-prev'); if (pj && pv) pv.innerHTML = kfText(t.value, pj); }
           if (t.name === 'lain') { d.lain = num(t.value.replace(/\D/g, '')); form.querySelector('#qtn-totals').innerHTML = qtnTotals(d); }
-          if (t.dataset.tpPct !== undefined) { d.termin[+t.dataset.tpPct].persen = t.value === '' ? '' : Math.floor(Number(t.value) || 0); const o = form.querySelector('#tp-sum'); if (o) o.textContent = `Total ${topSum(d.termin)}% (harus 100%)`; }
+          // Termin: nominal ↔ persen saling menghitung ([JMR-6]).
+          if (t.dataset.tpPct !== undefined || t.dataset.tpRp !== undefined) {
+            const tot = qtnDraftTotal(d), i = +(t.dataset.tpPct !== undefined ? t.dataset.tpPct : t.dataset.tpRp), x = d.termin[i];
+            if (t.dataset.tpPct !== undefined) { x.persen = t.value === '' ? '' : r2(Number(t.value) || 0); x.nominal = Math.round(tot * (Number(x.persen) || 0) / 100); x.base = tot;
+              const o = form.querySelector(`[data-tp-rp="${i}"]`); if (o) o.value = fmtRibu(x.nominal); }
+            else { x.nominal = Number(digits(t.value)) || 0; x.base = tot; x.persen = tot ? r2(x.nominal / tot * 100) : '';
+              const o = form.querySelector(`[data-tp-pct="${i}"]`); if (o) o.value = x.persen; }
+            const s = form.querySelector('#tp-sum'); if (s) s.textContent = tpSumTxt(d, tot);
+          }
           if (t.dataset.tpKet !== undefined) d.termin[+t.dataset.tpKet].ket = t.value;
           if (t.name === 'diskon') { d.diskon = num(t.value.replace(/\D/g, '')); form.querySelector('#qtn-totals').innerHTML = qtnTotals(d); }
           if (t.name === 'allin') { d.allin = num(t.value.replace(/\D/g, '')); form.querySelector('#qtn-totals').innerHTML = qtnTotals(d); }
@@ -953,7 +974,7 @@
           const a = b.dataset.q;
           if (a === 'step') return qtnGo(d, form, rec, +b.dataset.n);
           if (a === 'back') return qtnGo(d, form, rec, d.step - 1);
-          if (a === 'tp-add') { d.termin.push({ persen: Math.max(100 - topSum(d.termin), 0) || '', ket: '' }); qtnRedraw(d, form); return; }
+          if (a === 'tp-add') { d.termin.push({ persen: r2(Math.max(100 - topSum(d.termin), 0)) || '', ket: '' }); qtnRedraw(d, form); return; }
           if (a === 'tp-del') { d.termin.splice(+b.dataset.i, 1); qtnRedraw(d, form); return; }
           if (a.startsWith('ket-')) return qtnKetAct(d, form, a, b);
           if (a.startsWith('kf-')) return kfAct(d, form, a, b);
@@ -1015,7 +1036,7 @@
       </div>
       <table class="pdf-tbl"><thead><tr><th>No Catalog</th><th>Item</th><th>Deskripsi</th><th class="r">Kts.</th><th class="r">Harga</th><th class="r">Diskon</th><th class="r">Total Harga</th></tr></thead>
         <tbody><tr><td>${esc(pk.nomor)}</td><td>${esc(pk.judul)}</td>
-          <td>${pj.durasi} hari${pj.jamPembelajaran ? ` · ${pj.jamPembelajaran} JP` : ''}<br>${rangePanjang(pj.tglMulai, pj.tglSelesai)}<br>${esc(pj.waktu || '—')}<br>${esc(pj.lokasi || '—')}${nama.length ? `<br><span class="pdf-mut">Peserta: ${esc(nama.join(', '))}</span>` : ''}</td>
+          <td>${pj.durasi} hari${pj.jamPembelajaran ? ` · ${pj.jamPembelajaran} JP` : ''}<br>${rangePanjang(pj.tglMulai, pj.tglSelesai)}<br>${esc(pj.waktu || '—')}<br>${esc(pj.lokasi || '—')}${pjMulti(pj) ? `<br><span class="pdf-mut">Terdiri dari: ${pj.mps.map(m => `${esc(paketOf(mprogById(m.mp)).judul)} (${rangePanjang(m.tglMulai, m.tglSelesai)}${m.jamPembelajaran ? `, ${m.jamPembelajaran} JP` : ''})`).join('; ')}</span>` : ''}${nama.length ? `<br><span class="pdf-mut">Peserta: ${esc(nama.join(', '))}</span>` : ''}</td>
           ${v.allin ? `<td class="r">1 paket<br><span class="pdf-mut">s.d. ${v.maks} peserta</span></td><td class="r">${rp(v.paket)}<br><span class="pdf-mut">all-in</span></td><td class="r">${v.diskTot ? rp(v.diskTot) : '0'}</td><td class="r">${rp(v.paket)}</td></tr>
           ${v.tambah ? `<tr><td></td><td>Tambahan peserta</td><td>Peserta di atas ${v.maks} (${v.n} peserta)</td><td class="r">${v.lebih} peserta</td><td class="r">${rp(v.tarif)}</td><td class="r">0</td><td class="r">${rp(v.tambah)}</td></tr>` : ''}`
             : `<td class="r">${v.n} peserta</td><td class="r">${rp(v.harga)}</td><td class="r">${v.disk ? rp(v.disk) : '0'}</td><td class="r">${rp(v.sub)}</td></tr>`}</tbody></table>
@@ -1026,7 +1047,7 @@
             <p><b>Konfirmasi kehadiran peserta:</b> ${k.link ? `isi lewat https://[domain-aplikasi]/konfirmasi?t=${esc(k.link.token)}` : 'link dibuat saat quotation disimpan'}</p></div></div>
         <table class="pdf-sum"><tr><td>Sub Total</td><td>${rp(v.sub)}</td></tr><tr><td>Diskon</td><td>${v.diskTot ? `− ${rp(v.diskTot)}` : '0'}</td></tr>
           <tr><td>PPN (${PPN_RATE}%)</td><td>${rp(v.ppn)}</td></tr><tr><td>Biaya Lain-lain</td><td>${rp(v.lain)}</td></tr><tr class="tot"><td>Total</td><td>${rp(v.total)}</td></tr></table>
-        <p class="pdf-small"><b>Pembayaran:</b> ${isTop(k) ? `TOP ${k.termin.length} termin. ${k.termin.map((t, i) => `Termin ${i + 1}: ${t.persen}% (${rp(Math.round(v.total * t.persen / 100))}), ${esc(t.ket)}`).join('; ')}.` : 'Full payment (satu kali pembayaran).'}</p>
+        <p class="pdf-small"><b>Pembayaran:</b> ${isTop(k) ? `TOP ${k.termin.length} termin. ${k.termin.map((t, i) => `Termin ${i + 1}: ${rp(i === k.termin.length - 1 ? v.total - k.termin.slice(0, -1).reduce((s, x) => s + Math.round(v.total * x.persen / 100), 0) : Math.round(v.total * t.persen / 100))} (${pctTxt(t.persen)}%), ${esc(t.ket)}`).join('; ')}.` : 'Full payment (satu kali pembayaran).'}</p>
       </div>
       <div class="pdf-2col pdf-sign">
         <div>${tglPanjang(todayIso)}<br>${esc(roleOf(s) || 'Sales')}<div class="pdf-ttd"></div><b>${esc(s.nama || '—')}</b></div>
@@ -1477,7 +1498,7 @@
   TOUR.qtnModal = () => [
     tS('#modal-root .modal header', 'Form quotation', 'Empat langkah: <b>1 Data Quotation</b>, <b>2 Keterangan</b>, <b>3 Formulir Konfirmasi (link)</b>, <b>4 Preview</b>. Penanda langkah dapat diklik.'),
     tS('#modal-root .modal-body', '1. Data Quotation', 'Penjualan Program, tanggal, berlaku sampai, sales, tujuan <b>Company / Personal</b>, <b>Kuota peserta</b>, diskon, PPN, biaya lain. B2B: harga all-in.'),
-    tS('#modal-root .qtn-pay', 'Cara pembayaran', '<b>Full payment</b>: satu invoice setelah Deal. <b>TOP</b>: beberapa termin dengan persentase (total 100%) dan keterangan; <b>satu termin = satu invoice</b>. Tercetak di Penawaran.'),
+    tS('#modal-root .qtn-pay', 'Cara pembayaran', '<b>Full payment</b>: satu invoice setelah Deal. <b>TOP</b>: beberapa termin; isi <b>nominal rupiah</b> (persen otomatis) atau <b>persen</b> (nominal otomatis), plus keterangan. Total harus sama dengan Grand total. <b>Satu termin = satu invoice</b>. Tercetak di Penawaran.'),
     tS('#modal-root footer [type=submit]', 'Lanjut sampai Preview', 'Isi tiap langkah lalu <b>Lanjut</b>. Di langkah 4 klik <b>Simpan Draft & Buat Link</b>: link Konfirmasi Kehadiran dibuat otomatis.'),
     (() => { const k = db.qtn.find(x => x.rev && x.status === 'deal') || db.qtn.find(x => x.status === 'deal'); return k && { popover: { title: 'Setelah disimpan', description: 'Detail quotation terbuka: bagikan link, kirim PDF, lalu tandai Deal. Lihat contoh quotation yang sudah Deal.' },
       lanjut: { label: 'Lihat contoh detail', run: () => { closeModal(); qtnView(k); }, ke: 'qtnDetail' } }; })()
@@ -1501,7 +1522,8 @@
   const FILE_MB = 5;
   const fileSalah = (files, ext) => files.find(x => !ext.test(x.name));
   const fileBesar = files => files.find(x => x.size > FILE_MB * 1024 * 1024);
-  // Tambah kuota (Q-TB-08): hanya quotation Terkirim ke company (bukan B2B). Link terbuka lagi bila belum lewat Berlaku sampai dan batas H-14.
+  // Tambah kuota (Q-TB-08): hanya quotation Terkirim ke company (bukan B2B), termasuk yang menunggu Deal ulang ([JMR-8]).
+  // Link terbuka lagi bila belum lewat Berlaku sampai dan batas H-14 (setelah reschedule: H-1).
   function qtnKuota(k) {
     if (!bisaKuota(k)) return;
     const n = psAktif(k).length;
