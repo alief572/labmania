@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konfirmasi Kehadiran Peserta · LabMania (Mockup To Be)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="konf-body">
+  <!-- To be (input/Master - Buat Program/2026-11-06-to-be-kuota-link-konfirmasi/): halaman yang dibuka calon peserta dari
+       link Konfirmasi Kehadiran quotation. Mockup tanpa server: konfigurasi link dibaca dari localStorage yang ditulis
+       mockup utama (Labmania.html), isian dikirim balik lewat localStorage dan masuk ke tab Data Peserta quotation.
+       Surat konfirmasi bertanda tangan basah (input/Master - Buat Program/2026-11-10-surat-konfirmasi-ttd-basah/): calon peserta mencetak surat
+       yang sudah terisi datanya, menandatangani, lalu mengunggah hasil foto/pindai. Unggahan wajib. -->
+  <header class="konf-top"><span class="konf-brand">LabMania</span><span class="konf-sub">Konfirmasi Kehadiran Peserta</span></header>
+  <main class="konf-main" id="konf" aria-live="polite"><p class="muted">Memuat formulir…</p></main>
+  <footer class="konf-foot">PT LabMania Indonesia Jaya · Mockup to be, data contoh</footer>
+  <div class="konf-cetak pdf-doc" id="konf-cetak" aria-hidden="true"></div>
+
+  <script>
+  'use strict';
+  (function () {
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const telpOk = v => /^\+?\d{9,15}$/.test(v.replace(/[\s-]/g, ''));
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const token = new URLSearchParams(location.search).get('t') || '';
+    const box = $('#konf');
+    const kunci = { link: `labmania-tobe:link:${token}`, isian: `labmania-tobe:isian:${token}` };
+
+    const pesan = (judul, isi) => { box.innerHTML = `<h1>${esc(judul)}</h1><div class="pub-closed">${isi}</div>`; };
+    const hariIni = stamp().slice(0, 10);
+    const tglId = iso => iso ? iso.split('-').reverse().join('-') : '';
+    const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const tglPanjang = iso => { const [y, m, d] = iso.split('-'); return `${+d} ${BULAN[+m - 1]} ${y}`; };
+    // Surat konfirmasi: tipe dan ukuran berkas (usulan, Q-TB-09). Mockup menyimpan isi berkas di localStorage hanya bila kecil.
+    const SURAT_TIPE = ['application/pdf', 'image/jpeg', 'image/png'], SURAT_MAX = 5 * 1024 * 1024, SIMPAN_MAX = 1.5 * 1024 * 1024;
+    const kb = n => n >= 1048576 ? `${(n / 1048576).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+    const lewat = cfg => !!cfg.berlaku && hariIni > cfg.berlaku;
+    const sisa = cfg => { const list = lsGet(kunci.isian) || []; return Math.max(cfg.kuota - cfg.terisi - list.filter(x => !x.imp).length, 0); };
+    const head = (cfg, n) => `<div class="pub-head"><div><b>${esc(cfg.judul)}</b><small>${esc(cfg.jadwal)}${cfg.waktu ? ` · ${esc(cfg.waktu)}` : ''} · ${esc(cfg.lokasi || 'lokasi menyusul')}</small>
+      <small>Quotation ${esc(cfg.nomor)} · ${esc(cfg.kepada)}${cfg.berlaku ? ` · formulir berlaku s.d. ${esc(tglId(cfg.berlaku))}` : ''}</small></div>${n !== undefined ? `<span class="konf-sisa"><b>${n}</b> kursi tersisa</span>` : ''}</div>`;
+
+    function form(cfg) {
+      const n = sisa(cfg);
+      if (!cfg.buka || lewat(cfg) || n <= 0) {
+        box.innerHTML = `<h1>Konfirmasi Kehadiran</h1>${head(cfg)}<div class="pub-closed"><p><b>Formulir ini sudah ditutup.</b></p>
+          <p>${!cfg.buka ? `Quotation berstatus ${esc(cfg.status)}.` : lewat(cfg) ? `Masa berlaku quotation berakhir ${esc(tglId(cfg.berlaku))}.` : `Kuota ${esc(cfg.kuota)} peserta sudah terisi.`} Hubungi Sales LabMania${cfg.sales ? ` (${esc(cfg.sales)})` : ''} bila Anda belum terdaftar.</p></div>`;
+        return;
+      }
+      const fields = cfg.isian.map(f => {
+        const id = `f-${f.key.replace(/[^\w-]/g, '_')}`, val = f.key === 'instansi' && cfg.instansi ? cfg.instansi : '';
+        const ph = f.type === 'email' ? 'nama@domain.com' : f.type === 'tel' ? '08xxxxxxxxxx' : '';
+        return `<div class="field"><label for="${id}">${esc(f.label)}${f.wajib ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label>
+          <input class="input" id="${id}" name="${esc(f.key)}" type="${esc(f.type)}" value="${esc(val)}" maxlength="150" ${ph ? `placeholder="${ph}"` : ''} ${f.type === 'tel' ? 'inputmode="tel"' : ''} ${f.wajib ? 'required aria-required="true"' : ''}>
+          ${f.key === 'nama' ? '<span class="hint">Nama lengkap menjadi acuan penulisan di sertifikat.</span>' : ''}</div>`;
+      }).join('');
+      box.innerHTML = `<h1>Konfirmasi Kehadiran</h1>${head(cfg, n)}
+        <p class="konf-lead">Isi data diri Anda sebagai calon peserta. Satu formulir untuk satu orang; bila mendaftarkan beberapa orang, kirim satu per satu.</p>
+        <form id="konf-form" novalidate>
+          <section class="konf-sec"><h2>1. Data diri</h2><p class="konf-req"><span class="req" aria-hidden="true">*</span> wajib diisi</p>
+            <div class="grid2">${fields}</div></section>
+          <section class="konf-sec"><h2>2. Pernyataan</h2>
+            ${`<p>Dengan ini saya menyatakan:</p><ol class="pdf-small-ol konf-pernyataan"><li>${cfg.pernyataan}</li><li>Saya telah membaca dan menyetujui syarat &amp; ketentuan yang berlaku di LabMania.</li></ol>`}
+            <div class="field"><label class="chk konf-setuju" for="f-setuju"><input type="checkbox" id="f-setuju" name="setuju"> Saya menyetujui pernyataan di atas.</label></div></section>
+          <section class="konf-sec"><h2>3. Surat konfirmasi bertanda tangan</h2>
+            <p class="konf-req">Kami membutuhkan surat dengan tanda tangan basah.</p>
+            <ol class="konf-langkah">
+              <li>Cetak surat konfirmasi. Data diri yang Anda isi di atas sudah tercetak di surat.
+                <div><button type="button" class="btn btn-outline konf-cetak-btn" id="konf-cetak-btn">Cetak surat konfirmasi</button></div></li>
+              <li>Isi tempat, lalu tanda tangani surat dengan pena.</li>
+              <li>Foto atau pindai surat itu, lalu unggah di bawah ini.</li>
+            </ol>
+            <div class="field"><label for="f-surat">Surat konfirmasi yang sudah ditandatangani <span class="req" aria-hidden="true">*</span></label>
+              <input class="input konf-file" id="f-surat" name="surat" type="file" accept="application/pdf,image/jpeg,image/png" required aria-required="true" aria-describedby="h-surat">
+              <span class="hint" id="h-surat">PDF, JPG, atau PNG, maksimal 5 MB. Dari ponsel, Anda bisa langsung memotret surat.</span></div></section>
+          <button type="submit" class="btn btn-primary konf-kirim">Kirim konfirmasi</button>
+        </form>`;
+      $('#konf-form').addEventListener('submit', e => { e.preventDefault(); kirim(cfg, e.target); });
+      $('#konf-cetak-btn').addEventListener('click', () => cetak(cfg, $('#konf-form')));
+      $('#f-surat').addEventListener('change', e => { const w = e.target.closest('.field'); w.classList.remove('has-err'); w.querySelectorAll('.err').forEach(x => x.remove()); cekSurat(e.target); });
+      const first = box.querySelector('.input'); if (first) first.focus();
+    }
+
+    function salah(el, msg) {
+      const w = el.closest('.field'); w.classList.add('has-err');
+      w.insertAdjacentHTML('beforeend', `<div class="err" role="alert"><i>!</i>${esc(msg)}</div>`);
+      return false;
+    }
+    function bersih(f) { f.querySelectorAll('.has-err').forEach(x => x.classList.remove('has-err')); f.querySelectorAll('.err').forEach(x => x.remove()); }
+    function cekIsian(cfg, f) {
+      const data = {}; let ok = true;
+      cfg.isian.forEach(fi => {
+        const el = f.elements[fi.key], v = el.value.trim(); data[fi.key] = v;
+        if (fi.wajib && !v) ok = salah(el, `${fi.label} wajib diisi`);
+        else if (fi.type === 'email' && v && !EMAIL_RE.test(v)) ok = salah(el, 'Format email tidak valid');
+        else if (fi.type === 'tel' && v && !telpOk(v)) ok = salah(el, 'Nomor hanya angka, 9 sampai 15 digit');
+      });
+      return ok ? data : null;
+    }
+    function cekSurat(el) {
+      const file = el.files[0];
+      if (!file) return salah(el, 'Unggah surat konfirmasi yang sudah ditandatangani');
+      if (!SURAT_TIPE.includes(file.type)) return salah(el, 'Berkas harus PDF, JPG, atau PNG');
+      if (file.size > SURAT_MAX) return salah(el, `Berkas ${kb(file.size)}, maksimal 5 MB`);
+      return true;
+    }
+    const fokusSalah = f => { const x = f.querySelector('.has-err input'); if (x) x.focus(); };
+    // Cetak surat konfirmasi: template dari quotation (format FR/LMI-TR-01/02) diisi data yang diketik, tanggal = hari cetak.
+    function cetak(cfg, f) {
+      bersih(f);
+      const data = cekIsian(cfg, f);
+      if (!data) { fokusSalah(f); return; }
+      if (!cfg.surat) { pesan('Surat belum tersedia', '<p>Buka ulang link dari Sales LabMania.</p>'); return; }
+      $('#konf-cetak').innerHTML = cfg.surat.replace(/\[\[(\d+|tgl)\]\]/g, (m, x) => x === 'tgl' ? tglPanjang(hariIni) : esc(data[(cfg.isian[+x] || {}).key] || ''));
+      window.print();
+    }
+    function kirim(cfg, f) {
+      bersih(f);
+      let data = cekIsian(cfg, f), ok = !!data;
+      if (!f.elements.setuju.checked) ok = salah(f.elements.setuju, 'Centang persetujuan untuk mengirim');
+      if (!cekSurat(f.elements.surat)) ok = false;
+      if (!ok) { fokusSalah(f); return; }
+      const file = f.elements.surat.files[0], surat = { nama: file.name, ukuran: file.size, tipe: file.type };
+      if (file.size > SIMPAN_MAX) { simpan(cfg, data, surat); return; }
+      const rd = new FileReader();
+      rd.onload = () => simpan(cfg, data, Object.assign({ url: rd.result }, surat));
+      rd.onerror = () => simpan(cfg, data, surat);
+      rd.readAsDataURL(file);
+    }
+    function simpan(cfg, data, surat) {
+      const now = lsGet(kunci.link) || cfg;
+      if (!now.buka || lewat(now) || sisa(now) <= 0) { form(now); return; }
+      const list = lsGet(kunci.isian) || [];
+      const isian = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, tgl: stamp(), data, surat };
+      list.push(isian);
+      // Mockup: bila browser penuh, simpan tanpa isi berkas (nama dan ukuran tetap tercatat).
+      if (!lsSet(kunci.isian, list) && surat.url) { delete surat.url; }
+      if (!lsSet(kunci.isian, list)) { pesan('Gagal mengirim', '<p>Browser menolak menyimpan data. Coba lagi, atau kirim data Anda ke Sales LabMania.</p>'); return; }
+      box.innerHTML = `<div class="konf-ok"><span class="konf-ok-mark" aria-hidden="true">✓</span><h1>Terima kasih, ${esc(data.nama)}</h1></div>${head(cfg)}
+        <div class="pub-closed"><p><b>Konfirmasi kehadiran Anda sudah kami terima.</b></p>
+          <p>Data Anda dan surat konfirmasi <b>${esc(surat.nama)}</b> masuk ke quotation ${esc(cfg.nomor)}. Sales LabMania${cfg.sales ? ` (${esc(cfg.sales)})` : ''} akan menghubungi Anda bila ada yang perlu dilengkapi.</p></div>
+        <p class="konf-lagi"><button type="button" class="btn btn-outline" id="konf-lagi">Isi untuk peserta lain</button></p>
+        <p class="hint">Mockup: kembali ke tab Labmania untuk melihat isian ini di tab Data Peserta.</p>`;
+      $('#konf-lagi').addEventListener('click', () => form(lsGet(kunci.link) || cfg));
+      $('#konf-lagi').focus();
+    }
+
+    if (!token) { pesan('Link tidak lengkap', '<p>Alamat link tidak memuat kode quotation. Buka link persis seperti yang dikirim Sales LabMania.</p>'); return; }
+    const cfg = lsGet(kunci.link);
+    if (!cfg) {
+      pesan('Link tidak ditemukan', `<p>Kode <b>${esc(token)}</b> tidak dikenali.</p>
+        <p class="hint">Mockup: buka Labmania.html di browser yang sama, lalu buka detail quotation-nya sekali agar link aktif. Data mockup hilang saat Labmania.html dimuat ulang, kecuali data contoh.</p>`);
+      return;
+    }
+    form(cfg);
+  })();
+  </script>
+</body>
+</html>
