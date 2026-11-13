@@ -17,7 +17,7 @@
   const STAMP_KEYS = ['createdBy', 'createdAt', 'updatedBy', 'updatedAt'];
   const LOG_AKSI = ['Tambah', 'Edit', 'Hapus', 'Aktifkan', 'Nonaktifkan', 'Finalkan', 'Batalkan', 'Kirim & Cetak', 'Deal', 'Siap Invoice', 'Cetak', 'Setujui', 'Tolak', 'Tandai Paid', 'Export', 'Close Program'];
   const STATUS_AKSI = { final: 'Finalkan', batal: 'Batalkan', terkirim: 'Kirim & Cetak', deal: 'Deal', siap: 'Siap Invoice', disetujui: 'Setujui', ditolak: 'Tolak', paid: 'Tandai Paid' };
-  const FIELD_LBL = { nama: 'Nama', kode: 'Kode', nomor: 'Nomor', judul: 'Judul', lingkup: 'Lingkup', aktif: 'Status aktif', status: 'Status', item: 'Item', cost: 'Default Cost',
+  const FIELD_LBL = { asisten: 'Asisten trainer', nama: 'Nama', kode: 'Kode', nomor: 'Nomor', judul: 'Judul', lingkup: 'Lingkup', aktif: 'Status aktif', status: 'Status', item: 'Item', cost: 'Default Cost',
     hargaJual: 'Harga jual / peserta', targetPeserta: 'Target peserta', targetProfit: 'Target profit', durasi: 'Durasi', biaya: 'Item biaya', peserta: 'Peserta',
     diskon: 'Diskon', lain: 'Biaya lain-lain', allin: 'Harga all-in', skema: 'Skema harga', ppn: 'PPN', tanggal: 'Tanggal', berlaku: 'Berlaku sampai',
     tglMulai: 'Tanggal mulai', tglSelesai: 'Tanggal selesai', lokasi: 'Lokasi', waktu: 'Waktu', trainer: 'Trainer', company: 'Company', instansi: 'Instansi', telp: 'Telepon', email: 'Email',
@@ -46,6 +46,7 @@
       let a = (o || {})[k], b = (n || {})[k];
       // Role disimpan sebagai id Master Role; Override Permission ditampilkan sebagai jumlah hak.
       if (k === 'trainer') { a = a && (trainerById(a) || {}).nama || a; b = b && (trainerById(b) || {}).nama || b; }
+      if (k === 'asisten') { a = a && asistenNama(a); b = b && asistenNama(b); } // to be 12-11-2026: asisten trainer (Master User)
       if (k === 'role') { a = a && (roleById(a) || {}).nama || a; b = b && (roleById(b) || {}).nama || b; }
       if (k === 'ovr') { a = a ? `${akCount(a)} hak` : ''; b = b ? `${akCount(b)} hak` : ''; }
       const same = Array.isArray(a) && Array.isArray(b) && a.length === b.length;
@@ -131,7 +132,7 @@
       { label: 'Aksi', cls: 'nowrap', render: l => aksiBadge(l.aksi) },
       { label: 'Data', render: l => `<span class="code">${esc(l.ref)}</span>` },
       { label: 'Perubahan', render: l => l.changes.length ? `${l.changes.slice(0, 2).map(c => `${esc(c.f)}: <span class="neg">${esc(c.old || '—')}</span> → <span class="pos">${esc(c.new || '—')}</span>`).join('<br>')}${l.changes.length > 2 ? `<br><span class="muted">+${l.changes.length - 2} field lain</span>` : ''}` : `<span class="muted">${esc(l.ket)}</span>` },
-      { label: 'Action', cls: 'act', render: l => `<button class="btn btn-ghost sm" data-act="log-detail" data-id="${l.id}">Detail</button>` }
+      { label: 'Action', cls: 'act', render: l => gearMenu({ id: l.id }, [['log-detail', 'Detail']]) }
     ]);
   }
   function logDetail(l) {
@@ -146,4 +147,11 @@
     const box = $('#me-box'); if (!box) return;
     box.innerHTML = `<label>Login sebagai <select id="me-sel" class="input sm">${loginUsers().map(u => `<option value="${u.id}" ${u.id === state.me ? 'selected' : ''}>${esc(u.nama)} · ${esc(roleOf(u))}</option>`).join('')}</select></label>`;
   }
+  // ---------- Tutorial highlight driver.js (permintaan BA 12-11-2026; menggantikan callout Panduan) ----------
+  // Dimulai dari tombol Tutorial di atas kartu tabel. Helper tS/tRows/tKol/tGear/tAdd ada di core.js; langkah yang elemennya tidak ada dilewati.
 
+  TOUR.actlog = () => [
+    tS(null, 'Activity Log', 'Catatan semua perubahan data: siapa, kapan, modul, aksi, dan isi sebelum / sesudah. Tidak dapat diubah atau dihapus.'),
+    tS('.toolbar', 'Saring', 'Pilih modul, aksi, user, dan rentang tanggal.'),
+    tS(tGear(), 'Aksi: Detail', 'Menampilkan field yang berubah, sebelum (merah) dan sesudah (hijau).')
+  ];

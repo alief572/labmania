@@ -5,18 +5,18 @@
 'use strict';
   // Jawaban 07-11-2026 (input/Master - Buat Program/2026-11-07-jawaban-sales-order/): nomor SO sendiri, format menyusul;
   // permission menyusul; SO tidak dapat dibatalkan.
-  const QSO1 = q('Q-SO-01', 'Nomor SO punya penomoran sendiri (bukan pola nomor quotation); formatnya menyusul dari Labmania. Mockup memakai nomor sementara SO-nnn.');
-  const QSO2 = q('Q-SO-02', 'Usulan: Sales Order dibuat otomatis saat quotation ditandai Deal; tanggal SO = tanggal Deal.');
-  const QSO3 = q('Q-SO-03', 'Permission Sales Order (siapa yang boleh melihat, mencetak, dan menandai siap dibuatkan invoice) menyusul dari Labmania.');
-  const QSO4 = q('Q-SO-04', 'Format PDF Sales Order belum ada dari klien. Tata letak usulan mengikuti Penawaran, ditambah daftar peserta Deal.');
+  const QSO1 = q('Q-SO-01', 'Terjawab 12-11-2026: format resmi tidak ada; nomor dibuat mirip Penawaran dan Invoice dengan kode berbeda: LMI/SO/MM/yy-zzz. Kode SO dan urutan di-reset tiap bulan = usulan.');
+  const QSO2 = q('Q-SO-02', 'Terjawab 12-11-2026: Sales Order dibuat otomatis saat quotation Deal; tanggal SO = tanggal Deal.');
+  const QSO3 = q('Q-SO-03', 'Terjawab sebagian 12-11-2026: Sales/Marketing yang menandai Siap dibuatkan invoice. Masih terbuka: perlu syarat tertentu, dan bisa dibatalkan?');
+  const QSO4 = q('Q-SO-04', 'Terjawab 12-11-2026: Labmania tidak punya format resmi dan kode dokumen SO. Tata letak ini (mengikuti Penawaran, ditambah daftar peserta Deal) yang dipakai.');
   db.so = [];
   const SO_ST = { open: 'Belum siap invoice', siap: 'Siap invoice', invoiced: 'Invoiced' };
   const SO_BADGE = { open: 'st-draft', siap: 'st-ivc-uninvoiced', invoiced: 'st-ivc-invoiced' };
-  let soSeq = 0; // nomor sementara sampai format SO dari Labmania ada (Q-SO-01)
-  const soNo = () => `SO-${String(++soSeq).padStart(3, '0')}`;
-  // Nomor tampil: nomor dasar + " Rev-n" setelah program di-reschedule dengan tanggal baru (SO-FR-16, format usulan Q-SO-06).
-  const soNomor = s => `${s.nomor}${s.rev ? ` Rev-${s.rev}` : ''}`;
-  const QSO6 = q('Q-SO-06', 'Usulan: penanda " Rev-n" di belakang nomor SO, naik satu setiap reschedule yang mengubah tanggal program (ganti trainer saja tidak). Sesuai dengan format nomor SO Labmania?');
+  // Nomor SO LMI/SO/MM/yy-zzz, pola sama dengan Penawaran dan Invoice (jawaban 12-11-2026, Q-SO-01).
+  const soNo = tgl => lmiNo('SO', tgl);
+  // Nomor tampil: nomor dasar + "-rev{n}" setelah program di-reschedule dengan tanggal baru (SO-FR-16, sama dengan Penawaran).
+  const soNomor = s => `${s.nomor}${s.rev ? `-rev${s.rev}` : ''}`;
+  const QSO6 = q('Q-SO-06', 'Terjawab 12-11-2026: penanda -rev{n} di belakang nomor, sama dengan Penawaran. Usulan: naik hanya bila tanggal program berubah, bukan bila hanya trainer/asisten diganti.');
   const soOfQtn = k => db.so.find(s => s.qtn === k.id);
   const qtnOfSo = s => db.qtn.find(k => k.id === s.qtn);
   const soById = id => db.so.find(s => s.id === id);
@@ -30,7 +30,7 @@
   // Dibuat saat aksi Deal di Quotation (QTN-FR-11). Satu quotation hanya punya satu Sales Order.
   function soCreate(k, tgl = todayIso) {
     const ada = soOfQtn(k); if (ada) return ada;
-    const s = { id: uid(), nomor: soNo(), tanggal: tgl, qtn: k.id, pj: k.pj, status: 'open', siapBy: '', siapAt: '' };
+    const s = { id: uid(), nomor: soNo(tgl), tanggal: tgl, qtn: k.id, pj: k.pj, status: 'open', siapBy: '', siapAt: '' };
     db.so.push(s);
     sktEnsure(k.pj, tgl); // Surat Kerja Trainer program ini (satu per program), dibuat bersama SO pertama
     return s;
@@ -40,21 +40,35 @@
   // Satu surat per Penjualan Program (1 event = 1 trainer, trainer wajib di Penjualan Program). Dibuat otomatis saat program
   // mendapat Sales Order pertama (usulan, Q-SKT-02). Nomor sementara SKT-nnn sampai format dari Labmania ada (Q-SKT-01).
   const QSKT1 = q('Q-SKT-01', 'Terjawab: format nomor menyusul. Mockup memakai nomor sementara SKT-nnn.');
-  const QSKT2 = q('Q-SKT-02', 'Terjawab: 1 Penjualan Program = 1 surat, aksi View dan Print Out seperti SO. Masih terbuka: dibuat otomatis saat SO pertama (usulan) sudah benar? Bila trainer diganti, surat dibuat ulang?');
+  const QSKT2 = q('Q-SKT-02', 'Terjawab 12-11-2026: surat tugas dibuat ketika trainer dan asisten trainer sudah ditetapkan; bila berganti, surat dibuat ulang dengan nomor baru. Usulan: dibuat saat SO pertama karena trainer dan asisten wajib di Penjualan Program.');
   const QSKT3 = q('Q-SKT-03', 'Terjawab: tanpa honor dan rundown; ditandatangani atas nama PT LabMania Indonesia Jaya. Format cetak: Surat Tugas FR/LMI-TR-05/01 (10-11-2026).');
   const QSKT4 = q('Q-SKT-04', 'Terjawab 10-11-2026: Hari/Tanggal = tanggal program, tanggal tanda tangan = tanggal print. NIK trainer dan nama Operational Manager sementara kosong, diisi tangan.');
   db.skt = [];
   let sktSeq = 0;
-  const sktOfPj = id => db.skt.find(x => x.pj === id);
-  function sktEnsure(pjId, tgl = todayIso) {
-    if (sktOfPj(pjId)) return sktOfPj(pjId);
-    const pj = db.quot.find(x => x.id === pjId);
-    const r = { id: uid(), nomor: `SKT-${String(++sktSeq).padStart(3, '0')}`, tanggal: tgl, pj: pjId, trainer: pj.trainer || '' };
+  // Satu surat Berlaku per program. Reschedule yang mengubah tanggal/trainer/asisten: surat lama Diganti, surat baru nomor baru
+  // (jawaban 12-11-2026). Surat menyimpan salinan jadwal, trainer, dan asisten saat terbit agar surat Diganti tetap tercetak apa adanya.
+  const sktOfPj = id => db.skt.find(x => x.pj === id && x.status === 'berlaku');
+  const sktSnap = pj => ({ tglMulai: pj.tglMulai, tglSelesai: pj.tglSelesai, waktu: pj.waktu || '', lokasi: pj.lokasi || '', durasi: pj.durasi, trainer: pj.trainer || '', asisten: pj.asisten || '' });
+  function sktNew(pj, tgl, ref) {
+    const r = Object.assign({ id: uid(), nomor: `SKT-${String(++sktSeq).padStart(3, '0')}`, tanggal: tgl, pj: pj.id, status: 'berlaku', ref: ref || null }, sktSnap(pj));
     db.skt.push(r);
     return r;
   }
+  function sktEnsure(pjId, tgl = todayIso) {
+    return sktOfPj(pjId) || sktNew(db.quot.find(x => x.id === pjId), tgl);
+  }
+  function sktRenew(pj, ref) {
+    const lama = sktOfPj(pj.id); if (!lama) return null;
+    const baru = sktNew(pj, (ref.waktuUbah || isoNow()).slice(0, 10), ref);
+    // aktif false = baris redup di daftar
+    Object.assign(lama, { status: 'diganti', gantiOleh: baru.id, aktif: false }); baru.gantikan = lama.id;
+    logAct('Quotation', 'Surat Kerja Trainer', 'Tambah', baru.nomor, baru.id, `Surat Tugas ${baru.nomor} menggantikan ${lama.nomor} karena reschedule ${pj.nomor}: ${ref.alasan}`);
+    return baru;
+  }
   // Data contoh: trainer wajib di Penjualan Program (to be); program contoh tanpa trainer diisi bergantian dari Master Trainer aktif.
   { const aktif = db.trainer.filter(t => t.aktif); db.quot.forEach((pj, i) => { if (!pj.trainer && aktif.length) pj.trainer = aktif[i % aktif.length].id; }); }
+  // Data contoh: asisten trainer wajib (to be 12-11-2026); diisi bergantian dari Master User aktif.
+  { const us = db.user.filter(u => u.aktif); db.quot.forEach((pj, i) => { if (!pj.asisten && us.length) pj.asisten = us[(i + 1) % us.length].id; }); }
   // Data contoh: semua quotation Deal punya SO. Yang sudah ada invoice = Siap invoice; sisanya bergantian agar kedua status terlihat.
   db.qtn.filter(k => k.status === 'deal').forEach((k, i) => {
     const s = soCreate(k, k.tanggal);
@@ -68,29 +82,36 @@
   state.soTab = 'so';
   const viewSo = () => {
     const skt = state.soTab === 'skt';
-    const tabs = [['so', 'Sales Order', soProgs().length], ['skt', 'Surat Kerja Trainer', db.skt.length]].map(([t, l, n]) =>
+    const rfTab = state.soTab === 'refund';
+    const tabs = [['so', 'Sales Order', soProgs().length], ['skt', 'Surat Kerja Trainer', db.skt.length], ['refund', 'Refund', db.refund.filter(x => x.status === 'menunggu').length]].map(([t, l, n]) =>
       `<button type="button" class="tab ${state.soTab === t ? 'active' : ''}" data-act="so-tab" data-tab="${t}" aria-pressed="${state.soTab === t}">${l}<span class="nav-count">${n}</span></button>`).join('');
+    if (rfTab) return `${pageHead('Sales Order', 'Pengembalian dana peserta yang <b>invoice-nya sudah dibayar</b> lalu memilih Refund setelah reschedule. Refund terbentuk otomatis saat Sales memproses peserta itu di quotation; Finance menyelesaikannya dengan transfer. Invoice tidak diedit.', 'SO-FR-17 – SO-FR-19')}
+      <div class="card"><div class="tabs">${tabs}</div>${toolbar('Cari nomor refund, peserta, SO, invoice…', false,
+        selectFilter('fstatus', 'Filter status refund', state.status, [['all', 'Semua status'], ['menunggu', 'Menunggu Finance'], ['selesai', 'Selesai']]))}
+        <div id="list">${listRefund()}</div></div>`;
     return `${pageHead('Sales Order', skt
-      ? 'Surat kerja untuk trainer, satu per Penjualan Program sesuai trainer yang dipilih di Penjualan Program. Surat terbentuk saat program mendapat Sales Order pertama.'
+      ? 'Surat Tugas untuk trainer dan asisten trainer program. Terbit saat program mendapat Sales Order pertama; bila reschedule mengganti tanggal, trainer, atau asisten, surat lama berstatus Diganti dan surat baru terbit dengan nomor baru.'
       : 'Setiap quotation yang <b>Deal</b> otomatis menjadi satu Sales Order, yaitu surat konfirmasi pesanan dari LabMania ke customer. Sales Order <b>tidak dapat dibatalkan</b>. Buka <b>Lihat SO</b> untuk melihat, mencetak, dan menandai siap dibuatkan invoice. Invoice dibuat dari Sales Order yang sudah siap.', skt ? 'SO-FR-11 – SO-FR-14' : 'SO-FR-01 – SO-FR-03')}
     <div class="card"><div class="tabs">${tabs}</div>${toolbar(skt ? 'Cari nomor surat, program, judul, trainer…' : 'Cari nomor program, judul, nomor SO, quotation, customer…', false,
       selectFilter('fjenis', 'Filter jenis program', state.jenis, [['all', 'Public & B2B'], ['public', 'Program Public'], ['b2b', 'Program B2B']])
       + ymFilter((skt ? db.skt.map(r => db.quot.find(x => x.id === r.pj)) : soProgs()).filter(Boolean).map(pj => pj.tglMulai)))}
       <div id="list">${skt ? listSkt() : listSo()}</div></div>`;
   };
-  const listSoTab = () => (state.soTab === 'skt' ? listSkt() : listSo());
+  const listSoTab = () => (state.soTab === 'skt' ? listSkt() : state.soTab === 'refund' ? listRefund() : listSo());
 
   // ---------- Tab Surat Kerja Trainer (SO-FR-11 – SO-FR-12) ----------
   const pesertaDealPj = pj => soOfPj(pj).reduce((t, s) => t + dealRows(qtnOfSo(s)).length, 0);
   function listSkt() {
-    const rows = db.skt.map(r => ({ r, pj: db.quot.find(x => x.id === r.pj) })).filter(({ pj }) => pj && (state.jenis === 'all' || pj.jenis === state.jenis) && ymOk(pj.tglMulai)
-      && matches([pj.nomor, paketOf(mpOf(pj)).judul, pj.lokasi, ...[db.skt.find(x => x.pj === pj.id).nomor, (trainerById(pj.trainer) || {}).nama]])).map(x => x.r);
+    const rows = db.skt.map(r => ({ r, pj: db.quot.find(x => x.id === r.pj) })).filter(({ r, pj }) => pj && (state.jenis === 'all' || pj.jenis === state.jenis) && ymOk(pj.tglMulai)
+      && matches([pj.nomor, paketOf(mpOf(pj)).judul, pj.lokasi, r.nomor, (trainerById(r.trainer) || {}).nama, asistenNama(r.asisten)])).map(x => x.r)
+      .sort((a, b) => (a.status === b.status ? b.id - a.id : a.status === 'berlaku' ? -1 : 1));
     if (!db.skt.length) return '<div class="empty-state"><h2>Belum ada Surat Kerja Trainer</h2><p>Surat terbentuk saat Penjualan Program mendapat Sales Order pertama.</p></div>';
     return listBlock(rows, [
       NO_COL,
       { label: 'Nomor Surat', cls: 'nowrap', render: r => `<button type="button" class="btn btn-ghost sm" data-act="skt-view" data-id="${r.id}">${esc(r.nomor)}</button><br><span class="muted">${tglPanjang(r.tanggal)}</span>` },
+      { label: 'Status', cls: 'nowrap', render: r => r.status === 'berlaku' ? '<span class="badge st-terkirim">Berlaku</span>' : `<span class="badge st-draft">Diganti</span><br><span class="muted">oleh ${esc((sktById(r.gantiOleh) || {}).nomor || '—')}</span>` },
       { label: 'Penjualan Program', cls: 'title', render: r => { const pj = db.quot.find(x => x.id === r.pj); return `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}<br>${progJudul(pj)}`; } },
-      { label: 'Trainer', render: r => { const t = trainerById(db.quot.find(x => x.id === r.pj).trainer); return t ? `<b>${esc(t.nama)}</b><br><span class="muted">${esc(t.keahlian.slice(0, 2).join(' · '))}</span>` : '<span class="muted">Trainer belum dipilih</span>'; } },
+      { label: 'Trainer & Asisten', render: r => { const t = trainerById(r.trainer); return `${t ? `<b>${esc(t.nama)}</b>` : '<span class="muted">Trainer belum dipilih</span>'}<br><span class="muted">Asisten: ${esc(asistenNama(r.asisten))}</span>`; } },
       { label: 'Peserta deal', cls: 'money', render: r => pesertaDealPj(db.quot.find(x => x.id === r.pj)) },
       { label: 'Action', cls: 'act', render: r => gearMenu(r, [['skt-view', 'View'], ['skt-print', 'Print Out Surat Kerja']]) }
     ]);
@@ -105,7 +126,7 @@
       { label: 'Sales Order', render: pj => { const l = soOfPj(pj); return `<b>${l.length}</b> SO<br><span class="muted">${soCount(l).map(([st, n]) => `${n} ${SO_ST[st].toLowerCase()}`).join(', ')}</span>`; } },
       { label: 'Peserta deal', cls: 'money', render: pj => soOfPj(pj).reduce((t, s) => t + dealRows(qtnOfSo(s)).length, 0) },
       { label: 'Nilai SO', cls: 'money', render: pj => rp(soOfPj(pj).reduce((t, s) => t + soNilai(s).total, 0)) },
-      { label: 'Action', cls: 'act', render: pj => `<button type="button" class="btn btn-outline sm" data-act="so-prog" data-id="${pj.id}">Lihat SO</button>` }
+      { label: 'Action', cls: 'act', render: pj => gearMenu(pj, [['so-prog', 'Lihat SO']]) }
     ]);
   }
 
@@ -161,19 +182,19 @@
       ${ps.map((p, n) => `<tr><td class="num">${n + 1}</td><td data-l="Peserta"><b>${esc(p.nama)}</b>${p.data && p.data.jabatan ? `<br><span class="muted">${esc(p.data.jabatan)}</span>` : ''}</td>
         <td data-l="Instansi">${esc(pesertaCo(p))}</td><td data-l="Kontak">${esc(p.telp || '—')}<br><span class="muted">${esc(p.email || '')}</span></td>
         <td data-l="Masuk lewat">${srcTag(p)} <span class="muted">${fmtStamp(p.tgl)}</span></td>
-        <td class="act dp-act"><button type="button" class="btn btn-ghost sm" data-act="qps-prev" data-id="${p.id}" aria-label="Lihat Confirmation Letter ${esc(p.nama)}">Lihat</button><button type="button" class="btn btn-ghost sm" data-act="qps-pdf" data-id="${p.id}" aria-label="Unduh surat konfirmasi ${esc(p.nama)}">Unduh</button></td></tr>`).join('')}
+        <td class="act">${gearMenu({ id: p.id }, [['qps-prev', 'Lihat surat konfirmasi'], ['qps-pdf', 'Unduh surat konfirmasi']])}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="dash-empty">Tidak ada peserta Deal.</p>';
     const inv = invOfQtn(k);
     return `${pageHead(`Sales Order ${esc(soNomor(s))}`, `${esc(kepadaOf(k))} · ${esc(pk.judul)} · ${esc(varianTxt(pj))} · program <span class="code">${esc(pj.nomor)}</span>`, 'SO-FR-05',
       `<button type="button" class="btn btn-ghost" data-act="so-prog" data-id="${pj.id}">← Sales Order ${esc(pj.nomor)}</button>`)}
       ${panel}
-      <div class="qtn-grid">${sec(1, 'Data Sales Order', '', kv([['Nomor SO', `<span class="code">${esc(soNomor(s))}</span> <span class="muted">(sementara, format menyusul)</span>${QSO1}`], ['Tanggal', `${tglPanjang(s.tanggal)}${QSO2}`], ['Revisi', `${s.rev ? `Rev-${s.rev} · karena reschedule program ${tglPanjang(s.revAt.slice(0, 10))} <button type="button" class="btn btn-ghost sm" data-act="qt-open" data-id="${pj.id}">Lihat riwayat reschedule</button>` : 'Belum pernah direvisi'}${QSO6}`], ['Status', soBadge(s)], ['Dari quotation', `<span class="code">${esc(k.nomor)}</span> · Deal`], ['Sales', esc(sl.nama || '—')], ['Penjualan Program', `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}`]]))}
+      <div class="qtn-grid">${sec(1, 'Data Sales Order', '', kv([['Nomor SO', `<span class="code">${esc(soNomor(s))}</span>${QSO1}`], ['Tanggal', `${tglPanjang(s.tanggal)}${QSO2}`], ['Revisi', `${s.rev ? `rev${s.rev} · karena reschedule program ${tglPanjang(s.revAt.slice(0, 10))} <button type="button" class="btn btn-ghost sm" data-act="qt-open" data-id="${pj.id}">Lihat riwayat reschedule</button>` : 'Belum pernah direvisi'}${QSO6}`], ['Status', soBadge(s)], ['Dari quotation', `<span class="code">${esc(k.nomor)}</span> · Deal`], ['Sales', esc(sl.nama || '—')], ['Penjualan Program', `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}`]]))}
         ${sec(2, 'Ditujukan Kepada', '', kv([['Tujuan', tujuanTag(k.tujuan)], ['Kepada', esc(kepadaOf(k))], ['u.p.', esc(k.tujuan === 'company' ? k.up || '—' : kepadaOf(k))], ['Alamat', esc(k.alamat || '—')], ...(k.tujuan === 'company' ? [['Perlakuan PPN', PERLAKUAN[ivcPerlakuan(k)]]] : [])]))}</div>
       ${sec(3, 'Program', '', kv([['Paket', `${esc(pk.nomor)} · ${esc(pk.judul)}`], ['Varian', esc(varianTxt(pj))], ['Sertifikat', esc(findRec('jenisSertifikasi', pk.sertifikasi).nama)], ['Jadwal', `${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''}`], ['Lokasi', esc(pj.lokasi || '—')], ...(isB2bQtn(k) ? [['Skema harga', isAllin(k) ? 'All-in 1 company' : 'Per peserta']] : [])]))}
       ${sec(4, 'Harga', 'dari peserta Deal', harga)}
       ${sec(5, 'Dokumen Deal', 'dokumen dari customer yang diunggah saat quotation ditandai Deal', dokList(k))}
       ${sec(6, 'Peserta Deal & Confirmation Letter', 'surat bertanda tangan yang diunggah calon peserta lewat link Konfirmasi Kehadiran (Public dan B2B)',
-        `<p class="hint top"><button type="button" class="btn btn-outline sm" data-act="qtn-cl" data-id="${k.id}" ${ps.length ? '' : 'disabled'}>Confirmation Letter (semua peserta Deal)</button></p>${psTbl}`)}
+        `<p class="hint top"><button type="button" class="btn btn-outline sm" data-act="qtn-cl" data-id="${k.id}" ${ps.length ? '' : 'disabled'}>Confirmation Letter (semua peserta Deal)</button></p>${psTbl}${keluarTxt(k)}`)}
       ${sec(7, 'Invoice', st === 'open' ? 'belum dapat dibuat: Sales Order belum ditandai siap' : '', inv.length
         ? `<p>${inv.map(i => `<button type="button" class="btn btn-ghost sm" data-act="ivc-view" data-id="${i.id}">${esc(i.nomor)}</button>`).join(' ')}</p>`
         : `<p class="hint">${st === 'siap' ? 'Siap dibuatkan invoice. Invoice dibuat Finance di menu <b>Invoicing</b>, tab Uninvoiced.' : 'Tandai <b>Siap dibuatkan invoice</b> agar Sales Order ini muncul di Invoicing.'}</p>`)}`;
@@ -207,7 +228,7 @@
       <div class="pdf-2col pdf-sign">
         <div>${tglPanjang(todayIso)}<br>${esc(roleOf(sl) || 'Sales')}<div class="pdf-ttd"></div><b>${esc(sl.nama || '—')}</b></div>
         <div>............., .................. 20.....<br>Disetujui oleh Pelanggan,<div class="pdf-ttd"></div>Nama :</div>
-      </div>`, pdfFoot('[kode dokumen menyusul]', 'Halaman 1 dari 1', '—'));
+      </div>`, pdfFoot('', 'Halaman 1 dari 1', '—'));
   }
   function soPrint(s) {
     openModal({
@@ -240,18 +261,19 @@
   function viewSktDetail() {
     const r = sktById(state.sktView);
     if (!r) { state.view = 'so'; return viewSo(); }
-    const pj = db.quot.find(x => x.id === r.pj), pk = paketOf(mpOf(pj)), t = trainerById(pj.trainer) || {};
+    const pj0 = db.quot.find(x => x.id === r.pj), pj = Object.assign({}, pj0, sktJadwal(r)), pk = paketOf(mpOf(pj)), t = trainerById(pj.trainer) || {}, a = asistenOf(pj.asisten) || {};
     const sec = (n, ti, hint, b) => `<section class="card pad ivc-sec"><p class="ivc-sec-h"><span class="ivc-no">${n}</span>${ti}${hint ? ` <span class="muted">${hint}</span>` : ''}</p>${b}</section>`;
     const kv = rows => `<div class="qv-kv">${rows.map(([l, x]) => `<div><span>${l}</span><b>${x}</b></div>`).join('')}</div>`;
     const sos = soOfPj(pj);
     return `${pageHead(`Surat Kerja Trainer ${esc(r.nomor)}`, `${esc(t.nama || 'Trainer belum dipilih')} · ${esc(pk.judul)} · program <span class="code">${esc(pj.nomor)}</span>`, 'SO-FR-13',
       '<button type="button" class="btn btn-ghost" data-act="skt-back">← Surat Kerja Trainer</button>')}
-      <section class="card pad qv-panel"><p class="qv-next"><span class="muted">Surat penugasan trainer untuk program ini.</span>${QSKT3}</p>
+      <section class="card pad qv-panel"><div class="qv-panel-top">${r.status === 'berlaku' ? '<span class="badge st-terkirim">Berlaku</span>' : '<span class="badge st-draft">Diganti</span>'}</div><p class="qv-next"><span class="muted">${r.status === 'berlaku' ? 'Surat penugasan trainer dan asisten untuk program ini.' : `Surat ini sudah diganti oleh <b>${esc((sktById(r.gantiOleh) || {}).nomor || '—')}</b> karena reschedule. Isinya tetap jadwal dan tim saat surat ini terbit.`}</span>${QSKT3}</p>
         <div class="qv-btns"><button type="button" class="btn btn-primary" data-act="skt-print" data-id="${r.id}">Print Out Surat Kerja</button>
         <button type="button" class="btn btn-outline" data-act="so-prog" data-id="${pj.id}">Lihat Sales Order program</button></div></section>
-      <div class="qtn-grid">${sec(1, 'Data Surat', '', kv([['Nomor', `<span class="code">${esc(r.nomor)}</span> <span class="muted">(sementara, format menyusul)</span>${QSKT1}`], ['Tanggal', `${tglPanjang(r.tanggal)}${QSKT2}`], ['Penjualan Program', `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}`]]))}
+      <div class="qtn-grid">${sec(1, 'Data Surat', '', kv([['Nomor', `<span class="code">${esc(r.nomor)}</span> <span class="muted">(sementara, format menyusul)</span>${QSKT1}`], ['Tanggal', `${tglPanjang(r.tanggal)}${QSKT2}`], ['Penjualan Program', `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}`], ...(r.gantikan ? [['Menggantikan', `<span class="code">${esc((sktById(r.gantikan) || {}).nomor || '—')}</span>${r.ref ? ` · reschedule: ${esc(r.ref.alasan)}` : ''}`]] : [])]))}
         ${sec(2, 'Trainer', 'dari Master Trainer', kv([['Nama', esc(t.nama || '—')], ['Bidang keahlian', esc((t.keahlian || []).join(', ') || '—')], ['Telepon', esc(t.telp || '—')], ['Email', esc(t.email || '—')], ['Alamat', esc(t.alamat || '—')]]))}</div>
-      ${sec(3, 'Program yang ditugaskan', '', kv([['Paket', `${esc(pk.nomor)} · ${esc(pk.judul)}`], ['Varian', esc(varianTxt(pj))], ['Sertifikat', esc(findRec('jenisSertifikasi', pk.sertifikasi).nama)], ['Jadwal', `${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''} (${pj.durasi} hari)`], ['Lokasi', esc(pj.lokasi || '—')], ...(pj.jenis === 'b2b' ? [['Company', esc((db.company.find(x => x.id === pj.company) || {}).nama || '—')]] : []), ['Peserta deal', `${pesertaDealPj(pj)} peserta dari ${sos.length} Sales Order`]]))}`;
+      ${sec(3, 'Asisten trainer', 'dari Master User', kv([['Nama', esc(a.nama || '—')], ['Role', esc(a.nama ? roleOf(a) || '—' : '—')], ['Telepon', esc(a.telp || a.hp || '—')]]))}
+      ${sec(4, 'Program yang ditugaskan', '', kv([['Paket', `${esc(pk.nomor)} · ${esc(pk.judul)}`], ['Varian', esc(varianTxt(pj))], ['Sertifikat', esc(findRec('jenisSertifikasi', pk.sertifikasi).nama)], ['Jadwal', `${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''} (${pj.durasi} hari)`], ['Lokasi', esc(pj.lokasi || '—')], ...(pj.jenis === 'b2b' ? [['Company', esc((db.company.find(x => x.id === pj.company) || {}).nama || '—')]] : []), ['Peserta deal', `${pesertaDealPj(pj)} peserta dari ${sos.length} Sales Order`]]))}`;
   }
   function sktView(r) { state.sktView = r.id; state.view = 'sktDetail'; render(); window.scrollTo(0, 0); }
   // Format Labmania "Surat Tugas" FR/LMI-TR-05/01/Ed.Rev-1.0 (input/FR LMI TR 05-01 Surat Tugas OK (1).doc;
@@ -263,18 +285,18 @@
     <span>Ruby Commercial No. TC25 Summarecon Bekasi</span><span>Jalan Bulevar Selatan, Marga Mulya, Bekasi Utara, Kota Bks, Jawa Barat 17143</span>
     <span>www.labmaniaindonesia.id ; Email: labjourneypartner@labmaniaindonesia.id ; Customer Care: 0821-2429-3839</span></div></div>`;
   function pageSkt(r) {
-    const pj = db.quot.find(x => x.id === r.pj), pk = paketOf(mpOf(pj)), t = trainerById(pj.trainer) || {};
+    const pj = Object.assign({}, db.quot.find(x => x.id === r.pj), sktJadwal(r)), pk = paketOf(mpOf(pj)), t = trainerById(pj.trainer) || {}, a = asistenOf(pj.asisten) || {};
     const dot = '..............................', keg = `${esc(varianTxt(pj))} "${esc(pk.judul)}"`;
     const hari = pj.tglMulai ? (pj.tglSelesai && pj.tglSelesai !== pj.tglMulai ? `${sktHari(pj.tglMulai)} s.d. ${sktHari(pj.tglSelesai)}` : sktHari(pj.tglMulai)) : dot;
-    const kosong = Array.from({ length: 9 }, () => '<tr><td></td><td></td><td></td><td></td></tr>').join('');
-    return `<section class="pdf-page st-page">${SKT_KOP}<div class="pdf-body">
+    const kosong = Array.from({ length: 8 }, () => '<tr><td></td><td></td><td></td><td></td></tr>').join('');
+    return `<section class="pdf-page st-page">${SKT_KOP}<div class="pdf-body">${r.status === 'diganti' ? '<p class="st-diganti">DIGANTI</p>' : ''}
       <h3 class="pdf-title st-title"><u>SURAT TUGAS</u><span>No. ${esc(r.nomor)}</span></h3>
       <p class="st-p">Menindaklanjuti kegiatan ${keg}, saya yang bertanda tangan di bawah ini:</p>
       <table class="pdf-kv st-kv"><tr><td>Nama</td><td>: ${dot}</td></tr><tr><td>Jabatan</td><td>: Operational Manager</td></tr></table>
       <p class="st-p">Dengan ini menugaskan kepada :</p>
       <table class="st-tbl"><thead><tr><th>No.</th><th>Nama</th><th>NIK</th><th>Jabatan</th></tr></thead>
-        <tbody><tr><td>1</td><td>${esc(t.nama || '')}</td><td></td><td>Trainer</td></tr>${kosong}</tbody></table>
-      <p class="st-p">sebagaimana ditugaskan sebagai <b>Trainer</b> dalam acara ${keg} bertempat di ${esc(pj.lokasi || dot)} yang dilaksanakan pada :</p>
+        <tbody><tr><td>1</td><td>${esc(t.nama || '')}</td><td></td><td>Trainer</td></tr><tr><td>2</td><td>${esc(a.nama || '')}</td><td></td><td>Asisten Trainer</td></tr>${kosong}</tbody></table>
+      <p class="st-p">sebagaimana ditugaskan sebagai <b>Trainer / Asisten Trainer</b> dalam acara ${keg} bertempat di ${esc(pj.lokasi || dot)} yang dilaksanakan pada :</p>
       <table class="pdf-kv st-kv"><tr><td>Hari/ Tanggal</td><td>: ${hari}/ ${rangePanjang(pj.tglMulai, pj.tglSelesai)}</td></tr><tr><td>Waktu</td><td>: ${esc(pj.waktu || dot)}</td></tr></table>
       <p class="st-p">Demikian Surat Tugas ini dibuat agar yang bersangkutan dapat melaksanakan dengan baik dan penuh tanggung jawab.</p>
       <div class="st-sign">Bekasi, ${tglPanjang(todayIso)}<br>Operational Manager<div class="pdf-ttd"></div>(${dot})</div>
@@ -288,3 +310,185 @@
       onSave: () => { logAct('Quotation', 'Surat Kerja Trainer', 'Cetak', r.nomor, r.id, `Cetak Surat Kerja Trainer ${r.nomor}`); window.print(); return false; }
     });
   }
+
+  // Jadwal dan tim yang tercetak di surat: salinan saat surat terbit (surat lama tetap seperti aslinya).
+  const sktJadwal = r => r.tglMulai ? { tglMulai: r.tglMulai, tglSelesai: r.tglSelesai, waktu: r.waktu, lokasi: r.lokasi, durasi: r.durasi, trainer: r.trainer, asisten: r.asisten } : {};
+
+  // Peserta yang keluar karena reschedule tetap tercatat di View SO (tidak dihitung di nilai).
+  function keluarTxt(k) {
+    const l = k.peserta.filter(r => r.st === 'keluar');
+    if (!l.length) return '';
+    return `<p class="hint gap-t"><b>Keluar karena reschedule (${l.length}):</b> ${l.map(r => `${esc((pesertaById(r.id) || {}).nama || '—')} (${KELUAR_LBL[r.keluar.jenis] || 'keluar'}${r.keluar.refund ? `, ${esc(r.keluar.refund)}` : ''})`).join(', ')}. Tidak dihitung di nilai Sales Order.</p>`;
+  }
+
+  // ---------- Refund (to be 12-11-2026, SO-FR-17 – SO-FR-20) ----------
+  // Hanya untuk peserta yang invoice-nya SUDAH DIBAYAR dan memilih Refund (input/Master - Buat Program/2026-11-12-opsi-konfirmasi-ulang-rev-program/).
+  // Terbentuk otomatis saat Sales memproses peserta itu (QTN-FR-36); Finance menyelesaikan dengan transfer. Invoice tidak diedit.
+  const QSO7 = q('Q-SO-07', 'Usulan: Refund diproses Finance tanpa approval; nominal sesuai S&K diisi Finance dengan keterangan (boleh kurang dari tagihan); nomor LMI/RF/MM/yy-zzz. Perlu persetujuan atasan sebelum transfer?');
+  db.refund = [];
+  const RF_ST = { menunggu: 'Menunggu Finance', selesai: 'Selesai' };
+  const rfById = id => db.refund.find(x => x.id === id);
+  function rfCreate({ k, ps, inv, alasan, nominal }) {
+    const s = soOfQtn(k);
+    const rf = { id: uid(), nomor: lmiNo('RF', todayIso), tanggal: todayIso, so: s ? s.id : null, soNomor: s ? soNomor(s) : '—', qtn: k.id, ps, inv: inv.nomor, alasan, nominal, status: 'menunggu', rev: k.rev || 0 };
+    db.refund.push(rf);
+    logAct('Quotation', 'Refund', 'Tambah', rf.nomor, rf.id, `Refund ${rf.nomor} ${rp(nominal)} untuk ${ps ? (pesertaById(ps) || {}).nama : kepadaOf(k)}, ${rf.soNomor}, invoice ${inv.nomor} (sudah dibayar): ${alasan}`);
+    return rf;
+  }
+  const rfSiapa = rf => rf.ps ? (pesertaById(rf.ps) || {}).nama || '—' : `${kepadaOf(db.qtn.find(x => x.id === rf.qtn))} (company)`;
+  function listRefund() {
+    const rows = db.refund.filter(rf => (state.status === 'all' || rf.status === state.status) && matches([rf.nomor, rfSiapa(rf), rf.soNomor, rf.inv, (db.qtn.find(x => x.id === rf.qtn) || {}).nomor]))
+      .slice().sort((a, b) => (a.status === b.status ? b.id - a.id : a.status === 'menunggu' ? -1 : 1));
+    if (!db.refund.length) return '<div class="empty-state"><h2>Belum ada Refund</h2><p>Refund terbentuk saat Sales memproses peserta yang memilih Refund setelah reschedule, dan invoice peserta itu sudah dibayar (Quotation › Data Peserta › Aksi › Proses konfirmasi ulang).</p></div>';
+    return listBlock(rows, [
+      NO_COL,
+      { label: 'Nomor Refund', cls: 'nowrap', render: rf => `<button type="button" class="btn btn-ghost sm" data-act="rf-view" data-id="${rf.id}">${esc(rf.nomor)}</button><br><span class="muted">${tglPanjang(rf.tanggal)}</span>` },
+      { label: 'Peserta / Company', render: rf => `<b>${esc(rfSiapa(rf))}</b><br><span class="muted">${esc(rf.alasan)}</span>` },
+      { label: 'Sales Order', cls: 'nowrap', render: rf => `<span class="code">${esc(rf.soNomor)}</span><br><span class="muted">${esc((db.qtn.find(x => x.id === rf.qtn) || {}).nomor || '')}</span>` },
+      { label: 'Invoice', cls: 'nowrap', render: rf => `<span class="code">${esc(rf.inv)}</span><br><span class="muted">sudah dibayar</span>` },
+      { label: 'Nominal', cls: 'money', render: rf => `${rp(rf.status === 'selesai' ? rf.selesai.nominal : rf.nominal)}${rf.status === 'selesai' && rf.selesai.nominal !== rf.nominal ? `<br><span class="muted">tagihan ${rp(rf.nominal)}</span>` : ''}` },
+      { label: 'Status', cls: 'nowrap', render: rf => rf.status === 'menunggu' ? '<span class="badge st-terkirim">Menunggu Finance</span>' : `<span class="badge st-ps-deal">Selesai</span><br><span class="muted">Transfer · ${esc(rf.selesai.oleh)}</span>` },
+      { label: 'Action', cls: 'act', render: rf => gearMenu(rf, [['rf-view', 'View'], ...(rf.status === 'menunggu' ? [['rf-proses', 'Proses Refund']] : [])]) }
+    ]);
+  }
+  function rfView(rf) {
+    const k = db.qtn.find(x => x.id === rf.qtn), pj = pjOfQtn(k), s = rf.selesai;
+    openModal({ title: `Refund ${esc(rf.nomor)}`, wide: true, info: true,
+      body: `<div class="summary">${sumRow('Status', RF_ST[rf.status])}${sumRow('Peserta / Company', esc(rfSiapa(rf)))}${sumRow('Sales Order', `<span class="code">${esc(rf.soNomor)}</span> · quotation <span class="code">${esc(k.nomor)}</span>`)}
+        ${sumRow('Invoice', `<span class="code">${esc(rf.inv)}</span> · sudah dibayar`)}${sumRow('Program', `<span class="code">${esc(pj.nomor)}</span> · jadwal baru ${fmtRange(pj.tglMulai, pj.tglSelesai)}`)}
+        ${sumRow('Nominal tagihan', rp(rf.nominal))}${sumRow('Alasan dari Sales', esc(rf.alasan))}
+        ${s ? sumRow('Transfer', `${rp(s.nominal)} · ${esc(s.bank)} ${esc(s.rek)} a.n. ${esc(s.an)} · bukti <span class="code">${esc(s.bukti)}</span>`) + sumRow('Diselesaikan', `${esc(s.oleh)} · ${fmtStamp(s.waktu)}`) + (s.catatan ? sumRow('Keterangan', esc(s.catatan)) : '') : ''}</div>` });
+  }
+  function rfProses(rf) {
+    if (rf.status !== 'menunggu') { toast(`${rf.nomor} sudah selesai`, 'warn'); return; }
+    openModal({
+      title: `Proses Refund ${esc(rf.nomor)}`, wide: true,
+      body: `<div class="summary">${sumRow('Peserta / Company', esc(rfSiapa(rf)))}${sumRow('Invoice', `<span class="code">${esc(rf.inv)}</span> · sudah dibayar`)}${sumRow('Nominal tagihan', rp(rf.nominal))}${sumRow('Alasan', esc(rf.alasan))}</div>
+        <p class="hint gap-t">Dana dikembalikan dengan transfer. Invoice tidak diedit dari sini; jurnal pengembalian dikerjakan Finance di akuntansi.${QSO7}</p>
+        <div class="grid2 gap-t">
+          ${field('Nominal refund' + req, `<input class="input" name="nominal" inputmode="numeric" value="${rf.nominal}"><span class="hint">sesuai S&amp;K, maksimal ${rp(rf.nominal)}</span>`)}
+          ${field('Bank' + req, `<input class="input" name="bank" maxlength="50" placeholder="mis. BCA">`)}
+          ${field('Nomor rekening' + req, `<input class="input" name="rek" maxlength="30" inputmode="numeric">`)}
+          ${field('Atas nama' + req, `<input class="input" name="an" maxlength="100">`)}
+          ${field('Bukti transfer' + req, `<label class="pb-drop"><input type="file" name="bukti" accept=".pdf,.jpg,.jpeg,.png" hidden><b>Pilih file</b><span class="hint">PDF, JPG, PNG · maks. 5 MB</span></label><div class="hint" data-file-out="bukti">Belum ada file</div>`, '', 'span2')}
+          ${field('Keterangan', `<input class="input" name="catatan" maxlength="200" placeholder="mis. dipotong biaya administrasi sesuai S&K">`, '', 'span2')}
+        </div>`,
+      saveLabel: 'Selesaikan Refund',
+      onMount: form => { const b = form.elements.bukti; b.addEventListener('change', () => { $('[data-file-out="bukti"]', form).textContent = b.files[0] ? b.files[0].name : 'Belum ada file'; }); },
+      onSave: f => {
+        const nominal = Number(String(f.nominal.value).replace(/\D/g, '')), file = f.bukti.files[0];
+        let ok = true;
+        if (!f.nominal.value.trim() || nominal > rf.nominal) ok = invalid(f.nominal, `Nominal 0 sampai ${rp(rf.nominal)}`);
+        if (nominal < rf.nominal && !f.catatan.value.trim()) ok = invalid(f.catatan, 'Nominal kurang dari tagihan: isi keterangan potongan');
+        ['bank', 'rek', 'an'].forEach(n => { if (!f[n].value.trim()) ok = invalid(f[n], 'Wajib diisi'); });
+        if (!file) ok = invalid(f.bukti, 'Unggah bukti transfer');
+        else if (!['pdf', 'jpg', 'jpeg', 'png'].includes(file.name.split('.').pop().toLowerCase())) ok = invalid(f.bukti, 'Hanya PDF, JPG, atau PNG');
+        else if (file.size > 5 * 1024 * 1024) ok = invalid(f.bukti, 'Lebih dari 5 MB');
+        if (!ok) return false;
+        rf.selesai = { nominal, bank: f.bank.value.trim(), rek: f.rek.value.trim(), an: f.an.value.trim(), bukti: file.name, catatan: f.catatan.value.trim(), oleh: meName(), waktu: isoNow().slice(0, 16).replace('T', ' ') };
+        rf.status = 'selesai';
+        logAct('Quotation', 'Refund', 'Proses', rf.nomor, rf.id, `Refund ${rf.nomor} selesai: transfer ${rp(nominal)}`, [{ f: 'Status', old: 'Menunggu Finance', new: 'Selesai' }, { f: 'Nominal refund', old: '', new: rp(nominal) }]);
+        toast(`Refund ${rf.nomor} selesai`);
+      }
+    });
+  }
+
+  // ---------- Data contoh untuk uji reschedule, konfirmasi ulang, dan refund (dipanggil main.js setelah qpsSeed) ----------
+  // Skenario (permintaan BA 12-11-2026, untuk dites):
+  //  1. Program Public Final pertama yang sudah punya SO di-reschedule +14 hari: nomor program, quotation, dan SO menjadi -rev1;
+  //     link konfirmasi baru; Surat Tugas baru.
+  //  2. Jawaban konfirmasi ulang (sudah bayar: Pindah jadwal / Refund; belum bayar: Pindah jadwal / Batal ikut):
+  //     - Contoh Peserta B (invoice sudah dibayar): Refund, SUDAH diproses Sales -> tab Refund "Menunggu Finance" (uji Proses Refund).
+  //     - Contoh Peserta H: Pindah jadwal (surat baru diunggah).
+  //     - Contoh Peserta I (invoice H+I terbit, belum dibayar): Batal ikut, BELUM diproses -> uji Aksi › Proses: invoice dibatalkan,
+  //       H kembali belum ditagih (Sales Order muncul lagi di Invoicing tab Uninvoiced).
+  //     - Contoh Peserta J (invoice sudah dibayar): Refund, BELUM diproses -> uji Aksi › Proses: Refund terbentuk.
+  //     - Contoh Peserta F (quotation Terkirim): Pindah jadwal; Contoh Peserta G belum menjawab -> tidak bisa dicentang saat Deal.
+  const RS_JAWAB = { 'Contoh Peserta H': 'ikut', 'Contoh Peserta I': 'batal', 'Contoh Peserta J': 'refund', 'Contoh Peserta F': 'ikut' };
+  const RS_CATATAN = { batal: 'Bentrok dengan jadwal audit internal', refund: 'Tidak bisa di tanggal baru, mohon dana dikembalikan' };
+  function rsDemo() {
+    const pj = db.quot.find(x => x.jenis === 'public' && x.status === 'final' && soOfPj(x).length);
+    if (!pj || !pj.tglMulai) return;
+    // Quotation Contoh Peserta J diberi invoice yang sudah dibayar, agar opsi Refund tersedia.
+    const kJ = qtnOfPj(pj).find(k => k.status === 'deal' && k.peserta.some(r => (pesertaById(r.id) || {}).nama === 'Contoh Peserta J'));
+    if (kJ && !invOfQtn(kJ).length) {
+      const tgl = '2026-11-02', pl = ivcPerlakuan(kJ), u = ivcNilaiUnit(kJ, 'satu'), hh = ivcHitung(u.penjualan, u.lain, pl), nomor = ivcNo(tgl), coa = coaSalesDefault(kJ);
+      db.inv.push(Object.assign({ id: uid(), nomor, tanggal: tgl, qtn: kJ.id, prog: progNo(kJ), jenis: pj.jenis, cara: 'satu', peserta: u.ps, perlakuan: pl, noFaktur: '04002600000102', coaPenjualan: coa, setor: null, status: 'invoiced',
+        jurnal: ivcJurnal(hh, pl, coa, nomor, kJ, tgl) }, hh));
+      Object.assign(soOfQtn(kJ) || {}, { status: 'siap', siapBy: 'Admin Sistem', siapAt: `${tgl} 09:00` });
+    }
+    // Invoice program ini dianggap sudah dibayar (contoh pencatatan pembayaran, usulan).
+    qtnOfPj(pj).forEach(k => invOfQtn(k).forEach(i => { if (!i.bayar) i.bayar = { tanggal: addHari(i.tanggal, 3), oleh: 'Admin Sistem', ket: 'Transfer BCA (contoh)' }; }));
+    // Quotation Contoh Peserta H + I diberi invoice yang BELUM dibayar, untuk uji "batal invoice".
+    const kHI = qtnOfPj(pj).find(k => k.status === 'deal' && k.peserta.some(r => (pesertaById(r.id) || {}).nama === 'Contoh Peserta I'));
+    if (kHI && !invOfQtn(kHI).length) {
+      const tgl = '2026-11-04', pl = ivcPerlakuan(kHI), u = ivcNilaiUnit(kHI, 'satu'), hh = ivcHitung(u.penjualan, u.lain, pl), nomor = ivcNo(tgl), coa = coaSalesDefault(kHI);
+      db.inv.push(Object.assign({ id: uid(), nomor, tanggal: tgl, qtn: kHI.id, prog: progNo(kHI), jenis: pj.jenis, cara: 'satu', peserta: u.ps, perlakuan: pl, noFaktur: '04002600000103', coaPenjualan: coa, setor: null, status: 'invoiced',
+        jurnal: ivcJurnal(hh, pl, coa, nomor, kHI, tgl) }, hh));
+      Object.assign(soOfQtn(kHI) || {}, { status: 'siap', siapBy: 'Admin Sistem', siapAt: `${tgl} 09:00` });
+    }
+    const ref = reschedApply(pj, { mulai: addHari(pj.tglMulai, 14), trainer: pj.trainer, asisten: pj.asisten, alasan: 'Kuota peserta belum terpenuhi (contoh)', evidence: ['Notulen-rapat-kuota.pdf'], oleh: 'Contoh User Dua', waktuUbah: `${todayIso}T09:15` });
+    const ks = qtnOfPj(pj).filter(k => k.status !== 'batal');
+    const kInv = ks.find(k => k.status === 'deal' && invOfQtn(k).length && k.tujuan === 'personal' && !k.peserta.some(r => RS_JAWAB[(pesertaById(r.id) || {}).nama]));
+    let menit = 5;
+    const jawab = (k, r, keputusan) => {
+      r.konf = { rev: k.rev, keputusan, catatan: RS_CATATAN[keputusan] || '', tgl: `${todayIso} 10:${String(menit += 3).padStart(2, '0')}`, sumber: 'link' };
+      const p = pesertaById(r.id);
+      if (keputusan === 'ikut' && p) { if (p.surat) (p.suratLama = p.suratLama || []).push(Object.assign({ rev: 0 }, p.surat));
+        p.surat = { nama: `Surat_Konfirmasi_rev${k.rev}_${p.nama.replace(/[^\w]+/g, '_')}.pdf`, ukuran: 201000, tipe: 'application/pdf', contoh: true }; }
+    };
+    ks.forEach(k => k.peserta.filter(r => perluUlang(k, r)).forEach(r => {
+      const nama = (pesertaById(r.id) || {}).nama;
+      if (k === kInv) jawab(k, r, 'refund');
+      else if (RS_JAWAB[nama]) jawab(k, r, RS_JAWAB[nama]);
+    }));
+    if (kInv) {
+      const r = kInv.peserta.find(x => x.st === 'deal'), inv = r && invBayar(kInv, r.id);
+      if (r && inv) {
+        const v = qtnNilai(kInv, [r]);
+        r.st = 'keluar'; r.keluar = { jenis: 'refund', alasan: r.konf.catatan, rev: kInv.rev, tgl: `${todayIso}T10:30`, oleh: 'Contoh User Dua' };
+        r.keluar.refund = rfCreate({ k: kInv, ps: r.id, inv, alasan: r.konf.catatan, nominal: v.dpp + v.ppn }).nomor;
+      }
+    }
+    return ref;
+  }
+  // ---------- Tutorial highlight driver.js (permintaan BA 12-11-2026; menggantikan callout Panduan) ----------
+  // Dimulai dari tombol Tutorial di atas kartu tabel. Helper tS/tRows/tKol/tGear/tAdd ada di core.js; langkah yang elemennya tidak ada dilewati.
+
+  TOUR.so = () => [
+    tS(null, 'Sales Order', 'Satu quotation Deal = satu Sales Order, yaitu surat konfirmasi pesanan ke customer dan dasar invoice.'),
+    tS('#view .card .tabs', 'Tab', '<b>Sales Order</b>, <b>Surat Kerja Trainer</b> (Surat Tugas), dan <b>Refund</b>.'),
+    tS('.toolbar', 'Cari dan saring', 'Saring jenis program dan tanggal acara.'),
+    tS(tKol(tRows()[0], 'Sales Order'), 'Jumlah SO', 'Jumlah Sales Order program itu per status.'),
+    tS(tGear(), 'Aksi: Lihat SO', 'Membuka daftar Sales Order satu program.'),
+    (() => { const pj = soProgs()[0]; return pj && { popover: { title: 'Buka Sales Order program', description: 'Lanjut ke daftar Sales Order program pertama.' }, lanjut: { label: 'Lihat SO', run: () => soProgView(pj), ke: 'soProg' } }; })()
+  ];
+  TOUR.soProg = () => [
+    tS(null, 'Sales Order satu program', 'Semua SO dari quotation Deal program ini.'),
+    tS(tKol(tRows()[0], 'Nomor SO'), 'Nomor SO', 'Format <b>LMI/SO/MM/yy-nnn</b>; setelah reschedule menjadi <b>-rev</b>. Cetak ulang dan kirim SO revisi ke customer.'),
+    tS(tKol(tRows()[0], 'Status'), 'Status', '<b>Belum siap invoice</b> → <b>Siap invoice</b> → <b>Invoiced</b>.'),
+    tS(tGear(), 'Aksi', '<b>View</b>: detail SO. <b>Print Out SO</b>: PDF untuk customer. <b>Siap dibuatkan invoice</b>: teruskan ke Finance.'),
+    (() => { const s = soOfPj(db.quot.find(x => x.id === state.soPj) || {})[0]; return s && { popover: { title: 'Buka detail SO', description: 'Lanjut ke isi satu Sales Order.' }, lanjut: { label: 'View SO', run: () => soView(s), ke: 'soDetail' } }; })()
+  ];
+  TOUR.soDetail = () => [
+    tS('.qv-panel', 'Panel status', 'Status SO, langkah berikutnya, dan tombol <b>Siap dibuatkan invoice</b>, <b>Print Out SO</b>, <b>Buka quotation</b>.'),
+    tS('#view .qtn-grid', 'Data Sales Order', 'Nomor (dengan revisi bila ada), tanggal, quotation asal, dan tujuan.'),
+    tS([...document.querySelectorAll('.ivc-sec-h')].find(h => h.textContent.includes('Peserta Deal'))?.parentElement, 'Peserta Deal & surat konfirmasi', 'Peserta yang ikut beserta surat bertanda tangan; peserta yang keluar karena reschedule dicatat di bawahnya.'),
+    { popover: { title: 'Langkah berikutnya', description: 'SO yang sudah <b>Siap invoice</b> ditagih Finance di menu Invoicing.' }, lanjut: { label: 'Ke Invoicing', run: () => go('ivc'), ke: 'ivc' } }
+  ];
+  TOUR.skt = () => [
+    tS(null, 'Surat Kerja Trainer', 'Surat Tugas untuk trainer dan asisten trainer; satu surat berlaku per program, terbit saat SO pertama.'),
+    tS(tKol(tRows()[0], 'Status'), 'Berlaku / Diganti', 'Bila reschedule mengganti tanggal, trainer, atau asisten, surat lama <b>Diganti</b> dan surat baru terbit dengan nomor baru.'),
+    tS(tKol(tRows()[0], 'Trainer'), 'Trainer & Asisten', 'Orang yang ditugaskan, sesuai Penjualan Program.'),
+    tS(tGear(), 'Aksi', '<b>View</b>: detail surat. <b>Print Out Surat Kerja</b>: cetak, tanda tangan Operational Manager, kirim ke trainer.')
+  ];
+  TOUR.sktDetail = () => [
+    tS('.qv-panel', 'Surat Tugas', 'Status surat dan tombol cetak.'),
+    tS('#view .qtn-grid', 'Data surat, trainer, asisten', 'Nomor, program, surat yang digantikan, serta data trainer dan asisten.')
+  ];
+  TOUR.refund = () => [
+    tS(null, 'Refund', 'Pengembalian dana peserta yang <b>sudah membayar</b> lalu memilih Refund setelah reschedule. Dibuat otomatis saat Sales memproses konfirmasi ulang.'),
+    tS('.toolbar', 'Saring', 'Saring Menunggu Finance / Selesai.'),
+    tS(tKol(tRows()[0], 'Status'), 'Status', '<b>Menunggu Finance</b> → <b>Selesai</b> setelah transfer.'),
+    tS(tGear(), 'Aksi', '<b>View</b>: detail. <b>Proses Refund</b> (Finance): isi nominal sesuai S&K, rekening, dan unggah bukti transfer.')
+  ];

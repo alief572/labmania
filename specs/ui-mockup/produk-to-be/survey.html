@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Survey Peserta · LabMania (Mockup To Be)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="konf-body">
+  <!-- To be (input/Invoice & Pengajuan/2026-11-11-link-survey-peserta/): halaman survey yang dibuka peserta Deal dari link
+       survey program (Manage Peserta, tab Survey). Tanpa login. Peserta memilih namanya, lalu menjawab pertanyaan.
+       Pertanyaan masih contoh; daftar final menyusul dari LabMania (Q-SRV-04).
+       Mockup tanpa server: konfigurasi dibaca dari localStorage yang ditulis Labmania.html, jawaban dikirim balik lewat localStorage. -->
+  <header class="konf-top"><span class="konf-brand">LabMania</span><span class="konf-sub">Survey Peserta</span></header>
+  <main class="konf-main" id="konf" aria-live="polite"><p class="muted">Memuat survey…</p></main>
+  <footer class="konf-foot">PT LabMania Indonesia Jaya · Mockup to be, data contoh</footer>
+
+  <script>
+  'use strict';
+  (function () {
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    const token = new URLSearchParams(location.search).get('t') || '';
+    const box = $('#konf');
+    const kunci = { cfg: `labmania-tobe:survey:${token}`, isi: `labmania-tobe:survey-isi:${token}` };
+    const TEKS_MAX = 500;
+
+    const pesan = (judul, isi) => { box.innerHTML = `<h1>${esc(judul)}</h1><div class="pub-closed">${isi}</div>`; };
+    const head = cfg => `<div class="pub-head"><div><b>${esc(cfg.judul)}</b><small>${esc(cfg.jadwal)} · ${esc(cfg.lokasi || 'lokasi menyusul')}</small>
+      <small>Program ${esc(cfg.nomor)}${cfg.trainer ? ` · Trainer ${esc(cfg.trainer)}` : ''}</small></div></div>`;
+    // Peserta yang sudah mengirim dari browser ini tetapi belum ditarik Labmania.html tetap dianggap sudah mengisi.
+    const sudah = (cfg, id) => { const p = cfg.peserta.find(x => x.id === id); return (p && p.sudah) || (lsGet(kunci.isi) || []).some(x => x.peserta === id && !x.ditolak); };
+
+    function pertanyaan(t, i, skala) {
+      const id = `q${t.id}`, wajib = t.wajib ? ' <span class="req" aria-hidden="true">*</span>' : ' <span class="muted">(opsional)</span>';
+      if (t.tipe === 'teks') {
+        return `<div class="field sv-q"><label for="${id}"><span class="sv-no">${i}.</span> ${esc(t.teks)}${wajib}</label>
+          <textarea class="input" id="${id}" name="${id}" rows="3" maxlength="${TEKS_MAX}" ${t.wajib ? 'aria-required="true"' : ''}></textarea>
+          <span class="hint">Maksimal ${TEKS_MAX} karakter.</span></div>`;
+      }
+      const opsi = t.tipe === 'skala' ? skala.map((l, n) => [n + 1, `<b>${n + 1}</b><span>${esc(l)}</span>`]) : t.opsi.map(o => [o, esc(o)]);
+      return `<fieldset class="field sv-q"><legend><span class="sv-no">${i}.</span> ${esc(t.teks)}${wajib}</legend>
+        <div class="${t.tipe === 'skala' ? 'sv-skala' : 'sv-pilih'}">${opsi.map(([v, l], n) =>
+          `<label class="sv-opt" for="${id}-${n}"><input type="radio" id="${id}-${n}" name="${id}" value="${esc(v)}"><span class="sv-opt-l">${l}</span></label>`).join('')}</div></fieldset>`;
+    }
+
+    function form(cfg) {
+      if (cfg.status !== 'buka') {
+        box.innerHTML = `<h1>Survey Peserta</h1>${head(cfg)}<div class="pub-closed"><p><b>${cfg.status === 'tutup' ? 'Survey ini sudah ditutup.' : 'Survey ini belum dibuka.'}</b></p>
+          <p>Hubungi panitia LabMania bila Anda belum sempat mengisi.</p></div>`;
+        return;
+      }
+      const sisa = cfg.peserta.filter(p => !sudah(cfg, p.id));
+      if (!sisa.length) { box.innerHTML = `<h1>Survey Peserta</h1>${head(cfg)}<div class="pub-closed"><p><b>Semua peserta sudah mengisi survey ini.</b> Terima kasih.</p></div>`; return; }
+      let no = 0, bagian = '';
+      const qs = cfg.pertanyaan.map(t => {
+        const h = t.bagian !== bagian ? `${bagian ? '</section>' : ''}<section class="konf-sec"><h2>${esc(t.bagian)}</h2>` : '';
+        bagian = t.bagian; no++;
+        return h + pertanyaan(t, no, cfg.skala);
+      }).join('') + '</section>';
+      box.innerHTML = `<h1>Survey Peserta</h1>${head(cfg)}
+        <p class="konf-lead">Terima kasih sudah mengikuti program ini. Jawaban Anda membantu LabMania memperbaiki pelatihan berikutnya. Mengisi survey sekitar 3 menit.</p>
+        <form id="sv-form" novalidate>
+          <section class="konf-sec"><h2>Nama Anda</h2><p class="konf-req"><span class="req" aria-hidden="true">*</span> wajib diisi</p>
+            <div class="field"><label for="f-peserta">Pilih nama Anda <span class="req" aria-hidden="true">*</span></label>
+              <select class="input" id="f-peserta" name="peserta" aria-required="true"><option value="">Pilih nama</option>
+                ${cfg.peserta.map(p => `<option value="${p.id}" ${sudah(cfg, p.id) ? 'disabled' : ''}>${esc(p.nama)} · ${esc(p.instansi)}${sudah(cfg, p.id) ? ' (sudah mengisi)' : ''}</option>`).join('')}</select>
+              <span class="hint">Nama tidak ada di daftar? Hubungi panitia LabMania.</span></div></section>
+          ${qs}
+          <button type="submit" class="btn btn-primary konf-kirim">Kirim survey</button>
+        </form>`;
+      $('#sv-form').addEventListener('submit', e => { e.preventDefault(); kirim(cfg, e.target); });
+      $('#sv-form').addEventListener('change', e => { const w = e.target.closest('.field'); if (w) { w.classList.remove('has-err'); w.querySelectorAll('.err').forEach(x => x.remove()); } });
+    }
+
+    function salah(w, msg) {
+      w.classList.add('has-err');
+      w.insertAdjacentHTML('beforeend', `<div class="err" role="alert"><i>!</i>${esc(msg)}</div>`);
+      return false;
+    }
+    function kirim(cfg, f) {
+      f.querySelectorAll('.has-err').forEach(x => x.classList.remove('has-err')); f.querySelectorAll('.err').forEach(x => x.remove());
+      let ok = true;
+      const pid = +f.elements.peserta.value;
+      if (!pid) ok = salah(f.elements.peserta.closest('.field'), 'Pilih nama Anda');
+      else if (sudah(cfg, pid)) ok = salah(f.elements.peserta.closest('.field'), 'Nama ini sudah mengisi survey');
+      const isi = {};
+      cfg.pertanyaan.forEach(t => {
+        const el = f.elements[`q${t.id}`], v = t.tipe === 'teks' ? el.value.trim() : (f.querySelector(`[name=q${t.id}]:checked`) || {}).value || '';
+        if (t.wajib && !v) { ok = salah(f.querySelector(`#q${t.id}`) ? f.querySelector(`#q${t.id}`).closest('.field') : f.querySelector(`[name=q${t.id}]`).closest('.field'), t.tipe === 'teks' ? 'Pertanyaan ini wajib diisi' : 'Pilih salah satu jawaban'); return; }
+        isi[t.id] = t.tipe === 'skala' && v ? +v : v;
+      });
+      if (!ok) { const x = f.querySelector('.has-err select, .has-err input, .has-err textarea'); if (x) x.focus(); return; }
+      // Status terbaru: survey bisa saja ditutup admin selagi halaman terbuka.
+      const now = lsGet(kunci.cfg) || cfg;
+      if (now.status !== 'buka') { form(now); return; }
+      const list = lsGet(kunci.isi) || [];
+      list.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, peserta: pid, tgl: stamp(), isi });
+      if (!lsSet(kunci.isi, list)) { pesan('Gagal mengirim', '<p>Browser menolak menyimpan data. Coba lagi, atau hubungi panitia LabMania.</p>'); return; }
+      const p = cfg.peserta.find(x => x.id === pid);
+      box.innerHTML = `<div class="konf-ok"><span class="konf-ok-mark" aria-hidden="true">✓</span><h1>Terima kasih, ${esc(p.nama)}</h1></div>${head(cfg)}
+        <div class="pub-closed"><p><b>Jawaban survey Anda sudah kami terima.</b></p><p>Jawaban tidak dapat diubah setelah dikirim.</p></div>`;
+      box.querySelector('h1').setAttribute('tabindex', '-1'); box.querySelector('h1').focus();
+    }
+
+    if (!token) { pesan('Link tidak lengkap', '<p>Alamat link tidak memuat kode survey. Buka link persis seperti yang dibagikan panitia LabMania.</p>'); return; }
+    const cfg = lsGet(kunci.cfg);
+    if (!cfg) {
+      pesan('Link tidak ditemukan', `<p>Kode <b>${esc(token)}</b> tidak dikenali.</p>
+        <p class="hint">Mockup: buka Labmania.html di browser yang sama, lalu buka tab Survey program itu sekali agar link aktif.</p>`);
+      return;
+    }
+    form(cfg);
+  })();
+  </script>
+</body>
+</html>

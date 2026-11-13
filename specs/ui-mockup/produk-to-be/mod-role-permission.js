@@ -5,7 +5,8 @@
   // ---------- Role & Permission (FR-54 – FR-58; input/Invoice & Pengajuan/2026-11-04-role-permission/, video Role & Permission.mp4) ----------
   // Role dari Master Role (FR-64). Hak per role atas setiap menu disimpan per id role:
   // View / Add / Manage / Delete (konvensi permission aplikasi Nama_Menu.View dst.). Tampilan mengikuti video: daftar role + modal matrix.
-  const AK_ACTS = [['v', 'View'], ['a', 'Add'], ['m', 'Manage'], ['d', 'Delete']];
+  // Approve terpisah dari Manage (Q-33, input/Master - Buat Program/2026-11-12-jawaban-pertanyaan-terbuka/): Finalkan Master/Penjualan Program dan proses Approval Pengajuan.
+  const AK_ACTS = [['v', 'View'], ['a', 'Add'], ['m', 'Manage'], ['d', 'Delete'], ['p', 'Approve']];
   const ADMIN_ID = roleIdOf('Admin'); // Admin = akun user Labmania: menu mengikuti hak role (dapat dibatasi), data semua (Q-34; Q-35)
   const MGMT_IDS = [roleIdOf('Direktur')]; // Manajemen sementara = role Direktur (Q-PB-14, Q-37)
   const meUser = () => db.user.find(u => u.id === state.me) || {};
@@ -16,7 +17,8 @@
   const seeAllData = () => isSuper() || isAdmin();
   const akMenus = () => [{ mod: 'Dashboard', items: [['dashboard', 'Dashboard']] }].concat(MODULES.map(m => ({ mod: m.name, items: m.groups.flatMap(g => g.items) })));
   // Aksi yang berlaku per menu (usulan): Dashboard, Katalog, Activity Log hanya View; Approval Pengajuan View & Manage (Manage = proses approval); Manage Peserta View & Manage (Manage = Close Program).
-  const akActsOf = v => ['dashboard', 'katalog', 'actlog'].includes(v) ? ['v'] : v === 'pbAppr' || v === 'mpst' ? ['v', 'm'] : ['v', 'a', 'm', 'd'];
+  const akActsOf = v => ['dashboard', 'katalog', 'actlog'].includes(v) ? ['v'] : v === 'pbAppr' ? ['v', 'p'] : v === 'mpst' ? ['v', 'm']
+    : ['mprog', 'quot'].includes(v) ? ['v', 'a', 'm', 'd', 'p'] : ['v', 'a', 'm', 'd'];
   const akFull = v => Object.fromEntries(akActsOf(v).map(x => [x, true]));
   const akAllKeys = () => akMenus().flatMap(m => m.items.map(([v]) => v));
   const akTotal = () => akAllKeys().reduce((s, v) => s + akActsOf(v).length, 0);
@@ -27,10 +29,13 @@
   {
     const all = except => Object.fromEntries(akAllKeys().filter(v => !except.includes(v)).map(v => [v, akFull(v)]));
     const staff = () => ({ dashboard: { v: true }, qtn: { v: true, a: true, m: true }, so: { v: true, m: true }, pb: { v: true, a: true } });
+    // Sales/Marketing: kelola Master Peserta, Company, Rate, Katalog (Q-06); susun, finalkan, batalkan program (Q-MP-01, Q-PJ-02); Close Program (Q-QTN-09).
+    const sales = () => Object.assign(staff(), { peserta: akFull('peserta'), company: akFull('company'), rate: akFull('rate'), katalog: akFull('katalog'),
+      mprog: akFull('mprog'), quot: akFull('quot'), mpst: akFull('mpst') });
     db.akses[roleIdOf('Direktur')] = all(['akses']);
     db.akses[ADMIN_ID] = all(['actlog']); // Activity Log mengikuti LOG-FR-09; dapat diberikan lewat Role & Permission
-    db.akses[roleIdOf('Sales Public')] = staff();
-    db.akses[roleIdOf('Sales B2B')] = staff();
+    db.akses[roleIdOf('Sales Public')] = sales();
+    db.akses[roleIdOf('Sales B2B')] = sales();
     db.akses[roleIdOf('Trainer')] = staff();
   }
   // Hak user = hak role-nya + Override Permission user itu (FR-65; user_permissions). Override hanya menambah.
@@ -43,10 +48,10 @@
   const viewAkses = () => {
     const roles = db.role;
     const kpi = (l, v, sub) => `<div class="kpi"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="muted">${sub}</div></div>`;
-    return `${pageHead('Role & Permission', 'Role diambil dari <b>Master Role</b>. Atur setiap role: menu apa saja yang bisa dibuka dan apa yang bisa dilakukan di menu itu — <b>View</b> = membuka menu & daftar, <b>Add</b> = tambah / ajukan, <b>Manage</b> = ubah, finalkan, proses approval, <b>Delete</b> = hapus / batalkan / nonaktifkan. Hak tambahan untuk satu user diatur lewat <b>Override Permission</b> di Master User. Hak <b>data</b> (mis. hanya program terkait di Pengajuan Biaya) diatur di modulnya.', 'FR-54 – FR-58')}
+    return `${pageHead('Role & Permission', 'Role diambil dari <b>Master Role</b>. Atur setiap role: menu apa saja yang bisa dibuka dan apa yang bisa dilakukan di menu itu — <b>View</b> = membuka menu & daftar, <b>Add</b> = tambah / ajukan, <b>Manage</b> = ubah, <b>Delete</b> = hapus / batalkan / nonaktifkan, <b>Approve</b> = finalkan program dan proses approval pengajuan. Hak tambahan untuk satu user diatur lewat <b>Override Permission</b> di Master User. Hak <b>data</b> (mis. hanya program terkait di Pengajuan Biaya) diatur di modulnya.', 'FR-54 – FR-58')}
       <div class="kpis" style="margin-bottom:14px">${kpi('Total Role', roles.length, 'dari Master Role')}${kpi('User berakun', db.user.filter(u => u.akun).length, 'tersebar di semua role')}${kpi('Menu diatur', akAllKeys().length, `${akTotal()} hak (menu × aksi)`)}</div>
       <div class="card">${toolbar('Cari nama role…', false)}<div id="list">${listAkses()}</div>
-      <p class="hint" style="padding:0 16px 14px">Tambah, ubah nama, dan hapus role dilakukan di <b>Master Role</b>; role baru belum punya hak sampai diatur di sini. <b>Superadmin</b> dibuat dari awal (bawaan sistem) dan tidak dapat ditambah lagi${q('Q-35', 'Terjawab: Superadmin bawaan sistem; role tanpa user boleh dihapus; hak per user lewat Override Permission di Master User. Masih terbuka: role mana yang menjadi Admin (mockup: role Admin)?')}. Isi awal hak: usulan${q('Q-33', 'Isi awal hak per role sudah sesuai? Aksi cukup View / Add / Manage / Delete atau perlu Approve terpisah?')}.</p></div>`;
+      <p class="hint" style="padding:0 16px 14px">Tambah, ubah nama, dan hapus role dilakukan di <b>Master Role</b>; role baru belum punya hak sampai diatur di sini. <b>Superadmin</b> dibuat dari awal (bawaan sistem) dan tidak dapat ditambah lagi${q('Q-35', 'Terjawab: Superadmin bawaan sistem; role tanpa user boleh dihapus; hak per user lewat Override Permission di Master User. Masih terbuka: role mana yang menjadi Admin (mockup: role Admin)?')}. Isi awal hak: usulan${q('Q-33', 'Terjawab 12-11-2026: perlu hak Approve terpisah. Approve berlaku untuk Finalkan Master Program, Finalkan Penjualan Program, dan Approval Pengajuan. Menu lain yang perlu Approve masih dikonfirmasi.')}.</p></div>`;
   };
   function listAkses() {
     const rows = db.role.filter(r => matches([r.nama]));
@@ -62,7 +67,7 @@
         const codes = akAllKeys().flatMap(v => akActsOf(v).filter(k => ((db.akses[x.id] || {})[v] || {})[k]).map(k => akCode(v, k)));
         return codes.length ? `<div class="chips">${codes.slice(0, 3).map(c => `<span class="chip code">${esc(c)}</span>`).join('')}${codes.length > 3 ? `<span class="chip">+${codes.length - 3} lagi</span>` : ''}</div>` : '<span class="muted">—</span>';
       } },
-      { label: 'Action', cls: 'act nowrap', render: x => `<button class="btn btn-ghost sm" data-act="ak-edit" data-role="${x.id}">${x.sistem ? 'Lihat' : 'Atur Akses'}</button>` }
+      { label: 'Action', cls: 'act nowrap', render: x => gearMenu({ id: x.id }, [['ak-edit', x.sistem ? 'Lihat' : 'Atur Akses']]) }
     ]);
   }
   // Modal Edit Role & Permissions (video): matrix per menu, dikelompokkan per modul; Pilih Semua Modul / Kosongkan / cari.
@@ -137,4 +142,11 @@
       }
     });
   }
+  // ---------- Tutorial highlight driver.js (permintaan BA 12-11-2026; menggantikan callout Panduan) ----------
+  // Dimulai dari tombol Tutorial di atas kartu tabel. Helper tS/tRows/tKol/tGear/tAdd ada di core.js; langkah yang elemennya tidak ada dilewati.
 
+  TOUR.akses = () => [
+    tS(null, 'Role & Permission', 'Mengatur menu dan aksi untuk setiap role: <b>View</b> (buka menu), <b>Add</b> (tambah / ajukan), <b>Manage</b> (ubah, finalkan, proses), <b>Delete</b> (hapus / batalkan).'),
+    tS('#view .kpis', 'Ringkasan', 'Jumlah role, user berakun, dan menu yang diatur.'),
+    tS(tGear(), 'Aksi: Atur Akses', 'Centang hak per menu untuk role itu. Role Superadmin hanya bisa dilihat. Hak tambahan satu orang diatur lewat Override Permission di Master User.')
+  ];

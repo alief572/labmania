@@ -13,7 +13,9 @@
        Surat konfirmasi bertanda tangan basah (input/Master - Buat Program/2026-11-10-surat-konfirmasi-ttd-basah/): calon peserta mencetak surat
        yang sudah terisi datanya, menandatangani, lalu mengunggah hasil foto/pindai. Unggahan wajib.
        B2B (input/Master - Buat Program/2026-11-10-b2b-paket-25-konfirmasi-company/): link diisi satu kali oleh PIC company
-       (data company/PIC + daftar peserta), surat konfirmasi atas nama company + lampiran daftar peserta. -->
+       (data company/PIC + daftar peserta), surat konfirmasi atas nama company + lampiran daftar peserta.
+       Reschedule (input/Master - Buat Program/2026-11-12-jawaban-reschedule-refund-asisten/): link lama ditutup; link baru meminta
+       peserta terdaftar konfirmasi ulang: pindah jadwal (ikut jadwal baru, surat bertanggal baru), lalu batal ikut (belum bayar) atau refund (sudah bayar). -->
   <header class="konf-top"><span class="konf-brand">LabMania</span><span class="konf-sub">Konfirmasi Kehadiran Peserta</span></header>
   <main class="konf-main" id="konf" aria-live="polite"><p class="muted">Memuat formulir…</p></main>
   <footer class="konf-foot">PT LabMania Indonesia Jaya · Mockup to be, data contoh</footer>
@@ -43,11 +45,26 @@
     const SURAT_TIPE = ['application/pdf', 'image/jpeg', 'image/png'], SURAT_MAX = 5 * 1024 * 1024, SIMPAN_MAX = 1.5 * 1024 * 1024;
     const kb = n => n >= 1048576 ? `${(n / 1048576).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
     const lewat = cfg => !!cfg.berlaku && hariIni > cfg.berlaku;
-    const sisa = cfg => { const list = lsGet(kunci.isian) || []; return Math.max(cfg.kuota - cfg.terisi - list.filter(x => !x.imp).length, 0); };
+    const sisa = cfg => { const list = lsGet(kunci.isian) || []; return Math.max(cfg.kuota - cfg.terisi - list.filter(x => !x.imp && !String(x.tipe || '').startsWith('ulang')).length, 0); };
     const head = (cfg, n) => `<div class="pub-head"><div><b>${esc(cfg.judul)}</b><small>${esc(cfg.jadwal)}${cfg.waktu ? ` · ${esc(cfg.waktu)}` : ''} · ${esc(cfg.lokasi || 'lokasi menyusul')}</small>
       <small>Quotation ${esc(cfg.nomor)} · ${esc(cfg.kepada)}${cfg.berlaku ? ` · formulir berlaku s.d. ${esc(tglId(cfg.berlaku))}` : ''}</small></div>${n !== undefined ? `<span class="konf-sisa"><b>${n}</b> kursi tersisa</span>` : ''}</div>`;
 
+    let mode = ''; // '' = pilih, 'ulang' = konfirmasi ulang, 'baru' = pendaftar baru
     function form(cfg) {
+      if (cfg.diganti) { pesan('Link ini sudah diganti', '<p><b>Jadwal program berubah.</b> Link ini tidak dipakai lagi. Minta link terbaru ke Sales LabMania.</p>'); return; }
+      const ulang = cfg.ulang && cfg.ulang.buka ? sisaUlang(cfg) : [];
+      if (ulang.length && mode !== 'baru') {
+        if (cfg.b2b) { formUlangB2b(cfg, ulang); return; }
+        const daftarBuka = cfg.buka && !lewat(cfg) && sisa(cfg) > 0;
+        if (!daftarBuka || mode === 'ulang') { formUlang(cfg, ulang); return; }
+        box.innerHTML = `<h1>Konfirmasi Kehadiran</h1>${head(cfg)}${bannerUlang(cfg)}
+          <div class="konf-pilih"><button type="button" class="btn btn-primary" id="m-ulang">Saya sudah terdaftar: konfirmasi ulang</button>
+          <button type="button" class="btn btn-outline" id="m-baru">Saya pendaftar baru</button></div>`;
+        $('#m-ulang').addEventListener('click', () => { mode = 'ulang'; form(cfg); });
+        $('#m-baru').addEventListener('click', () => { mode = 'baru'; form(cfg); });
+        $('#m-ulang').focus();
+        return;
+      }
       if (cfg.b2b) { formB2b(cfg); return; }
       const n = sisa(cfg);
       if (!cfg.buka || lewat(cfg) || n <= 0) {
@@ -287,6 +304,124 @@
       rd.onload = () => simpanB2b(Object.assign({ url: rd.result }, surat));
       rd.onerror = () => simpanB2b(surat);
       rd.readAsDataURL(file);
+    }
+
+    // ---------- Konfirmasi ulang setelah reschedule (QTN-FR-35) ----------
+    const sudahUlang = cfg => (lsGet(kunci.isian) || []).filter(x => (x.tipe === 'ulang' || x.tipe === 'ulang-b2b') && x.rev === cfg.ulang.rev && !x.imp);
+    const sisaUlang = cfg => { const s = sudahUlang(cfg); if (s.some(x => x.tipe === 'ulang-b2b')) return []; return cfg.ulang.peserta.filter(p => !s.some(x => x.ps === p.id)); };
+    const bannerUlang = cfg => `<div class="konf-ubah" role="note"><p><b>Jadwal program berubah.</b></p><p>Jadwal lama <s>${esc(cfg.ulang.lama)}</s>, jadwal baru <b>${esc(cfg.ulang.baru)}</b>.</p>
+      <p>Peserta yang sudah terdaftar diminta konfirmasi ulang: ikut jadwal baru dengan surat konfirmasi bertanggal baru, atau beri tahu bila tidak bisa ikut.</p></div>`;
+    const kirimUlang = (cfg, isi, selesai) => {
+      const list = lsGet(kunci.isian) || [];
+      list.push(Object.assign({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, tgl: stamp(), rev: cfg.ulang.rev }, isi));
+      if (!lsSet(kunci.isian, list) && isi.surat && isi.surat.url) { delete isi.surat.url; }
+      if (!lsSet(kunci.isian, list)) { pesan('Gagal mengirim', '<p>Browser menolak menyimpan data. Coba lagi, atau sampaikan jawaban Anda ke Sales LabMania.</p>'); return; }
+      selesai();
+    };
+    const bacaSurat = (file, lanjut) => {
+      const surat = { nama: file.name, ukuran: file.size, tipe: file.type };
+      if (file.size > SIMPAN_MAX) { lanjut(surat); return; }
+      const rd = new FileReader(); rd.onload = () => lanjut(Object.assign({ url: rd.result }, surat)); rd.onerror = () => lanjut(surat); rd.readAsDataURL(file);
+    };
+    // Opsi menurut status bayar (input/Master - Buat Program/2026-11-12-pindah-jadwal-batal-invoice/):
+    // sudah bayar = Pindah jadwal atau Refund; belum bayar = Pindah jadwal atau Batal ikut. Pindah jadwal = ikut jadwal baru program ini.
+    const OPSI = { ikut: 'Pindah jadwal', batal: 'Batal ikut', refund: 'Refund' };
+    const opsiHtml = bayar => `<div class="field" role="radiogroup" aria-label="Jawaban">
+        <label class="chk"><input type="radio" name="jawab" value="ikut"> <span><b>${OPSI.ikut}</b> <span class="muted">ikut program ini di jadwal baru</span></span></label>
+        <label class="chk" id="u-batal" ${bayar ? 'hidden' : ''}><input type="radio" name="jawab" value="batal"> <span><b>${OPSI.batal}</b> <span class="muted">tidak ikut program ini; tagihan dibatalkan</span></span></label>
+        <label class="chk" id="u-refund" ${bayar ? '' : 'hidden'}><input type="radio" name="jawab" value="refund"> <span><b>${OPSI.refund}</b> <span class="muted">tidak ikut; pembayaran Anda dikembalikan sesuai syarat &amp; ketentuan</span></span></label></div>`;
+    const selesaiUlang = (cfg, siapa, jawab, surat, extra) => {
+      box.innerHTML = `<div class="konf-ok"><span class="konf-ok-mark" aria-hidden="true">✓</span><h1>Terima kasih${siapa ? `, ${esc(siapa)}` : ''}</h1></div>${head(cfg)}
+        <div class="pub-closed"><p><b>Jawaban Anda sudah kami terima: ${esc(OPSI[jawab])}.</b></p>
+        <p>${jawab === 'ikut' ? `${extra || ''}Surat <b>${esc(surat.nama)}</b> masuk ke quotation ${esc(cfg.nomor)}.` : `Sales LabMania${cfg.sales ? ` (${esc(cfg.sales)})` : ''} akan menghubungi Anda${jawab === 'refund' ? ' untuk proses refund' : ''}.`}</p></div>
+        ${!cfg.b2b && sisaUlang(cfg).length ? '<p class="konf-lagi"><button type="button" class="btn btn-outline" id="konf-lagi">Konfirmasi untuk peserta lain</button></p>' : ''}
+        <p class="hint">Mockup: kembali ke tab Labmania untuk melihat jawaban ini di tab Data Peserta.</p>`;
+      const lagi = $('#konf-lagi'); if (lagi) { lagi.addEventListener('click', () => form(lsGet(kunci.link) || cfg)); lagi.focus(); }
+    };
+    function formUlang(cfg, ulang) {
+      box.innerHTML = `<h1>Konfirmasi ulang jadwal baru</h1>${head(cfg)}${bannerUlang(cfg)}
+        <form id="konf-form" novalidate>
+          <section class="konf-sec"><h2>1. Nama Anda</h2>
+            <div class="field"><label for="u-ps">Pilih nama Anda <span class="req" aria-hidden="true">*</span></label>
+              <select class="input" id="u-ps" name="ps" required aria-required="true"><option value="">Pilih nama</option>${ulang.map(p => `<option value="${p.id}">${esc(p.nama)}</option>`).join('')}</select>
+              <span class="hint">Hanya nama yang belum konfirmasi ulang yang tampil.</span></div></section>
+          <section class="konf-sec"><h2>2. Jawaban Anda</h2>${opsiHtml(false)}
+            <div id="u-ikut" hidden>
+              <ol class="konf-langkah"><li>Cetak surat konfirmasi bertanggal baru. Data Anda dari pendaftaran awal sudah tercetak.
+                <div><button type="button" class="btn btn-outline konf-cetak-btn" id="konf-cetak-btn">Cetak surat konfirmasi</button></div></li>
+                <li>Tanda tangani dengan pena, foto atau pindai, lalu unggah.</li></ol>
+              <div class="field"><label for="f-surat">Surat konfirmasi baru yang sudah ditandatangani <span class="req" aria-hidden="true">*</span></label>
+                <input class="input konf-file" id="f-surat" name="surat" type="file" accept="application/pdf,image/jpeg,image/png" aria-describedby="h-surat">
+                <span class="hint" id="h-surat">PDF, JPG, atau PNG, maksimal 5 MB.</span></div></div>
+            <div id="u-tidak" hidden>
+              <div class="field"><label for="u-cat">Catatan untuk Sales (opsional)</label><textarea class="input" id="u-cat" name="catatan" rows="2" maxlength="500" placeholder="mis. bentrok dengan jadwal audit"></textarea></div></div>
+          </section>
+          <button type="submit" class="btn btn-primary konf-kirim">Kirim jawaban</button>
+        </form>`;
+      const f = $('#konf-form');
+      const pilihPs = () => ulang.find(x => String(x.id) === f.elements.ps.value);
+      f.addEventListener('change', e => {
+        if (e.target.name === 'ps') { const p = pilihPs(), bayar = !!(p && p.bayar); $('#u-refund').hidden = !bayar; $('#u-batal').hidden = bayar;
+          f.querySelectorAll('[name=jawab]').forEach(x => { if (x.closest('label').hidden) x.checked = false; }); }
+        if (e.target.name === 'jawab' || e.target.name === 'ps') { const j = (f.querySelector('[name=jawab]:checked') || {}).value; $('#u-ikut').hidden = j !== 'ikut'; $('#u-tidak').hidden = !j || j === 'ikut'; }
+      });
+      $('#konf-cetak-btn').addEventListener('click', () => {
+        bersih(f); const p = pilihPs();
+        if (!p) { salah(f.elements.ps, 'Pilih nama Anda dulu'); f.elements.ps.focus(); return; }
+        $('#konf-cetak').innerHTML = cfg.surat.replace(/\[\[(\d+|tgl)\]\]/g, (m, x) => x === 'tgl' ? tglPanjang(hariIni) : esc((key => p.data[key] || (key === 'nama' ? p.nama : ''))((cfg.isian[+x] || {}).key)));
+        window.print();
+      });
+      f.addEventListener('submit', e => {
+        e.preventDefault(); bersih(f);
+        const p = pilihPs(), jawab = (f.querySelector('[name=jawab]:checked') || {}).value;
+        let ok = true;
+        if (!p) ok = salah(f.elements.ps, 'Pilih nama Anda');
+        if (!jawab) ok = salah(f.querySelector('[name=jawab]'), 'Pilih jawaban');
+        if (jawab === 'ikut' && !cekSurat(f.elements.surat)) ok = false;
+        if (!ok) { const x = f.querySelector('.has-err input, .has-err select'); if (x) x.focus(); return; }
+        const done = surat => kirimUlang(cfg, { tipe: 'ulang', ps: p.id, keputusan: jawab, catatan: f.elements.catatan.value.trim(), surat }, () => selesaiUlang(cfg, p.nama, jawab, surat));
+        if (jawab === 'ikut') bacaSurat(f.elements.surat.files[0], done); else done(null);
+      });
+      f.elements.ps.focus();
+    }
+    function formUlangB2b(cfg, ulang) {
+      box.innerHTML = `<h1>Konfirmasi ulang jadwal baru</h1>${head(cfg)}${bannerUlang(cfg)}
+        <p class="konf-lead">Diisi <b>satu kali oleh PIC perusahaan</b>.</p>
+        <form id="konf-form" novalidate>
+          <section class="konf-sec"><h2>1. Jawaban perusahaan</h2>${opsiHtml(cfg.ulang.bayarCo)}</section>
+          <section class="konf-sec" id="u-ikut" hidden><h2>2. Peserta yang tetap ikut</h2>
+            <p class="konf-req">Hapus centang peserta yang tidak ikut. Minimal ${B2B_MIN} peserta. Peserta baru tidak dapat ditambah di sini; hubungi Sales.</p>
+            <div class="ps-list field">${ulang.map(p => `<label class="chk"><input type="checkbox" name="ikut" value="${p.id}" checked> ${esc(p.nama)}</label>`).join('')}</div>
+            <h2 class="gap-t">3. Surat konfirmasi perusahaan bertanggal baru</h2>
+            <div><button type="button" class="btn btn-outline konf-cetak-btn" id="konf-cetak-btn">Cetak surat konfirmasi</button></div>
+            <div class="field"><label for="f-surat">Surat yang sudah ditandatangani dan dicap <span class="req" aria-hidden="true">*</span></label>
+              <input class="input konf-file" id="f-surat" name="surat" type="file" accept="application/pdf,image/jpeg,image/png" aria-describedby="h-surat">
+              <span class="hint" id="h-surat">PDF, JPG, atau PNG, maksimal 5 MB.</span></div></section>
+          <section class="konf-sec" id="u-tidak" hidden><h2>2. Catatan</h2>
+            <div class="field"><label for="u-cat">Catatan untuk Sales (opsional)</label><textarea class="input" id="u-cat" name="catatan" rows="2" maxlength="500"></textarea></div></section>
+          <button type="submit" class="btn btn-primary konf-kirim">Kirim jawaban</button>
+        </form>`;
+      const f = $('#konf-form'), c = cfg.company || {};
+      f.addEventListener('change', e => { if (e.target.name === 'jawab') { $('#u-ikut').hidden = e.target.value !== 'ikut'; $('#u-tidak').hidden = e.target.value === 'ikut'; } });
+      const dipilih = () => [...f.querySelectorAll('[name=ikut]:checked')].map(x => +x.value);
+      $('#konf-cetak-btn').addEventListener('click', () => {
+        const kol = cfg.kolom || [], ps = ulang.filter(p => dipilih().includes(p.id));
+        const isi = ps.map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.nama)}</td>${kol.map(x => `<td>${esc(p.data[x.key] || '')}</td>`).join('')}</tr>`).join('');
+        $('#konf-cetak').innerHTML = cfg.surat.replace(/\[\[(\w+)\]\]/g, (m, x) => x === 'tgl' ? tglPanjang(hariIni) : x === 'rows' ? isi : x === 'n' ? String(ps.length) : x === 'co' ? esc(c.nama) : esc(c[x] || ''));
+        window.print();
+      });
+      f.addEventListener('submit', e => {
+        e.preventDefault(); bersih(f);
+        const jawab = (f.querySelector('[name=jawab]:checked') || {}).value, ikut = dipilih();
+        let ok = true;
+        if (!jawab) ok = salah(f.querySelector('[name=jawab]'), 'Pilih jawaban');
+        if (jawab === 'ikut' && ikut.length < B2B_MIN) ok = salah(f.querySelector('[name=ikut]'), `Minimal ${B2B_MIN} peserta (baru ${ikut.length})`);
+        if (jawab === 'ikut' && !cekSurat(f.elements.surat)) ok = false;
+        if (!ok) { const x = f.querySelector('.has-err input'); if (x) x.focus(); return; }
+        const done = surat => kirimUlang(cfg, { tipe: 'ulang-b2b', keputusan: jawab, ikut: jawab === 'ikut' ? ikut : [], catatan: f.elements.catatan.value.trim(), surat }, () => selesaiUlang(cfg, '', jawab, surat, `${ikut.length} peserta tetap ikut jadwal baru. `));
+        if (jawab === 'ikut') bacaSurat(f.elements.surat.files[0], done); else done(null);
+      });
+      f.querySelector('[name=jawab]').focus();
     }
 
     if (!token) { pesan('Link tidak lengkap', '<p>Alamat link tidak memuat kode quotation. Buka link persis seperti yang dikirim Sales LabMania.</p>'); return; }

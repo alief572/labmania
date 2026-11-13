@@ -63,8 +63,8 @@
       matches([r.nomor, r.judul, ...ATTRS.map(a => (findRec(a.key, r[a.field]) || {}).nama)]));
     return listBlock(rows, [
       NO_COL,
-      { label: 'Nomor' + Q01, cls: 'nowrap', render: r => `<span class="code">${esc(r.nomor)}</span>` },
-      { label: 'Judul Topik', cls: 'title', render: r => esc(r.judul) },
+      // Tabel ringkas (12-11-2026): nomor di atas judul.
+      { label: 'Product' + Q01, cls: 'title', render: r => `<span class="code">${esc(r.nomor)}</span><br>${esc(r.judul)}` },
       ...ATTRS.map(a => ({ label: a.label, render: r => attrCell(a, r[a.field]) })),
       { label: 'Status', cls: 'nowrap', render: r => badge(r.aktif) },
       { label: 'Action', cls: 'act', render: r => gearMenu(r, [['paket-edit', 'Edit'], toggleItem(r)]) }
@@ -156,7 +156,7 @@
         if (!v.judul) ok = invalid(f.judul, 'Judul wajib diisi');
         ATTRS.forEach(a => { if (!v[a.field]) ok = invalid(f[a.field], `${a.label} wajib dipilih`); });
         if (!ok) return false;
-        const k = comboKey(v), dup = db.paket.find(p => p !== rec && comboKey(p) === k);
+        const k = comboKey(v), dup = rec.aktif && db.paket.find(p => p !== rec && p.aktif && comboKey(p) === k); // hanya Product aktif (Q-17)
         if (dup) { $('#pk-err').innerHTML = `<div class="err"><i>!</i>Kombinasi sama persis dengan paket ${esc(dup.nomor)} — ${esc(dup.judul)}</div>`; return false; }
         Object.assign(rec, v);
         toast(`Paket ${rec.nomor} diperbarui`);
@@ -189,7 +189,7 @@
         </table></div>
         <button type="button" class="btn btn-outline" data-act="row-add">+ Tambah Baris</button>
         <p class="hint">Antar paket minimal satu dari empat atribut harus berbeda. Hanya data master berstatus Aktif yang dapat dipilih.
-          ${q('Q-17', 'Apakah paket nonaktif ikut dicek keunikannya? Mockup ini mengecek semua paket, aktif maupun nonaktif.')}</p>
+          ${q('Q-17', 'Terjawab 12-11-2026: cek kombinasi ganda hanya terhadap Product aktif. Product nonaktif tidak dihitung; mengaktifkan kembali ditolak bila kombinasinya sudah dipakai Product aktif lain.')}</p>
       </div>
       <div class="form-actions">
         <button type="button" class="btn btn-ghost" data-act="combine-cancel">Batal</button>
@@ -208,7 +208,7 @@
       const missing = ATTRS.filter(a => !r[a.field]).map(a => a.label);
       if (missing.length) { f.errors[i] = `Pilih ${missing.join(', ')}`; return; }
       const k = comboKey(r);
-      const dup = db.paket.find(p => comboKey(p) === k);
+      const dup = db.paket.find(p => p.aktif && comboKey(p) === k); // Product nonaktif tidak dihitung (Q-17)
       if (dup) f.errors[i] = `Kombinasi sama persis dengan paket ${dup.nomor} — ${dup.judul}`;
       else if (k in seen) f.errors[i] = `Kombinasi sama persis dengan baris ${seen[k] + 1}`;
       else seen[k] = i;
@@ -307,7 +307,7 @@
     const start = lingkupOf(p).length ? lingkupOf(p) : [''];
     openModal({
       title: `Lingkup: ${esc(p.judul)}`, wide: true,
-      body: `<p class="hint top"><span class="code">${esc(p.nomor)}</span> · ${ATTRS.map(a => esc(ktName(a.key, p[a.field]))).join(' · ')}. Lingkup tampil di kartu Katalog Produk dan di PDF katalog. Satu baris untuk satu item; tekan Enter untuk menambah baris.${q('Q-38', 'Usulan: Lingkup diisi dari Katalog Produk, maks. 20 item × 200 karakter. Perlu juga di form Product Combine, dan ikut tampil di Penawaran atau Master Program?')}</p>
+      body: `<p class="hint top"><span class="code">${esc(p.nomor)}</span> · ${ATTRS.map(a => esc(ktName(a.key, p[a.field]))).join(' · ')}. Lingkup tampil di kartu Katalog Produk dan di PDF katalog. Satu baris untuk satu item; tekan Enter untuk menambah baris.${q('Q-38', 'Terjawab 12-11-2026: Lingkup boleh diisi dari form lain juga, dan diubah oleh role yang punya akses ke master (diatur di Role & Permission). Batas 20 item × 200 karakter belum dikonfirmasi.')}</p>
         <ol class="ling-list" id="lk-list"></ol>
         <div class="ling-tools"><button type="button" class="btn btn-outline sm" data-lk="add">+ Tambah item lingkup</button><span class="muted" id="lk-count"></span></div>`,
       saveLabel: 'Simpan lingkup',
@@ -447,13 +447,13 @@
   const npwpInput = (name, value, lock) => `<input class="input" name="${name}" inputmode="numeric" value="${esc(value)}" placeholder="15 atau 16 digit" ${lock ? 'readonly' : ''}><span class="hint">${lock ? 'Mengikuti NPWP Instansi company' : 'Terisi NPWP company bila Company dipilih'}</span>`;
 
   // ---------- Master Peserta (FR-15 – FR-17) ----------
-  const Q16 = q('Q-16', 'Apakah Peserta dan Company juga hanya boleh dinonaktifkan? Mockup mengikuti mockup klien: Edit/Delete.');
+  const Q16 = q('Q-16', 'Terjawab 12-11-2026: Peserta dan Company boleh dihapus. Usulan analis: hanya bila belum dipakai quotation, Penjualan Program, atau peserta; yang sudah dipakai cukup dinonaktifkan.');
 
   // To be (input/Master - Buat Program/2026-11-11-peserta-deal-ke-master-peserta/): peserta Deal quotation masuk ke sini
   // saat Deal. Field wajib yang tidak ada di link boleh kosong sampai dilengkapi admin lewat Edit.
   const PS_WAJIB = { nama: 'Nama Peserta', gender: 'Gender', instansi: 'Instansi/Perusahaan', bidang: 'Bidang', provinsi: 'Provinsi', kota: 'Kota/Kabupaten', telp: 'No Telp/WhatsApp', email: 'Email' };
   const psKurang = r => Object.keys(PS_WAJIB).filter(k => !r[k]).map(k => PS_WAJIB[k]);
-  const QQTN23 = q('Q-QTN-23', 'Usulan: pencocokan NIK, lalu email, lalu No. WhatsApp. Daftar B2B yang hanya berisi nama selalu menjadi peserta baru, sehingga bisa tercatat dua kali. Perlu fitur gabungkan peserta?');
+  const QQTN23 = q('Q-QTN-23', 'Terjawab 12-11-2026: NIK tidak wajib; NPWP opsional kecuali NPWP Company. Masih terbuka: kunci pencocokan utama (usulan: email, lalu No. WhatsApp, lalu NIK bila ada) dan fitur gabungkan peserta.');
   const viewPeserta = () => `${pageHead('Master Peserta', 'Data peserta pelatihan/sertifikasi, dikelompokkan menurut Jenis Bidang. Peserta yang Deal di quotation masuk otomatis saat Deal; yang bertanda Belum lengkap dilengkapi lewat Edit.', 'FR-15 · FR-16 · FR-17',
     '<button class="btn btn-accent" data-act="peserta-add">+ Tambah Peserta</button>')}
     <div class="card">${toolbar('Cari kode, nama, instansi, NIK, atau bidang…', false,
@@ -468,7 +468,7 @@
       { label: 'Nama Peserta' + QQTN23, render: r => { const kurang = psKurang(r);
         return `${esc(r.nama)}${kurang.length ? ` <span class="badge st-ps-menunggu" title="Belum diisi: ${esc(kurang.join(', '))}">Belum lengkap</span>` : ''}<br><span class="muted">${esc(r.instansi || '—')}</span>${r.asal ? `<br><span class="muted">Dari Deal ${esc(r.asal)}</span>` : ''}`; } },
       { label: 'Bidang', render: r => { const b = findRec('jenisBidang', r.bidang); return b ? esc(b.nama) + (b.aktif ? '' : ' <span class="muted">(nonaktif)</span>') : '<span class="muted">Belum diisi</span>'; } },
-      { label: 'Lokasi' + q('Q-07b', 'Kolom Lokasi menampilkan Provinsi, Kota, atau keduanya? Mockup menampilkan keduanya.'), render: r => r.provinsi ? `${esc(r.kota || '—')}<br><span class="muted">${esc(r.provinsi)}</span>` : '<span class="muted">Belum diisi</span>' },
+      { label: 'Lokasi' + q('Q-07b', 'Terjawab 12-11-2026: Lokasi ditampilkan; sumber data provinsi & kota ditentukan tim developer. Mockup menampilkan provinsi dan kota.'), render: r => r.provinsi ? `${esc(r.kota || '—')}<br><span class="muted">${esc(r.provinsi)}</span>` : '<span class="muted">Belum diisi</span>' },
       { label: 'Action' + Q16, cls: 'act', render: r => gearMenu(r, [['peserta-edit', 'Edit'], ['peserta-del', 'Delete', true]]) }
     ]);
   }
@@ -493,7 +493,7 @@
         ${field('Instansi/Perusahaan' + req, `<input class="input" name="instansi" value="${esc(r.instansi)}" maxlength="150" ${r.company ? 'readonly' : ''}><span class="hint">Terisi nama Company bila Company dipilih</span>`)}
         ${field('NPWP Instansi <span class="muted">(opsional)</span>', npwpInput('npwp', pesertaNpwp(r), !!r.company), '', 'span2')}
         ${field('Bidang' + req, `<select class="input" name="bidang"><option value="">— Pilih Jenis Bidang —</option>${bidangOpts}</select>`)}
-        ${field('Lokasi (Provinsi)' + req + q('Q-07b', 'Sumber data provinsi & kota belum ditetapkan. Data di mockup hanya contoh.'), `<select class="input" name="provinsi"><option value="">— Pilih Provinsi —</option>${provOptions(r.provinsi)}</select>`)}
+        ${field('Lokasi (Provinsi)' + req + q('Q-07b', 'Terjawab 12-11-2026: Lokasi ditampilkan; sumber data provinsi & kota ditentukan tim developer. Mockup menampilkan provinsi dan kota.'), `<select class="input" name="provinsi"><option value="">— Pilih Provinsi —</option>${provOptions(r.provinsi)}</select>`)}
         ${field('Kota/Kabupaten' + req, `<select class="input" name="kota" ${r.provinsi ? '' : 'disabled'}>${kotaOptions(r.provinsi, r.kota)}</select><span class="hint">Tersaring menurut provinsi</span>`)}
         ${field('No Telp/WhatsApp' + req, `<input class="input" name="telp" inputmode="tel" value="${esc(r.telp)}" placeholder="08xxxxxxxxxx">`)}
         ${field('Email' + req, `<input class="input" name="email" type="email" value="${esc(r.email)}" placeholder="nama@domain.com">`)}
@@ -567,7 +567,7 @@
         ${field('Jenis Instansi' + req, `<select class="input" name="jenis"><option value="">— Pilih —</option>${opts(JENIS_INSTANSI, r.jenis)}</select>`)}
         ${sec('2 · Alamat')}
         ${field('Alamat Lengkap' + req, `<textarea class="input" name="alamat" rows="2" maxlength="255">${esc(r.alamat)}</textarea>`, '', 'span2')}
-        ${field('Provinsi' + req + q('Q-07b', 'Sumber data provinsi & kota belum ditetapkan. Data di mockup hanya contoh.'), `<select class="input" name="provinsi"><option value="">— Pilih Provinsi —</option>${provOptions(r.provinsi)}</select>`)}
+        ${field('Provinsi' + req + q('Q-07b', 'Terjawab 12-11-2026: Lokasi ditampilkan; sumber data provinsi & kota ditentukan tim developer. Mockup menampilkan provinsi dan kota.'), `<select class="input" name="provinsi"><option value="">— Pilih Provinsi —</option>${provOptions(r.provinsi)}</select>`)}
         ${field('Kota/Kabupaten' + req, `<select class="input" name="kota" ${r.provinsi ? '' : 'disabled'}>${kotaOptions(r.provinsi, r.kota)}</select><span class="hint">Tersaring menurut provinsi</span>`)}
         ${sec('3 · Kontak Kantor')}
         ${field('Telepon Kantor' + req, inp('telp', r.telp, 'inputmode="tel" placeholder="021xxxxxxx"'))}
@@ -578,7 +578,7 @@
         ${field('Telp/WA PIC' + req, inp('picTelp', r.picTelp, 'inputmode="tel" placeholder="08xxxxxxxxxx"'))}
         ${field('Email PIC' + req, inp('picEmail', r.picEmail, 'type="email"'))}
         ${sec('5 · Pajak')}
-        ${field('NPWP Instansi <span class="muted">(opsional)</span>', inp('npwp', r.npwp, 'inputmode="numeric" placeholder="15 atau 16 digit"'))}
+        ${field('NPWP Company' + req, inp('npwp', r.npwp, 'inputmode="numeric" placeholder="15 atau 16 digit"'))}
         ${field('Perlakuan PPN' + req + q('Q-IVC-05', 'Field baru (usulan) dari konsep Invoicing: dipakai invoice untuk perhitungan & jurnal. WAPU biasanya BUMN; Kawasan Berikat tidak bayar PPN.'), `<select class="input" name="ppnPerlakuan">${[['PKP', 'PKP'], ['WAPU', 'WAPU (PPN disetor customer)'], ['KB', 'Kawasan Berikat']].map(([v, l]) => `<option value="${v}" ${(r.ppnPerlakuan || 'PKP') === v ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="hint">Dipakai di Invoice (IVC-FR-04)</span>`)}
       </div>`,
       onMount: bindKota,
@@ -587,14 +587,15 @@
         const v = {};
         keys.forEach(k => { v[k] = f[k].value.trim(); });
         let ok = true;
-        // Semua field wajib kecuali NPWP (FR-31).
+        // Semua field wajib, termasuk NPWP Company (FR-31; input/Master - Buat Program/2026-11-12-jawaban-pertanyaan-terbuka/ butir 41).
         const LBL = { nama: 'Nama Company', jenis: 'Jenis Instansi', alamat: 'Alamat Lengkap', provinsi: 'Provinsi', kota: 'Kota/Kabupaten', telp: 'Telepon Kantor', email: 'Email Kantor', picNama: 'Nama PIC', picJabatan: 'Jabatan PIC', picTelp: 'Telp/WA PIC', picEmail: 'Email PIC' };
         Object.keys(LBL).forEach(k => { if (!v[k]) ok = invalid(f[k], `${LBL[k]} wajib diisi`); });
         if (v.email && !EMAIL_RE.test(v.email)) ok = invalid(f.email, 'Format email tidak valid');
         if (v.picEmail && !EMAIL_RE.test(v.picEmail)) ok = invalid(f.picEmail, 'Format email tidak valid');
         if (v.telp && !telpOk(v.telp)) ok = invalid(f.telp, 'Nomor hanya angka, 9–15 digit');
         if (v.picTelp && !telpOk(v.picTelp)) ok = invalid(f.picTelp, 'Nomor hanya angka, 9–15 digit');
-        if (v.npwp && !npwpOk(v.npwp)) ok = invalid(f.npwp, 'NPWP Instansi 15 atau 16 digit angka');
+        if (!v.npwp) ok = invalid(f.npwp, 'NPWP Company wajib diisi');
+        else if (!npwpOk(v.npwp)) ok = invalid(f.npwp, 'NPWP Company 15 atau 16 digit angka');
         if (!ok) return false;
         if (rec) {
           Object.assign(rec, v);
@@ -847,7 +848,7 @@
     lampiran: { title: 'Lampiran Dokumen', cols: [['dokumen', 'Dokumen / Sertifikat Lampiran', 'wide'], ['tahun', 'Tahun', 'yr'], ['file', 'File', 'file']] }
   };
   const PENDIDIKAN = [['pendSmu', 'SMU/sederajat'], ['pendDiploma', 'Diploma'], ['pendSarjana', 'Sarjana'], ['pendPasca', 'Pascasarjana']];
-  const QTR = q('Q-26', 'Field wajib Master Trainer selain Nama lengkap? Siapa yang mengelola Master Trainer?');
+  const QTR = q('Q-26', 'Terjawab 12-11-2026: seperti saat ini dulu: hanya Nama lengkap yang wajib.');
   const trainerById = id => db.trainer.find(t => t.id === id);
   const trainerDipakai = t => db.quot.filter(x => x.trainer === t.id);
   // Penjualan Program: satu trainer per event (input/Master - Buat Program/2026-10-23-konfirmasi-3-modul/ butir 1); wajib di to be (2026-11-07-surat-kerja-trainer).
@@ -962,7 +963,7 @@
       </tbody></table></div>
       <button type="button" class="btn btn-outline sm" data-q="row-add">+ Tambah Baris</button>
       ${(E.rows && Object.keys(E.rows).some(k => k.startsWith(tab))) ? `<div class="err"><i>!</i>Kolom pertama wajib diisi pada baris yang ditandai.</div>` : ''}
-      ${tab === 'lampiran' ? `<p class="hint">File lampiran PDF/JPG/PNG${q('Q-27', 'Lampiran dokumen perlu file unggahan (ijazah, sertifikat)? Excel hanya berisi nama dokumen & tahun. Usulan: dapat diunggah, opsional.')}.</p>` : ''}`;
+      ${tab === 'lampiran' ? `<p class="hint">File lampiran PDF/JPG/PNG${q('Q-27', 'Terjawab 12-11-2026: seperti saat ini dulu.')}.</p>` : ''}`;
     }
     return `<div class="tabs tr-tabs">${tabs}</div><div class="tr-body">${body}</div>`;
   }
@@ -1163,7 +1164,7 @@
     'Jika sudah mengisi formulir berikut, maka **peserta setuju untuk tidak membatalkan keikutsertaan dalam bentuk apapun.**',
     'Formulir keikutsertaan ini maksimal diserahkan H-14 sebelum kegiatan.',
     'Apabila ada yang ingin didiskusikan, silahkan segera menghubungi ke nomor {telp}'];
-  const QKF = q('Q-31', 'Template default dipilih dari Jenis Produk paket (usulan: Pelatihan → Workshop, Sertifikasi → Training & Sertifikasi). Resertifikasi dipilih manual — perlu atribut produk sendiri?');
+  const QKF = q('Q-31', 'Terjawab 12-11-2026: Resertifikasi tidak dibuatkan Jenis Produk sendiri; template Resertifikasi dipilih manual.');
   const ISIAN_STD = ['nama', 'nik', 'jabatan', 'instansi', 'alamat', 'wa', 'email', 'pengalaman'];
   db.kfTpl = [
     { nama: 'Workshop', kegiatan: 'Workshop', produk: idOf('jenisProduk', 'Pelatihan'), isian: ISIAN_STD,
@@ -1356,4 +1357,79 @@
       }
     });
   }
+  // ---------- Tutorial highlight driver.js (permintaan BA 12-11-2026; menggantikan callout Panduan) ----------
+  // Dimulai dari tombol Tutorial di atas kartu tabel. Helper tS/tRows/tKol/tGear/tAdd ada di core.js; langkah yang elemennya tidak ada dilewati.
 
+  const tMasterNext = (label, view) => ({ popover: { title: 'Langkah berikutnya', description: `Lanjut ke menu <b>${label}</b>.` }, lanjut: { label: `Ke ${label}`, run: () => go(view), ke: view } });
+  TOUR.master = () => [
+    tS(null, (MASTERS[state.view] || {}).title || 'Master', 'Atribut dasar untuk menyusun Product. Diisi sekali di awal oleh <b>Admin</b>, jarang berubah.'),
+    tS('.toolbar', 'Cari dan saring', 'Cari kode atau nama; saring status Aktif / Nonaktif.'),
+    tS(tAdd(), '+ Tambah', 'Menambah satu atribut baru; kode dibuat otomatis.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah nama atau status Aktif / Nonaktif. Data tidak dihapus agar Product lama tetap terbaca.'),
+    tMasterNext('Product', 'paket')
+  ];
+  TOUR.paket = () => [
+    tS(null, 'Product', 'Product = kombinasi <b>Produk, Bidang, Varian, Sertifikat</b>. Product aktif dipilih saat membuat Master Program.'),
+    tS('.toolbar', 'Cari dan saring', 'Saring menurut atribut atau status.'),
+    tS(tKol(tRows()[0], 'Status'), 'Status', 'Product <b>Nonaktif</b> tidak muncul di pilihan Master Program.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah judul atau status Aktif / Nonaktif.'),
+    tS('[data-act="combine-new"]', 'Mulai: + Tambah Product', 'Satu judul dapat menghasilkan beberapa Product sekaligus. Tutorial berlanjut di form.', { lanjut: { label: 'Buka form', run: () => { const b = document.querySelector('[data-act="combine-new"]'); if (b) b.click(); }, ke: 'combine' } })
+  ];
+  TOUR.combine = () => [
+    tS(null, 'Tambah Product', 'Isi judul, lalu susun satu atau lebih kombinasi atribut. Setiap baris tersimpan sebagai satu Product bernomor.'),
+    tS('#cf-judul', 'Judul', 'Judul paket, mis. "Pelatihan ISO/IEC 17025:2017".'),
+    tS('#view .card table', 'Kombinasi atribut', 'Pilih Produk, Bidang, Varian, dan Sertifikat per baris. Kombinasi yang sama tidak boleh dobel.'),
+    tS('[data-act="row-add"]', '+ Tambah Baris', 'Menambah kombinasi lain untuk judul yang sama.'),
+    tS('[data-act="combine-save"]', 'Simpan', 'Menyimpan semua baris sebagai Product baru.'),
+    tMasterNext('Master Program', 'mprog')
+  ];
+  TOUR.katalog = () => [
+    tS(null, 'Katalog Produk', 'Katalog promosi yang tersusun otomatis dari Product aktif.'),
+    tS('.toolbar', 'Saring', 'Pilih Bidang dan Sertifikat yang ingin ditawarkan.'),
+    tS('[data-act="kt-lingkup"]', 'Lingkup', 'Isi butir lingkup tiap paket; tampil di kartu dan PDF katalog.'),
+    tS('[data-act="kt-print"]', 'Cetak Katalog (PDF)', 'Pratinjau katalog sesuai saringan, lalu cetak atau simpan PDF untuk dikirim ke calon customer.')
+  ];
+  TOUR.rate = () => [
+    tS(null, 'Master Rate', 'Item biaya dan <b>Default Cost</b> untuk costing Master Program. Nominal disalin ke program saat item dipilih.'),
+    tS('[data-act="rate-tab"]', 'Fixed Cost / Variable Cost', 'Berpindah daftar item per jenis biaya.'),
+    tS(tAdd(), '+ Tambah', 'Menambah item biaya di tab yang sedang dibuka.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah nama, satuan, Default Cost, atau status Aktif / Nonaktif.')
+  ];
+  TOUR.user = () => [
+    tS(null, 'Master User', 'Data karyawan dan akun login. <b>Role</b> menentukan menu yang bisa dibuka.'),
+    tS('.toolbar', 'Cari dan saring', 'Cari nama atau Employee ID; saring role dan status.'),
+    tS(tAdd(), '+ Tambah User', 'Isi data karyawan, akun login, dan pilih Role. Hak tambahan untuk satu orang diisi di <b>Override Permission</b>.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah data, role, override, atau status aktif.<br><b>Reset Password</b>: buat password baru.')
+  ];
+  TOUR.role = () => [
+    tS(null, 'Master Role', 'Daftar role (mis. Admin, Sales, Keuangan). Hak tiap role diatur di Role & Permission.'),
+    tS(tAdd(), '+ Tambah Role', 'Menambah role sesuai jabatan di Labmania.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah nama.<br><b>Atur Akses</b>: buka pengaturan hak role.<br><b>Hapus</b>: hanya role yang tidak dipakai user.'),
+    tMasterNext('Role & Permission', 'akses')
+  ];
+  TOUR.peserta = () => [
+    tS(null, 'Master Peserta', 'Data peserta. Peserta yang Deal di quotation masuk otomatis.'),
+    tS('.toolbar', 'Cari dan saring', 'Cari nama, kontak, atau instansi; saring menurut Bidang.'),
+    tS(tAdd(), '+ Tambah Peserta', 'Menambah peserta manual bila perlu.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: lengkapi data, terutama yang bertanda <b>Belum lengkap</b>.<br><b>Delete</b>: hapus data yang salah input.')
+  ];
+  TOUR.company = () => [
+    tS(null, 'Master Company', 'Perusahaan customer. Dibutuhkan untuk Penjualan Program B2B dan quotation ke company.'),
+    tS(tAdd(), '+ Tambah Company', 'Tambahkan company sebelum membuat Penjualan Program B2B; hanya company aktif yang bisa dipilih.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah data, PIC, atau status aktif.<br><b>Delete</b>: hapus data yang salah input.')
+  ];
+  TOUR.trainer = () => [
+    tS(null, 'Master Trainer', 'Data trainer (format CV). Trainer aktif wajib dipilih di Penjualan Program dan menerima Surat Tugas.'),
+    tS(tAdd(), '+ Tambah Trainer', 'Isi data diri, pendidikan, dan keahlian.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah data atau status aktif.<br><b>Lihat CV</b>: CV trainer siap cetak.')
+  ];
+  TOUR.ketQtn = () => [
+    tS(null, 'Template Keterangan Quotation', 'Teks default blok Keterangan di Penawaran.'),
+    tS(tAdd(), '+ Tambah Butir', 'Menambah butir per kategori. Butir <b>Default</b> otomatis tersalin ke quotation baru.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah teks, kategori, atau status Default. Perubahan di quotation tidak mengubah template ini.')
+  ];
+  TOUR.kfTpl = () => [
+    tS(null, 'Template Formulir Konfirmasi', 'Formulir yang diisi calon peserta lewat link quotation.'),
+    tS(tAdd(), '+ Tambah Template', 'Menyusun isian dan kalimat pernyataan.'),
+    tS(tGear(), 'Aksi', '<b>Edit</b>: ubah isian dan pernyataan.<br><b>Lihat contoh</b>: contoh formulir terisi. Template dipilih otomatis dari Jenis Produk.')
+  ];

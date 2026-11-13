@@ -40,9 +40,59 @@
   const PJ_PREFIX = { public: 'PJP', b2b: 'PJB' };
 
   const q = (id, text) => `<span class="q" title="${esc(text)}">${id}</span>`;
-  const Q01 = q('Q-01', 'Format penomoran kode menunggu standar dari Labmania. Contoh di mockup: PREFIX-001.');
+  const Q01 = q('Q-01', 'Terjawab 12-11-2026: kode master tidak direset tiap tahun karena datanya jarang berubah. Prefix dan jumlah digit masih dikonfirmasi; mockup memakai PREFIX-001.');
 
   // ---------- Master config ----------
+  // Tutorial highlight driver.js (12-11-2026). TOUR.<kunci> = fungsi yang mengembalikan langkah. Dimulai hanya dari tombol
+  // Tutorial di atas kartu tabel (tourBtn), yang tampil di halaman yang punya tutorial. Langkah dengan `lanjut` membuka halaman
+  // berikutnya (mis. form) lalu meneruskan tutorial di sana. Butuh koneksi untuk memuat driver.js dari CDN.
+  const TOUR = {};
+  let tourDrv = null;
+  function tourStart(key) {
+    const lib = window.driver && window.driver.js && window.driver.js.driver;
+    if (!key || !TOUR[key]) return;
+    if (!lib) { toast('Tutorial belum termuat. Periksa koneksi internet, lalu muat ulang halaman.', 'warn'); return; }
+    if (tourDrv) tourDrv.destroy();
+    // Langkah tanpa elemen = popover di tengah. Langkah yang elemennya tidak ada atau tersembunyi dilewati.
+    const steps = TOUR[key]().filter(Boolean).map(s => {
+      if ('element' in s) {
+        const el = typeof s.element === 'string' ? document.querySelector(s.element) : s.element;
+        if (!el || !el.getClientRects().length) return null;
+        s = Object.assign({}, s, { element: el });
+      }
+      if (!s.lanjut) return s;
+      const l = s.lanjut, go2 = () => { tourDrv.destroy(); l.run(); if (l.ke) setTimeout(() => tourStart(l.ke), 200); };
+      return Object.assign({}, s, { popover: Object.assign({}, s.popover, { nextBtnText: `${l.label} →`, doneBtnText: `${l.label} →`, onNextClick: go2 }) });
+    }).filter(Boolean);
+    tourDrv = lib({ showProgress: true, progressText: '{{current}} dari {{total}}', nextBtnText: 'Lanjut', prevBtnText: 'Kembali', doneBtnText: 'Selesai',
+      popoverClass: 'lm-tour', overlayOpacity: 0.55, stagePadding: 6, stageRadius: 8, steps, onDestroyed: () => { tourDrv = null; } });
+    tourDrv.drive();
+  }
+  // Helper penyusun langkah (dipakai semua modul).
+  const tS = (element, title, description, extra) => Object.assign(element === null ? {} : { element }, { popover: { title, description } }, extra || {});
+  const tRows = () => [...document.querySelectorAll('#list tbody tr')].filter(tr => !tr.querySelector('td.empty'));
+  const tKol = (tr, label) => { if (!tr) return undefined; const i = [...document.querySelectorAll('#list thead th')].findIndex(th => th.textContent.trim().startsWith(label)); return i < 0 ? undefined : tr.children[i]; };
+  const tGear = pred => { const tr = tRows().find(pred || (() => true)); return tr ? tr.querySelector('.gear') : undefined; };
+  const tAdd = () => document.querySelector('.page-actions .btn-accent');
+  // Kunci tutorial halaman yang sedang dibuka; null = tidak ada tutorial (Dashboard sengaja tanpa tutorial).
+  const tourKeyOf = () => {
+    const v = state.view;
+    if (v === 'dashboard') return null;
+    if (v === 'qtForm') return state.pf && state.pf.p.jenis ? 'qtForm' : 'qtStart';
+    if (v === 'so') return state.soTab === 'skt' ? 'skt' : state.soTab === 'refund' ? 'refund' : 'so';
+    if (v === 'mpst' && state.mpPj) return 'mpstDetail';
+    if (MASTERS[v]) return 'master';
+    return TOUR[v] ? v : null;
+  };
+  // Tombol Tutorial sejajar tombol aksi halaman (paling kiri), atau di ujung kanan bilah judul form; tidak menutupi tabel atau ikon gear.
+  function tourBtn() {
+    if (!tourKeyOf()) return;
+    const html = '<button type="button" class="btn tour-btn" data-act="tour"><span aria-hidden="true">?</span> Tutorial</button>';
+    const head = document.querySelector('#view .page-head'), bar = document.querySelector('#view .pf-formbar');
+    if (head) { const act = head.querySelector('.page-actions'); if (act) act.insertAdjacentHTML('afterbegin', html); else head.insertAdjacentHTML('beforeend', `<div class="page-actions">${html}</div>`); }
+    else if (bar) bar.insertAdjacentHTML('beforeend', html);
+    else document.getElementById('view').insertAdjacentHTML('afterbegin', `<div class="page-actions tour-solo">${html}</div>`);
+  }
   const MASTERS = {
     jenisProduk: {
       title: 'Jenis Produk', code: 'Kode Jenis Product', name: 'Jenis Product', form: 'Jenis Product',
@@ -220,7 +270,7 @@
   const fromRate = names => names.map(i => biayaFromRate(rateByItem(i)));
 
   db.mprog = [];
-  const seedMP = o => { const p = Object.assign({ id: uid(), nomor: docNo('MP'), targetProfit: '' }, o); db.mprog.push(p); return p; };
+  const seedMP = o => { const p = Object.assign({ id: uid(), nomor: docNo('MP'), targetProfit: '', jamPembelajaran: (o.durasi || 1) * 8 }, o); db.mprog.push(p); return p; };
   const mp1 = seedMP({
     status: 'final', paket: [pidOf('PC-001')], durasi: 2, targetPeserta: 25, hargaJual: 600000, targetProfit: 3000000,
     biaya: allFixed().concat(fromRate(['Modul', 'Sertifikat', 'Makan Siang Training', 'Coffee Break']), [biayaFromRate(rateByItem('Seminar Kit'), 35000)])
@@ -248,7 +298,7 @@
   const fromMP = (mp, jenis) => ({
     mp: mp.id, jenis, durasi: mp.durasi, targetProfit: mp.targetProfit,
     targetPeserta: mp.targetPeserta, hargaJual: mp.hargaJual,
-    tglMulai: '', tglSelesai: '', waktu: '', jamPembelajaran: '', lokasi: '', company: '', trainer: '', biaya: clone(mp.biaya)
+    tglMulai: '', tglSelesai: '', waktu: '', jamPembelajaran: mp.jamPembelajaran || '', lokasi: '', company: '', trainer: '', biaya: clone(mp.biaya)
   });
   db.quot = []; // Penjualan Program
   const seedQT = o => { const q = Object.assign({ id: uid(), status: 'draft' }, o); q.nomor = docNo(PJ_PREFIX[q.jenis]); q.durasi = durasiTgl(q) || q.durasi; db.quot.push(q); return q; };
@@ -460,7 +510,7 @@
   const PAGE_SIZE = 10;
   function listBlock(rows, cols) {
     // Kolom jejak Dibuat / Diubah otomatis sebelum kolom Action (LOG-FR-02).
-    if (rows.some(r => r && r.createdAt)) { const ai = cols.findIndex(c => (c.cls || '').split(' ').includes('act')); cols = ai < 0 ? cols.concat(HIST_COL) : [...cols.slice(0, ai), HIST_COL, ...cols.slice(ai)]; }
+    // Tabel ringkas (permintaan BA 12-11-2026): kolom Dibuat / Diubah tidak ditampilkan; riwayat dibuka lewat gear "Lihat Riwayat".
     const total = rows.length;
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     if (state.page > pages) state.page = pages;

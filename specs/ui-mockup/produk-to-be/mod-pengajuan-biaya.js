@@ -45,7 +45,7 @@
   const pbProgs = () => db.quot.filter(x => x.status === 'final');
   const pbVisible = () => pbProgs().filter(x => seeAllData() || inTim(x));
   const canAjukan = pj => !pj.closed && (isSuper() || (can('pb', 'a') && (inTim(pj) || isAdmin()))); // program Closed tidak dapat diajukan (PB-FR-20)
-  const canApprove = () => can('pbAppr', 'm');
+  const canApprove = () => can('pbAppr', 'p'); // hak Approve (Q-33)
 
   db.pb = []; db.ob = [];
   const pbQtyEst = (pj, b) => { const d = Number(pj.durasi) || 0, n = nPeserta(pj);
@@ -153,13 +153,10 @@
       .sort((a, b) => (a.tglMulai || '').localeCompare(b.tglMulai || ''));
     return listBlock(rows, [
       NO_COL,
-      { label: 'No. Program', cls: 'nowrap', render: pj => `${jenisTag(pj.jenis)} <button class="btn btn-ghost sm" data-act="pb-open" data-id="${pj.id}">${esc(pj.nomor)}</button><br><span class="muted">${fmtRange(pj.tglMulai, pj.tglSelesai)}</span>` },
-      { label: 'Program', cls: 'title', render: pj => `${esc(paketOf(mpOf(pj)).judul)}<br><span class="muted">${esc(pj.lokasi || '—')}</span>` },
-      { label: 'Customer', render: pj => pj.jenis === 'b2b' ? esc((companyOf(pj) || {}).nama || '—') : '<span class="muted">Public</span>' },
+      // Tabel ringkas (12-11-2026): nomor, judul, tanggal, dan customer dalam satu kolom; Budget memuat terpakai dan sisa.
+      { label: 'Program', cls: 'title', render: pj => `${jenisTag(pj.jenis)} <button class="btn btn-ghost sm" data-act="pb-open" data-id="${pj.id}">${esc(pj.nomor)}</button><br>${esc(paketOf(mpOf(pj)).judul)}<br><span class="muted">${fmtRange(pj.tglMulai, pj.tglSelesai)} · ${pj.jenis === 'b2b' ? esc((companyOf(pj) || {}).nama || '—') : 'Public'}</span>` },
       { label: 'Tim', render: timCell },
-      { label: 'Budget', cls: 'money', render: pj => rp(pbSum(pj).budget) },
-      { label: 'Aktual', cls: 'money', render: pj => rp(pbSum(pj).used) },
-      { label: 'Sisa', cls: 'money', render: pj => { const s = pbSum(pj); return `<b class="${s.sisa <= 0 ? 'neg' : ''}">${rp(s.sisa)}</b>`; } },
+      { label: 'Budget', cls: 'money', render: pj => { const s = pbSum(pj); return `${rp(s.budget)}<br><span class="muted">terpakai ${rp(s.used)}</span><br><b class="${s.sisa <= 0 ? 'neg' : ''}">sisa ${rp(s.sisa)}</b>`; } },
       { label: 'Status', render: pbProgStatus },
       { label: 'Action', cls: 'act', render: pj => gearMenu(pj, [['pb-open', 'Lihat Pengajuan']]) }
     ]);
@@ -405,4 +402,34 @@
       { label: 'Action', cls: 'act', render: r => gearMenu(r, [[isOb ? 'ob-view' : 'pb-view', 'Lihat']].concat(canApprove() && r.by !== state.me ? [[isOb ? 'ob-proc' : 'pb-proc', 'Proses (Setujui / Tolak)']] : [])) }
     ]);
   }
+  // ---------- Tutorial highlight driver.js (permintaan BA 12-11-2026; menggantikan callout Panduan) ----------
+  // Dimulai dari tombol Tutorial di atas kartu tabel. Helper tS/tRows/tKol/tGear/tAdd ada di core.js; langkah yang elemennya tidak ada dilewati.
 
+  TOUR.pb = () => [
+    tS(null, 'Pengajuan Biaya', 'Tim program (Sales, Trainer, Manajemen) mengajukan <b>Kasbon / Direct Payment</b> dari budget costing Penjualan Program Final.'),
+    tS('#view .card .tabs', 'Ajukan Biaya / Sudah Diajukan', '<b>Ajukan Biaya</b>: program yang Anda tangani. <b>Sudah Diajukan</b>: semua pengajuan Anda dan statusnya.'),
+    tS('.toolbar', 'Cari dan saring', 'Cari program.'),
+    // Program yang belum Closed, supaya rantai tutorial bisa lanjut ke form pengajuan.
+    (() => { const b = [...document.querySelectorAll('#list [data-act="pb-open"]')].find(x => { const pj = pjById(+x.dataset.id); return pj && !pj.closed; }) || document.querySelector('[data-act="pb-open"]');
+      return b && tS(b, 'Mulai: buka program', 'Membuka budget dan pengajuan satu program.', { lanjut: { label: 'Buka program', run: () => b.click(), ke: 'pbProg' } }); })()
+  ];
+  TOUR.pbProg = () => [
+    tS('#view .pb-head', 'Program & budget', 'Budget = costing Penjualan Program Final; terpakai dan sisa per kategori.'),
+    tS('#view .pb-kpis', 'Ringkasan', 'Total budget, terpakai, dan sisa.'),
+    tS('[data-act="pb-add"]', '+ Add Pengajuan', 'Ajukan Kasbon atau Direct Payment dalam sisa budget kategori.'),
+    tS('#view .pb-ob', 'Overbudget', 'Bila sisa tidak cukup, ajukan <b>+ Add Overbudget</b> dahulu; disetujui Manajemen.'),
+    (() => { const b = document.querySelector('[data-act="pb-add"]:not([disabled])'); return b && { popover: { title: 'Buat pengajuan', description: 'Lanjut ke form pengajuan.' }, lanjut: { label: 'Buka form', run: () => b.click(), ke: 'pbForm' } }; })()
+  ];
+  TOUR.pbForm = () => [
+    tS('.pf-formbar', 'Form pengajuan', 'Satu pengajuan untuk satu kategori budget.'),
+    tS('#view .pb-radios', 'Jenis', '<b>Kasbon</b> (uang muka) atau <b>Direct Payment</b> (dibayar langsung).'),
+    tS('#view .table.pb-in', 'Item', 'Isi item yang diajukan; estimasi, terpakai, dan sisa per item tampil sebagai acuan.'),
+    tS('#pb-grand', 'Total', 'Total harus ≤ sisa budget kategori.'),
+    tS('#view .form-actions [type=submit]', 'Save', 'Pengajuan tersimpan dengan status Menunggu Approval.'),
+    { popover: { title: 'Langkah berikutnya', description: 'Manajemen menyetujui di <b>Approval Pengajuan</b>; Finance <b>Tandai Paid</b> setelah dibayar.' }, lanjut: { label: 'Ke Approval', run: () => go('pbAppr'), ke: 'pbAppr' } }
+  ];
+  TOUR.pbAppr = () => [
+    tS(null, 'Approval Pengajuan', 'Pengajuan biaya dan overbudget yang menunggu persetujuan <b>Manajemen</b>.'),
+    tS('#view .card .tabs', 'Tab', 'Pengajuan dan Overbudget.'),
+    tS(tGear(), 'Aksi', '<b>Lihat</b>: detail. <b>Proses</b>: setujui, atau tolak dengan alasan. Pengaju tidak dapat menyetujui pengajuannya sendiri.')
+  ];

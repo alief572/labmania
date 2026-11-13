@@ -6,8 +6,18 @@
   // Setelah Deal quotation: peserta Deal per Penjualan Program Final dilist, dicetak (Daftar Peserta, Daftar Hadir, Name Table), diekspor; program dapat di-Close.
   const QMP = (n, t) => q(`Q-MPS-${String(n).padStart(2, '0')}`, t);
   const mpProgs = () => db.quot.filter(x => x.status === 'final');
-  const mpDone = pj => !!pj.closed || pjSelesai(pj); // tab Selesai: acara lewat atau sudah Closed
-  const mpStatus = pj => pj.closed ? '<span class="badge off">Closed</span>' : pjSelesai(pj) ? '<span class="badge st-selesai">Selesai</span>' : '<span class="badge on">Berjalan</span>';
+  const mpDone = pj => !!pj.closed; // tab Selesai = sudah Close Program (Q-QTN-09, Q-MPS-01)
+  const mpStatus = pj => pj.closed ? '<span class="badge off">Closed</span>' : pjSelesai(pj) ? `<span class="badge st-selesai">Acara selesai</span>${mpSyarat(pj).length ? '' : '<br><span class="muted">siap Close</span>'}` : '<span class="badge on">Berjalan</span>';
+  // Syarat Close Program (Q-MPS-02, input/Master - Buat Program/2026-11-12-jawaban-pertanyaan-terbuka/): acara selesai dan semua invoice sudah dibayar.
+  const mpSyarat = pj => {
+    const qs = qtnOfPj(pj).filter(k => k.status === 'deal'), out = [];
+    if (!pjSelesai(pj)) out.push(`acara belum selesai (tanggal selesai ${fmtRange(pj.tglSelesai)})`);
+    const nIvc = qs.filter(k => ivcStatus(k) !== 'invoiced').length;
+    if (nIvc) out.push(`${nIvc} quotation Deal masih punya peserta yang belum ditagih`);
+    const nBayar = qs.reduce((n, k) => n + invOfQtn(k).filter(i => !i.bayar).length, 0);
+    if (nBayar) out.push(`${nBayar} invoice belum dibayar`);
+    return out;
+  };
   const mpJudul = pj => (paketOf(mpOf(pj)) || {}).judul || '—';
   // Peserta = peserta berstatus Deal di quotation Deal program itu (satu-satunya sumber; tidak ditambah di modul ini).
   const mpPeserta = pj => qtnOfPj(pj).flatMap(k => dealRows(k).map(r => ({ p: pesertaById(r.id) || {}, k }))).filter(x => x.p.id);
@@ -22,17 +32,18 @@
         <br>Trainer <b>${esc(tr ? tr.nama : '—')}</b>${co ? ` · Company <b>${esc(co.nama)}</b>` : ''} · Peserta Deal <b>${n}</b> / ${nPeserta(pj)} · ${mpStatus(pj)}`;
       const dis = n ? '' : 'disabled title="Belum ada peserta Deal"';
       return `${pageHead(`Peserta — ${esc(pj.nomor)}`, info, 'MP-FR-04 – MP-FR-08, MP-FR-11',
-        `<button class="btn btn-ghost" data-act="mp-back">← Semua Program</button><button class="btn btn-ghost" data-act="mp-xls" data-id="${pj.id}" ${dis}>Export Excel</button>
-         <button class="btn btn-ghost" data-act="mp-nametable" data-id="${pj.id}" ${dis}>Cetak Name Table</button><button class="btn btn-ghost" data-act="mp-hadir" data-id="${pj.id}" ${dis}>Cetak Daftar Hadir</button><button class="btn btn-accent" data-act="mp-print" data-id="${pj.id}" ${dis}>Cetak Daftar Peserta</button>`)}
+        `<button class="btn btn-ghost" data-act="mp-back">← Semua Program</button><button class="btn btn-ghost" data-act="mp-xls" data-id="${pj.id}" ${dis}>Export Excel</button>`)}
         ${pj.closed ? `<div class="notice"><span>Program <b>Closed</b> oleh ${esc(pj.closed.by)} pada ${fmtWaktu(pj.closed.at)} — peserta tetap dapat dilihat, dicetak, dan diekspor.</span></div>` : ''}
-        <div class="card"><div class="tabs">${[['peserta', 'Daftar Peserta'], ['sertifikat', 'Sertifikat']].map(([t, l]) => `<button class="tab ${state.mpvTab === t ? 'active' : ''}" data-act="mpv-tab" data-tab="${t}">${l}</button>`).join('')}</div>
-        ${toolbar(state.mpvTab === 'sertifikat' ? 'Cari nama, instansi, quotation, atau nomor sertifikat…' : 'Cari kode, nama, instansi, kontak, atau nomor quotation…', false)}<div id="list">${listMpst()}</div>
+        <div class="card"><div class="tabs">${[['peserta', 'Daftar Peserta'], ['sertifikat', 'Sertifikat'], ['survey', 'Survey']].map(([t, l]) => `<button class="tab ${state.mpvTab === t ? 'active' : ''}" data-act="mpv-tab" data-tab="${t}">${l}</button>`).join('')}</div>
+        ${state.mpvTab === 'survey' ? srvHead(pj) : ''}
+        ${toolbar(state.mpvTab === 'sertifikat' ? 'Cari nama, instansi, quotation, atau nomor sertifikat…' : state.mpvTab === 'survey' ? 'Cari nama, instansi, atau nomor quotation…' : 'Cari kode, nama, instansi, kontak, atau nomor quotation…', false)}<div id="list">${listMpst()}</div>
+        ${state.mpvTab === 'survey' ? srvRekap(pj) : ''}
         <p class="hint" style="padding:0 16px 14px">Peserta diambil dari quotation berstatus <b>Deal</b> (peserta yang dicentang Deal). Data peserta diperbaiki di <b>Master Data › Master Peserta</b>, bukan di sini.</p></div>`;
     }
     const tabCnt = t => mpProgs().filter(x => (t === 'done') === mpDone(x)).length;
     const tabs = [['ongoing', 'On going'], ['done', 'Selesai']].map(([t, l]) =>
       `<button class="tab ${state.mpTab === t ? 'active' : ''}" data-act="mp-tab" data-tab="${t}">${l}<span class="nav-count">${tabCnt(t)}</span></button>`).join('');
-    return `${pageHead('Manage Peserta', 'Setiap Penjualan Program Final beserta peserta yang sudah <b>Deal</b> di quotation. Buka <b>Lihat Peserta</b> untuk daftar, cetak Daftar Peserta / Daftar Hadir / Name Table, dan export Excel. <b>Close Program</b> menutup program setelah selesai.', 'MP-FR-01 – MP-FR-03')}
+    return `${pageHead('Manage Peserta', 'Setiap Penjualan Program Final beserta peserta yang sudah <b>Deal</b> di quotation. Buka <b>Lihat Peserta</b> untuk daftar, cetak Daftar Hadir / Name Table (menu gear kolom Aksi), dan export Excel. <b>Close Program</b> menutup program setelah selesai.', 'MP-FR-01 – MP-FR-03')}
       <div class="card"><div class="tabs">${tabs}<span class="tabs-note">${QMP(1, 'Tab Selesai = tanggal selesai acara sudah lewat atau program sudah Closed (usulan, sama dengan Quotation).')}</span></div>
         ${toolbar('Cari nomor, judul program, lokasi, atau trainer…', false,
           selectFilter('fjenis', 'Filter jenis program', state.jenis, [['all', 'Public & B2B'], ['public', 'Program Public'], ['b2b', 'Program B2B']]))}
@@ -41,6 +52,7 @@
   function listMpst() {
     const pj = state.mpPj && db.quot.find(x => x.id === state.mpPj);
     if (pj && state.mpvTab === 'sertifikat') return listSertProg(pj);
+    if (pj && state.mpvTab === 'survey') return listSurvey(pj);
     if (pj) {
       const rows = mpPeserta(pj).filter(({ p, k }) => matches([p.kode, p.nama, pesertaCo(p), p.telp, p.email, k.nomor])).map(({ p, k }) => ({ id: p.id, p, k }));
       return listBlock(rows, [
@@ -50,7 +62,9 @@
         { label: 'Instansi / Company', render: x => esc(pesertaCo(x.p)) },
         { label: 'No. WA', cls: 'nowrap', render: x => esc(x.p.telp || '—') },
         { label: 'Email', render: x => esc(x.p.email || '—') },
-        { label: 'No. Quotation', cls: 'nowrap', render: x => `<span class="code">${esc(x.k.nomor)}</span>` }
+        { label: 'No. Quotation', cls: 'nowrap', render: x => `<span class="code">${esc(x.k.nomor)}</span>` },
+        // Cetak dipindah dari atas tabel ke kolom Aksi (permintaan BA 12-11-2026); Cetak Daftar Peserta tidak dipakai lagi.
+        { label: 'Aksi', cls: 'act', render: x => gearMenu({ id: x.p.id }, [['mp-nt-ps', 'Cetak Name Table (peserta ini)'], ['mp-nt-all', 'Cetak Name Table (semua peserta)'], ['mp-hadir-all', 'Cetak Daftar Hadir (semua peserta)']]) }
       ]);
     }
     const rows = mpProgs().filter(x => (state.mpTab === 'done') === mpDone(x) && (state.jenis === 'all' || x.jenis === state.jenis)
@@ -68,25 +82,26 @@
       { label: 'Action', cls: 'act', render: x => gearMenu(x, [['mp-open', 'Lihat Peserta']].concat(!x.closed && can('mpst', 'm') ? [['mp-close', 'Close Program', true]] : [])) }
     ]);
   }
-  // Close Program (MP-FR-03): konfirmasi + peringatan bila masih ada pekerjaan terbuka; tidak memblokir (usulan Q-MP-02).
+  // Close Program (MP-FR-03): hanya bila acara selesai dan semua invoice dibayar (Q-MPS-02); sisanya peringatan.
   function mpClose(pj) {
     if (!can('mpst', 'm')) return toast('Anda tidak punya hak Manage di Manage Peserta (Role & Permission)', 'warn');
+    const syarat = mpSyarat(pj);
+    if (syarat.length) return toast(`Belum dapat Close: ${syarat.join('; ')}`, 'warn');
     const qs = qtnOfPj(pj), warn = [];
-    if (!pjSelesai(pj)) warn.push(`acara belum selesai (tanggal selesai ${fmtRange(pj.tglSelesai)})`);
     const nTunggu = qs.filter(k => k.status === 'draft' || k.status === 'terkirim').length;
     if (nTunggu) warn.push(`${nTunggu} quotation masih Draft / Terkirim`);
-    const nIvc = qs.filter(k => k.status === 'deal' && ivcStatus(k) !== 'invoiced').length;
-    if (nIvc) warn.push(`${nIvc} quotation Deal belum dibuatkan invoice`);
     const nPb = (db.pb || []).concat(db.ob || []).filter(x => x.pj === pj.id && x.status === 'menunggu').length;
     if (nPb) warn.push(`${nPb} pengajuan biaya masih Menunggu Approval`);
     openModal({
       title: `Close Program ${esc(pj.nomor)}`,
-      body: `<p style="margin:0 0 12px">Tutup program <b>${esc(mpJudul(pj))}</b> (${fmtRange(pj.tglMulai, pj.tglSelesai)})? Setelah Closed, program pindah ke tab <b>Selesai</b> dan <b>tidak dapat diajukan biaya lagi</b> (Pengajuan Biaya). Peserta tetap dapat dilihat dan dicetak.</p>
+      body: `<p style="margin:0 0 12px">Tutup program <b>${esc(mpJudul(pj))}</b> (${fmtRange(pj.tglMulai, pj.tglSelesai)})? Setelah Closed, program pindah ke tab <b>Selesai</b> (juga di Quotation), <b>tidak dapat diajukan biaya lagi</b>, serta quotation dan invoice program ini <b>terkunci</b>. Peserta tetap dapat dilihat dan dicetak.</p>
         ${warn.length ? `<div class="notice"><span><b>Perhatian:</b> ${warn.map(esc).join('; ')}.</span></div>` : ''}
-        <p class="hint">Close tidak dapat dibatalkan${QMP(2, 'Close Program boleh kapan saja dengan peringatan (usulan), atau hanya setelah acara selesai / semua invoice dibuat? Perlu tombol Buka Kembali?')}.</p>`,
+        <p class="hint">Close tidak dapat dibatalkan${QMP(2, 'Terjawab 12-11-2026: Close hanya bila acara selesai dan invoice sudah dibayar; Manajemen dan Sales/Marketing. Masih terbuka: perlu tombol Buka Kembali?')}.</p>`,
       saveLabel: 'Close Program', danger: true,
       onSave: () => {
         pj.closed = { by: meName(), at: isoNow() };
+        const sv = srvOf(pj); // survey ikut tertutup (SRV-FR-02)
+        if (sv) { if (sv.status === 'buka') { sv.status = 'tutup'; sv.ditutup = { by: meName(), at: pj.closed.at }; } srvPublish(pj); }
         logAct('Manage Peserta', 'Manage Peserta', 'Close Program', pj.nomor, pj.id, `Close Program ${pj.nomor}`, [{ f: 'Status program', old: 'Final', new: 'Closed' }]);
         toast(`Program ${pj.nomor} Closed`);
       }
@@ -139,8 +154,8 @@
   }
   // Name Table (MP-FR-11): format Labmania input/Name Table.pptx, A4 landscape, satu peserta satu lembar.
   // Dilipat di tengah: separuh bawah Nama + Instansi, separuh atas isi sama diputar 180 derajat. Tanpa logo dan tanggal.
-  function mpPrintNameTable(pj) {
-    const list = mpPeserta(pj);
+  function mpPrintNameTable(pj, pid) {
+    const list = mpPeserta(pj).filter(x => !pid || x.p.id === pid);
     const half = (p, flip) => `<div class="nt-half${flip ? ' nt-flip' : ''}"><b>${esc(p.nama)}</b><span>${esc(pesertaCo(p))}</span></div>`;
     const html = list.map(({ p }) => `<section class="pdf-page land nt-page">${half(p, true)}${half(p, false)}</section>`).join('');
     openModal({ title: `Name Table ${esc(pj.nomor)}`, wide: 'x', info: true, body: pdfWrap(html, `Name Table · ${list.length} lembar A4 landscape (satu peserta satu lembar), dilipat di garis tengah · format Labmania`), onMount: pdfMount });
@@ -172,7 +187,7 @@
   const SERT_HASIL = { belum: 'Belum diuji', k: 'Kompeten', bk: 'Belum Kompeten' };
   const SERT_IDCARD = { belum: 'Belum dikirim', sudah: 'Sudah dikirim' };
   const SERT_EXT = ['pdf', 'jpg', 'jpeg', 'png'];
-  const sertOf = p => db.sert[p.id] || (db.sert[p.id] = { noLatih: '', tglTerbit: '', fileLatih: '', kirim: 'belum', tglKirim: '', via: '',
+  const sertOf = p => db.sert[p.id] || (db.sert[p.id] = { namaSrt: '', draftAt: '', namaOk: '', namaOkAt: '', namaSumber: '', noLatih: '', tglTerbit: '', fileLatih: '', kirim: 'belum', tglKirim: '', via: '',
     lsp: (p.data && p.data.lsp) || '', skema: '', metode: '', hasil: 'belum', noBnsp: '', bnspTerima: '', bnspKirim: '', berlaku: (p.data && p.data.habis) || '', idcard: 'belum', fileBnsp: '', catatan: '' });
   // Tipe program dari Jenis Produk semua Product di Master Program: Pelatihan, Sertifikasi, atau Training & Sertifikasi.
   const monTipe = pj => {
@@ -210,37 +225,84 @@
   const QSRT = q('Q-MON-06', 'Format sertifikat dan nomor menyusul dari LabMania. Sementara: nomor SRT/LMI/MM/yy-zzz (urut per bulan terbit), satu sertifikat per peserta per program, tanda tangan Trainer dan Direktur.');
   db.sertSeq = db.sertSeq || {};
   const sertNo = iso => { const mm = iso.slice(5, 7), yy = iso.slice(2, 4), key = yy + mm, n = (db.sertSeq[key] || 0) + 1; db.sertSeq[key] = n; return `SRT/LMI/${mm}/${yy}-${String(n).padStart(3, '0')}`; };
-  function pageSertifikat(x) {
+  // Nama tercetak = Nama di sertifikat yang sudah dikonfirmasi (SRT-FR-04), atau nama isian link selama belum diperbaiki.
+  const namaSrt = x => x.s.namaSrt || x.p.nama;
+  function pageSertifikat(x, draft = false) {
     const pj = x.pj, tr = trainerById(pj.trainer), s = x.s;
-    return pdfPage(`<div class="srt-doc"><p class="srt-h">SERTIFIKAT</p><p class="srt-no">Nomor: ${esc(s.noLatih)}</p>
-      <p>diberikan kepada</p><p class="srt-nama">${esc(x.p.nama)}</p><p class="srt-inst">${esc(pesertaCo(x.p))}</p>
+    return pdfPage(`<div class="srt-doc${draft ? ' srt-draft' : ''}">${draft ? '<p class="srt-wm" aria-hidden="true">DRAFT</p>' : ''}<p class="srt-h">SERTIFIKAT</p><p class="srt-no">Nomor: ${draft ? '(terbit setelah nama dikonfirmasi)' : esc(s.noLatih)}</p>
+      <p>diberikan kepada</p><p class="srt-nama">${esc(namaSrt(x))}</p><p class="srt-inst">${esc(pesertaCo(x.p))}</p>
       <p>atas partisipasinya sebagai <b>peserta</b> dalam</p><p class="srt-judul">${esc(mpJudul(pj))}</p>
       <p>${esc(varianTxt(pj))} · ${esc(rangePanjang(pj.tglMulai, pj.tglSelesai))} · ${esc(pj.lokasi || '')}${pj.jamPembelajaran ? ` · ${pj.jamPembelajaran} JP` : ''}</p>
       <div class="srt-ttd"><div>Trainer<div class="pdf-ttd"></div><b>${esc(tr ? tr.nama : '..............................')}</b></div>
-        <div>Bekasi, ${tglPanjang(s.tglTerbit)}<br>PT LabMania Indonesia Jaya<div class="pdf-ttd"></div><b>(..............................)</b><br>Direktur</div></div></div>`,
+        <div>Bekasi, ${draft ? '..................' : tglPanjang(s.tglTerbit)}<br>PT LabMania Indonesia Jaya<div class="pdf-ttd"></div><b>(..............................)</b><br>Direktur</div></div></div>`,
       pdfFoot('[kode dokumen menyusul]', '1 dari 1', '—'));
   }
   // Buat (bila belum ada nomor) lalu tampilkan pratinjau; dipakai per peserta dan untuk semua peserta program.
+  // Nomor hanya terbit untuk peserta yang namanya sudah dikonfirmasi (SRT-FR-04, usulan Q-MON-08).
   function sertBuat(list, judul) {
+    const tunda = list.filter(x => !x.s.noLatih && !x.s.namaOk);
+    if (tunda.length && tunda.length === list.length) { toast(`Konfirmasi nama dulu: ${tunda.map(x => x.p.nama).join(', ')}. Kirim draft sertifikat ke peserta, lalu catat jawabannya.`, 'warn'); return; }
+    list = list.filter(x => x.s.noLatih || x.s.namaOk);
     const baru = list.filter(x => !x.s.noLatih);
     baru.forEach(x => { Object.assign(x.s, { noLatih: sertNo(todayIso), tglTerbit: todayIso, fileLatih: '' }); });
     if (baru.length) logAct('Manage Peserta', 'Sertifikat', 'Tambah', judul, null, `Buat sertifikat pelatihan ${baru.length} peserta: ${baru.map(x => x.s.noLatih).join(', ')}`);
-    openModal({ title: `Sertifikat: ${judul}`, wide: 'x', info: true, body: pdfWrap(list.map(pageSertifikat).join(''), `${list.length} sertifikat${baru.length ? ` (${baru.length} baru dibuat)` : ''} · template sementara${QSRT}`), onMount: pdfMount });
+    openModal({ title: `Sertifikat: ${judul}`, wide: 'x', info: true, body: pdfWrap(list.map(pageSertifikat).join(''), `${list.length} sertifikat${baru.length ? ` (${baru.length} baru dibuat)` : ''}${tunda.length ? ` · ${tunda.length} belum dibuat karena nama belum dikonfirmasi` : ''} · template sementara${QSRT}`), onMount: pdfMount });
     if (baru.length) toast(`${baru.length} sertifikat dibuat`);
+  }
+  // ---------- Konfirmasi nama sebelum sertifikat terbit (SRT-FR-04) ----------
+  // Jawaban Labmania 12-11-2026: bila nama salah ketik, draft sertifikat dikonfirmasi ke peserta; setelah benar baru dikirim.
+  function namaCell(x) {
+    const s = x.s, beda = s.namaSrt && s.namaSrt !== x.p.nama;
+    const st = s.namaOk ? `<span class="badge st-ps-deal">Nama dikonfirmasi</span><br><span class="muted">${esc(s.namaSumber || '')}${s.namaSumber ? ' · ' : ''}${fmtTgl(s.namaOkAt.slice(0, 10))}</span>`
+      : s.draftAt ? `<span class="badge st-ps-menunggu">Draft dikirim</span><br><span class="muted">${fmtTgl(s.draftAt)}</span>` : '<span class="badge st-draft">Belum dicek</span>';
+    return `<b>${esc(namaSrt(x))}</b>${beda ? `<br><span class="muted">isian link: ${esc(x.p.nama)}</span>` : ''}<br>${st}`;
+  }
+  const sertRow = p => monAll().find(r => r.p.id === p.id);
+  function sertDraftOpen(list, judul) {
+    const baru = list.filter(x => !x.s.draftAt);
+    list.forEach(x => { x.s.draftAt = todayIso; });
+    logAct('Manage Peserta', 'Sertifikat', 'Draft', judul, null, `Draft sertifikat untuk dicek peserta: ${list.map(x => namaSrt(x)).join(', ')}`);
+    openModal({ title: `Draft sertifikat: ${esc(judul)}`, wide: 'x', info: true,
+      body: pdfWrap(list.map(x => pageSertifikat(x, true)).join(''), `${list.length} draft tanpa nomor${baru.length < list.length ? ` (${list.length - baru.length} pernah dikirim)` : ''}. Kirim ke peserta lewat WhatsApp atau email, lalu catat jawabannya lewat <b>Konfirmasi nama</b>.`), onMount: pdfMount });
+    render();
+  }
+  function sertDraft(p) { const x = sertRow(p); if (!x) return; if (x.s.noLatih) { toast('Sertifikat sudah terbit; nama sudah terkunci', 'warn'); return; } sertDraftOpen([x], p.nama); }
+  function sertDraftAll(pj) { const l = sertRowsOf(pj).filter(x => !x.s.noLatih && !x.s.namaOk); if (!l.length) { toast('Semua nama sudah dikonfirmasi', 'warn'); return; } sertDraftOpen(l, pj.nomor); }
+  function sertNama(p) {
+    const x = sertRow(p); if (!x) return;
+    if (x.s.noLatih) { toast('Sertifikat sudah terbit; nama sudah terkunci', 'warn'); return; }
+    openModal({
+      title: `Konfirmasi nama: ${esc(p.nama)}`,
+      body: `<div class="summary">${sumRow('Nama di isian link', esc(p.nama))}${sumRow('Draft dikirim', x.s.draftAt ? fmtTgl(x.s.draftAt) : '<span class="muted">belum</span>')}</div>
+        <div class="grid2 gap-t">
+          ${field('Nama di sertifikat' + req, `<input class="input" name="nama" maxlength="150" value="${esc(namaSrt(x))}" required><span class="hint">Ubah bila peserta menyebut penulisan yang benar. Isian link dan surat konfirmasi tidak berubah.</span>`, '', 'span2')}
+          ${field('Dikonfirmasi lewat', `<input class="input" name="sumber" maxlength="100" value="${esc(x.s.namaSumber)}" placeholder="mis. WhatsApp 12-11">`, '', 'span2')}
+        </div>`,
+      saveLabel: 'Nama sudah benar',
+      onSave: f => {
+        const nama = f.nama.value.trim(); if (!nama) return invalid(f.nama, 'Isi nama di sertifikat');
+        const lama = namaSrt(x);
+        Object.assign(x.s, { namaSrt: nama === p.nama ? '' : nama, namaOk: meName(), namaOkAt: isoNow().slice(0, 16), namaSumber: f.sumber.value.trim() });
+        logAct('Manage Peserta', 'Sertifikat', 'Konfirmasi Nama', p.nama, p.id, `Nama sertifikat dikonfirmasi: ${nama}`, lama !== nama ? [{ f: 'Nama di sertifikat', old: lama, new: nama }] : []);
+        toast(`Nama ${nama} dikonfirmasi; sertifikat siap dibuat`);
+      }
+    });
   }
   const sertRowsOf = pj => mpPeserta(pj).map(({ p, k }) => ({ pj, p, k, s: sertOf(p) }));
   function listSertProg(pj) {
-    const all = sertRowsOf(pj), belum = all.filter(x => !x.s.noLatih).length;
+    const all = sertRowsOf(pj), belum = all.filter(x => !x.s.noLatih && x.s.namaOk).length, cek = all.filter(x => !x.s.noLatih && !x.s.namaOk).length;
     const bar = `<div class="srt-bar"><span class="muted">${all.length - belum} dari ${all.length} sertifikat pelatihan sudah dibuat${QSRT}</span>
-      <span><button type="button" class="btn btn-outline sm" data-act="sert-buat-all" data-id="${pj.id}" ${all.length - belum ? '' : 'disabled'}>Lihat semua</button>
-      <button type="button" class="btn btn-primary sm" data-act="sert-buat-all" data-id="${pj.id}" data-baru="1" ${belum ? '' : 'disabled'}>Buat sertifikat (${belum} belum)</button></span></div>`;
+      <span><button type="button" class="btn btn-outline sm" data-act="srt-draft-all" data-id="${pj.id}" ${cek ? '' : 'disabled'}>Draft untuk dicek (${cek})</button>
+      <button type="button" class="btn btn-outline sm" data-act="sert-buat-all" data-id="${pj.id}" ${all.some(x => x.s.noLatih) ? '' : 'disabled'}>Lihat semua</button>
+      <button type="button" class="btn btn-primary sm" data-act="sert-buat-all" data-id="${pj.id}" data-baru="1" ${belum ? '' : 'disabled'}>Buat sertifikat (${belum} siap)</button></span></div>`;
     const rows = mpPeserta(pj).filter(({ p, k }) => matches([p.nama, pesertaCo(p), k.nomor, sertOf(p).noLatih, sertOf(p).noBnsp])).map(({ p, k }) => ({ id: p.id, p, k, s: sertOf(p) }));
     return listBlock(rows, [
       NO_COL,
       { label: 'Peserta', cls: 'title', render: x => `<b>${esc(x.p.nama)}</b><br><span class="muted">${esc(pesertaCo(x.p))}</span>` },
+      { label: 'Nama di sertifikat' + QMON(8, 'Usulan: nomor sertifikat terbit setelah nama dikonfirmasi; perbaikan nama tidak mengubah isian link dan tidak otomatis mengubah Master Peserta. Perlu link agar peserta mengonfirmasi sendiri?'), render: x => namaCell(x) },
       { label: 'Sertifikat Pelatihan', render: x => `${latihTxt(x.s)}${x.s.tglTerbit ? `<br><span class="muted">Terbit ${fmtTgl(x.s.tglTerbit)}</span>` : ''}` },
       ...(monSert(pj) ? [{ label: 'Sertifikasi LSP / BNSP', render: x => bnspTxt(pj, x.s) }, { label: 'Berlaku sampai', cls: 'nowrap', render: x => berlakuTxt(x.s) }] : []),
-      { label: 'Action', cls: 'act', render: x => gearMenu({ id: x.p.id }, [x.s.noLatih ? ['sert-lihat', 'Lihat Sertifikat'] : ['sert-lihat', 'Buat Sertifikat'], ['sert-edit', monSert(pj) ? 'Pengiriman & Sertifikasi BNSP' : 'Pengiriman Sertifikat']]) }
+      { label: 'Action', cls: 'act', render: x => gearMenu({ id: x.p.id }, [...(x.s.noLatih ? [['sert-lihat', 'Lihat Sertifikat']] : [['srt-draft', 'Draft sertifikat'], ['srt-nama', 'Konfirmasi nama'], ...(x.s.namaOk ? [['sert-lihat', 'Buat Sertifikat']] : [])]), ['sert-edit', monSert(pj) ? 'Pengiriman & Sertifikasi BNSP' : 'Pengiriman Sertifikat']]) }
     ]).replace(/^/, bar);
   }
   function sertEdit(p) {
@@ -352,11 +414,216 @@
     logAct('Manage Peserta', 'Monitoring Peserta', 'Export', 'Monitoring Peserta', null, `Export Excel monitoring peserta (${rows.length} peserta)`);
     toast(`Excel monitoring peserta diunduh (${rows.length} peserta)`);
   }
+  // ---------- Survey Peserta (to be, SRV-FR-01 – SRV-FR-06; input/Invoice & Pengajuan/2026-11-11-link-survey-peserta/) ----------
+  // Satu link survey per program, diisi peserta Deal tanpa login di survey.html. Pertanyaan masih contoh; daftar final menyusul (Q-SRV-04).
+  // Mockup tanpa server: konfigurasi dan isian dioper lewat localStorage (srvPublish → survey.html → srvSync), pola link Konfirmasi Kehadiran.
+  const QSRV = (n, t) => q(`Q-SRV-0${n}`, t);
+  const SRV_SKALA = ['Sangat kurang', 'Kurang', 'Cukup', 'Baik', 'Sangat baik'];
+  const SRV_TANYA = [
+    { id: 1, bagian: 'A. Materi', teks: 'Materi sesuai dengan kebutuhan pekerjaan saya', tipe: 'skala', wajib: true },
+    { id: 2, bagian: 'A. Materi', teks: 'Materi mudah dipahami', tipe: 'skala', wajib: true },
+    { id: 3, bagian: 'B. Trainer', teks: 'Trainer menguasai materi', tipe: 'skala', wajib: true },
+    { id: 4, bagian: 'B. Trainer', teks: 'Trainer menjawab pertanyaan dengan jelas', tipe: 'skala', wajib: true },
+    { id: 5, bagian: 'C. Penyelenggaraan', teks: 'Tempat, fasilitas, dan konsumsi', tipe: 'skala', wajib: true },
+    { id: 6, bagian: 'C. Penyelenggaraan', teks: 'Dari mana Anda mengetahui program ini?', tipe: 'pilihan', opsi: ['Website LabMania', 'Media sosial', 'Sales LabMania', 'Rekan kerja / atasan', 'Lainnya'], wajib: true },
+    { id: 7, bagian: 'D. Saran', teks: 'Saran untuk perbaikan program ini', tipe: 'teks', wajib: false },
+    { id: 8, bagian: 'D. Saran', teks: 'Pelatihan lain yang Anda butuhkan', tipe: 'teks', wajib: false }
+  ];
+  const SRV_ST = { belum: 'Belum dibuka', buka: 'Dibuka', tutup: 'Ditutup' };
+  const SRV_KEY = t => `labmania-tobe:survey:${t}`, SRV_ISI_KEY = t => `labmania-tobe:survey-isi:${t}`;
+  db.survey = [];
+  const srvOf = pj => db.survey.find(x => x.pj === pj.id);
+  // Program Closed = survey tertutup, apa pun status terakhirnya (SRV-FR-02).
+  const srvSt = pj => { const sv = srvOf(pj); return !sv ? 'belum' : pj.closed ? 'tutup' : sv.status; };
+  const srvUrl = sv => new URL(`survey.html?t=${encodeURIComponent(sv.token)}`, location.href).href;
+  const srvBadge = st => `<span class="badge ${st === 'buka' ? 'st-terkirim' : st === 'tutup' ? 'off' : 'st-draft'}">${SRV_ST[st]}</span>`;
+  const srvJwb = (sv, pid) => sv ? sv.jawaban.find(j => j.peserta === pid) : null;
+  const srvKet = (pj, sv) => !sv ? 'Peserta belum dapat mengisi. Link dibuat saat survey pertama kali dibuka.'
+    : pj.closed ? `Ditutup otomatis saat program Closed (${fmtWaktu(pj.closed.at)})`
+    : sv.status === 'buka' ? `Dibuka ${fmtWaktu(sv.dibuka.at)} oleh ${sv.dibuka.by}` : `Ditutup ${fmtWaktu(sv.ditutup.at)} oleh ${sv.ditutup.by}`;
+  const srvJawabTeks = (t, v) => v == null || v === '' ? '' : t.tipe === 'skala' ? `${v} (${SRV_SKALA[v - 1]})` : String(v);
+  const koma1 = n => n.toFixed(1).replace('.', ',');
+
+  function srvHead(pj) {
+    const sv = srvOf(pj), st = srvSt(pj), n = mpPeserta(pj).length, isi = sv ? sv.jawaban.length : 0;
+    if (sv) srvPublish(pj);
+    const aksi = pj.closed || !can('mpst', 'm') ? ''
+      : st === 'buka' ? `<button type="button" class="btn btn-ghost" data-act="srv-tutup" data-id="${pj.id}">Tutup survey</button>`
+      : `<button type="button" class="btn btn-accent" data-act="srv-buka" data-id="${pj.id}" ${n ? '' : 'disabled title="Belum ada peserta Deal"'}>${st === 'tutup' ? 'Buka kembali' : 'Buka survey'}</button>`;
+    return `<div class="srv-head">
+      <p class="lk-lead">Peserta Deal program ini mengisi survey lewat link tanpa login: memilih nama sendiri, lalu menjawab pertanyaan. Satu peserta satu kali isi.${QSRV(1, 'Peserta memilih namanya dari daftar (usulan; daftar B2B sering hanya berisi nama), mengisi No. WA/email untuk dicocokkan, atau survey anonim?')}</p>
+      ${sv ? `<div class="lk-copy"><label class="sr-only" for="srv-url">Link survey</label><input class="input lk-url" id="srv-url" value="${esc(srvUrl(sv))}" readonly>
+        <button type="button" class="btn btn-primary" data-act="srv-copy" data-id="${pj.id}">Salin link</button>
+        <a class="btn btn-outline" href="${esc(srvUrl(sv))}" target="_blank" rel="noopener">Buka<span class="sr-only"> halaman survey di tab baru</span></a></div>` : ''}
+      <div class="srv-state"><p class="lk-state">${srvBadge(st)} <span class="muted">${esc(srvKet(pj, sv))}</span>${QSRV(2, 'Survey dibuka dan ditutup manual oleh admin (usulan), atau otomatis (mis. dibuka di hari terakhir acara)?')}</p>${aksi}</div>
+      <div class="srv-sum"><span><b>${isi}</b> dari ${n} peserta sudah mengisi</span>${isi ? `<button type="button" class="btn btn-ghost sm" data-act="srv-xls" data-id="${pj.id}">Export Excel</button>` : ''}</div>
+      <p class="hint">Pertanyaan di survey ini masih <b>contoh</b> (${SRV_TANYA.length} pertanyaan); daftar final menyusul dari LabMania.${QSRV(4, 'Daftar pertanyaan final: bagian, teks, jenis (skala 1 – 5, pilihan, teks), opsi, wajib/opsional.')}</p>
+    </div>`;
+  }
+  function listSurvey(pj) {
+    const sv = srvOf(pj);
+    const rows = mpPeserta(pj).filter(({ p, k }) => matches([p.nama, pesertaCo(p), k.nomor])).map(({ p, k }) => ({ id: p.id, p, k, j: srvJwb(sv, p.id) }));
+    return listBlock(rows, [
+      NO_COL,
+      { label: 'Nama', render: x => `<b>${esc(x.p.nama)}</b><br><span class="muted">${esc(pesertaCo(x.p))}</span>` },
+      { label: 'No. Quotation', cls: 'nowrap', render: x => `<span class="code">${esc(x.k.nomor)}</span>` },
+      { label: 'Status', cls: 'nowrap', render: x => x.j ? '<span class="badge st-ps-deal">Sudah mengisi</span>' : '<span class="badge st-draft">Belum</span>' },
+      { label: 'Waktu isi', cls: 'nowrap', render: x => x.j ? fmtWaktu(x.j.tgl) : '—' },
+      { label: 'Action', cls: 'act', render: x => x.j ? gearMenu({ id: x.p.id }, [['srv-view', 'Lihat jawaban']]) : '' }
+    ]);
+  }
+  function srvRekap(pj) {
+    const sv = srvOf(pj), list = sv ? sv.jawaban : [];
+    if (!list.length) return '<div class="srv-rekap"><h3>Rekap jawaban</h3><p class="dash-empty">Belum ada peserta yang mengisi.</p></div>';
+    const blok = SRV_TANYA.map(t => {
+      const vals = list.map(j => ({ v: (j.isi.find(a => a.id === t.id) || {}).nilai, nama: j.nama })).filter(x => x.v != null && x.v !== '');
+      let isi = '';
+      if (t.tipe === 'skala') {
+        const avg = vals.reduce((a, x) => a + Number(x.v), 0) / (vals.length || 1);
+        isi = `<p class="srv-avg">Rata-rata <b>${vals.length ? koma1(avg) : '—'}</b> dari 5 · ${vals.length} jawaban</p>
+          <table class="srv-dist"><thead><tr>${SRV_SKALA.map((l, i) => `<th scope="col">${i + 1}<span>${l}</span></th>`).join('')}</tr></thead>
+          <tbody><tr>${SRV_SKALA.map((l, i) => `<td>${vals.filter(x => +x.v === i + 1).length}</td>`).join('')}</tr></tbody></table>`;
+      } else if (t.tipe === 'pilihan') {
+        isi = `<ul class="srv-opsi">${t.opsi.map(o => `<li><span>${esc(o)}</span><b>${vals.filter(x => x.v === o).length}</b></li>`).join('')}</ul>`;
+      } else {
+        isi = vals.length ? `<ul class="srv-teks">${vals.map(x => `<li>${esc(x.v)} <span class="muted">(${esc(x.nama)})</span></li>`).join('')}</ul>` : '<p class="muted">Tidak ada jawaban.</p>';
+      }
+      return `<div class="srv-q"><p class="srv-q-h"><span class="muted">${esc(t.bagian)}</span> ${esc(t.teks)}</p>${isi}</div>`;
+    }).join('');
+    return `<div class="srv-rekap"><h3>Rekap jawaban <span class="muted">(${list.length} peserta)</span></h3>${blok}</div>`;
+  }
+  function srvView(pj, pid) {
+    const sv = srvOf(pj), j = srvJwb(sv, pid);
+    if (!j) return;
+    openModal({
+      title: `Jawaban survey: ${esc(j.nama)}`, info: true, wide: true,
+      body: `<p class="hint top">${esc(pj.nomor)} · ${esc(mpJudul(pj))} · diisi ${fmtWaktu(j.tgl)}</p>
+        <dl class="srv-jwb">${j.isi.map(a => `<dt><span class="muted">${esc(a.bagian)}</span> ${esc(a.teks)}</dt><dd>${esc(srvJawabTeks(a, a.nilai)) || '<span class="muted">Tidak diisi</span>'}</dd>`).join('')}</dl>`
+    });
+  }
+  function srvBuka(pj) {
+    if (!can('mpst', 'm') || pj.closed) return;
+    let sv = srvOf(pj);
+    if (!sv) { sv = { id: uid(), pj: pj.id, token: `S${Math.random().toString(36).slice(2, 8).toUpperCase()}`, status: 'belum', jawaban: [] }; db.survey.push(sv); }
+    sv.status = 'buka'; sv.dibuka = { by: meName(), at: isoNow() };
+    srvPublish(pj);
+    logAct('Manage Peserta', 'Survey', 'Buka', pj.nomor, pj.id, `Buka survey ${pj.nomor}`, [{ f: 'Status survey', old: SRV_ST.belum, new: SRV_ST.buka }]);
+    toast(`Survey ${pj.nomor} dibuka. Salin link lalu bagikan ke peserta.`);
+  }
+  function srvTutup(pj) {
+    const sv = srvOf(pj);
+    if (!sv || !can('mpst', 'm')) return;
+    sv.status = 'tutup'; sv.ditutup = { by: meName(), at: isoNow() };
+    srvPublish(pj);
+    logAct('Manage Peserta', 'Survey', 'Tutup', pj.nomor, pj.id, `Tutup survey ${pj.nomor}`, [{ f: 'Status survey', old: SRV_ST.buka, new: SRV_ST.tutup }]);
+    toast(`Survey ${pj.nomor} ditutup. Peserta tidak dapat mengisi lagi.`);
+  }
+  function srvCopy(pj) {
+    const sv = srvOf(pj); if (!sv) return;
+    const url = srvUrl(sv), done = () => toast('Link survey disalin');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => toast(`Salin manual: ${url}`, 'warn'));
+    else toast(`Salin manual: ${url}`, 'warn');
+  }
+  function srvXls(pj) {
+    const sv = srvOf(pj), list = sv ? sv.jawaban : [], cell = v => `<td>${esc(v == null ? '' : String(v))}</td>`;
+    const H = ['No', 'Nama', 'Instansi', 'No. Quotation', 'Waktu isi'].concat(SRV_TANYA.map(t => `${t.bagian}: ${t.teks}`));
+    const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><tr><th colspan="${H.length}">Survey ${esc(pj.nomor)}, ${esc(mpJudul(pj))} (${esc(fmtRange(pj.tglMulai, pj.tglSelesai))})</th></tr>
+      <tr>${H.map(h => `<th>${esc(h)}</th>`).join('')}</tr>
+      ${list.map((j, i) => `<tr>${cell(i + 1)}${cell(j.nama)}${cell(j.instansi)}${cell(j.qtn)}${cell(fmtWaktu(j.tgl))}${SRV_TANYA.map(t => cell((j.isi.find(a => a.id === t.id) || {}).nilai)).join('')}</tr>`).join('')}</table></body></html>`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' }));
+    a.download = `Survey_${pj.nomor.replace(/[^\w-]+/g, '_')}.xls`;
+    document.body.appendChild(a); a.click(); a.remove();
+    logAct('Manage Peserta', 'Survey', 'Export', pj.nomor, pj.id, `Export Excel survey ${pj.nomor} (${list.length} jawaban)`);
+    toast(`Excel survey ${pj.nomor} diunduh (${list.length} jawaban)`);
+  }
+  // Konfigurasi yang dibaca survey.html: program, status, peserta Deal (nama + sudah mengisi), pertanyaan.
+  function srvPublish(pj) {
+    const sv = srvOf(pj); if (!sv) return;
+    const tr = trainerById(pj.trainer);
+    lsSet(SRV_KEY(sv.token), {
+      token: sv.token, nomor: pj.nomor, judul: mpJudul(pj), jadwal: rangePanjang(pj.tglMulai, pj.tglSelesai), lokasi: pj.lokasi || '', trainer: tr ? tr.nama : '',
+      status: srvSt(pj), peserta: mpPeserta(pj).map(({ p }) => ({ id: p.id, nama: p.nama, instansi: pesertaCo(p), sudah: !!srvJwb(sv, p.id) })),
+      pertanyaan: SRV_TANYA, skala: SRV_SKALA
+    });
+  }
+  // Ambil isian dari survey.html. Server nanti memeriksa hal yang sama (MP-NFR-04): link Dibuka, peserta Deal program itu, belum pernah mengisi.
+  const srvDiambil = new Set();
+  function srvSimpan(pj, sv, x, by) {
+    const ps = mpPeserta(pj).find(r => r.p.id === x.peserta);
+    if (srvSt(pj) !== 'buka' || !ps || srvJwb(sv, x.peserta)) return false;
+    sv.jawaban.push({ peserta: x.peserta, nama: ps.p.nama, instansi: pesertaCo(ps.p), qtn: ps.k.nomor, tgl: x.tgl,
+      isi: SRV_TANYA.map(t => ({ id: t.id, bagian: t.bagian, teks: t.teks, tipe: t.tipe, nilai: x.isi[t.id] == null ? '' : x.isi[t.id] })) });
+    logAct('Manage Peserta', 'Survey', 'Isi', pj.nomor, pj.id, `Survey ${pj.nomor} diisi ${ps.p.nama} lewat link`, [], x.tgl, by || ps.p.nama);
+    return true;
+  }
+  function srvSync() {
+    let n = 0;
+    db.survey.forEach(sv => {
+      const pj = db.quot.find(x => x.id === sv.pj), list = lsGet(SRV_ISI_KEY(sv.token)) || [];
+      list.forEach(x => {
+        if (srvDiambil.has(x.id)) return;
+        srvDiambil.add(x.id);
+        if (srvSimpan(pj, sv, x)) n++; else x.ditolak = true;
+      });
+      if (list.length) lsSet(SRV_ISI_KEY(sv.token), list);
+      srvPublish(pj);
+    });
+    if (n) { toast(`${n} jawaban survey baru masuk`); render(); }
+    return n;
+  }
+  // Data contoh: satu program berjalan dengan survey Dibuka dan dua jawaban.
+  function srvSeed() {
+    const pj = mpProgs().find(x => !x.closed && mpPeserta(x).length >= 3);
+    if (!pj) return;
+    const sv = { id: uid(), pj: pj.id, token: `S${pj.id}CNTH`, status: 'buka', dibuka: { by: 'Admin LabMania', at: `${pj.tglSelesai || todayIso} 15:00:00` }, jawaban: [] };
+    db.survey.push(sv);
+    const contoh = [{ 1: 5, 2: 4, 3: 5, 4: 5, 5: 4, 6: 'Sales LabMania', 7: 'Waktu praktik ditambah.', 8: 'Validasi metode' },
+      { 1: 4, 2: 4, 3: 5, 4: 4, 5: 3, 6: 'Website LabMania', 7: '', 8: '' }];
+    mpPeserta(pj).slice(0, 2).forEach(({ p }, i) => srvSimpan(pj, sv, { id: `seed${i}`, peserta: p.id, tgl: `${pj.tglSelesai || todayIso} 15:${String(20 + i * 7)}:00`, isi: contoh[i] }));
+  }
   // Data contoh sertifikat (mockup); diisi saat pertama dibaca, setelah semua data contoh modul lain termuat.
   function sertSeed() {
     monList().forEach((x, i) => {
       const s = x.s;
-      if (i % 3 === 0) { const t = x.pj.tglSelesai || todayIso; Object.assign(s, { noLatih: sertNo(t), tglTerbit: t }); }
+      if (i % 3 === 0) { const t = x.pj.tglSelesai || todayIso; Object.assign(s, { draftAt: t, namaOk: 'Admin Sistem', namaOkAt: `${t}T10:00`, namaSumber: 'WhatsApp', noLatih: sertNo(t), tglTerbit: t }); }
+      else if (i % 3 === 1) Object.assign(s, { draftAt: x.pj.tglSelesai || todayIso });
       if (monSert(x.pj)) Object.assign(s, { metode: i % 2 ? 'porto' : 'ukom', lsp: s.lsp || 'LSP Kimia Industri', skema: 'Petugas Pengambil Contoh', hasil: i % 4 === 0 ? 'k' : 'belum', berlaku: i % 5 === 0 ? addDays(todayIso, 60) : '' });
     });
   }
+  // ---------- Tutorial highlight driver.js (permintaan BA 12-11-2026; menggantikan callout Panduan) ----------
+  // Dimulai dari tombol Tutorial di atas kartu tabel. Helper tS/tRows/tKol/tGear/tAdd ada di core.js; langkah yang elemennya tidak ada dilewati.
+
+  TOUR.mpst = () => {
+    const first = mpProgs().find(x => mpPeserta(x).length);
+    return [
+      tS(null, 'Manage Peserta', 'Peserta Deal per program: cetak, sertifikat, survey, lalu Close Program. Close dilakukan <b>Manajemen</b> atau <b>Sales/Marketing</b>.'),
+      tS('#view .card .tabs', 'On going / Selesai', 'Program yang acaranya belum / sudah lewat atau sudah Closed.'),
+      tS(tKol(tRows()[0], 'Peserta'), 'Peserta', 'Jumlah peserta Deal dibanding target.'),
+      tS(tGear(), 'Aksi', '<b>Lihat Peserta</b>: halaman peserta program. <b>Close Program</b>: muncul bila acara sudah selesai dan semua invoice sudah dibayar; setelah itu quotation dan invoice program terkunci.'),
+      first && { popover: { title: 'Buka peserta program', description: 'Lanjut ke halaman peserta satu program.' }, lanjut: { label: 'Lihat Peserta', run: () => { state.mpPj = first.id; state.mpvTab = 'peserta'; state.q = ''; state.page = 1; render(); }, ke: 'mpstDetail' } }
+    ];
+  };
+  TOUR.mpstDetail = () => {
+    const tab = state.mpvTab;
+    return [
+      tS('#view .card .tabs', 'Daftar Peserta / Sertifikat / Survey', 'Pilih tab sesuai pekerjaan.'),
+      tab === 'peserta' && tS('[data-act="mp-xls"]', 'Export Excel', 'Mengunduh daftar peserta.'),
+      tab === 'peserta' && tS(tGear(), 'Aksi cetak', '<b>Cetak Name Table</b> (peserta ini / semua) dan <b>Cetak Daftar Hadir</b>.'),
+      tab === 'peserta' && { popover: { title: 'Lanjut ke Sertifikat', description: 'Sertifikat dibuat setelah nama peserta dikonfirmasi.' }, lanjut: { label: 'Tab Sertifikat', run: () => { state.mpvTab = 'sertifikat'; render(); }, ke: 'mpstDetail' } },
+      tab === 'sertifikat' && tS('.srt-bar', 'Sertifikat semua peserta', '<b>Draft untuk dicek</b>: PDF tanpa nomor untuk dikirim ke peserta. <b>Buat sertifikat</b>: nomor terbit untuk yang namanya sudah dikonfirmasi.'),
+      tab === 'sertifikat' && tS(tKol(tRows()[0], 'Nama di sertifikat'), 'Nama di sertifikat', 'Belum dicek → Draft dikirim → Nama dikonfirmasi.'),
+      tab === 'sertifikat' && tS(tGear(), 'Aksi', '<b>Draft sertifikat</b>, <b>Konfirmasi nama</b>, <b>Buat / Lihat Sertifikat</b>, dan <b>Pengiriman</b> (softcopy / hardcopy, data LSP/BNSP).'),
+      tab === 'sertifikat' && { popover: { title: 'Lanjut ke Survey', description: 'Survey diisi peserta lewat link.' }, lanjut: { label: 'Tab Survey', run: () => { state.mpvTab = 'survey'; render(); }, ke: 'mpstDetail' } },
+      tab === 'survey' && tS('[data-act="srv-buka"], #srv-url', 'Link survey', '<b>Buka survey</b>, salin link ke peserta, lalu <b>Tutup survey</b> setelah selesai.'),
+      tab === 'survey' && tS(tKol(tRows()[0], 'Status') || tRows()[0], 'Daftar pengisi', 'Siapa yang sudah mengisi; <b>Lihat jawaban</b> per peserta.'),
+      tab === 'survey' && tS('[data-act="srv-xls"]', 'Export Excel', 'Rekap jawaban survey.')
+    ];
+  };
+  TOUR.mon = () => [
+    tS(null, 'Monitoring Peserta', 'Pantauan semua peserta Deal dari data yang sudah ada: program, PIC, invoice, sertifikat.'),
+    tS('#view .mon-kpis', 'Tindak lanjut', 'Klik kartu untuk menyaring, mis. sertifikat belum dikirim.'),
+    tS('.toolbar', 'Cari dan saring', 'Saring tipe program dan bulan.'),
+    tS(tGear(), 'Aksi', '<b>Kelola Sertifikat</b>, <b>Catatan</b> tindak lanjut, <b>Lihat quotation</b>.'),
+    tS('[data-act="mon-xls"]', 'Export Excel', 'Mengunduh daftar sesuai saringan.')
+  ];

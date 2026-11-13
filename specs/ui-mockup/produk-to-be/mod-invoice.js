@@ -21,7 +21,11 @@
   db.inv = [];
   // Nomor invoice otomatis LMI/INV/MM/yy-zzz (input/Master - Buat Program/2026-11-02-format-penomoran-penawaran-invoice/).
   const ivcNo = (iso, peek = false) => lmiNo('INV', iso, peek);
-  const invOfQtn = k => db.inv.filter(i => i.qtn === k.id);
+  // Invoice Batal (to be 12-11-2026: peserta batal ikut setelah reschedule, invoice belum dibayar) tidak dihitung sebagai tagihan;
+  // peserta lain di invoice itu kembali belum ditagih.
+  const invOfQtn = k => db.inv.filter(i => i.qtn === k.id && i.status !== 'batal');
+  // Invoice program yang sudah Close Program terkunci (Q-MPS-05): hanya lihat dan cetak.
+  const ivcTutup = i => { const k = db.qtn.find(x => x.id === i.qtn); return !!(k && (pjOfQtn(k) || {}).closed); };
   // Nomor Program (nomor Penjualan Program) di setiap item invoice agar mudah ditelusuri (input/Invoice & Pengajuan/2026-10-30-invoice-per-quotation-tab/).
   const progNo = k => (pjOfQtn(k) || {}).nomor || '—';
   const progCell = k => `<span class="code">${esc(progNo(k))}</span>`;
@@ -177,15 +181,14 @@
       .filter(i => { const k = qOf(i); return matches([i.nomor, i.prog, k.nomor, kepadaOf(k), paketOf(mpOf(pjOfQtn(k))).judul, (salesOf(k) || {}).nama, i.noFaktur]); });
     return listBlock(rows, [
       NO_COL, progCol,
-      { label: 'No. Invoice', cls: 'nowrap', render: i => `<button class="btn btn-ghost sm" data-act="ivc-view" data-id="${i.id}">${esc(i.nomor)}</button><br><span class="muted">${tglPanjang(i.tanggal)}</span>` },
-      { label: 'No. SO / Quotation', cls: 'nowrap', render: i => `${soCell(qOf(i))}<br><span class="muted">${esc(qOf(i).nomor)}</span>` },
+      // Tabel ringkas (12-11-2026): nomor SO & quotation di bawah nomor invoice; faktur di bawah perlakuan PPN.
+      { label: 'No. Invoice', cls: 'nowrap', render: i => `<button class="btn btn-ghost sm" data-act="ivc-view" data-id="${i.id}">${esc(i.nomor)}</button><br><span class="muted">${tglPanjang(i.tanggal)} · SO ${soCell(qOf(i))}</span>` },
       { label: 'Customer', render: i => { const k = qOf(i), ps = i.cara === 'peserta' ? (pesertaById(i.peserta[0]) || {}).nama : '';
         return `${tujuanTag(k.tujuan)} ${esc(kepadaOf(k))}${ps ? `<br><span class="muted">Peserta: ${esc(ps)}</span>` : `<br><span class="muted">${i.peserta.length} peserta</span>`}`; } },
-      { label: 'No. Faktur', render: i => esc(i.noFaktur || '—') },
-      { label: 'Perlakuan PPN', render: i => PERLAKUAN[i.perlakuan] + (i.perlakuan === 'WAPU' ? `<br><span class="muted">${i.setor ? `Bukti setor ${tglPanjang(i.setor.tanggal)}` : 'Bukti setor belum'}</span>` : '') },
-      { label: 'Total Tagihan', cls: 'money', render: i => `${rp(i.total)}<br><span class="muted">piutang ${rp(i.piutang)}</span>` },
-      { label: 'Status', cls: 'nowrap', render: () => ivcBadge('invoiced') },
-      { label: 'Action', cls: 'act', render: i => gearMenu(i, [['ivc-view', 'Lihat Invoice'], ['ivc-print', 'Print Invoice'], ...(i.perlakuan === 'WAPU' && !i.setor ? [['ivc-setor', 'Terima Bukti Setor WAPU']] : [])]) }
+      { label: 'PPN', render: i => PERLAKUAN[i.perlakuan] + `<br><span class="muted">${i.noFaktur ? `Faktur ${esc(i.noFaktur)}` : 'Tanpa faktur'}${i.perlakuan === 'WAPU' ? ` · ${i.setor ? `setor ${tglPanjang(i.setor.tanggal)}` : 'bukti setor belum'}` : ''}</span>` },
+      { label: 'Total', cls: 'money', render: i => `${rp(i.total)}<br><span class="muted">piutang ${rp(i.piutang)}</span>` },
+      { label: 'Status', cls: 'nowrap', render: i => i.status === 'batal' ? `<span class="badge st-ps-keluar">Batal</span><br><span class="muted">${tglPanjang(i.batal.tanggal)}</span>` : `${ivcBadge('invoiced')}<br>${i.bayar ? `<span class="badge st-ps-deal">Dibayar ${tglPanjang(i.bayar.tanggal)}</span>` : '<span class="muted">Belum dibayar</span>'}` },
+      { label: 'Action', cls: 'act', render: i => gearMenu(i, [['ivc-view', 'Lihat Invoice'], ['ivc-print', 'Print Invoice'], ...(i.bayar || i.status === 'batal' || ivcTutup(i) ? [] : [['ivc-bayar', 'Catat Pembayaran']]), ...(i.perlakuan === 'WAPU' && !i.setor && i.status !== 'batal' && !ivcTutup(i) ? [['ivc-setor', 'Terima Bukti Setor WAPU']] : [])]) }
     ]);
   }
 
@@ -329,11 +332,37 @@
     openModal({ title: `Invoice ${i.nomor}`, wide: 'x', info: true,
       body: `<div class="summary">${sumRow('No. Program', `${jenisTag(i.jenis)} <span class="code">${esc(i.prog)}</span> · ${esc(paketOf(mpOf(pjOfQtn(k))).judul)}`)}${sumRow('Tanggal Invoice', tglPanjang(i.tanggal))}${sumRow('Quotation', `${esc(k.nomor)} · ${esc(kepadaOf(k))}`)}${sumRow('Peserta', `${names.length} — ${esc(names.join(', '))}`)}
         ${sumRow('Perlakuan PPN', PERLAKUAN[i.perlakuan])}${sumRow('Nomor Faktur', esc(i.noFaktur || '—'))}${sumRow('COA Penjualan', esc(i.coaPenjualan))}
+        ${i.status === 'batal' ? sumRow('Status', `<b>Batal</b> ${tglPanjang(i.batal.tanggal)} · ${esc(i.batal.alasan)} · ${esc(i.batal.oleh)}`) : ''}
+        ${sumRow('Pembayaran', i.bayar ? `Dibayar ${tglPanjang(i.bayar.tanggal)}${i.bayar.ket ? ` · ${esc(i.bayar.ket)}` : ''} · dicatat ${esc(i.bayar.oleh)}` : 'Belum dibayar')}
         ${i.setor ? sumRow('Bukti setor WAPU', `${tglPanjang(i.setor.tanggal)}${i.setor.nomor ? ` · ${esc(i.setor.nomor)}` : ''}`) : ''}</div>
         <p class="qtn-h">Perhitungan</p>${calcCard(i, i.perlakuan)}
         <p class="qtn-h">Jurnal invoice</p>${jrTable(i.jurnal)}
         ${i.setor ? `<p class="qtn-h">Jurnal bukti setor PPN WAPU</p>${jrTable(i.setor.jurnal)}` : ''}
         <p class="hint"><button type="button" class="btn btn-outline sm" data-act="ivc-print" data-id="${i.id}">Print Invoice</button> Batal / revisi invoice belum ditentukan${QIVC(11, 'Bila invoice salah, bisa dibatalkan/direvisi? Jurnalnya dibalik?')}.</p>` });
+  }
+  // Catat Pembayaran (usulan 12-11-2026, input/Master - Buat Program/2026-11-12-opsi-konfirmasi-ulang-rev-program/): status bayar
+  // menentukan apakah peserta boleh memilih Refund setelah reschedule (QTN-FR-35). Pelunasan lengkap (parsial, jurnal kas) belum dirancang (Q-MON-02).
+  function ivcBayar(i) {
+    openModal({ title: `Catat Pembayaran ${esc(i.nomor)}`,
+      body: `<div class="summary">${sumRow('Total Tagihan', rp(i.total))}${sumRow('Piutang', rp(i.piutang))}</div>
+        <div class="grid2 gap-t">${field('Tanggal bayar' + req, `<input class="input" type="date" name="tgl" value="${todayIso}" max="${todayIso}">`)}${field('Keterangan', '<input class="input" name="ket" maxlength="100" placeholder="mis. Transfer BCA">')}</div>
+        <p class="hint gap-t">Dicatat sebagai lunas penuh. Status bayar dipakai untuk menentukan opsi Refund bila program di-reschedule.${q('Q-IVC-BAYAR', 'Usulan: cukup tanggal bayar (lunas penuh). Perlu pembayaran sebagian, bukti transfer, dan jurnal kas di modul Invoice?')}</p>`,
+      saveLabel: 'Simpan',
+      onSave: f => {
+        if (!f.tgl.value) return invalid(f.tgl, 'Tanggal bayar wajib diisi');
+        i.bayar = { tanggal: f.tgl.value, ket: f.ket.value.trim(), oleh: meName() };
+        logAct('Invoice', 'Invoicing', 'Bayar', i.nomor, i.id, `Pembayaran invoice ${i.nomor} dicatat: ${tglPanjang(i.bayar.tanggal)}`, [{ f: 'Pembayaran', old: 'Belum dibayar', new: `Dibayar ${i.bayar.tanggal}` }]);
+        toast(`Pembayaran ${i.nomor} dicatat`);
+      }
+    });
+  }
+  // Batal invoice (to be 12-11-2026, input/Master - Buat Program/2026-11-12-pindah-jadwal-batal-invoice/): hanya invoice yang belum dibayar;
+  // dipanggil saat peserta Batal ikut setelah reschedule. Invoice tidak dihapus; jurnal pembalikan dikerjakan Finance (usulan).
+  function ivcBatal(i, alasan) {
+    if (i.bayar || i.status === 'batal') return false;
+    i.status = 'batal'; i.batal = { tanggal: todayIso, alasan, oleh: meName() };
+    logAct('Invoice', 'Invoicing', 'Batal', i.nomor, i.id, `Invoice ${i.nomor} dibatalkan: ${alasan}`, [{ f: 'Status', old: 'Invoiced', new: 'Batal' }]);
+    return true;
   }
   function ivcSetor(i) {
     const k = db.qtn.find(x => x.id === i.qtn);
@@ -417,4 +446,24 @@
       onSave: () => { logAct('Invoice', 'Invoicing', 'Cetak', i.nomor, i.id, `Cetak Invoice ${i.nomor}`); toast(`Invoice ${i.nomor} dicetak (mockup)`); }
     });
   }
+  // ---------- Tutorial highlight driver.js (permintaan BA 12-11-2026; menggantikan callout Panduan) ----------
+  // Dimulai dari tombol Tutorial di atas kartu tabel. Helper tS/tRows/tKol/tGear/tAdd ada di core.js; langkah yang elemennya tidak ada dilewati.
 
+  TOUR.ivc = () => {
+    const un = state.ivcTab === 'uninvoiced';
+    return [
+      tS(null, 'Invoicing', 'Penagihan dari Sales Order yang sudah <b>Siap invoice</b>. Dikelola <b>Finance</b>.'),
+      tS('#view .card .tabs', 'Uninvoiced / Invoiced', '<b>Uninvoiced</b>: SO yang belum ditagih. <b>Invoiced</b>: invoice yang sudah dibuat, beserta status bayar.'),
+      tS('.toolbar', 'Cari dan saring', 'Saring jenis Public / B2B, program, dan tahun.'),
+      un && tS(tGear(), 'Add Invoicing', 'Membuat invoice dari Sales Order baris ini.'),
+      !un && tS(tKol(tRows()[0], 'Status'), 'Status', '<b>Dibayar</b> / <b>Belum dibayar</b>, atau <b>Batal</b> bila peserta batal ikut sebelum membayar.'),
+      !un && tS(tGear(), 'Aksi', '<b>Lihat</b> / <b>Print Invoice</b>. <b>Catat Pembayaran</b>: tanggal bayar (lunas). <b>Terima Bukti Setor WAPU</b>: khusus customer WAPU.'),
+      un && (() => { const k = ivcUnRows()[0]; return k && { popover: { title: 'Buat invoice', description: 'Lanjut ke form invoice untuk SO pertama di daftar.' }, lanjut: { label: 'Buka form', run: () => ivcForm(k, 'ivc'), ke: 'ivcForm' } }; })()
+    ];
+  };
+  TOUR.ivcForm = () => [
+    tS('#view .ivc-head', 'Data invoice', 'Customer, quotation, dan Sales Order asal; nomor invoice dibuat otomatis saat disimpan.'),
+    tS('#ivc-cara', 'Cara tagih & PPN', 'Cara tagih, perlakuan PPN, dan nomor faktur.'),
+    tS('#ivc-dyn', 'Perhitungan & jurnal', 'Nilai tagihan, PPN, dan jurnal dihitung otomatis.'),
+    tS('#view .form-actions [type=submit]', 'Save', 'Menyimpan invoice. Setelah itu Print Invoice dan kirim ke customer; catat pembayaran saat dana masuk.')
+  ];

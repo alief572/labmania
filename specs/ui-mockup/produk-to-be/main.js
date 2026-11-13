@@ -18,6 +18,7 @@
     const navKey = SUBVIEW[v] ? SUBVIEW[v][0] : v;
     if (!can(navKey)) { $('#view').innerHTML = `${pageHead('Tidak ada akses', `Role <b>${esc(meRole() || '—')}</b> tidak punya hak View untuk menu ini. Atur di Master Data › Role & Permission, atau beri hak khusus user ini lewat Override Permission di Master User.`, 'FR-57 · FR-65')}`; return; }
     $('#view').innerHTML = MASTERS[v] ? viewMaster(v) : VIEWS[v]();
+    tourBtn(); // tombol Tutorial driver.js di atas kartu tabel (semua menu kecuali Dashboard)
     if (state.view === 'ivcForm') ivcBind();
     if (state.view === 'pbForm') pbBind();
   }
@@ -51,6 +52,9 @@
     toggle: el => {
       const list = state.view === 'paket' ? db.paket : state.view === 'rate' ? db.rate[state.rateTab] : db[state.view];
       const r = list.find(x => x.id === +el.dataset.id);
+      // Cek kombinasi ganda hanya terhadap Product aktif (Q-17): mengaktifkan kembali ditolak bila kombinasinya sudah dipakai Product aktif lain.
+      const dup = state.view === 'paket' && !r.aktif && db.paket.find(p => p !== r && p.aktif && comboKey(p) === comboKey(r));
+      if (dup) return toast(`Tidak dapat diaktifkan: kombinasi sama dengan Product aktif ${dup.nomor}`, 'warn');
       r.aktif = !r.aktif;
       toast(`${r.kode || r.nomor} ${r.aktif ? 'diaktifkan' : 'dinonaktifkan'}`);
       render();
@@ -89,6 +93,9 @@
     'user-reset': el => userReset(db.user.find(r => r.id === +el.dataset.id)),
     'company-del': el => {
       const r = db.company.find(x => x.id === +el.dataset.id);
+      // Boleh dihapus (Q-16) selama belum dipakai transaksi atau peserta (usulan analis, menjaga data quotation/invoice).
+      const pj = db.quot.find(x => x.company === r.id), k = db.qtn.find(x => x.company === r.id), ps = db.peserta.find(x => x.company === r.id);
+      if (pj || k || ps) return toast(`Company ${r.kode} sudah dipakai ${pj ? `Penjualan Program ${pj.nomor}` : k ? `Quotation ${k.nomor}` : `peserta ${ps.nama}`}, tidak dapat dihapus. Nonaktifkan saja.`, 'warn');
       confirmDelete(`${r.kode} — ${r.nama}`, () => { db.company.splice(db.company.indexOf(r), 1); toast(`Company ${r.kode} dihapus`); });
     },
     'rate-tab': el => { state.rateTab = el.dataset.tab; state.q = ''; state.status = 'all'; state.page = 1; render(); },
@@ -108,6 +115,7 @@
     'qt-cancel': el => qtCancel(qtById(el)),
     'qt-print': el => qtPrint(qtById(el)),
     'qt-resched': el => qtResched(qtById(el)),
+    'tour': () => tourStart(tourKeyOf()),
     'qtn-new': () => qtnForm(),
     'qtn-from-pj': el => qtnForm(null, +el.dataset.id),
     'qtn-edit': el => qtnForm(qtnById(el)),
@@ -126,6 +134,15 @@
     'skt-view': el => { closeModal(); sktView(sktById(+el.dataset.id)); },
     'skt-print': el => sktPrint(sktById(+el.dataset.id)),
     'skt-back': () => { state.soTab = 'skt'; go('so'); },
+    'rf-view': el => rfView(rfById(+el.dataset.id)),
+    'rf-proses': el => rfProses(rfById(+el.dataset.id)),
+    'qps-keluar': el => qpsKeluar(db.qps.find(x => x.id === +el.dataset.id)),
+    'qps-surat': el => qpsSurat(db.qps.find(x => x.id === +el.dataset.id)),
+    'qtn-kuota': el => qtnKuota(qtnById(el)),
+    'qtn-dok': el => qtnDok(qtnById(el)),
+    'srt-draft': el => { closeModal(); sertDraft(db.qps.find(x => x.id === +el.dataset.id)); },
+    'srt-draft-all': el => sertDraftAll(db.quot.find(x => x.id === +el.dataset.id)),
+    'srt-nama': el => { closeModal(); sertNama(db.qps.find(x => x.id === +el.dataset.id)); },
     'qtn-view': el => { closeModal(); qtnView(qtnById(el)); },
     // To be: tab Data Peserta, link Konfirmasi Kehadiran, preview/download.
     'qtn-view-ps': el => { closeModal(); qtnView(qtnById(el), 'peserta'); },
@@ -142,6 +159,7 @@
     'ivc-view': el => ivcView(db.inv.find(x => x.id === +el.dataset.id)),
     'ivc-print': el => ivcPrint(db.inv.find(x => x.id === +el.dataset.id)),
     'ivc-setor': el => ivcSetor(db.inv.find(x => x.id === +el.dataset.id)),
+    'ivc-bayar': el => ivcBayar(db.inv.find(x => x.id === +el.dataset.id)),
     'mon-tl': el => { state.status = state.status === el.dataset.s ? 'all' : el.dataset.s; state.page = 1; render(); },
     'sert-lihat': el => { closeModal(); const x = monAll().find(r => r.p.id === +el.dataset.id); sertBuat([x], x.p.nama); render(); },
     'sert-buat-all': el => { const pj = db.quot.find(x => x.id === +el.dataset.id); const l = sertRowsOf(pj); sertBuat(el.dataset.baru ? l : l.filter(x => x.s.noLatih), pj.nomor); render(); },
@@ -149,6 +167,11 @@
     'sert-open': el => { closeModal(); sertOpen(db.qps.find(x => x.id === +el.dataset.id)); },
     'mon-note': el => { closeModal(); monNote(db.qps.find(x => x.id === +el.dataset.id)); },
     'mpv-tab': el => { state.mpvTab = el.dataset.tab; state.q = ''; state.page = 1; render(); },
+    'srv-buka': el => { srvBuka(db.quot.find(x => x.id === +el.dataset.id)); render(); },
+    'srv-tutup': el => { srvTutup(db.quot.find(x => x.id === +el.dataset.id)); render(); },
+    'srv-copy': el => srvCopy(db.quot.find(x => x.id === +el.dataset.id)),
+    'srv-xls': el => srvXls(db.quot.find(x => x.id === +el.dataset.id)),
+    'srv-view': el => srvView(db.quot.find(x => x.id === (+el.dataset.pj || state.mpPj)), +el.dataset.id),
     'mon-xls': () => monXls(),
     'mp-tab': el => { state.mpTab = el.dataset.tab; state.page = 1; render(); },
     'mp-open': el => { state.mpPj = +el.dataset.id; state.mpvTab = 'peserta'; state.q = ''; state.page = 1; render(); window.scrollTo(0, 0); },
@@ -157,11 +180,15 @@
     'mp-print': el => mpPrintPeserta(db.quot.find(x => x.id === +el.dataset.id)),
     'mp-hadir': el => mpPrintHadir(db.quot.find(x => x.id === +el.dataset.id)),
     'mp-nametable': el => mpPrintNameTable(db.quot.find(x => x.id === +el.dataset.id)),
+    // Kolom Aksi di tabel peserta: data-id = peserta; program dari halaman yang sedang dibuka.
+    'mp-nt-ps': el => mpPrintNameTable(db.quot.find(x => x.id === state.mpPj), +el.dataset.id),
+    'mp-nt-all': () => mpPrintNameTable(db.quot.find(x => x.id === state.mpPj)),
+    'mp-hadir-all': () => mpPrintHadir(db.quot.find(x => x.id === state.mpPj)),
     'mp-xls': el => mpXls(db.quot.find(x => x.id === +el.dataset.id)),
     'ivc-tab': el => { state.ivcTab = el.dataset.tab; state.ivcProg = 'all'; state.ivcYear = 'all'; state.page = 1; render(); },
     'ivc-excel': () => toast('Export Excel belum tersambung (mockup)'),
     // Role & Permission & Pengajuan Biaya
-    'ak-edit': el => akEdit(+el.dataset.role),
+    'ak-edit': el => akEdit(+el.dataset.role || +el.dataset.id),
     'role-add': () => roleForm(),
     'role-edit': el => roleForm(roleById(+el.dataset.id)),
     'role-akses': el => akEdit(+el.dataset.id),
@@ -183,7 +210,8 @@
     'qtn-open': el => { state.qtnPj = +el.dataset.id; state.q = ''; state.status = 'all'; state.jenis = 'all'; state.page = 1; render(); window.scrollTo(0, 0); },
     'qtn-back': () => { state.qtnPj = null; state.q = ''; state.status = 'all'; state.jenis = 'all'; state.page = 1; render(); },
     'qtn-tab': el => { state.qtnTab = el.dataset.tab; state.bpPj = null; state.status = 'all'; state.page = 1; render(); },
-    'bp-open': el => { state.bpPj = +el.dataset.id; state.q = ''; state.status = 'all'; state.page = 1; render(); window.scrollTo(0, 0); },
+    'bp-tab': el => { state.bpTab = el.dataset.tab; state.status = 'all'; state.page = 1; render(); },
+    'bp-open': el => { state.bpPj = +el.dataset.id; state.bpTab = 'aktif'; state.q = ''; state.status = 'all'; state.page = 1; render(); window.scrollTo(0, 0); },
     'bp-back': () => { state.bpPj = null; state.q = ''; state.status = 'all'; state.page = 1; render(); },
     'qtn-filter': el => { state.status = state.status === el.dataset.s ? 'all' : el.dataset.s; state.page = 1; render(); },
     'qt-jenis': el => {
@@ -326,10 +354,20 @@
 
   // To be: data contoh peserta quotation → isian Konfirmasi Kehadiran (setelah semua data contoh termasuk invoice dimuat).
   qpsSeed();
+  // To be 12-11-2026: contoh reschedule setelah Deal (quotation & SO rev1, link baru, Surat Tugas baru, satu Refund).
+  rsDemo();
+  // Data uji jawaban pertanyaan terbuka 12-11-2026 (kasus UJI-1 – UJI-8, mod-uji-kasus.js).
+  ujiKasus();
   // Link Konfirmasi Kehadiran: konfigurasi untuk konfirmasi.html, lalu ambil isian yang dikirim dari tab lain.
   linkPublishAll();
   linkSync();
   window.addEventListener('focus', linkSync);
   window.addEventListener('storage', e => { if (e.key && e.key.startsWith('labmania-tobe:isian:')) linkSync(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) linkSync(); });
+  // Survey Peserta (SRV-FR-01 – SRV-FR-06): data contoh, lalu ambil jawaban dari survey.html di tab lain.
+  srvSeed();
+  srvSync();
+  window.addEventListener('focus', srvSync);
+  window.addEventListener('storage', e => { if (e.key && e.key.startsWith('labmania-tobe:survey-isi:')) srvSync(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) srvSync(); });
   render();
