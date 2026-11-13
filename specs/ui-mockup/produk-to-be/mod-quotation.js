@@ -84,7 +84,8 @@
   const pjSelesai = pj => !!pj.tglSelesai && pj.tglSelesai < todayIso;
   // Tab Data Peserta memuat semua batch, On going dan Selesai (input/Master - Buat Program/2026-11-09-tab-data-peserta-batch/).
   // Tab Selesai = program sudah Close Program di Manage Peserta, bukan tanggal acara (Q-QTN-09, input/Master - Buat Program/2026-11-12-jawaban-pertanyaan-terbuka/).
-  const qtnTabOk = pj => pj.status === 'final' && (state.qtnTab === 'peserta' || (state.qtnTab === 'done') === !!pj.closed);
+  // Program yang dibatalkan setelah ada quotation tampil di tab Selesai (quotation-nya Batal, tetap bisa dilihat).
+  const qtnTabOk = pj => (pj.status === 'batal' ? state.qtnTab === 'done' && qtnOfPj(pj).length > 0 : pj.status === 'final' && (state.qtnTab === 'peserta' || (state.qtnTab === 'done') === !!pj.closed));
 
   // ---------- Link Konfirmasi Kehadiran (to be) ----------
   // Satu link per quotation, dibuat saat quotation disimpan. Di mockup link mengarah ke konfirmasi.html di folder ini;
@@ -137,8 +138,29 @@
   function revNotice(k) {
     const i = k.revInfo || {}, sisa = k.peserta.filter(r => perluUlang(k, r)).length;
     return `<div class="notice rv-note"><span><b>rev${k.rev}</b> karena reschedule program ${i.waktu ? fmtStamp(i.waktu.replace('T', ' ')) : ''}: ${i.lama ? fmtRange(i.lama.tglMulai, i.lama.tglSelesai) : ''} → <b>${i.baru ? fmtRange(i.baru.tglMulai, i.baru.tglSelesai) : ''}</b>.
-      ${ulangJawab(k)} dari ${ulangTotal(k)} peserta sudah konfirmasi ulang${sisa ? `, <b>${sisa} belum</b>` : ''}. Kirim ulang PDF quotation revisi dan <b>link baru</b> ke customer; link lama sudah ditutup.</span><span class="ref">QTN-FR-34 – QTN-FR-36${QQTN24}</span></div>`;
+      ${ulangJawab(k)} dari ${ulangTotal(k)} peserta sudah konfirmasi ulang${sisa ? `, <b>${sisa} belum</b>` : ''}. Kirim ulang PDF quotation revisi dan <b>link baru</b> ke customer; link lama sudah ditutup.${k.dealUlang ? ` Quotation ini sudah Deal sebelum reschedule: Sales Order lama pindah ke <b>SO Batal</b>, invoice tetap. Setelah peserta menjawab, lakukan <b>Deal ulang</b> (paling lambat H-1, ${fmtTgl(addDays(pjOfQtn(k).tglMulai, -1))}).` : ''}</span><span class="ref">QTN-FR-34 – QTN-FR-36${QQTN24}</span></div>`;
   }
+  // Penanda reschedule per quotation (input/Master - Buat Program/2026-11-13-reschedule-deal-ulang-so-batal/):
+  // kirim link konfirmasi baru → menunggu jawaban (x/y) → siap Deal ulang → Deal ulang selesai.
+  function rsTahap(k) {
+    if (!k.rev || k.status === 'batal') return null;
+    if (k.status === 'deal') return k.dealUlangSelesai && k.dealUlangSelesai.rev === k.rev ? { cls: 'st-ps-deal', t: `Deal ulang rev${k.rev}`, sub: fmtTgl(k.dealUlangSelesai.tgl) } : null;
+    const tot = ulangTotal(k), jawab = ulangJawab(k), belum = k.peserta.filter(r => perluUlang(k, r)).length;
+    if (k.dealUlang && !belum) return k.peserta.some(r => r.st !== 'keluar' && r.st !== 'batal' && ikutUlang(k, r))
+      ? { cls: 'st-ps-deal', t: 'Siap Deal ulang', sub: `${jawab} dari ${tot} sudah menjawab` }
+      : { cls: 'st-ps-keluar', t: 'Semua peserta tidak ikut', sub: 'batalkan quotation ini' };
+    if (!tot) return { cls: 'st-ps-menunggu', t: 'Kirim link konfirmasi baru', sub: `reschedule rev${k.rev}` };
+    if (!jawab) return { cls: 'st-ps-menunggu', t: 'Kirim link konfirmasi baru', sub: `${tot} peserta perlu konfirmasi ulang` };
+    if (belum) return { cls: 'st-ps-menunggu', t: `Konfirmasi ulang ${jawab}/${tot}`, sub: k.dealUlang ? 'lalu Deal ulang' : `${belum} belum menjawab` };
+    return null;
+  }
+  const rsPenanda = k => { const x = rsTahap(k); return x ? `<br><span class="badge ${x.cls}">${x.t}</span><br><span class="muted">${esc(x.sub)}</span>` : ''; };
+  // Ringkasan per program untuk Daftar Quotation.
+  const rsProgInfo = pj => {
+    if (!pj.rev) return '';
+    const ks = qtnOfPj(pj).filter(k => k.status !== 'batal'), nDeal = ks.filter(butuhDealUlang).length, nLink = ks.filter(k => { const x = rsTahap(k); return x && x.t === 'Kirim link konfirmasi baru'; }).length;
+    return `<br><span class="badge st-ps-menunggu">Reschedule rev${pj.rev}</span>${nLink ? ` <span class="muted">${nLink} perlu kirim link baru</span>` : ''}${nDeal ? ` <span class="muted">· ${nDeal} perlu Deal ulang</span>` : ''}`;
+  };
   // Opsi konfirmasi ulang menurut status bayar (input/Master - Buat Program/2026-11-12-pindah-jadwal-batal-invoice/):
   // sudah bayar = Refund atau Pindah jadwal; belum bayar = Batal ikut atau Pindah jadwal.
   // Pindah jadwal = ikut jadwal baru program yang sama (hasil reschedule), bukan pindah ke program lain. Kunci data 'ikut'.
@@ -161,7 +183,7 @@
   function ulangCfg(k) {
     if (!k.rev) return null;
     const i = k.revInfo || {}, pj = pjOfQtn(k);
-    return { rev: k.rev, buka: ulangBuka(k), deal: k.status === 'deal', lama: i.lama ? rangePanjang(i.lama.tglMulai, i.lama.tglSelesai) : '', baru: rangePanjang(pj.tglMulai, pj.tglSelesai),
+    return { rev: k.rev, buka: ulangBuka(k), deal: k.status === 'deal' || !!k.dealUlang, lama: i.lama ? rangePanjang(i.lama.tglMulai, i.lama.tglSelesai) : '', baru: rangePanjang(pj.tglMulai, pj.tglSelesai),
       bayarCo: isB2bQtn(k) && !!invBayar(k),
       peserta: k.peserta.filter(r => perluUlang(k, r)).map(r => { const p = pesertaById(r.id) || {}; return { id: r.id, nama: p.nama, data: p.data || {}, bayar: !!invBayar(k, r.id) }; }) };
   }
@@ -196,8 +218,9 @@
     const kep = r.konf && r.konf.rev === k.rev ? r.konf.keputusan : '';
     const lepas = b2b && kep === 'tidak', company = b2b && !lepas && (kep === 'batal' || kep === 'refund');
     const target = company ? k.peserta.filter(x => x.st === 'deal' || x.st === 'menunggu') : [r];
-    const bayar = k.status === 'deal' ? invBayar(k, company ? null : r.id) : null, terbit = k.status === 'deal' && !bayar ? invTerbit(k, company ? null : r.id) : null;
-    const nominal = !bayar ? 0 : company ? bayar.total : (v => v.dpp + v.ppn)(qtnNilai(k, [r]));
+    const ditagih = k.status === 'deal' || !!k.dealUlang; // menunggu Deal ulang: invoice lama tetap berlaku
+    const bayar = ditagih ? invBayar(k, company ? null : r.id) : null, terbit = ditagih && !bayar ? invTerbit(k, company ? null : r.id) : null;
+    const nominal = !bayar ? 0 : company ? invOfQtn(k).filter(i => i.bayar).reduce((t, i) => t + i.total, 0) : Math.round((v => v.dpp + v.ppn)(qtnNilai(k, [r])) * paidFrac(k));
     const diam = !kep && todayIso >= addDays(pj.tglMulai, -1); // tidak menjawab sampai H-1 = batal (Q-QTN-24 d)
     const opsi = opsiUlang(!!bayar), def = lepas ? 'batal' : opsi.includes(kep) ? kep : (kep && kep !== 'ikut') || diam ? opsi[1] : 'ikut';
     const HINT = { ikut: `tetap ikut program ini di jadwal baru ${fmtRange(pj.tglMulai, pj.tglSelesai)}`, batal: terbit ? `tidak ikut; invoice ${terbit.nomor} (belum dibayar) dibatalkan` : 'tidak ikut; belum ada tagihan',
@@ -232,12 +255,12 @@
           rf = rfCreate({ k, ps: company ? null : r.id, inv: bayar, alasan, nominal });
           target.forEach(x => { x.keluar.refund = rf.nomor; });
         }
-        if (jenis === 'batal' && terbit) { // invoice belum dibayar dibatalkan, tidak dihapus
-          ivcBatal(terbit, `Peserta batal ikut setelah reschedule ${pj.nomor}: ${alasan}`);
-          target.forEach(x => { x.keluar.invBatal = terbit.nomor; });
+        if (jenis === 'batal' && terbit) { // invoice belum dibayar dibatalkan, tidak dihapus (TOP: semua termin belum dibayar)
+          const l = isTop(k) ? batalkanBelumBayar(k, `Peserta batal ikut setelah reschedule ${pj.nomor}: ${alasan}`) : (ivcBatal(terbit, `Peserta batal ikut setelah reschedule ${pj.nomor}: ${alasan}`), [terbit.nomor]);
+          target.forEach(x => { x.keluar.invBatal = l.join(', '); });
         }
         logAct('Quotation', 'Data Peserta', 'Keluar', k.nomor, k.id, `${company ? `Company ${kepadaOf(k)} (${target.length} peserta)` : p.nama}: ${KELUAR_LBL[jenis]}. ${alasan}${rf ? `. Refund ${rf.nomor} dibuat` : ''}${jenis === 'batal' && terbit ? `. Invoice ${terbit.nomor} dibatalkan` : ''}`);
-        toast(`${company ? kepadaOf(k) : p.nama}: ${KELUAR_LBL[jenis]}${rf ? `, Refund ${rf.nomor} menunggu Finance` : ''}${jenis === 'batal' && terbit ? `, invoice ${terbit.nomor} dibatalkan` : ''}`);
+        toast(`${company ? kepadaOf(k) : p.nama}: ${KELUAR_LBL[jenis]}${rf ? `, Refund ${rf.nomor} menunggu approval (modul Refund)` : ''}${jenis === 'batal' && terbit ? `, invoice ${terbit.nomor} dibatalkan` : ''}`);
       }
     });
   }
@@ -259,7 +282,8 @@
     if (co && !data.instansi) data.instansi = co.nama;
     const p = { id: uid(), qtn: k.id, src, tgl, kode: '', company: '', nama: data.nama, instansi: data.instansi || '', telp: data.wa || data.hp || '', email: data.email || '', data, surat };
     db.qps.push(p);
-    k.peserta.push({ id: p.id, st: 'menunggu' });
+    // Mendaftar lewat link sesudah reschedule = sudah setuju jadwal baru, tidak perlu konfirmasi ulang.
+    k.peserta.push(Object.assign({ id: p.id, st: 'menunggu' }, k.rev ? { konf: { rev: k.rev, keputusan: 'ikut', catatan: '', tgl, sumber: 'daftar' } } : {}));
     return p;
   }
   // Data contoh: peserta yang dulu dipilih dari Master Peserta diubah menjadi isian Konfirmasi Kehadiran (dipanggil main.js
@@ -274,6 +298,7 @@
         const p = { id: uid(), qtn: k.id, src: 'link', tgl: `${addDays(k.tanggal, 1 + (i % 3))} ${pad2q(9 + i % 8)}:${pad2q((i * 7) % 60)}`, kode: '', company: '', nama: data.nama, instansi: data.instansi, telp: data.wa, email: data.email, data };
         p.surat = { nama: `Surat_Konfirmasi_${(data.nama || 'peserta').replace(/[^\w]+/g, '_')}.${i % 2 ? 'jpg' : 'pdf'}`, ukuran: 180000 + i * 23000, tipe: i % 2 ? 'image/jpeg' : 'application/pdf', contoh: true };
         if (isB2bQtn(k)) { p.src = 'company'; p.tgl = `${addDays(k.tanggal, 2)} 10:20`; delete p.surat; }
+        if (k.status === 'deal' && r.st === 'deal' && m.id) p.idPeserta = m.id; // data contoh: peserta Deal sudah tersambung ke Master Peserta (QTN-FR-33)
         db.qps.push(p); map[r.id] = p.id; r.id = p.id;
       });
       db.inv.filter(i => i.qtn === k.id).forEach(i => { i.peserta = i.peserta.map(id => map[id] || id); });
@@ -390,12 +415,6 @@
       `<button class="tab ${state.qtnTab === t ? 'active' : ''}" data-act="qtn-tab" data-tab="${t}">${l}<span class="nav-count">${tabCnt(t)}</span></button>`).join('');
     return `${pageHead('Daftar Quotation', 'Penjualan Program Final, Public maupun B2B, dibuatkan quotation sebagai persiapan invoice. Satu baris per Penjualan Program; Public dapat dibuatkan quotation berkali-kali. Klik <b>Lihat detail</b> untuk quotation-nya.', 'QTN-FR-01 – QTN-FR-29',
       '<button class="btn btn-accent" data-act="qtn-new">+ Buat Quotation</button>')}
-      <div class="tobe-box"><h3>Yang berubah di Quotation <span class="tobe">To be</span></h3><ol>
-        <li>Form quotation tidak lagi memilih peserta dari Master Peserta; diganti <b>Kuota peserta</b>.${QTB1}</li>
-        <li>Saat quotation disimpan, sistem membuat <b>link Konfirmasi Kehadiran</b> khusus quotation itu. Tiap calon peserta mengisi data dirinya sendiri.${QTB2}</li>
-        <li>Hasil isian masuk ke tab <b>Data Peserta</b> di detail quotation, lengkap dengan Preview dan Download. Peserta <b>hanya</b> masuk lewat link; tidak ada tambah manual, supaya semua tercatat di sistem.${QTB4}${QTB8}</li>
-        <li>Tab <b>Data Peserta</b> di halaman ini: satu baris per batch Penjualan Program; <b>Lihat detail</b> menampilkan peserta semua quotation batch itu, dengan <b>Confirmation Letter</b> per peserta dan <b>Export PDF</b> (daftar + Confirmation Letter).${QBP}</li>
-        <li><b>Confirmation Letter</b> menjadi dokumen output quotation, dibentuk dari isian Konfirmasi Kehadiran.${QTB5}</li></ol></div>
       ${isPs ? '' : qtnPipe(db.qtn.filter(k => inTab.some(x => x.id === k.pj)))}
       <div class="card"><div class="tabs">${tabs}<span class="tabs-note">${q('Q-QTN-09', 'Terjawab 12-11-2026: program pindah ke tab Selesai setelah Close Program di Manage Peserta (Manajemen atau Sales/Marketing).')}</span></div>
         ${isPs ? toolbar('Cari program, nomor, atau nama peserta…', false, ymFilter(db.quot.filter(qtnTabOk).map(pj => pj.tglMulai)))
@@ -409,7 +428,7 @@
     // Tanpa aksi Confirmation Letter dan Lihat Sales Order: Confirmation Letter lewat tab Data Peserta, SO lewat menu Sales Order
     // (input/Master - Buat Program/2026-11-09-aksi-quotation-tanpa-so-cl/).
     if (k.status === 'draft') a.push(['qtn-edit', 'Edit'], ['qtn-print', 'Kirim dan Cetak Quotation'], ['qtn-cancel', 'Batalkan', true]);
-    if (k.status === 'terkirim') a.push(['qtn-deal', 'Deal'], ...(bisaKuota(k) ? [['qtn-kuota', 'Tambah kuota']] : []), ['qtn-print', 'Kirim dan Cetak Quotation'], ['qtn-cancel', 'Batalkan', true]);
+    if (k.status === 'terkirim') a.push(['qtn-deal', k.dealUlang ? 'Deal ulang' : 'Deal'], ...(bisaKuota(k) ? [['qtn-kuota', 'Tambah kuota']] : []), ['qtn-print', 'Kirim dan Cetak Quotation'], ['qtn-cancel', 'Batalkan', true]);
     if (k.status === 'deal') a.push(['qtn-print', 'Cetak Quotation'], ...(qtnTutup(k) ? [] : [['qtn-dok', 'Tambah dokumen customer']]));
     if (k.status === 'batal') a.push(['qtn-print', 'Lihat PDF']);
     return a;
@@ -465,7 +484,7 @@
         </div></div>`;
     const foot = `<p class="lk-foot muted">Pertanyaan terbuka: ${QTB4}${QTB8}${QTB9}${isB2bQtn(k) ? QKCO : ''}</p>`;
     // B2B: satu konfirmasi company (PIC + surat) untuk seluruh daftar peserta.
-    const co = k.konfCo, coBox = isB2bQtn(k) ? `<div class="card pad dp-co"><p class="ivc-sec-h">Konfirmasi company <span class="tobe">To be</span></p>${co
+    const co = k.konfCo, coBox = isB2bQtn(k) ? `<div class="card pad dp-co"><p class="ivc-sec-h">Konfirmasi company</p>${co
       ? `<p><b>${esc(co.nama)}</b> · PIC ${esc(co.pic)}${co.jab ? ` (${esc(co.jab)})` : ''} · ${esc(co.hp || '—')} · ${esc(co.email || '')}<br><span class="muted">${suratMeta(k, pesertaById(k.peserta[0].id))}</span></p>
         <div class="dp-btns"><button type="button" class="btn btn-outline sm" data-act="qps-prev" data-id="${k.peserta[0].id}">Lihat surat konfirmasi</button><button type="button" class="btn btn-ghost sm" data-act="qps-pdf" data-id="${k.peserta[0].id}">Unduh</button></div>`
       : '<p class="muted">PIC company belum mengirim daftar peserta. Bagikan link ke PIC company.</p>'}</div>` : '';
@@ -510,7 +529,7 @@
       draft: 'Periksa isi quotation, lalu kirim ke customer. Link Konfirmasi Kehadiran sudah bisa dibagikan.',
       terkirim: 'Tunggu calon peserta mengisi link. Setelah peserta pasti ikut, tandai Deal.',
       deal: ivcStatus(k) !== 'invoiced' ? `Peserta sudah Deal dan Sales Order ${esc(soOfQtn(k) ? soNomor(soOfQtn(k)) : '')} sudah dibuat. Lanjutkan di menu Sales Order: cetak SO, lalu tandai siap dibuatkan invoice. Confirmation Letter ada di tab Data Peserta.` : 'Semua peserta Deal sudah ditagih.',
-      batal: 'Quotation dibatalkan dan link Konfirmasi Kehadiran ditutup.'
+      batal: k.batalProgram ? `Ikut batal karena Penjualan Program ${esc(pjOfQtn(k).nomor)} dibatalkan: ${esc(k.batalProgram.alasan)}. Link Konfirmasi Kehadiran ditutup; invoice yang sudah dibayar diproses di modul Refund.` : 'Quotation dibatalkan dan link Konfirmasi Kehadiran ditutup.'
     };
     const alur = ['draft', 'terkirim', 'deal'].map((s, i, arr) => { const pos = arr.indexOf(k.status), cls = k.status === 'batal' ? '' : i < pos ? 'done' : i === pos ? 'on' : '';
       return `<li class="${cls}"${i === pos ? ' aria-current="step"' : ''}>${QTN_STATUS[s]}</li>`; }).join('');
@@ -523,7 +542,7 @@
     const tab = state.qvTab === 'peserta' ? 'peserta' : 'detail';
     const tabs = `<div class="qv-tabbar" role="tablist" aria-label="Isi quotation">
       <button type="button" class="tab ${tab === 'detail' ? 'active' : ''}" role="tab" aria-selected="${tab === 'detail'}" data-act="qv-tab" data-tab="detail">Detail Quotation</button>
-      <button type="button" class="tab ${tab === 'peserta' ? 'active' : ''}" role="tab" aria-selected="${tab === 'peserta'}" data-act="qv-tab" data-tab="peserta">Data Peserta<span class="nav-count">${k.peserta.length}</span><span class="tobe">To be</span></button></div>`;
+      <button type="button" class="tab ${tab === 'peserta' ? 'active' : ''}" role="tab" aria-selected="${tab === 'peserta'}" data-act="qv-tab" data-tab="peserta">Data Peserta<span class="nav-count">${k.peserta.length}</span></button></div>`;
     const harga = `<div class="totals">${v.allin
       ? `${b2bHargaRows(v)}<div class="tr"><span>Diskon <span class="muted">Rupiah total, dari harga paket</span></span><span>− ${rp(v.diskTot)}</span></div>`
       : `<div class="tr"><span>Subtotal <span class="muted">kuota ${v.n} peserta × ${rp(v.harga)}</span></span><span>${rp(v.sub)}</span></div><div class="tr"><span>Diskon <span class="muted">${v.n} × ${rp(v.disk)}</span></span><span>− ${rp(v.diskTot)}</span></div>`}
@@ -537,9 +556,9 @@
         <p class="hint">${ivcStatus(k) === 'invoiced' ? 'Semua peserta Deal sudah ditagih.' : `${ivcSisaPs(k).length} peserta Deal belum ditagih.`}</p>`
       : `<p class="hint">Belum ada invoice. Invoice dibuat dari Sales Order <b>${esc(soOfQtn(k) ? soNomor(soOfQtn(k)) : '—')}</b> setelah ditandai siap dibuatkan invoice (menu Sales Order).</p>`) : '';
     const body = tab === 'peserta' ? dataPesertaTab(k)
-      : `<div class="qtn-grid">${sec(1, 'Data Quotation', '', kv([['Nomor', `<span class="code">${esc(k.nomor)}</span>`], ['Tanggal', tglPanjang(k.tanggal)], ['Berlaku sampai', tglPanjang(k.berlaku)], ['Sales', esc(s.nama || '—')], ['Sumber informasi', esc(k.sumber || '—')], ['Kuota peserta', `${k.kuota} peserta`], ...(isB2bQtn(k) ? [['Skema harga', isAllin(k) ? 'All-in 1 company' : 'Per peserta']] : [])]))}
+      : `<div class="qtn-grid">${sec(1, 'Data Quotation', '', kv([['Nomor', `<span class="code">${esc(k.nomor)}</span>`], ['Tanggal', tglPanjang(k.tanggal)], ['Berlaku sampai', tglPanjang(k.berlaku)], ['Cara pembayaran', esc(bayarTxt(k))], ['Sales', esc(s.nama || '—')], ['Sumber informasi', esc(k.sumber || '—')], ['Kuota peserta', `${k.kuota} peserta`], ...(isB2bQtn(k) ? [['Skema harga', isAllin(k) ? 'All-in 1 company' : 'Per peserta']] : [])]))}
         ${sec(2, 'Ditujukan Kepada', '', kv([['Tujuan', tujuanTag(k.tujuan)], ['Kepada', esc(kepadaOf(k))], ['u.p.', esc(k.tujuan === 'company' ? k.up || '—' : kepadaOf(k))], ['Alamat', esc(k.alamat || '—')], ...(k.tujuan === 'company' ? [['Perlakuan PPN', PERLAKUAN[ivcPerlakuan(k)]]] : [])]))}</div>
-        ${sec(3, 'Link Konfirmasi Kehadiran <span class="tobe">To be</span>', `<button type="button" class="btn btn-ghost sm" data-act="qv-tab" data-tab="peserta">Lihat Data Peserta (${k.peserta.length})</button>`, linkSection(k))}
+        ${sec(3, 'Link Konfirmasi Kehadiran', `<button type="button" class="btn btn-ghost sm" data-act="qv-tab" data-tab="peserta">Lihat Data Peserta (${k.peserta.length})</button>`, linkSection(k))}
         ${sec(4, 'Harga', `dihitung dari kuota${k.status === 'deal' ? '; Nilai Deal dari peserta Deal' : ''}`, harga)}
         ${invSec}
         ${k.status === 'deal' ? sec(6, 'Dokumen Deal', 'diunggah saat Deal; juga tampil di Sales Order', dokList(k)) : ''}`;
@@ -616,7 +635,7 @@
         .filter(pj => matches([pj.nomor, paketOf(mpOf(pj)).judul, pj.lokasi, ...qtnOfPj(pj).flatMap(k => [k.nomor, kepadaOf(k), k.up, ...k.peserta.map(r => (pesertaById(r.id) || {}).nama)])]));
       return listBlock(rows, [
         NO_COL,
-        { label: 'Penjualan Program', cls: 'title', render: pj => `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}<br>${esc(paketOf(mpOf(pj)).judul)}<br><span class="muted">${esc(varianTxt(pj))} · ${fmtRange(pj.tglMulai, pj.tglSelesai)} · ${esc(pj.lokasi || '—')}</span>` },
+        { label: 'Penjualan Program', cls: 'title', render: pj => `<span class="code">${esc(pj.nomor)}</span> ${jenisTag(pj.jenis)}<br>${esc(paketOf(mpOf(pj)).judul)}<br><span class="muted">${esc(varianTxt(pj))} · ${fmtRange(pj.tglMulai, pj.tglSelesai)} · ${esc(pj.lokasi || '—')}</span>${rsProgInfo(pj)}` },
         { label: 'Peserta deal', cls: 'money', render: pj => `<b>${dealOf(pj)}</b> / ${nPeserta(pj)}${pendOf(pj) ? `<br><span class="muted">kuota ${pendOf(pj)} menunggu</span>` : ''}` },
         { label: 'Progres', render: pj => `${qtnBar(pj)}<span class="muted">${bepTxt(pj)}</span>` },
         { label: 'Quotation', render: pj => { const l = qtnOfPj(pj);
@@ -631,9 +650,9 @@
       NO_COL,
       { label: 'Quotation' + QQTN, cls: 'nowrap', render: k => `<button class="btn btn-ghost sm code" data-act="qtn-view" data-id="${k.id}">${esc(k.nomor)}</button><br><span class="muted">${fmtTgl(k.tanggal)}${k.berlaku ? ` s.d. ${fmtTgl(k.berlaku)}` : ''}<br>Sales: ${esc((salesOf(k) || {}).nama || '—')}${k.sumber ? `, ${esc(k.sumber)}` : ''}</span>` },
       { label: 'Kepada', render: k => `${tujuanTag(k.tujuan)} ${esc(kepadaOf(k))}${k.up ? `<br><span class="muted">u.p. ${esc(k.up)}</span>` : ''}` },
-      { label: 'Peserta <span class="tobe">To be</span>', render: psRingkas },
+      { label: 'Peserta', render: psRingkas },
       { label: 'Nilai', cls: 'money', render: k => { const v = qtnNilai(k); return `${rp(v.total)}<br><span class="muted">kuota ${v.n} · ${v.allin ? `All-in ${rp(v.paket)}${v.tambah ? ` + ${v.lebih} × ${rp(v.tarif)}` : ''}${v.diskTot ? ` − diskon ${rp(v.diskTot)}` : ''}` : `${rp(v.net)} / peserta${v.disk ? ` (diskon ${rp(v.disk)})` : ''}`}${k.ppn ? ` + PPN ${PPN_RATE}%` : ''}</span>`; } },
-      { label: 'Status', cls: 'nowrap', render: k => qtnBadge(k.status) + (k.status === 'deal' ? `<br><span class="muted">${dealRows(k).length} dari ${k.peserta.length} peserta deal</span>` : `<br><span class="muted">Link ${linkBuka(k) ? 'terbuka' : 'tertutup'}</span>`) },
+      { label: 'Status', cls: 'nowrap', render: k => qtnBadge(k.status) + (k.batalProgram ? '<br><span class="muted">program dibatalkan</span>' : k.status === 'deal' ? `<br><span class="muted">${dealRows(k).length} dari ${k.peserta.length} peserta deal</span>` : `<br><span class="muted">Link ${linkBuka(k) || ulangBuka(k) ? 'terbuka' : 'tertutup'}</span>`) + rsPenanda(k) },
       { label: 'Action', cls: 'act', render: qtnGear }
     ]);
   }
@@ -672,7 +691,7 @@
     const E = d.err || {};
     const pj = db.quot.find(x => x.id === d.pj), b2b = pj && pj.jenis === 'b2b';
     const pjOpts = db.quot.filter(x => x.status === 'final' || x.id === d.pj).map(x => { const ok = canAddQtn(x) || x.id === d.pj;
-      return `<option value="${x.id}" ${x.id === d.pj ? 'selected' : ''} ${ok ? '' : 'disabled'}>${esc(x.nomor)} · ${esc(paketOf(mpOf(x)).judul)} · ${esc(varianTxt(x))} · ${JENIS[x.jenis]} · ${fmtRange(x.tglMulai, x.tglSelesai)}${ok ? '' : ' (sudah ada quotation)'}</option>`; }).join('');
+      return `<option value="${x.id}" ${x.id === d.pj ? 'selected' : ''} ${ok ? '' : 'disabled'}>${esc(x.nomor)} · ${esc(paketOf(mpOf(x)).judul)} · ${esc(varianTxt(x))} · ${JENIS[x.jenis]} · ${fmtRange(x.tglMulai, x.tglSelesai)}${ok ? '' : x.closed ? ' (program sudah Closed)' : ' (sudah ada quotation)'}</option>`; }).join('');
     const salesOpts = db.user.filter(u => u.aktif || u.id === d.sales).map(u => `<option value="${u.id}" ${u.id === d.sales ? 'selected' : ''}>${esc(u.nama)}</option>`).join('');
     const coOpts = db.company.filter(c => c.aktif || c.id === d.company).map(c => `<option value="${c.id}" ${c.id === d.company ? 'selected' : ''}>${esc(c.nama)}</option>`).join('');
     const pjInfo = pj ? `${jenisTag(pj.jenis)} ${esc(pj.lokasi || '—')} · harga ${rp(pj.hargaJual)} / peserta · target ${nPeserta(pj)} peserta` : 'Hanya Penjualan Program berstatus Final.';
@@ -696,11 +715,11 @@
         ${field('Company' + req, `<select class="input" name="company" ${b2b ? 'disabled' : ''}><option value="">— Pilih Company —</option>${coOpts}</select>${b2b ? '<span class="hint">Mengikuti Company Penjualan Program B2B</span>' : '<span class="hint">Dari Master Company aktif</span>'}`, E.company, 'span2')}
         ${field('u.p.', `<input class="input" name="up" value="${esc(d.up)}" maxlength="100" placeholder="Nama yang dituju">`, '', 'span2')}
       </div>` : ''}
-      ${d.tujuan === 'personal' ? field('Kepada' + req + ' <span class="tobe">To be</span>', `<input class="input" name="kepada" value="${esc(d.kepada || '')}" maxlength="100" placeholder="Nama orang yang dituju"><span class="hint">Peserta belum ada saat quotation dibuat, jadi nama yang dituju diisi di sini.</span>`, E.kepada) : ''}
+      ${d.tujuan === 'personal' ? field('Kepada' + req + '', `<input class="input" name="kepada" value="${esc(d.kepada || '')}" maxlength="100" placeholder="Nama orang yang dituju"><span class="hint">Peserta belum ada saat quotation dibuat, jadi nama yang dituju diisi di sini.</span>`, E.kepada) : ''}
       ${d.tujuan ? field('Alamat', `<textarea class="input" name="alamat" rows="2">${esc(d.alamat)}</textarea><span class="hint">${d.tujuan === 'company' ? 'Terisi otomatis dari Company; dapat diubah untuk surat ini.' : 'Isi alamat yang dituju.'}</span>`) : ''}`;
 
     const target = pj ? nPeserta(pj) : 0, lain = pj ? kuotaLain(d.pj, d.id) : 0, sudah = d.isEdit ? d.terisi || 0 : 0;
-    const right = `<p class="qtn-h">Kuota peserta <span class="tobe">To be</span></p>
+    const right = `<p class="qtn-h">Kuota peserta</p>
       ${field('Kuota peserta' + req + QTB1, `<div class="kq-input"><input class="input" type="number" name="kuota" min="${b2b ? B2B_MIN : 1}" step="1" inputmode="numeric" value="${esc(d.kuota === '' || d.kuota === undefined ? '' : d.kuota)}" placeholder="${b2b ? B2B_MIN : 1}" aria-describedby="kq-help"><span>peserta</span></div>
         <span class="hint" id="kq-help">${b2b ? `Penjualan B2B minimal ${B2B_MIN} peserta. Harga paket mencakup s.d. ${B2B_PAKET} peserta; peserta ke-${B2B_PAKET + 1} dan seterusnya + ${rp(B2B_TAMBAH)}/orang.${QB2B} ` : ''}${sudah ? `Sudah terisi ${sudah}; kuota tidak boleh kurang dari itu.` : 'Jumlah kursi yang ditawarkan di quotation ini.'}</span>`, E.kuota)}
       ${pj ? `<dl class="kq-stat"><div><dt>Target program</dt><dd>${target}</dd></div><div><dt>Di quotation lain</dt><dd>${lain}</dd></div><div><dt>Sisa target</dt><dd>${Math.max(target - lain, 0)}</dd></div></dl>` : ''}
@@ -719,9 +738,30 @@
       </div><div class="totals" id="qtn-totals">${qtnTotals(d)}</div>`;
     return `<div class="qtn-form">${top}
       <div class="qtn-grid"><div>${left}</div><div>${right}</div></div>
-      <p class="qtn-h">Harga</p><div class="qtn-grid">${harga}</div></div>`;
+      <p class="qtn-h">Harga</p><div class="qtn-grid">${harga}</div>${bayarHtml(d, E)}</div>`;
   }
 
+  // Cara pembayaran (input/Master - Buat Program/2026-11-13-multi-master-batal-top-refund/ butir 4): Full payment atau TOP.
+  // TOP = beberapa termin (persentase + keterangan, total 100%); satu termin = satu invoice.
+  const TOP_DEF = () => [{ persen: 50, ket: 'Uang muka (DP) setelah quotation ditandatangani / PO' }, { persen: 50, ket: 'Pelunasan sebelum acara' }];
+  const isTop = k => !!k && k.bayarCara === 'top' && (k.termin || []).length > 1;
+  const topSum = t => (t || []).reduce((s, x) => s + (Number(x.persen) || 0), 0);
+  const bayarTxt = k => (isTop(k) ? `TOP ${k.termin.length} termin: ${k.termin.map((t, i) => `Termin ${i + 1} ${t.persen}% (${t.ket})`).join('; ')}` : 'Full payment');
+  function bayarHtml(d, E) {
+    const top = d.bayarCara === 'top';
+    return `<p class="qtn-h">Cara pembayaran</p><div class="qtn-pay">
+      <div class="pay-opt" role="radiogroup" aria-label="Cara pembayaran">${[['full', 'Full payment', 'ditagih satu kali (satu invoice) setelah Deal'], ['top', 'TOP (termin)', 'dibagi beberapa termin; satu termin = satu invoice']].map(([v, l, h]) =>
+        `<label class="chk"><input type="radio" name="bayarCara" value="${v}" ${(d.bayarCara || 'full') === v ? 'checked' : ''}> <span><b>${l}</b> <span class="muted">${h}</span></span></label>`).join('')}</div>
+      ${top ? `<div class="table-wrap"><table class="table tp-tbl"><thead><tr><th class="num">Termin</th><th>Persentase</th><th>Keterangan</th><th class="act"><span class="sr-only">Hapus</span></th></tr></thead><tbody>
+        ${d.termin.map((t, i) => `<tr><td class="num">${i + 1}</td>
+          <td><div class="input-unit"><input class="input" type="number" min="1" max="99" step="1" inputmode="numeric" data-tp-pct="${i}" value="${esc(String(t.persen))}" aria-label="Persentase termin ${i + 1}"><span class="unit">%</span></div></td>
+          <td><input class="input" data-tp-ket="${i}" maxlength="150" value="${esc(t.ket)}" aria-label="Keterangan termin ${i + 1}" placeholder="mis. DP setelah PO"></td>
+          <td class="act">${d.termin.length > 2 ? `<button type="button" class="btn btn-ghost sm danger-t" data-q="tp-del" data-i="${i}" aria-label="Hapus termin ${i + 1}">Hapus</button>` : ''}</td></tr>`).join('')}
+        </tbody></table></div>
+        <div class="tp-foot"><button type="button" class="btn btn-ghost sm" data-q="tp-add">+ Tambah termin</button><span class="hint" id="tp-sum" aria-live="polite">Total ${topSum(d.termin)}% (harus 100%)</span></div>
+        ${E && E.termin ? `<div class="err"><i>!</i>${E.termin}</div>` : ''}` : ''}
+    </div>`;
+  }
   const b2bAllinDefault = (d, pj) => { d.skema = 'allin'; if (!d.allin) d.allin = (Number(pj.hargaJual) || 0) * Math.min(Math.max(Number(d.kuota) || 0, B2B_MIN), B2B_PAKET); };
   function qtnChange(d, form, t) {
     const n = t.name, val = t.value;
@@ -768,7 +808,7 @@
     const pj = db.quot.find(x => x.id === d.pj), kol = d.kolomB2b || [];
     const chips = `<span class="kf-chip on">Nama Lengkap <span class="muted">(wajib)</span></span>` + B2B_KOLOM.map(([k, l]) => `<label class="kf-chip ${kol.includes(k) ? 'on' : ''}"><input type="checkbox" data-kbk="${k}" ${kol.includes(k) ? 'checked' : ''}> ${esc(l)}</label>`).join('');
     const contoh = pj ? pageKonfirmasiB2b(Object.assign({}, d, { kolomB2b: kol }), null, [], '') : '';
-    return `<div class="notice"><span><span class="tobe">To be</span> Penjualan B2B dikonfirmasi <b>atas nama company</b>. Link diisi <b>satu kali oleh PIC company</b>: data company dan PIC, lalu daftar peserta. PIC mencetak surat konfirmasi company beserta lampiran daftar peserta, menandatangani dan memberi cap, lalu wajib mengunggahnya.</span><span class="ref">QTN-FR-31${QKCO}</span></div>
+    return `<div class="notice"><span>Penjualan B2B dikonfirmasi <b>atas nama company</b>. Link diisi <b>satu kali oleh PIC company</b>: data company dan PIC, lalu daftar peserta. PIC mencetak surat konfirmasi company beserta lampiran daftar peserta, menandatangani dan memberi cap, lalu wajib mengunggahnya.</span><span class="ref">QTN-FR-31${QKCO}</span></div>
       <p class="qtn-h">Diisi PIC company</p>
       <p class="kf-fixed">Nama Perusahaan · Alamat Perusahaan · Nama PIC · Jabatan PIC · Nomor HP / WhatsApp PIC · Email PIC <span class="muted">(terisi awal dari Master Company, dapat diubah PIC)</span></p>
       <p class="qtn-h">Kolom daftar peserta</p>
@@ -818,6 +858,12 @@
     if (allin && !(Number(d.allin) > 0)) E.allin = 'Harga all-in wajib diisi';
     if (pj && !allin && (Number(d.diskon) || 0) > (Number(pj.hargaJual) || 0)) E.diskon = 'Diskon tidak boleh melebihi harga / peserta';
     if (allin && (Number(d.diskon) || 0) > (Number(d.allin) || 0)) E.diskon = 'Diskon tidak boleh melebihi harga all-in';
+    if (d.bayarCara === 'top') {
+      const t = d.termin || [];
+      if (t.length < 2) E.termin = 'TOP minimal 2 termin';
+      else if (t.some(x => !(Number(x.persen) > 0) || !String(x.ket || '').trim())) E.termin = 'Isi persentase (> 0) dan keterangan setiap termin';
+      else if (topSum(t) !== 100) E.termin = `Total persentase harus 100% (sekarang ${topSum(t)}%)`;
+    }
     return E;
   }
   // Data header quotation (tanpa peserta: peserta datang dari link).
@@ -829,6 +875,7 @@
       skema: jenis === 'b2b' ? 'allin' : 'peserta', allin: jenis === 'b2b' ? Number(d.allin) || 0 : 0,
       ...(jenis === 'b2b' ? { paketMaks: Number(d.paketMaks) || B2B_PAKET, tambahPs: d.tambahPs == null ? B2B_TAMBAH : Number(d.tambahPs), kolomB2b: (d.kolomB2b || []).slice() } : {}),
       diskon: Number(d.diskon) || 0, lain: Number(d.lain) || 0, ket: ketFromItems(d.ketItems, jenis),
+      bayarCara: d.bayarCara === 'top' ? 'top' : 'full', termin: d.bayarCara === 'top' ? (d.termin || []).map(x => ({ persen: Number(x.persen) || 0, ket: String(x.ket || '').trim() })) : [],
       kf: d.kf ? clone(d.kf) : null };
   }
   function qtnGo(d, form, rec, n) {
@@ -874,6 +921,7 @@
         form.addEventListener('change', e => {
           const t = e.target;
           if (t.name === 'kfTpl') { d.kf = kfNew(kfTplById(+t.value)); d.kfTouched = true; qtnRedraw(d, form); return; }
+          if (t.name === 'bayarCara') { d.bayarCara = t.value; if (t.value === 'top' && !(d.termin || []).length) d.termin = TOP_DEF(); qtnRedraw(d, form); return; }
           if (t.dataset.kbk) { const k = t.dataset.kbk; d.kolomB2b = B2B_KOLOM.map(([x]) => x).filter(x => x === k ? t.checked : (d.kolomB2b || []).includes(x)); qtnRedraw(d, form); return; }
           if (t.dataset.kfi) { const k = t.dataset.kfi; d.kf.isian = KF_FIELDS.map(([x]) => x).filter(x => x === k ? t.checked : d.kf.isian.includes(x)); d.kfTouched = true; qtnRedraw(d, form); return; }
           if (t.name === 'kfPernyataan' || t.dataset.kfNew !== undefined) return;
@@ -888,6 +936,8 @@
           if (t.name === 'kuota') { d.kuota = t.value === '' ? '' : Math.max(Math.floor(Number(t.value) || 0), 0); form.querySelector('#qtn-totals').innerHTML = qtnTotals(d); }
           if (t.name === 'kfPernyataan') { d.kf.pernyataan = t.value; d.kfTouched = true; const pj = db.quot.find(x => x.id === d.pj), pv = form.querySelector('#kf-prev'); if (pj && pv) pv.innerHTML = kfText(t.value, pj); }
           if (t.name === 'lain') { d.lain = num(t.value.replace(/\D/g, '')); form.querySelector('#qtn-totals').innerHTML = qtnTotals(d); }
+          if (t.dataset.tpPct !== undefined) { d.termin[+t.dataset.tpPct].persen = t.value === '' ? '' : Math.floor(Number(t.value) || 0); const o = form.querySelector('#tp-sum'); if (o) o.textContent = `Total ${topSum(d.termin)}% (harus 100%)`; }
+          if (t.dataset.tpKet !== undefined) d.termin[+t.dataset.tpKet].ket = t.value;
           if (t.name === 'diskon') { d.diskon = num(t.value.replace(/\D/g, '')); form.querySelector('#qtn-totals').innerHTML = qtnTotals(d); }
           if (t.name === 'allin') { d.allin = num(t.value.replace(/\D/g, '')); form.querySelector('#qtn-totals').innerHTML = qtnTotals(d); }
         });
@@ -903,6 +953,8 @@
           const a = b.dataset.q;
           if (a === 'step') return qtnGo(d, form, rec, +b.dataset.n);
           if (a === 'back') return qtnGo(d, form, rec, d.step - 1);
+          if (a === 'tp-add') { d.termin.push({ persen: Math.max(100 - topSum(d.termin), 0) || '', ket: '' }); qtnRedraw(d, form); return; }
+          if (a === 'tp-del') { d.termin.splice(+b.dataset.i, 1); qtnRedraw(d, form); return; }
           if (a.startsWith('ket-')) return qtnKetAct(d, form, a, b);
           if (a.startsWith('kf-')) return kfAct(d, form, a, b);
         });
@@ -974,6 +1026,7 @@
             <p><b>Konfirmasi kehadiran peserta:</b> ${k.link ? `isi lewat https://[domain-aplikasi]/konfirmasi?t=${esc(k.link.token)}` : 'link dibuat saat quotation disimpan'}</p></div></div>
         <table class="pdf-sum"><tr><td>Sub Total</td><td>${rp(v.sub)}</td></tr><tr><td>Diskon</td><td>${v.diskTot ? `− ${rp(v.diskTot)}` : '0'}</td></tr>
           <tr><td>PPN (${PPN_RATE}%)</td><td>${rp(v.ppn)}</td></tr><tr><td>Biaya Lain-lain</td><td>${rp(v.lain)}</td></tr><tr class="tot"><td>Total</td><td>${rp(v.total)}</td></tr></table>
+        <p class="pdf-small"><b>Pembayaran:</b> ${isTop(k) ? `TOP ${k.termin.length} termin. ${k.termin.map((t, i) => `Termin ${i + 1}: ${t.persen}% (${rp(Math.round(v.total * t.persen / 100))}), ${esc(t.ket)}`).join('; ')}.` : 'Full payment (satu kali pembayaran).'}</p>
       </div>
       <div class="pdf-2col pdf-sign">
         <div>${tglPanjang(todayIso)}<br>${esc(roleOf(s) || 'Sales')}<div class="pdf-ttd"></div><b>${esc(s.nama || '—')}</b></div>
@@ -1167,21 +1220,75 @@
     return hasil;
   }
   let dealFiles = [];
+  // ---------- Deal & Deal ulang ----------
+  // Deal ulang (input/Master - Buat Program/2026-11-13-reschedule-deal-ulang-so-batal/): quotation yang sudah Deal lalu programnya
+  // di-reschedule kembali ke Terkirim. Peserta wajib mengisi link konfirmasi baru (persetujuan + surat bertanda tangan); yang dapat
+  // dicentang hanya yang memilih Pindah jadwal. Deal ulang bila semua peserta sudah menjawab, atau mulai H-1; paling lambat H-1.
+  // Peserta Deal lama yang tidak ikut diproses otomatis: sudah bayar = Refund, invoice belum dibayar = invoice dibatalkan.
+  const butuhDealUlang = k => k.status === 'terkirim' && !!k.dealUlang;
+  // TOP: refund = nilai peserta × persentase termin yang sudah dibayar; termin yang belum dibayar ikut dibatalkan.
+  const paidFrac = k => (isTop(k) ? invOfQtn(k).filter(i => i.bayar && i.termin).reduce((t, i) => t + ((k.termin[i.termin - 1] || {}).persen || 0), 0) / 100 : 1);
+  const batalkanBelumBayar = (k, alasan) => invOfQtn(k).filter(i => !i.bayar).map(i => { ivcBatal(i, alasan); return i.nomor; });
+  const ikutUlang = (k, r) => !!r.konf && r.konf.rev === k.rev && r.konf.keputusan === 'ikut';
+  const alasanTidakIkut = (k, r) => r.konf && r.konf.rev === k.rev ? (r.konf.catatan || KONF_KEP[r.konf.keputusan]) : 'Tidak menjawab konfirmasi ulang sampai H-1';
+  function tidakIkut(k, r, alasan) {
+    const bayar = invBayar(k, r.id), terbit = bayar ? null : invTerbit(k, r.id);
+    r.st = 'keluar'; r.keluar = { jenis: bayar ? 'refund' : 'batal', alasan, rev: k.rev, tgl: isoNow().slice(0, 16), oleh: meName(), otomatis: true };
+    if (bayar) { const v = qtnNilai(k, [r]); r.keluar.refund = rfCreate({ k, ps: r.id, inv: bayar, alasan, nominal: Math.round((v.dpp + v.ppn) * paidFrac(k)) }).nomor; }
+    const alasanInv = `Peserta tidak ikut jadwal baru ${pjOfQtn(k).nomor}: ${alasan}`;
+    if (isTop(k)) { const l = batalkanBelumBayar(k, alasanInv); if (l.length) r.keluar.invBatal = l.join(', '); }
+    else if (terbit) { ivcBatal(terbit, alasanInv); r.keluar.invBatal = terbit.nomor; }
+    return r.keluar;
+  }
+  function dealApply(k, on, { dokumen = [], dokKet = '', tgl = todayIso } = {}) {
+    const ulang = butuhDealUlang(k), keluar = [];
+    if (dokumen.length) { k.dokumen = (ulang ? k.dokumen || [] : []).concat(dokumen); if (dokKet) k.dokKet = dokKet; }
+    k.peserta.forEach(r => {
+      if (on.includes(r.id)) { r.st = 'deal'; return; }
+      if (ulang && r.st === 'deal' && !r.keluar) keluar.push(r);
+      else if (r.st !== 'keluar') r.st = 'batal';
+    });
+    keluar.forEach(r => tidakIkut(k, r, alasanTidakIkut(k, r)));
+    k.status = 'deal';
+    if (ulang) {
+      k.dealUlangSelesai = { rev: k.rev, tgl }; delete k.dealUlang;
+      invOfQtn(k).forEach(i => { if (i.resched) i.resched.hasil = 'ikut'; });
+    }
+    const so = soCreate(k, tgl); // 1 quotation Deal = 1 Sales Order; Deal ulang = nomor SO lama + -rev
+    const mp = mpSyncDeal(k);
+    logAct('Quotation', 'Quotation', ulang ? 'Deal Ulang' : 'Deal', k.nomor, k.id, `${ulang ? 'Deal ulang' : 'Deal'} ${k.nomor}: ${on.length} peserta deal, Sales Order ${soNomor(so)}${keluar.length ? `. Tidak ikut: ${keluar.map(r => `${(pesertaById(r.id) || {}).nama} (${KELUAR_LBL[r.keluar.jenis]})`).join(', ')}` : ''}. Master Peserta: ${mp.baru} baru, ${mp.cocok} dicocokkan`);
+    return { so, mp, keluar };
+  }
   function qtnDeal(k) {
-    const pj = pjOfQtn(k), list = psAktif(k);
+    const pj = pjOfQtn(k), list = psAktif(k), ulang = butuhDealUlang(k), h1 = addDays(pj.tglMulai, -1);
+    if (ulang && todayIso >= pj.tglMulai) { toast(`Deal ulang paling lambat H-1 (${fmtTgl(h1)}). Batalkan quotation ini bila tidak jadi.`, 'warn'); return; }
+    const belum = list.filter(r => perluUlang(k, r)), tungguH1 = ulang && belum.length && todayIso < h1;
+    const bisa = r => (ulang ? ikutUlang(k, r) : !perluUlang(k, r));
+    const ket = r => {
+      if (!ulang) return perluUlang(k, r) ? `<br><span class="neg">Belum konfirmasi ulang untuk jadwal rev${k.rev}</span>` : '';
+      if (ikutUlang(k, r)) return `<br><span class="pos">Pindah jadwal (${r.konf.sumber === 'daftar' ? 'pendaftar baru' : 'surat baru'})</span>`;
+      const bayar = invBayar(k, r.id), terbit = !bayar && invTerbit(k, r.id);
+      const jawab = r.konf && r.konf.rev === k.rev ? KONF_KEP[r.konf.keputusan] : 'Belum menjawab';
+      return r.st === 'deal' ? `<br><span class="neg">${jawab}: tidak ikut, ${bayar ? `Refund (invoice ${esc(bayar.nomor)} sudah dibayar)` : terbit ? `invoice ${esc(terbit.nomor)} dibatalkan` : 'belum ditagih'}</span>` : `<br><span class="neg">${jawab}: menjadi Batal</span>`;
+    };
+    const dokLama = ulang && (k.dokumen || []).length;
     openModal({
-      title: `Deal: ${k.nomor}`, wide: true,
-      body: `<p class="hint top">${esc(kepadaOf(k))} · ${esc(paketOf(mpOf(pj)).judul)} (${esc(pj.nomor)}). Peserta diambil dari <b>Data Peserta</b> quotation ini (isian link). Centang yang <b>deal</b>; yang tidak dicentang menjadi <b>Batal</b>. Setelah Deal, link Konfirmasi Kehadiran ditutup, <b>Sales Order</b> dibuat otomatis, dan peserta Deal disimpan ke <b>Master Peserta</b>.${isB2bQtn(k) ? ` Penjualan B2B: minimal ${B2B_MIN} peserta deal.` : ''}${q('Q-QTN-07', 'Terjawab 12-11-2026: peserta yang deal dipilih dengan centang (default semua).')}</p>
+      title: `${ulang ? 'Deal ulang' : 'Deal'}: ${k.nomor}`, wide: true,
+      body: `<p class="hint top">${esc(kepadaOf(k))} · ${esc(paketOf(mpOf(pj)).judul)} (${esc(pj.nomor)}). ${ulang
+        ? `Program di-reschedule ke <b>${fmtRange(pj.tglMulai, pj.tglSelesai)}</b>. Centang peserta yang memilih <b>Pindah jadwal</b> lewat link konfirmasi baru. Peserta Deal lama yang tidak ikut diproses otomatis: <b>Refund</b> bila sudah bayar, invoice <b>dibatalkan</b> bila belum dibayar. Setelah Deal ulang terbit Sales Order <b>-rev${k.rev}</b>.`
+        : `Peserta diambil dari <b>Data Peserta</b> quotation ini (isian link). Centang yang <b>deal</b>; yang tidak dicentang menjadi <b>Batal</b>. Setelah Deal, link Konfirmasi Kehadiran ditutup, <b>Sales Order</b> dibuat otomatis, dan peserta Deal disimpan ke <b>Master Peserta</b>.`}${isB2bQtn(k) ? ` Penjualan B2B: minimal ${B2B_MIN} peserta deal.` : ''}${q('Q-QTN-07', 'Terjawab 12-11-2026: peserta yang deal dipilih dengan centang (default semua).')}</p>
+        ${tungguH1 ? `<div class="notice"><span><b>${belum.length} peserta belum menjawab</b> konfirmasi ulang. Deal ulang dapat disimpan setelah semua menjawab, atau mulai H-1 (${fmtTgl(h1)}); yang belum menjawab saat itu dianggap batal.</span></div>` : ''}
         ${list.length ? `<div class="ps-pick">${list.map(r => { const p = pesertaById(r.id) || {};
-          return `<label class="ps-row"><input type="checkbox" name="deal" value="${r.id}" ${perluUlang(k, r) ? 'disabled' : 'checked'}><span><b>${esc(p.nama)}</b> ${srcTag(p)}<br><span class="muted">${esc(pesertaCo(p))} · ${esc(p.telp || '—')}</span>${perluUlang(k, r) ? `<br><span class="neg">Belum konfirmasi ulang untuk jadwal rev${k.rev}</span>` : ''}</span></label>`; }).join('')}</div>`
+          return `<label class="ps-row"><input type="checkbox" name="deal" value="${r.id}" ${bisa(r) ? 'checked' : 'disabled'}><span><b>${esc(p.nama)}</b> ${srcTag(p)}<br><span class="muted">${esc(pesertaCo(p))} · ${esc(p.telp || '—')}</span>${ket(r)}</span></label>`; }).join('')}</div>`
           : `<p class="dash-empty">Belum ada peserta di Data Peserta. Bagikan link Konfirmasi Kehadiran dahulu.</p>`}
         <div class="field" id="deal-err"></div>
         <div class="grid2 gap-t">
-          ${field('Dokumen dari customer' + req + QDOK, `<label class="pb-drop"><input type="file" name="dokumen" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" hidden><b>Pilih file dokumen</b><span class="hint">PO, SPK, surat penunjukan, bukti bayar, atau dokumen lain · PDF, JPG, PNG, DOC/DOCX, XLS/XLSX · maks. 5 MB per file · boleh lebih dari satu</span></label>
+          ${dokLama ? field('Dokumen dari Deal sebelumnya', `<ul class="dok-pick">${k.dokumen.map(x => `<li><span class="code">${esc(x.nama)}</span> <span class="muted">${esc(x.oleh || '')} ${esc(x.tgl || '')}</span></li>`).join('')}</ul><span class="hint">Tetap tersimpan; tidak perlu diunggah ulang.</span>`, '', 'span2') : ''}
+          ${field(`${dokLama ? 'Tambah dokumen dari customer' : 'Dokumen dari customer' + req}${QDOK}`, `<label class="pb-drop"><input type="file" name="dokumen" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" hidden><b>Pilih file dokumen</b><span class="hint">PO, SPK, surat penunjukan, bukti bayar, atau dokumen lain · PDF, JPG, PNG, DOC/DOCX, XLS/XLSX · maks. 5 MB per file · boleh lebih dari satu${dokLama ? ' · opsional' : ''}</span></label>
             <ul class="dok-pick" id="deal-files" aria-live="polite"><li class="hint">Belum ada file</li></ul>`, '', 'span2')}
           ${field('Keterangan dokumen', `<input class="input" name="dokKet" maxlength="200" placeholder="mis. PO No. 118/PO/X/2026">`, '', 'span2')}
         </div>`,
-      saveLabel: 'Tandai Deal',
+      saveLabel: ulang ? 'Simpan Deal ulang' : 'Tandai Deal',
       // File terkumpul tiap kali memilih (tidak mengganti pilihan sebelumnya); tiap file dapat dihapus.
       onMount: form => {
         const ev = form.elements.dokumen, out = $('#deal-files', form); dealFiles = [];
@@ -1191,32 +1298,37 @@
         out.addEventListener('click', e => { const b = e.target.closest('[data-dok-del]'); if (b) { dealFiles.splice(+b.dataset.dokDel, 1); draw(); } });
       },
       onSave: () => {
+        const err = m => { $('#deal-err').innerHTML = `<div class="err"><i>!</i>${m}</div>`; return false; };
+        if (tungguH1) return err(`Masih ada ${belum.length} peserta yang belum menjawab konfirmasi ulang. Tunggu jawabannya, atau simpan mulai ${fmtTgl(h1)} (H-1).`);
         const on = [...$('#modal-root form').querySelectorAll('[name=deal]:checked')].map(x => +x.value);
-        if (!on.length) { $('#deal-err').innerHTML = `<div class="err"><i>!</i>${list.length ? 'Centang minimal 1 peserta. Bila tidak ada yang deal, gunakan Batalkan.' : 'Belum ada peserta yang dapat ditandai Deal.'}</div>`; return false; }
-        if (isB2bQtn(k) && on.length < B2B_MIN) { $('#deal-err').innerHTML = `<div class="err"><i>!</i>Penjualan B2B minimal ${B2B_MIN} peserta deal (baru ${on.length}).</div>`; return false; }
+        if (!on.length) return err(list.length ? `Centang minimal 1 peserta. Bila tidak ada yang ${ulang ? 'ikut jadwal baru' : 'deal'}, gunakan Batalkan.` : 'Belum ada peserta yang dapat ditandai Deal.');
+        if (isB2bQtn(k) && on.length < B2B_MIN) return err(`Penjualan B2B minimal ${B2B_MIN} peserta deal (baru ${on.length}).`);
         const f = $('#modal-root form'), files = dealFiles.slice();
         const salah = files.find(x => !DOK_EXT.includes(x.name.split('.').pop().toLowerCase())), besar = files.find(x => x.size > DOK_MAX);
-        if (!files.length) return invalid(f.elements.dokumen, 'Unggah minimal satu dokumen dari customer (mis. PO)');
+        if (!files.length && !dokLama) return invalid(f.elements.dokumen, 'Unggah minimal satu dokumen dari customer (mis. PO)');
         if (salah) return invalid(f.elements.dokumen, `${salah.name}: hanya PDF, JPG, PNG, DOC/DOCX, atau XLS/XLSX`);
         if (besar) return invalid(f.elements.dokumen, `${besar.name} lebih dari 5 MB`);
-        k.dokumen = files.map(x => ({ nama: x.name, ukuran: x.size, oleh: meName(), tgl: isoNow().slice(0, 16).replace('T', ' ') }));
-        k.dokKet = f.elements.dokKet.value.trim();
-        k.peserta.forEach(r => { r.st = on.includes(r.id) ? 'deal' : 'batal'; });
-        k.status = 'deal';
-        const so = soCreate(k); // to be: 1 quotation Deal = 1 Sales Order
-        const mp = mpSyncDeal(k);
-        logAct('Quotation', 'Quotation', 'Deal', k.nomor, k.id, `Deal ${k.nomor}: ${on.length} peserta deal, Sales Order ${so.nomor}. Master Peserta: ${mp.baru} baru, ${mp.cocok} dicocokkan`);
-        toast(`${k.nomor} Deal: ${on.length} peserta deal${k.peserta.length - on.length ? `, ${k.peserta.length - on.length} batal` : ''}. Sales Order ${so.nomor} dibuat. Master Peserta: ${mp.baru} baru, ${mp.cocok} sudah terdaftar.`);
+        const dokumen = files.map(x => ({ nama: x.name, ukuran: x.size, oleh: meName(), tgl: isoNow().slice(0, 16).replace('T', ' ') }));
+        const { so, mp, keluar } = dealApply(k, on, { dokumen, dokKet: f.elements.dokKet.value.trim() });
+        toast(`${k.nomor} ${ulang ? 'Deal ulang' : 'Deal'}: ${on.length} peserta${keluar.length ? `, ${keluar.length} tidak ikut diproses` : ''}. Sales Order ${soNomor(so)} dibuat. Master Peserta: ${mp.baru} baru, ${mp.cocok} sudah terdaftar.`);
       }
     });
   }
 
+  // Menunggu Deal ulang: peserta Deal lama yang belum diproses ikut diproses tidak ikut (Refund bila sudah bayar, invoice
+  // belum dibayar dibatalkan); peserta yang sudah Keluar tetap tercatat.
   function qtnCancel(k) {
+    const lama = butuhDealUlang(k) ? k.peserta.filter(r => r.st === 'deal' && !r.keluar) : [];
     openModal({
       title: 'Batalkan Quotation',
-      body: `<p style="margin:0 0 14px">Batalkan <b>${esc(k.nomor)}</b> (${esc(kepadaOf(k))}) karena tidak jadi deal? Quotation Batal tidak dapat diubah dan link Konfirmasi Kehadiran-nya ditutup.</p>`,
+      body: `<p style="margin:0 0 14px">Batalkan <b>${esc(k.nomor)}</b> (${esc(kepadaOf(k))}) karena tidak jadi deal? Quotation Batal tidak dapat diubah dan link Konfirmasi Kehadiran-nya ditutup.</p>
+        ${lama.length ? `<div class="notice"><span>${lama.length} peserta Deal sebelum reschedule ikut diproses <b>tidak ikut</b>: Refund bila invoice sudah dibayar, invoice dibatalkan bila belum dibayar.</span></div>` : ''}`,
       saveLabel: 'Batalkan', danger: true,
-      onSave: () => { k.status = 'batal'; k.peserta.forEach(r => { r.st = 'batal'; }); toast(`Quotation ${k.nomor} dibatalkan`); }
+      onSave: () => {
+        lama.forEach(r => tidakIkut(k, r, alasanTidakIkut(k, r)));
+        k.status = 'batal'; delete k.dealUlang; k.peserta.forEach(r => { if (r.st !== 'keluar') r.st = 'batal'; });
+        toast(`Quotation ${k.nomor} dibatalkan${lama.length ? `; ${lama.length} peserta diproses tidak ikut` : ''}`);
+      }
     });
   }
 
@@ -1338,7 +1450,7 @@
       tS(null, `Quotation program ${pj.nomor}`, 'Semua quotation untuk satu Penjualan Program, beserta peserta Deal dan kuota yang masih menunggu.'),
       tS('.toolbar', 'Cari dan saring', 'Saring tujuan (Company / Personal) dan status.'),
       tS(tKol(tRows()[0], 'Peserta'), 'Peserta', 'Jumlah isian link dibanding kuota; setelah Deal: jumlah peserta Deal.'),
-      tS(tKol(tRows()[0], 'Status'), 'Status', '<b>Draft</b> → <b>Terkirim</b> → <b>Deal</b>, atau <b>Batal</b>. Link Konfirmasi Kehadiran terbuka selama Draft/Terkirim dan kuota belum penuh.'),
+      tS(tKol(tRows()[0], 'Status'), 'Status', '<b>Draft</b> → <b>Terkirim</b> → <b>Deal</b>, atau <b>Batal</b> (termasuk karena program dibatalkan). Link Konfirmasi Kehadiran terbuka selama Draft/Terkirim dan kuota belum penuh.'),
       tS(tGear(), 'Aksi', '<b>Lihat Detail</b>, <b>Data Peserta</b>, <b>Edit</b> (Draft), <b>Kirim dan Cetak Quotation</b>, <b>Deal</b> (Terkirim), <b>Batalkan</b>.'),
       canAddQtn(pj)
         ? tS('[data-act="qtn-from-pj"]', 'Mulai: + Create Quotation', 'Membuat quotation untuk program ini. Tutorial berlanjut di form.', { lanjut: { label: 'Buka form', run: () => qtnForm(null, pj.id), ke: 'qtnModal' } })
@@ -1354,7 +1466,7 @@
     const first = db.quot.find(x => qtnTabOk(x) && qtnOfPj(x).length && canAddQtn(x)) || db.quot.find(x => qtnTabOk(x) && qtnOfPj(x).length);
     return [
       tS(null, 'Daftar Quotation', 'Quotation dikelompokkan per Penjualan Program Final. Biasanya dikelola <b>Sales / marketing</b>.'),
-      tS('#view .card .tabs', 'On going / Selesai / Data Peserta', '<b>On going</b>: program belum ditutup. <b>Selesai</b>: program sudah Close Program di Manage Peserta. <b>Data Peserta</b>: peserta per batch.'),
+      tS('#view .card .tabs', 'On going / Selesai / Data Peserta', '<b>On going</b>: program belum ditutup. <b>Selesai</b>: program sudah Close Program di Manage Peserta, atau program dibatalkan (quotation-nya ikut Batal). <b>Data Peserta</b>: peserta per batch.'),
       tS('#view .qtn-flow', 'Alur quotation', 'Jumlah quotation per status. Klik kartu untuk menyaring.'),
       tS('.toolbar', 'Cari dan saring', 'Cari program atau nomor quotation; saring jenis dan tanggal acara.'),
       tS(tGear(), 'Aksi program', '<b>Lihat detail</b>: daftar quotation program itu. <b>+ Buat Quotation</b>: penawaran baru.'),
@@ -1365,6 +1477,7 @@
   TOUR.qtnModal = () => [
     tS('#modal-root .modal header', 'Form quotation', 'Empat langkah: <b>1 Data Quotation</b>, <b>2 Keterangan</b>, <b>3 Formulir Konfirmasi (link)</b>, <b>4 Preview</b>. Penanda langkah dapat diklik.'),
     tS('#modal-root .modal-body', '1. Data Quotation', 'Penjualan Program, tanggal, berlaku sampai, sales, tujuan <b>Company / Personal</b>, <b>Kuota peserta</b>, diskon, PPN, biaya lain. B2B: harga all-in.'),
+    tS('#modal-root .qtn-pay', 'Cara pembayaran', '<b>Full payment</b>: satu invoice setelah Deal. <b>TOP</b>: beberapa termin dengan persentase (total 100%) dan keterangan; <b>satu termin = satu invoice</b>. Tercetak di Penawaran.'),
     tS('#modal-root footer [type=submit]', 'Lanjut sampai Preview', 'Isi tiap langkah lalu <b>Lanjut</b>. Di langkah 4 klik <b>Simpan Draft & Buat Link</b>: link Konfirmasi Kehadiran dibuat otomatis.'),
     (() => { const k = db.qtn.find(x => x.rev && x.status === 'deal') || db.qtn.find(x => x.status === 'deal'); return k && { popover: { title: 'Setelah disimpan', description: 'Detail quotation terbuka: bagikan link, kirim PDF, lalu tandai Deal. Lihat contoh quotation yang sudah Deal.' },
       lanjut: { label: 'Lihat contoh detail', run: () => { closeModal(); qtnView(k); }, ke: 'qtnDetail' } }; })()

@@ -32,17 +32,26 @@
   const ivcCara = k => { const l = invOfQtn(k); return l.length ? l[0].cara : null; };
   // Invoice B2B mengikuti quotation (input/Invoice & Pengajuan/2026-10-30-invoice-b2b-ikut-skema/): all-in ke company = 1 invoice;
   // per peserta = quotation pecah per peserta = 1 invoice per peserta Deal. Public selalu 1 invoice per quotation.
-  const ivcCaraOf = k => isB2bQtn(k) && !isAllin(k) ? 'peserta' : 'satu';
+  // B2B ditagih ke company saja, tidak dipecah per peserta (input/Master - Buat Program/2026-11-13-multi-master-batal-top-refund/ butir 3).
+  const ivcCaraOf = () => 'satu';
+  // TOP (butir 4): satu termin = satu invoice. Termin yang sudah punya invoice aktif dianggap sudah ditagih.
+  const ivcTerminDone = k => invOfQtn(k).map(i => i.termin).filter(Boolean);
+  const ivcSisaTermin = k => (isTop(k) ? k.termin.map((t, i) => i + 1).filter(n => !ivcTerminDone(k).includes(n)) : []);
   const ivcDonePs = k => invOfQtn(k).flatMap(i => i.peserta);
   const ivcSisaPs = k => { const done = ivcDonePs(k); return dealRows(k).filter(r => !done.includes(r.id)); };
   // Dua status saja (input/Invoice & Pengajuan/2026-10-30-tab-invoiced-filter-jenis/): masih ada peserta Deal yang belum ditagih = Uninvoiced.
-  const ivcStatus = k => ivcSisaPs(k).length ? 'uninvoiced' : 'invoiced';
+  const ivcStatus = k => (isTop(k) ? (dealRows(k).length && ivcSisaTermin(k).length) : ivcSisaPs(k).length) ? 'uninvoiced' : 'invoiced';
   const ivcBadge = s => `<span class="badge st-ivc-${s}">${IVC_ST[s]}</span>`;
   // Perlakuan PPN: dari Master Company (usulan, Q-IVC-05); Personal = PKP; quotation tanpa PPN = Tanpa PPN (usulan, Q-IVC-07).
   const ivcPerlakuan = k => !k.ppn ? 'NON' : k.tujuan === 'company' ? ((db.company.find(c => c.id === k.company) || {}).ppnPerlakuan || 'PKP') : 'PKP';
   // Nilai unit tagih (IVC-FR-09): satu invoice = nilai setelah diskon peserta Deal; per peserta = bagi rata, sisa pembulatan di peserta terakhir.
   function ivcNilaiUnit(k, cara, psId) {
     const v = qtnNilai(k, dealRows(k));
+    if (isTop(k) && cara !== 'peserta') { // termin berikutnya; termin terakhir menampung selisih pembulatan
+      const sisa = ivcSisaTermin(k), n = sisa[0] || k.termin.length, t = k.termin[n - 1], akhir = sisa.length === 1;
+      const sudah = invOfQtn(k).reduce((x, i) => ({ p: x.p + i.penjualan, l: x.l + i.lain }), { p: 0, l: 0 });
+      return { penjualan: akhir ? v.dpp - sudah.p : Math.round(v.dpp * t.persen / 100), lain: akhir ? v.lain - sudah.l : Math.round(v.lain * t.persen / 100), ps: dealRows(k).map(r => r.id), termin: n };
+    }
     if (cara !== 'peserta') return { penjualan: v.dpp, lain: v.lain, ps: dealRows(k).map(r => r.id) };
     const n = dealRows(k).length || 1, sisa = ivcSisaPs(k);
     if (sisa.length === 1 && sisa[0].id === psId) {
@@ -108,13 +117,13 @@
       .forEach(o => { const k = Object.assign({ id: uid(), nomor: qtnNo(o.tanggal), pj: pjPub.id, sales, ppn: true, diskon: 0, lain: 0, status: 'deal', berlaku: addDays(o.tanggal, 30) }, o,
         { peserta: o.peserta.map(x => ({ id: ps(`Contoh Peserta ${x}`), st: 'deal' })) }); k.ket = ketDefault('public'); k.kf = kfNew(kfDefaultFor(pjPub)); db.qtn.push(k); });
   }
-  // Data contoh: program B2B dengan quotation skema per peserta (Deal) — ditagih satu invoice per peserta.
+  // Data contoh: program B2B dengan quotation all-in (Deal), ditagih satu invoice ke company (13-11-2026).
   {
     const co1 = db.company[0];
     const pj = seedQT(Object.assign(fromMP(mp2, 'b2b'), { status: 'final', company: co1.id, hargaJual: 1500000, targetPeserta: 10, tglMulai: '2026-12-08', tglSelesai: '2026-12-09', lokasi: 'In house — Bekasi' }));
     const ids = db.peserta.filter(p => p.company === co1.id).slice(0, 10).map(p => p.id);
     const k = { id: uid(), nomor: qtnNo('2026-10-30'), pj: pj.id, sales: db.user[1].id, sumber: 'Sales', ppn: true, diskon: 100000, lain: 0, tanggal: '2026-10-30', berlaku: '2026-11-29',
-      tujuan: 'company', company: co1.id, up: co1.picNama, alamat: `${co1.alamat}, ${co1.kota}`, status: 'deal', skema: 'peserta', peserta: ids.map(id => ({ id, st: 'deal' })) };
+      tujuan: 'company', company: co1.id, up: co1.picNama, alamat: `${co1.alamat}, ${co1.kota}`, status: 'deal', skema: 'allin', allin: 15000000, paketMaks: 25, peserta: ids.map(id => ({ id, st: 'deal' })) };
     k.ket = ketDefault('b2b'); k.kf = kfNew(kfDefaultFor(pj)); db.qtn.push(k);
   }
   // Data contoh: quotation Public Personal yang sudah Deal sudah ditagih.
@@ -132,7 +141,13 @@
   state.ivcYear = 'all'; state.ivcTab = 'uninvoiced'; state.ivcProg = 'all';
   // To be: hanya Sales Order berstatus Siap invoice (docs-to-be/fr-nfr-sales-order.md SO-FR-08).
   const ivcUnRows = () => db.qtn.filter(k => k.status === 'deal' && ivcStatus(k) === 'uninvoiced' && soSiapOk(k));
-  const soCell = k => { const s = soOfQtn(k); return s ? `<span class="code">${esc(s.nomor)}</span>` : '—'; };
+  // SO berlaku (dengan -rev bila Deal ulang); saat menunggu Deal ulang tampil SO lama yang batal.
+  const soCell = k => { const s = soOfQtn(k); if (s) return `<span class="code">${esc(soNomor(s))}</span>`;
+    const b = soBatalOfQtn(k).pop(); return b ? `<span class="code">${esc(soNomor(b))}</span> <span class="badge st-ps-keluar">Batal</span>` : '—'; };
+  // Penanda reschedule pada invoice (13-11-2026): invoice tidak dibatalkan saat reschedule, hanya ditandai.
+  const ivcRs = i => { if (!i.resched || i.status === 'batal') return null; const k = db.qtn.find(x => x.id === i.qtn);
+    return k && k.dealUlang ? { cls: 'st-ps-menunggu', t: `Reschedule rev${i.resched.rev}`, sub: 'menunggu konfirmasi ulang' } : { cls: 'st-ps-deal', t: `Reschedule rev${i.resched.rev}`, sub: 'ikut jadwal baru' }; };
+  const ivcRsTag = i => { const x = ivcRs(i); return x ? `<br><span class="badge ${x.cls}">${x.t}</span><br><span class="muted">${x.sub}</span>` : ''; };
   const jenisOk = j => state.jenis === 'all' || state.jenis === j;
   const viewIvc = () => {
     const un = ivcUnRows(), inv = db.inv;
@@ -142,7 +157,7 @@
     if (state.ivcProg !== 'all' && !progs.includes(state.ivcProg)) state.ivcProg = 'all';
     const tabs = [['uninvoiced', 'Uninvoiced', un.length], ['invoiced', 'Invoiced', inv.length]].map(([t, l, n]) =>
       `<button class="tab ${state.ivcTab === t ? 'active' : ''}" data-act="ivc-tab" data-tab="${t}">${l}<span class="nav-count">${n}</span></button>`).join('');
-    return `${pageHead('Invoicing', 'Tab <b>Uninvoiced</b>: <b>Sales Order</b> yang sudah ditandai <b>Siap invoice</b> dan belum ditagih (to be: invoice dibuat dari Sales Order, bukan langsung dari quotation). Tab <b>Invoiced</b>: invoice yang sudah dibuat, satu baris per invoice. Satu quotation Deal = satu invoice, tidak digabung per program; B2B per peserta = satu invoice per peserta. Saring Public / B2B dengan filter jenis; kolom <b>No. Program</b> untuk menelusuri.', 'IVC-FR-01 – IVC-FR-03',
+    return `${pageHead('Invoicing', 'Tab <b>Uninvoiced</b>: <b>Sales Order</b> yang sudah ditandai <b>Siap invoice</b> dan belum ditagih (to be: invoice dibuat dari Sales Order, bukan langsung dari quotation). Tab <b>Invoiced</b>: invoice yang sudah dibuat, satu baris per invoice. Satu quotation Deal = satu invoice, tidak digabung per program; B2B per peserta = satu invoice per peserta. Saring Public / B2B dengan filter jenis; kolom <b>No. Sales Order</b> dan <b>No. Quotation</b> untuk menelusuri; program dapat dicari atau disaring.', 'IVC-FR-01 – IVC-FR-03',
       '<button class="btn btn-ghost" data-act="ivc-excel">Excel</button>')}
       <div class="card"><div class="tabs">${tabs}</div>${toolbar('Cari nomor program, invoice, quotation, customer, sales…', false,
         selectFilter('fjenis', 'Filter jenis program', state.jenis, [['all', 'Public & B2B'], ['public', 'Program Public'], ['b2b', 'Program B2B']])
@@ -152,23 +167,23 @@
   };
   const progOk = p => state.ivcProg === 'all' || p === state.ivcProg;
   const yearOk = iso => state.ivcYear === 'all' || iso.startsWith(state.ivcYear);
-  const progCol = { label: 'No. Program', cls: 'nowrap', render: r => { const pj = pjOfQtn(r.qtn ? db.qtn.find(x => x.id === r.qtn) : r);
-    return `${jenisTag(pj.jenis)} <span class="code">${esc(pj.nomor)}</span><br><span class="muted">${rangePanjang(pj.tglMulai, pj.tglSelesai)}</span>`; } };
+  // Kolom No. Program dihapus dari kedua tab (permintaan BA 13-11-2026): cukup No. Sales Order dan No. Quotation.
+  // Jenis dan tanggal program pindah ke kolom Program; filter program dan pencarian nomor program tetap ada.
+  const soCol = { label: 'No. Sales Order', cls: 'nowrap', render: k => `${soCell(k)}<br><span class="muted">${tglPanjang((soOfQtn(k) || k).tanggal)}</span>` };
+  const qtnCol = { label: 'No. Quotation', cls: 'nowrap', render: k => `<span class="code">${esc(k.nomor)}</span><br><span class="muted">${tglPanjang(k.tanggal)}</span>` };
   function listIvc() {
     if (state.ivcTab === 'invoiced') return listIvcDone();
     const rows = ivcUnRows().filter(k => jenisOk(pjOfQtn(k).jenis) && progOk(progNo(k)) && yearOk(k.tanggal))
       .sort((a, b) => progNo(a).localeCompare(progNo(b)) || a.id - b.id)
       .filter(k => { const pj = pjOfQtn(k); return matches([k.nomor, kepadaOf(k), pj.nomor, paketOf(mpOf(pj)).judul, (salesOf(k) || {}).nama]); });
     return listBlock(rows, [
-      NO_COL, progCol,
-      { label: 'No. Sales Order', cls: 'nowrap', render: k => `${soCell(k)}<br><span class="muted">${tglPanjang((soOfQtn(k) || k).tanggal)}</span>` },
-      { label: 'No. Quotation', cls: 'nowrap', render: k => `<span class="code">${esc(k.nomor)}</span><br><span class="muted">${tglPanjang(k.tanggal)}</span>` },
+      NO_COL, soCol, qtnCol,
       { label: 'Customer', render: k => `${tujuanTag(k.tujuan)} ${esc(kepadaOf(k))}<br><span class="muted">${PERLAKUAN[ivcPerlakuan(k)]}</span>` },
-      { label: 'Program', render: k => { const pj = pjOfQtn(k); return `${esc(paketOf(mpOf(pj)).judul)}<br><span class="muted">${esc(pj.lokasi || '')}</span>`; } },
+      { label: 'Program', render: k => { const pj = pjOfQtn(k); return `${esc(paketOf(mpOf(pj)).judul)}<br>${jenisTag(pj.jenis)} <span class="muted">${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.lokasi ? ` · ${esc(pj.lokasi)}` : ''}</span>`; } },
       { label: 'Sales', render: k => esc((salesOf(k) || {}).nama || '—') },
-      { label: 'Cara tagih', render: k => ivcCaraOf(k) === 'peserta'
-        ? `Per peserta<br><span class="muted">${ivcSisaPs(k).length} invoice (dipecah otomatis)</span>`
-        : `1 invoice<br><span class="muted">${dealRows(k).length} peserta deal${isAllin(k) ? ' · all-in' : ''}</span>` },
+      { label: 'Pembayaran', render: k => isTop(k)
+        ? (n => `TOP ${k.termin.length} termin<br><span class="muted">berikutnya Termin ${n} (${k.termin[n - 1].persen}%)</span>`)(ivcSisaTermin(k)[0])
+        : `Full payment<br><span class="muted">${isB2bQtn(k) ? '1 invoice ke company' : `${dealRows(k).length} peserta deal`}</span>` },
       { label: 'Nilai quotation', cls: 'money', render: k => rp(qtnNilai(k, dealRows(k)).total) },
       { label: 'Status', cls: 'nowrap', render: () => ivcBadge('uninvoiced') },
       { label: 'Action', cls: 'act', render: k => gearMenu(k, [['ivc-add', 'Add Invoicing']]) }
@@ -180,14 +195,17 @@
       .sort((a, b) => a.prog.localeCompare(b.prog) || a.id - b.id)
       .filter(i => { const k = qOf(i); return matches([i.nomor, i.prog, k.nomor, kepadaOf(k), paketOf(mpOf(pjOfQtn(k))).judul, (salesOf(k) || {}).nama, i.noFaktur]); });
     return listBlock(rows, [
-      NO_COL, progCol,
-      // Tabel ringkas (12-11-2026): nomor SO & quotation di bawah nomor invoice; faktur di bawah perlakuan PPN.
-      { label: 'No. Invoice', cls: 'nowrap', render: i => `<button class="btn btn-ghost sm" data-act="ivc-view" data-id="${i.id}">${esc(i.nomor)}</button><br><span class="muted">${tglPanjang(i.tanggal)} · SO ${soCell(qOf(i))}</span>` },
-      { label: 'Customer', render: i => { const k = qOf(i), ps = i.cara === 'peserta' ? (pesertaById(i.peserta[0]) || {}).nama : '';
+      NO_COL,
+      // Faktur di bawah perlakuan PPN (tabel ringkas 12-11-2026); SO dan quotation kolom sendiri (13-11-2026).
+      { label: 'No. Invoice', cls: 'nowrap', render: i => `<button type="button" class="inv-link code" data-act="ivc-view" data-id="${i.id}">${esc(i.nomor)}</button><br><span class="muted">${tglPanjang(i.tanggal)}${i.termin ? ` · Termin ${i.termin}` : ''}</span>` },
+      { label: 'No. Sales Order', cls: 'nowrap', render: i => soCol.render(qOf(i)) },
+      { label: 'No. Quotation', cls: 'nowrap', render: i => qtnCol.render(qOf(i)) },
+      { label: 'Customer', render: i => { const k = qOf(i), ps = i.cara === 'peserta' && !isB2bQtn(k) ? (pesertaById(i.peserta[0]) || {}).nama : '';
         return `${tujuanTag(k.tujuan)} ${esc(kepadaOf(k))}${ps ? `<br><span class="muted">Peserta: ${esc(ps)}</span>` : `<br><span class="muted">${i.peserta.length} peserta</span>`}`; } },
       { label: 'PPN', render: i => PERLAKUAN[i.perlakuan] + `<br><span class="muted">${i.noFaktur ? `Faktur ${esc(i.noFaktur)}` : 'Tanpa faktur'}${i.perlakuan === 'WAPU' ? ` · ${i.setor ? `setor ${tglPanjang(i.setor.tanggal)}` : 'bukti setor belum'}` : ''}</span>` },
-      { label: 'Total', cls: 'money', render: i => `${rp(i.total)}<br><span class="muted">piutang ${rp(i.piutang)}</span>` },
-      { label: 'Status', cls: 'nowrap', render: i => i.status === 'batal' ? `<span class="badge st-ps-keluar">Batal</span><br><span class="muted">${tglPanjang(i.batal.tanggal)}</span>` : `${ivcBadge('invoiced')}<br>${i.bayar ? `<span class="badge st-ps-deal">Dibayar ${tglPanjang(i.bayar.tanggal)}</span>` : '<span class="muted">Belum dibayar</span>'}` },
+      // Piutang hanya ditulis bila berbeda dari total (mis. WAPU: PPN disetor customer); rinciannya di Lihat Invoice.
+      { label: 'Total', cls: 'money', render: i => `${rp(i.total)}${i.piutang !== i.total ? `<br><span class="muted">piutang ${rp(i.piutang)}</span>` : ''}` },
+      { label: 'Status bayar', cls: 'nowrap', render: i => (i.status === 'batal' ? `<span class="badge st-ps-keluar">Batal</span><br><span class="muted">${tglPanjang(i.batal.tanggal)}</span>` : i.bayar ? `<span class="badge st-ps-deal">Dibayar</span><br><span class="muted">${tglPanjang(i.bayar.tanggal)}</span>` : '<b>Belum dibayar</b>') + ivcRsTag(i) },
       { label: 'Action', cls: 'act', render: i => gearMenu(i, [['ivc-view', 'Lihat Invoice'], ['ivc-print', 'Print Invoice'], ...(i.bayar || i.status === 'batal' || ivcTutup(i) ? [] : [['ivc-bayar', 'Catat Pembayaran']]), ...(i.perlakuan === 'WAPU' && !i.setor && i.status !== 'batal' && !ivcTutup(i) ? [['ivc-setor', 'Terima Bukti Setor WAPU']] : [])]) }
     ]);
   }
@@ -259,11 +277,12 @@
       const done = ivcDonePs(k).map(id => (pesertaById(id) || {}).nama).filter(Boolean);
       return sec(n0 + 1, 'Rincian Tagihan', 'yang ditagih di invoice ini', `<div class="table-wrap"><table class="table"><thead><tr><th>No.</th><th>No. Program</th><th>Item</th><th>Peserta</th><th class="money">Harga / peserta</th><th class="money">Diskon</th><th class="money">Nominal</th></tr></thead>
         <tbody><tr><td>1</td><td class="nowrap"><span class="code">${esc(pj.nomor)}</span></td><td>${esc(pk.judul)}<br><span class="muted">${esc(pk.nomor)}</span></td>
-          <td>${u.ps.length} peserta<br><span class="muted">${esc(psNames.slice(0, 4).join(', '))}${psNames.length > 4 ? `, +${psNames.length - 4} lainnya` : ''}</span></td>
+          <td>${b2b ? `Paket all-in<br><span class="muted">${u.ps.length} peserta (ditagih ke company)</span>` : `${u.ps.length} peserta<br><span class="muted">${esc(psNames.slice(0, 4).join(', '))}${psNames.length > 4 ? `, +${psNames.length - 4} lainnya` : ''}</span>`}</td>
           <td class="money">${v.allin ? `All-in ÷ ${v.n}<br><span class="muted">≈ ${rp(Math.round(per))}</span>` : rp(v.harga)}</td>
           <td class="money">${v.allin ? `${rp(v.diskTot)}<br><span class="muted">total quotation</span>` : `${rp(v.disk)}<br><span class="muted">per peserta</span>`}</td>
-          <td class="money"><b>${rp(u.penjualan)}</b></td></tr></tbody></table></div>
-        ${done.length ? `<p class="hint">Peserta yang sudah ditagih: ${esc(done.join(', '))}.</p>` : ''}`)
+          <td class="money"><b>${rp(u.penjualan)}</b>${u.termin ? `<br><span class="muted">${k.termin[u.termin - 1].persen}% dari ${rp(v.dpp)}</span>` : ''}</td></tr></tbody></table></div>
+        ${u.termin ? `<div class="notice"><span><b>Termin ${u.termin} dari ${k.termin.length}</b> (${k.termin[u.termin - 1].persen}%): ${esc(k.termin[u.termin - 1].ket)}. Termin lain ditagih dengan invoice terpisah.</span></div>` : ''}
+        ${done.length && !b2b && !u.termin ? `<p class="hint">Peserta yang sudah ditagih: ${esc(done.join(', '))}.</p>` : ''}`)
         + sec(n0 + 2, 'Perhitungan Invoice' + QIVC(8, 'PPN quotation = 11% × DPP, PPN invoice = (Penjualan × 11/12) × 12%. Nilainya sama, tetapi pembulatan bisa beda Rp 1. Pembulatan per tahap perlu dikonfirmasi ke tim pajak.'), 'Penjualan → DPP → PPN → Total Tagihan', calcCard(h, d.pl))
         + sec(n0 + 3, 'Jurnal' + QIVC(14, 'Kode COA dari file acuan: 1102-01-01, 2104-01-07, 1106-01-XX, 2104-01-XX; COA Penjualan 0000-00-00. Kode final Labmania?'), 'pilih COA Penjualan; debit dan credit harus balance', `${jrTable(jr)}<div class="field" id="ivc-err"></div>`);
     };
@@ -320,7 +339,7 @@
       const u = P.unit(), h = ivcHitung(u.penjualan, u.lain, d.pl), nomor = ivcNo(d.tanggal);
       const jurnal = ivcJurnal(h, d.pl, d.coa, nomor, k, d.tanggal);
       db.inv.push(Object.assign({ id: uid(), nomor, tanggal: d.tanggal, qtn: k.id, prog: progNo(k), jenis: P.pj.jenis, cara: d.cara, peserta: u.ps, perlakuan: d.pl, noFaktur: d.pl === 'NON' ? '' : d.noFaktur.trim(),
-        coaPenjualan: d.coa, setor: null, status: 'invoiced', jurnal }, h));
+        coaPenjualan: d.coa, setor: null, status: 'invoiced', jurnal, termin: u.termin || null }, h));
       toast(`Invoice ${nomor} tersimpan — ${rp(h.total)}`);
       const back = state.ivp.from; state.ivp = null; go(back);
     });
@@ -334,7 +353,8 @@
         ${sumRow('Perlakuan PPN', PERLAKUAN[i.perlakuan])}${sumRow('Nomor Faktur', esc(i.noFaktur || '—'))}${sumRow('COA Penjualan', esc(i.coaPenjualan))}
         ${i.status === 'batal' ? sumRow('Status', `<b>Batal</b> ${tglPanjang(i.batal.tanggal)} · ${esc(i.batal.alasan)} · ${esc(i.batal.oleh)}`) : ''}
         ${sumRow('Pembayaran', i.bayar ? `Dibayar ${tglPanjang(i.bayar.tanggal)}${i.bayar.ket ? ` · ${esc(i.bayar.ket)}` : ''} · dicatat ${esc(i.bayar.oleh)}` : 'Belum dibayar')}
-        ${i.setor ? sumRow('Bukti setor WAPU', `${tglPanjang(i.setor.tanggal)}${i.setor.nomor ? ` · ${esc(i.setor.nomor)}` : ''}`) : ''}</div>
+        ${i.setor ? sumRow('Bukti setor WAPU', `${tglPanjang(i.setor.tanggal)}${i.setor.nomor ? ` · ${esc(i.setor.nomor)}` : ''}`) : ''}
+        ${ivcRs(i) ? sumRow('Reschedule', `<span class="badge ${ivcRs(i).cls}">${ivcRs(i).t}</span> ${ivcRs(i).sub}: invoice tetap berlaku (tidak dibatalkan). ${ivcRs(i).sub === 'ikut jadwal baru' ? 'Peserta ikut jadwal baru; tidak ditagih ulang.' : 'Menunggu peserta konfirmasi ulang dan Deal ulang. Peserta yang tidak ikut: Refund bila sudah bayar, invoice dibatalkan bila belum dibayar.'}`) : ''}</div>
         <p class="qtn-h">Perhitungan</p>${calcCard(i, i.perlakuan)}
         <p class="qtn-h">Jurnal invoice</p>${jrTable(i.jurnal)}
         ${i.setor ? `<p class="qtn-h">Jurnal bukti setor PPN WAPU</p>${jrTable(i.setor.jurnal)}` : ''}
@@ -403,8 +423,8 @@
     const harga = v.allin ? `${rp(v.sub)}<br><span class="pdf-mut">all-in ${v.n} peserta</span>` : rp(v.harga);
     const disk = v.allin ? (v.diskTot ? rp(v.diskTot) : '0') : (v.disk ? `${rp(v.disk)}<br><span class="pdf-mut">per peserta</span>` : '0');
     const rows = `<tr><td>1</td><td><b>${esc(pk.judul)}</b><br>${esc(pj.durasi)} hari · ${rangePanjang(pj.tglMulai, pj.tglSelesai)}${pj.waktu ? ` · ${esc(pj.waktu)}` : ''}<br>${esc(pj.lokasi || '—')}
-        <br><span class="pdf-mut">No. Program ${esc(pj.nomor)} · Quotation ${esc(k.nomor)}</span>${names.length ? `<br><span class="pdf-mut">Peserta: ${esc(names.join(', '))}</span>` : ''}</td>
-        <td class="r">${n} peserta</td><td class="r">${perPs ? rp(v.harga) : harga}</td><td class="r">${perPs ? (v.disk ? rp(v.disk) : '0') : disk}</td><td class="r">${rp(i.penjualan)}</td></tr>
+        <br><span class="pdf-mut">No. Program ${esc(pj.nomor)} · Quotation ${esc(k.nomor)}</span>${names.length && !isB2bQtn(k) ? `<br><span class="pdf-mut">Peserta: ${esc(names.join(', '))}</span>` : ''}${i.termin ? `<br><span class="pdf-mut">Termin ${i.termin} dari ${k.termin.length} (${k.termin[i.termin - 1].persen}%): ${esc(k.termin[i.termin - 1].ket)}</span>` : ''}</td>
+        <td class="r">${isB2bQtn(k) ? `1 paket<br><span class="pdf-mut">${n} peserta</span>` : `${n} peserta`}</td><td class="r">${perPs ? rp(v.harga) : harga}</td><td class="r">${perPs ? (v.disk ? rp(v.disk) : '0') : disk}</td><td class="r">${rp(i.penjualan)}</td></tr>
       ${i.lain ? `<tr><td>2</td><td>Biaya lain-lain</td><td class="r">—</td><td class="r">—</td><td class="r">—</td><td class="r">${rp(i.lain)}</td></tr>` : ''}`;
     const pl = i.perlakuan, bayar = i.piutang;
     const sum = `<tr><td>Jumlah</td><td>${rp(i.penjualan)}</td></tr>
@@ -455,7 +475,8 @@
       tS(null, 'Invoicing', 'Penagihan dari Sales Order yang sudah <b>Siap invoice</b>. Dikelola <b>Finance</b>.'),
       tS('#view .card .tabs', 'Uninvoiced / Invoiced', '<b>Uninvoiced</b>: SO yang belum ditagih. <b>Invoiced</b>: invoice yang sudah dibuat, beserta status bayar.'),
       tS('.toolbar', 'Cari dan saring', 'Saring jenis Public / B2B, program, dan tahun.'),
-      un && tS(tGear(), 'Add Invoicing', 'Membuat invoice dari Sales Order baris ini.'),
+      un && tS(tKol(tRows()[0], 'Pembayaran'), 'Pembayaran', '<b>Full payment</b>: satu invoice. <b>TOP</b>: satu invoice per termin; kolom ini menunjukkan termin berikutnya. B2B selalu ditagih ke company, tidak per peserta.'),
+      un && tS(tGear(), 'Add Invoicing', 'Membuat invoice dari Sales Order baris ini (TOP: termin berikutnya).'),
       !un && tS(tKol(tRows()[0], 'Status'), 'Status', '<b>Dibayar</b> / <b>Belum dibayar</b>, atau <b>Batal</b> bila peserta batal ikut sebelum membayar.'),
       !un && tS(tGear(), 'Aksi', '<b>Lihat</b> / <b>Print Invoice</b>. <b>Catat Pembayaran</b>: tanggal bayar (lunas). <b>Terima Bukti Setor WAPU</b>: khusus customer WAPU.'),
       un && (() => { const k = ivcUnRows()[0]; return k && { popover: { title: 'Buat invoice', description: 'Lanjut ke form invoice untuk SO pertama di daftar.' }, lanjut: { label: 'Buka form', run: () => ivcForm(k, 'ivc'), ke: 'ivcForm' } }; })()
@@ -464,6 +485,6 @@
   TOUR.ivcForm = () => [
     tS('#view .ivc-head', 'Data invoice', 'Customer, quotation, dan Sales Order asal; nomor invoice dibuat otomatis saat disimpan.'),
     tS('#ivc-cara', 'Cara tagih & PPN', 'Cara tagih, perlakuan PPN, dan nomor faktur.'),
-    tS('#ivc-dyn', 'Perhitungan & jurnal', 'Nilai tagihan, PPN, dan jurnal dihitung otomatis.'),
+    tS('#ivc-dyn', 'Perhitungan & jurnal', 'Nilai tagihan, PPN, dan jurnal dihitung otomatis. B2B: satu baris paket all-in ke company. TOP: nilai termin ini beserta keterangannya.'),
     tS('#view .form-actions [type=submit]', 'Save', 'Menyimpan invoice. Setelah itu Print Invoice dan kirim ke customer; catat pembayaran saat dana masuk.')
   ];

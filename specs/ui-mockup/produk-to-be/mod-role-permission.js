@@ -17,7 +17,7 @@
   const seeAllData = () => isSuper() || isAdmin();
   const akMenus = () => [{ mod: 'Dashboard', items: [['dashboard', 'Dashboard']] }].concat(MODULES.map(m => ({ mod: m.name, items: m.groups.flatMap(g => g.items) })));
   // Aksi yang berlaku per menu (usulan): Dashboard, Katalog, Activity Log hanya View; Approval Pengajuan View & Manage (Manage = proses approval); Manage Peserta View & Manage (Manage = Close Program).
-  const akActsOf = v => ['dashboard', 'katalog', 'actlog'].includes(v) ? ['v'] : v === 'pbAppr' ? ['v', 'p'] : v === 'mpst' ? ['v', 'm']
+  const akActsOf = v => ['dashboard', 'katalog', 'actlog'].includes(v) ? ['v'] : v === 'pbAppr' || v === 'rfAppr' ? ['v', 'p'] : v === 'mpst' || v === 'refund' ? ['v', 'm']
     : ['mprog', 'quot'].includes(v) ? ['v', 'a', 'm', 'd', 'p'] : ['v', 'a', 'm', 'd'];
   const akFull = v => Object.fromEntries(akActsOf(v).map(x => [x, true]));
   const akAllKeys = () => akMenus().flatMap(m => m.items.map(([v]) => v));
@@ -37,6 +37,8 @@
     db.akses[roleIdOf('Sales Public')] = sales();
     db.akses[roleIdOf('Sales B2B')] = sales();
     db.akses[roleIdOf('Trainer')] = staff();
+    // Keuangan: Invoicing dan proses transfer Refund (13-11-2026, usulan).
+    db.akses[roleIdOf('Keuangan')] = { dashboard: { v: true }, ivc: akFull('ivc'), refund: akFull('refund') };
   }
   // Hak user = hak role-nya + Override Permission user itu (FR-65; user_permissions). Override hanya menambah.
   const can = (v, act = 'v') => isSuper() || !!(((db.akses[meUser().role] || {})[v] || {})[act]) || !!(((meUser().ovr || {})[v] || {})[act]);

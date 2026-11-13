@@ -346,7 +346,7 @@
     if (r.status === 'disetujui' || r.status === 'paid') li.push(`Disetujui <b>${esc(userName(r.apprBy))}</b> · ${esc(r.apprAt)}${r.jenis ? ' — Waiting Payment' : ''}`);
     if (r.status === 'paid') li.push(`Paid — ditandai <b>${esc(userName(r.paidBy))}</b> · tanggal bayar ${tglPanjang(r.paidAt)}${r.paidKet ? ` · ${esc(r.paidKet)}` : ''}`);
     if (r.status === 'ditolak') li.push(`Ditolak <b>${esc(userName(r.apprBy))}</b> · ${esc(r.apprAt)} — alasan: ${esc(r.alasanTolak)}`);
-    if (r.status === 'batal') li.push('Dibatalkan pengaju');
+    if (r.status === 'batal') li.push(r.alasanBatal || 'Dibatalkan pengaju');
     return `<ol class="pb-hist">${li.map(x => `<li>${x}</li>`).join('')}</ol>`; };
   function pbDetailBody(r, isOb) {
     const pj = pjById(r.pj), s = pbSum(pj, r.kat);

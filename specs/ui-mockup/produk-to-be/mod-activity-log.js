@@ -17,7 +17,7 @@
   const STAMP_KEYS = ['createdBy', 'createdAt', 'updatedBy', 'updatedAt'];
   const LOG_AKSI = ['Tambah', 'Edit', 'Hapus', 'Aktifkan', 'Nonaktifkan', 'Finalkan', 'Batalkan', 'Kirim & Cetak', 'Deal', 'Siap Invoice', 'Cetak', 'Setujui', 'Tolak', 'Tandai Paid', 'Export', 'Close Program'];
   const STATUS_AKSI = { final: 'Finalkan', batal: 'Batalkan', terkirim: 'Kirim & Cetak', deal: 'Deal', siap: 'Siap Invoice', disetujui: 'Setujui', ditolak: 'Tolak', paid: 'Tandai Paid' };
-  const FIELD_LBL = { asisten: 'Asisten trainer', nama: 'Nama', kode: 'Kode', nomor: 'Nomor', judul: 'Judul', lingkup: 'Lingkup', aktif: 'Status aktif', status: 'Status', item: 'Item', cost: 'Default Cost',
+  const FIELD_LBL = { asisten: 'Asisten trainer', nama: 'Nama', kode: 'Kode', nomor: 'Nomor', judul: 'Judul', lingkup: 'Lingkup', hargaMulai: 'Harga start from', aktif: 'Status aktif', status: 'Status', item: 'Item', cost: 'Default Cost',
     hargaJual: 'Harga jual / peserta', targetPeserta: 'Target peserta', targetProfit: 'Target profit', durasi: 'Durasi', biaya: 'Item biaya', peserta: 'Peserta',
     diskon: 'Diskon', lain: 'Biaya lain-lain', allin: 'Harga all-in', skema: 'Skema harga', ppn: 'PPN', tanggal: 'Tanggal', berlaku: 'Berlaku sampai',
     tglMulai: 'Tanggal mulai', tglSelesai: 'Tanggal selesai', lokasi: 'Lokasi', waktu: 'Waktu', trainer: 'Trainer', company: 'Company', instansi: 'Instansi', telp: 'Telepon', email: 'Email',

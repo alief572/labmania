@@ -255,7 +255,7 @@
   const ktFilterText = () => `Bidang: ${state.ktBidang === 'all' ? 'Semua' : ktName('jenisBidang', +state.ktBidang)} · Sertifikat: ${state.ktSert === 'all' ? 'Semua' : ktName('jenisSertifikasi', +state.ktSert)}${state.q ? ` · Kata kunci: "${state.q}"` : ''}`;
   const KT_ICON_CERT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="m8.5 13.5-1.5 8 5-3 5 3-1.5-8"/></svg>';
 
-  const viewKatalog = () => `${pageHead('Katalog Produk', 'Katalog disusun otomatis dari Paket Produk berstatus Aktif. Isi Lingkup tiap paket lewat tombol di kartunya. Saring berdasarkan Bidang dan Sertifikat, lalu cetak sebagai PDF untuk Promosi.', 'FR-14 · FR-60 – FR-63 · FR-67 – FR-68',
+  const viewKatalog = () => `${pageHead('Katalog Produk', 'Katalog disusun otomatis dari Paket Produk berstatus Aktif. Isi Lingkup dan harga "start from" tiap paket lewat tombol di kartunya. Saring berdasarkan Bidang dan Sertifikat, lalu cetak sebagai PDF untuk Promosi.', 'FR-14 · FR-60 – FR-63 · FR-67 – FR-68',
     '<button class="btn btn-accent" data-act="kt-print">Cetak Katalog (PDF)</button>')}
     <div class="card">${toolbar('Cari judul, nomor, atau atribut…', false,
       selectFilter('kt-bidang', 'Filter bidang', state.ktBidang, ktOpts('jenisBidang', 'bidang', 'Semua bidang'))
@@ -282,12 +282,18 @@
   // Diisi dari kartu Katalog Produk, boleh lebih dari satu item; tampil di kartu dan di PDF katalog.
   const KT_LK_MAX = 20; // batas usulan analis
   const lingkupOf = p => (Array.isArray(p.lingkup) ? p.lingkup : []);
+  // Harga "start from" (input/Master - Buat Program/2026-11-13-multi-master-batal-top-refund/ butir 5): perkiraan untuk promosi,
+  // bukan harga final. Harga final tetap dari costing Penjualan Program dan quotation.
+  const hargaMulaiOf = p => (Number(p.hargaMulai) > 0 ? Number(p.hargaMulai) : null);
+  const ktHargaTxt = p => (hargaMulaiOf(p) ? `Start from ${rp(hargaMulaiOf(p))}` : '');
   function ktLingkupScreen(p) {
     const l = lingkupOf(p);
-    return `<div class="kt-lk">${l.length
+    const h = hargaMulaiOf(p), isi = l.length || h;
+    return `<div class="kt-lk">${h ? `<p class="kt-harga"><b>${esc(ktHargaTxt(p))}</b><span class="muted">perkiraan, belum harga final</span></p>` : '<p class="muted kt-lk-empty">Harga start from belum diisi.</p>'}
+      ${l.length
       ? `<p class="kt-lk-h">Lingkup</p><ul>${l.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`
       : '<p class="muted kt-lk-empty">Lingkup belum diisi.</p>'}
-      <button type="button" class="btn btn-outline sm" data-act="kt-lingkup" data-id="${p.id}" aria-label="${l.length ? 'Ubah' : 'Isi'} lingkup ${esc(p.judul)} (${esc(p.nomor)})">${l.length ? `Ubah lingkup (${l.length})` : 'Isi lingkup'}</button></div>`;
+      <button type="button" class="btn btn-outline sm" data-act="kt-lingkup" data-id="${p.id}" aria-label="${isi ? 'Ubah' : 'Isi'} lingkup dan harga ${esc(p.judul)} (${esc(p.nomor)})">${isi ? `Ubah lingkup & harga${l.length ? ` (${l.length})` : ''}` : 'Isi lingkup & harga'}</button></div>`;
   }
   const lkRow = (v, i) => `<li class="field ling-row"><label class="sr-only" for="lk-${i}">Item lingkup ${i + 1}</label>
       <span class="ling-no" aria-hidden="true">${i + 1}.</span>
@@ -306,11 +312,14 @@
     };
     const start = lingkupOf(p).length ? lingkupOf(p) : [''];
     openModal({
-      title: `Lingkup: ${esc(p.judul)}`, wide: true,
+      title: `Lingkup & Harga: ${esc(p.judul)}`, wide: true,
       body: `<p class="hint top"><span class="code">${esc(p.nomor)}</span> · ${ATTRS.map(a => esc(ktName(a.key, p[a.field]))).join(' · ')}. Lingkup tampil di kartu Katalog Produk dan di PDF katalog. Satu baris untuk satu item; tekan Enter untuk menambah baris.${q('Q-38', 'Terjawab 12-11-2026: Lingkup boleh diisi dari form lain juga, dan diubah oleh role yang punya akses ke master (diatur di Role & Permission). Batas 20 item × 200 karakter belum dikonfirmasi.')}</p>
+        <div class="field kt-harga-in"><label for="kt-hm">Harga start from</label>${moneyIn('id="kt-hm" name="hargaMulai" maxlength="15" placeholder="mis. 3.500.000" aria-describedby="kt-hm-h"', hargaMulaiOf(p) || '')}
+          <p class="hint" id="kt-hm-h">Perkiraan harga per peserta untuk promosi, belum harga final. Tampil sebagai "Start from Rp …" di kartu dan PDF katalog. Kosongkan bila belum ada.</p></div>
+        <p class="qtn-h">Lingkup</p>
         <ol class="ling-list" id="lk-list"></ol>
         <div class="ling-tools"><button type="button" class="btn btn-outline sm" data-lk="add">+ Tambah item lingkup</button><span class="muted" id="lk-count"></span></div>`,
-      saveLabel: 'Simpan lingkup',
+      saveLabel: 'Simpan',
       onMount: f => {
         form = f; draw(start);
         f.addEventListener('click', e => {
@@ -338,9 +347,10 @@
         });
         if (!ok) return false;
         const baru = inputs.map(el => el.value.trim()).filter(Boolean), lama = lingkupOf(p);
-        if (baru.join('\n') === lama.join('\n')) { toast('Lingkup tidak berubah'); return; }
-        p.lingkup = baru; // Activity Log: tercatat otomatis sebagai Edit Paket Produk, field Lingkup (auditRun)
-        toast(baru.length ? `Lingkup ${p.nomor} tersimpan: ${baru.length} item` : `Lingkup ${p.nomor} dikosongkan`);
+        const hm = Number(digits(form.querySelector('#kt-hm').value)) || null, hmLama = hargaMulaiOf(p);
+        if (baru.join('\n') === lama.join('\n') && hm === hmLama) { toast('Lingkup dan harga tidak berubah'); return; }
+        p.lingkup = baru; p.hargaMulai = hm; // Activity Log: tercatat otomatis sebagai Edit Paket Produk, field Lingkup / Harga start from (auditRun)
+        toast(`${p.nomor} tersimpan: ${baru.length ? `${baru.length} item lingkup` : 'lingkup kosong'}, ${hm ? `start from ${rp(hm)}` : 'harga belum diisi'}`);
       }
     });
   }
@@ -367,6 +377,7 @@
       <h4>${esc(p.judul)}</h4>
       <div class="kt-item-meta"><span>Bidang</span><b>${esc(ktName('jenisBidang', p.bidang))}</b></div>
       <div class="kt-item-meta"><span>Varian</span><b>${esc(ktName('varian', p.varian))}</b></div>
+      ${hargaMulaiOf(p) ? `<div class="kt-item-harga"><b>${esc(ktHargaTxt(p))}</b><span>*harga perkiraan</span></div>` : ''}
       ${lingkupOf(p).length ? `<div class="kt-item-lk"><span>Lingkup</span><ul>${lingkupOf(p).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
       <div class="kt-item-cert">${KT_ICON_CERT}<span>${esc(ktName('jenisSertifikasi', p.sertifikasi))}</span></div>
     </div>`;
@@ -1259,7 +1270,7 @@
     const opts = db.kfTpl.filter(x => x.aktif || x.id === d.kf.tpl).map(x => `<option value="${x.id}" ${x.id === d.kf.tpl ? 'selected' : ''}>${esc(x.nama)}${def && x.id === def.id ? ' — default' : ''}</option>`).join('');
     const isian = KF_FIELDS.map(([k, l]) => `<label class="kf-chip ${d.kf.isian.includes(k) ? 'on' : ''}"><input type="checkbox" data-kfi="${k}" ${d.kf.isian.includes(k) ? 'checked' : ''}> ${esc(l)}</label>`).join('')
       + d.kf.extra.map((l, i) => `<span class="kf-chip on extra">${esc(l)} <button type="button" data-q="kf-extra-del" data-i="${i}" aria-label="Hapus isian">×</button></span>`).join('');
-    return `<div class="notice"><span><span class="tobe">To be</span> Formulir ini <b>tidak dicetak kosong</b> lagi. Saat quotation disimpan, sistem membuat <b>link Konfirmasi Kehadiran</b> khusus quotation ini; tiap calon peserta mengisi data dirinya sendiri lewat link. Hasilnya masuk ke tab <b>Data Peserta</b> quotation dan menjadi Confirmation Letter.</span></div>
+    return `<div class="notice"><span>Formulir ini <b>tidak dicetak kosong</b> lagi. Saat quotation disimpan, sistem membuat <b>link Konfirmasi Kehadiran</b> khusus quotation ini; tiap calon peserta mengisi data dirinya sendiri lewat link. Hasilnya masuk ke tab <b>Data Peserta</b> quotation dan menjadi Confirmation Letter.</span></div>
       <div class="ket-tools"><span class="muted">Atur isian yang diminta di link. Template default dari Jenis Produk paket; perubahan hanya untuk quotation ini.</span>
         <button type="button" class="btn btn-ghost sm" data-q="kf-reset">Kembalikan ke default</button></div>
       <div class="kf-grid"><div>
@@ -1386,7 +1397,7 @@
   TOUR.katalog = () => [
     tS(null, 'Katalog Produk', 'Katalog promosi yang tersusun otomatis dari Product aktif.'),
     tS('.toolbar', 'Saring', 'Pilih Bidang dan Sertifikat yang ingin ditawarkan.'),
-    tS('[data-act="kt-lingkup"]', 'Lingkup', 'Isi butir lingkup tiap paket; tampil di kartu dan PDF katalog.'),
+    tS('[data-act="kt-lingkup"]', 'Lingkup & harga', 'Isi harga start from (perkiraan, belum final) dan butir lingkup tiap paket; tampil di kartu dan PDF katalog.'),
     tS('[data-act="kt-print"]', 'Cetak Katalog (PDF)', 'Pratinjau katalog sesuai saringan, lalu cetak atau simpan PDF untuk dikirim ke calon customer.')
   ];
   TOUR.rate = () => [

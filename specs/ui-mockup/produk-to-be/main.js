@@ -3,11 +3,11 @@
    urutan muat ada di Labmania.html (core.js pertama, main.js terakhir). */
 'use strict';
   // ---------- Render ----------
-  const LIST = { paket: listPaket, katalog: listKatalog, peserta: listPeserta, company: listCompany, trainer: listTrainer, ketQtn: listKetQtn, kfTpl: listKfTpl, user: listUser, role: listRole, rate: listRate, mprog: listMprog, quot: listQuot, qtn: listQtn, so: listSoTab, soProg: listSoProg, ivc: listIvc, pb: () => (state.pbTab === 'diajukan' ? listPbSent() : listPbProg()), pbAppr: listPbAppr, mpst: listMpst, mon: listMon, akses: listAkses, actlog: listActLog };
+  const LIST = { paket: listPaket, katalog: listKatalog, peserta: listPeserta, company: listCompany, trainer: listTrainer, ketQtn: listKetQtn, kfTpl: listKfTpl, user: listUser, role: listRole, rate: listRate, mprog: listMprog, quot: listQuot, qtn: listQtn, so: listSoTab, soProg: listSoProg, ivc: listIvc, pb: () => (state.pbTab === 'diajukan' ? listPbSent() : listPbProg()), pbAppr: listPbAppr, refund: listRefund, rfAppr: listRfAppr, mpst: listMpst, mon: listMon, akses: listAkses, actlog: listActLog };
   const currentList = () => MASTERS[state.view] ? listMaster(state.view) : LIST[state.view]();
   const VIEWS = {
     dashboard: viewDashboard, paket: viewPaket, combine: viewCombine, katalog: viewKatalog, peserta: viewPeserta, company: viewCompany, trainer: viewTrainer, ketQtn: viewKetQtn, kfTpl: viewKfTpl,
-    user: viewUser, role: viewRole, rate: viewRate, mprog: viewMprog, quot: viewQuot, qtn: viewQtn, qtnDetail: viewQtnDetail, so: viewSo, soProg: viewSoProg, soDetail: viewSoDetail, sktDetail: viewSktDetail, mpForm: viewCostForm, qtForm: viewCostForm, ivc: viewIvc, ivcForm: viewIvcForm, pb: viewPb, pbProg: viewPbProg, pbForm: viewPbForm, pbAppr: viewPbAppr, mpst: viewMpst, mon: viewMon, akses: viewAkses, actlog: viewActLog
+    user: viewUser, role: viewRole, rate: viewRate, mprog: viewMprog, quot: viewQuot, qtn: viewQtn, qtnDetail: viewQtnDetail, so: viewSo, soProg: viewSoProg, soDetail: viewSoDetail, sktDetail: viewSktDetail, mpForm: viewCostForm, qtForm: viewCostForm, ivc: viewIvc, refund: viewRefund, rfAppr: viewRfAppr, ivcForm: viewIvcForm, pb: viewPb, pbProg: viewPbProg, pbForm: viewPbForm, pbAppr: viewPbAppr, mpst: viewMpst, mon: viewMon, akses: viewAkses, actlog: viewActLog
   };
 
   function render() {
@@ -136,6 +136,8 @@
     'skt-back': () => { state.soTab = 'skt'; go('so'); },
     'rf-view': el => rfView(rfById(+el.dataset.id)),
     'rf-proses': el => rfProses(rfById(+el.dataset.id)),
+    'rf-appr': el => rfAppr(rfById(+el.dataset.id)),
+    'rfappr-tab': el => { state.rfApprTab = el.dataset.tab; state.page = 1; render(); },
     'qps-keluar': el => qpsKeluar(db.qps.find(x => x.id === +el.dataset.id)),
     'qps-surat': el => qpsSurat(db.qps.find(x => x.id === +el.dataset.id)),
     'qtn-kuota': el => qtnKuota(qtnById(el)),
@@ -242,36 +244,46 @@
     'mp-prod-del': el => { const l = paketIds(state.pf.p); l.splice(+el.dataset.i, 1); state.pf.p.paket = l; render(); },
     'pf-del': el => { state.pf.p.biaya.splice(+el.dataset.i, 1); state.pf.errors = {}; render(); },
     'pf-save': () => saveCost(false),
+    'pj-mp-pick': el => { pfStore(); pfLoad(+el.dataset.i); render(); },
+    'pj-mp-del': el => { const mps = pfStore(), i = +el.dataset.i, nm = mprogById(mps[i].mp).nomor; mps.splice(i, 1); pfLoad(Math.max(0, Math.min(state.pf.mi > i ? state.pf.mi - 1 : state.pf.mi, mps.length - 1))); render(); toast(`${nm} dihapus dari penjualan ini`); },
     'pf-confirm': () => {
       const rec = saveCost(true);
       if (rec) (state.pf.kind === 'mp' ? mpFinal : qtFinal)(rec);
     }
   };
 
-  function openGear(btn) {
+  // kb: dibuka lewat keyboard (Enter/Space), fokus langsung ke aksi pertama.
+  let gearOwner = null;
+  function openGear(btn, kb) {
     const root = $('#menu-root');
     const wasOpen = root.dataset.owner && btn.classList.contains('open');
     closeGear();
     if (wasOpen) return;
-    root.innerHTML = `<div class="menu" role="menu">${btn.nextElementSibling.innerHTML}</div>`;
-    root.dataset.owner = '1';
-    btn.classList.add('open');
+    root.innerHTML = `<div class="menu" role="menu" aria-label="Aksi">${btn.nextElementSibling.innerHTML}</div>`;
+    root.dataset.owner = '1'; gearOwner = btn;
+    btn.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
     const menu = root.firstChild, b = btn.getBoundingClientRect();
-    const top = b.bottom + 4 + menu.offsetHeight > window.innerHeight ? b.top - 4 - menu.offsetHeight : b.bottom + 4;
-    menu.style.top = `${top}px`;
+    const bawah = window.innerHeight - b.bottom - 8, atas = b.top - 8;
+    // Buka ke arah yang lebih lega; bila tetap tidak muat, menu digulir (max-height).
+    const keAtas = menu.offsetHeight > bawah && atas > bawah;
+    menu.style.maxHeight = `${Math.max(160, keAtas ? atas : bawah)}px`;
+    menu.style.top = `${keAtas ? Math.max(8, b.top - 4 - menu.offsetHeight) : b.bottom + 4}px`;
     menu.style.left = `${Math.max(8, b.right - menu.offsetWidth)}px`;
+    if (kb) { const first = menu.querySelector('.menu-item'); if (first) first.focus(); }
   }
 
-  function closeGear() {
+  function closeGear(balikFokus) {
     const root = $('#menu-root');
     root.innerHTML = '';
     delete root.dataset.owner;
-    document.querySelectorAll('.gear.open').forEach(g => g.classList.remove('open'));
+    document.querySelectorAll('.gear.open').forEach(g => { g.classList.remove('open'); g.setAttribute('aria-expanded', 'false'); });
+    if (balikFokus && gearOwner && document.contains(gearOwner)) gearOwner.focus();
+    gearOwner = null;
   }
 
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-act], [data-view], [data-page]');
-    if (el && el.dataset.act === 'gear') return openGear(el);
+    if (el && el.dataset.act === 'gear') return openGear(el, e.detail === 0);
     closeGear();
     if (!el || el.disabled) return;
     if (el.dataset.view) return go(el.dataset.view);
@@ -333,7 +345,8 @@
       render(); // tampilkan atribut paket terpilih
     }
     if (t.id === 'qt-mp') { state.pf.p.mp = Number(t.value) || ''; render(); }
-    if (t.id === 'mp-prod-add' && t.value) { state.pf.p.paket = paketIds(state.pf.p).concat(+t.value); state.pf.errors = {}; render(); }
+    if (t.id === 'mp-prod-add') { state.pf.p.paket = t.value ? [+t.value] : []; state.pf.errors = {}; render(); } // Master Program = satu Product (13-11-2026)
+    if (t.id === 'pj-mp-add' && t.value) { const m = mprogById(+t.value), mps = pfStore(); mps.push(mpsEntry(m)); pfLoad(mps.length - 1); render(); toast(`${m.nomor} ditambahkan; costing-nya tampil di bagian 2 – 4`); }
   });
 
   document.addEventListener('keydown', e => {
@@ -345,12 +358,21 @@
     if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset.act === 'pf-step') { e.preventDefault(); ACTIONS['pf-step'](e.target); return; }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset.act === 'dash-kpi') { e.preventDefault(); dashKpi(e.target.dataset.k); return; }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset.act === 'qtn-filter') { e.preventDefault(); ACTIONS['qtn-filter'](e.target); return; }
+    // Menu gear: panah atas/bawah, Home/End berpindah aksi; Tab keluar menutup menu; Escape kembali ke tombol gear.
+    if (e.target.classList && e.target.classList.contains('menu-item')) {
+      const items = [...document.querySelectorAll('#menu-root .menu-item')], i = items.indexOf(e.target);
+      const ke = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: items.length - 1 }[e.key];
+      if (ke !== undefined) { e.preventDefault(); items[(ke + items.length) % items.length].focus(); return; }
+      if (e.key === 'Tab') { closeGear(true); return; }
+      if (e.key === 'Escape') { e.preventDefault(); closeGear(true); return; }
+    }
     if (e.key === 'Escape') { closeGear(); closeModal(); document.body.classList.remove('nav-open'); }
   });
 
   document.addEventListener('toggle', e => { if (e.target.id === 'sim-rinci' && state.pf) state.pf.rinciOpen = e.target.open; }, true);
-  window.addEventListener('resize', closeGear);
-  window.addEventListener('scroll', closeGear, true);
+  window.addEventListener('resize', () => closeGear());
+  // Menggulir isi menu gear yang panjang tidak menutup menu; menggulir halaman menutupnya.
+  window.addEventListener('scroll', e => { if (!(e.target.closest && e.target.closest('#menu-root'))) closeGear(); }, true);
 
   // To be: data contoh peserta quotation → isian Konfirmasi Kehadiran (setelah semua data contoh termasuk invoice dimuat).
   qpsSeed();

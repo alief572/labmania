@@ -251,6 +251,12 @@ select.input { padding-right: 30px; cursor: pointer; }
 .btn-outline:hover:not(:disabled) { border-color: var(--navy); background: var(--navy-50); }
 .btn-ghost { background: transparent; color: var(--navy); }
 .btn-ghost:hover:not(:disabled) { background: var(--navy-50); }
+/* Nomor invoice di tabel Invoiced (13-11-2026): tombol bergaya tautan, huruf kode seperti nomor SO/quotation di sebelahnya,
+   tanpa padding tombol supaya tabel muat di 1280px. Garis bawah putus-putus menandakan bisa diklik. */
+.inv-link { padding: 2px 0; border: 0; background: none; cursor: pointer; white-space: nowrap; text-align: left;
+  text-decoration: underline dotted var(--navy-100); text-underline-offset: 3px; }
+.inv-link:hover { text-decoration: underline solid var(--navy); }
+.inv-link:focus-visible { outline: 3px solid rgba(213, 163, 32, .6); outline-offset: 2px; border-radius: 3px; }
 .btn-danger { background: var(--ink); color: #fff; }
 .btn-danger:hover:not(:disabled) { background: var(--navy); }
 
@@ -291,18 +297,29 @@ select.input { padding-right: 30px; cursor: pointer; }
 .gear:focus-visible { outline: 3px solid rgba(213, 163, 32, .6); outline-offset: 2px; }
 .gear svg { transition: transform .2s; }
 .gear.open svg { transform: rotate(60deg); }
+/* Menu gear (13-11-2026): aksi dikelompokkan (Lihat & cetak, Proses, Batalkan / hapus, Riwayat) dan dipisah garis
+   supaya menu panjang seperti di Quotation mudah dipindai. Shadow dipertahankan: menu melayang di atas tabel. */
 .menu {
-  position: fixed; z-index: 45; min-width: 160px; padding: 6px;
+  position: fixed; z-index: 45; min-width: 210px; max-width: min(300px, calc(100vw - 16px)); padding: 6px;
   background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+  overflow-y: auto; overscroll-behavior: contain;
   animation: pop .12s ease-out;
 }
+.menu-h { padding: 6px 12px 2px; font-size: 11.5px; font-weight: 600; color: var(--ink-50); }
+.menu-sep { height: 1px; margin: 6px -6px; background: var(--line); }
 .menu-item {
-  display: block; width: 100%; padding: 8px 12px; border: 0; border-radius: 6px;
-  background: none; text-align: left; cursor: pointer; color: var(--ink); font-size: 13px;
+  display: flex; align-items: center; width: 100%; min-height: 36px; padding: 7px 12px; border: 0; border-radius: 6px;
+  background: none; text-align: left; cursor: pointer; color: var(--ink); font-size: 13px; line-height: 1.35;
 }
-.menu-item:hover, .menu-item:focus-visible { background: var(--navy-50); color: var(--navy); outline: none; }
-.menu-item.danger { color: var(--orange-600); font-weight: 600; }
-.menu-item.danger:hover { background: var(--orange-50); color: var(--ink); }
+.menu-item:hover { background: var(--navy-50); color: var(--navy); }
+.menu-item:active { background: var(--navy-100); }
+.menu-item:focus-visible { background: var(--navy-50); color: var(--navy); outline: 2px solid var(--navy); outline-offset: -2px; }
+/* Teks aksi berisiko: emas tua #8A6410 (5,4:1 di putih, 4,7:1 di --orange-50); --orange-600 hanya 3,1:1. */
+.menu-item.danger { color: #8A6410; font-weight: 600; }
+.menu-item.danger:hover, .menu-item.danger:focus-visible { background: var(--orange-50); color: #8A6410; }
+.menu-item.danger:focus-visible { outline-color: #8A6410; }
+@media (pointer: coarse) { .menu-item { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .menu { animation: none; } }
 
 /* Product Combine index: satu kolom per atribut */
 .table .nowrap { white-space: nowrap; }
@@ -437,7 +454,8 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 .table .money, .table th.money { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .table td.money .muted { font-size: 11.5px; }
 .table td.title { font-weight: 600; min-width: 180px; }
-.neg { color: var(--orange-600); font-weight: 700; }
+/* #8A6410 (5,4:1 di putih); --orange-600 hanya 3,1:1 sehingga gagal WCAG AA untuk teks biasa (13-11-2026). */
+.neg { color: #8A6410; font-weight: 700; }
 .pos { color: var(--navy); font-weight: 600; }
 
 /* Tag kecil: jenis program, mode harga, biaya manual */
@@ -1566,3 +1584,24 @@ textarea.input { font-family: inherit; }
 .table th.num, .table td.num { padding-left: 8px; padding-right: 4px; }
 .table td.title, .paket-list .table td.title { min-width: 140px; }
 .paket-list .table { min-width: 0; } /* sebelumnya 980px: memaksa scroll horizontal di layar laptop */
+
+/* Cara pembayaran (Full / TOP) di form quotation, 13-11-2026 */
+.qtn-pay .pay-opt { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.qtn-pay .pay-opt .chk { align-items: flex-start; }
+.qtn-pay .pay-opt .chk input { margin-top: 3px; }
+.tp-tbl td { vertical-align: middle; }
+.tp-tbl .input-unit { max-width: 130px; }
+.tp-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 8px 0 4px; }
+
+/* Harga start from di Katalog Produk (perkiraan), 13-11-2026 */
+.kt-harga { margin: 0 0 4px; display: flex; flex-direction: column; gap: 1px; font-size: 13px; color: var(--navy); }
+.kt-harga .muted { font-size: 11.5px; }
+.kt-harga-in { max-width: 320px; }
+.kt-item-harga { display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: #14304F; }
+.kt-item-harga span { font-size: 10.5px; color: #6E7390; }
+
+/* Penjualan Program: daftar Master Program + costing per Master Program, 13-11-2026 */
+.pj-mps tr.on td { background: var(--navy-50); }
+.pj-mps .pj-mp-btn { text-align: left; white-space: normal; padding-left: 0; }
+.pj-mps tr.on .pj-mp-btn { font-weight: 700; }
+.pj-mps td.num, .pj-mps th.num { white-space: nowrap; }

@@ -3,9 +3,9 @@
    urutan muat ada di Labmania.html (core.js pertama, main.js terakhir). */
 'use strict';
   // ---------- Shared: Master Program & Penjualan Program ----------
-  // Master Program dapat memuat lebih dari satu Product; costing tetap satu per Master Program (input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/).
-  // p.paket = daftar id Product. paketOf() mengembalikan satu objek untuk semua pemakai lama (judul, nomor, varian, produk):
-  // satu Product = Product itu sendiri; lebih dari satu = gabungan (judul dan nomor digabung "+", atribut dari Product pertama).
+  // Koreksi 13-11-2026 (input/Master - Buat Program/2026-11-13-multi-master-batal-top-refund/ butir 1): Master Program kembali
+  // berisi SATU Product; yang boleh lebih dari satu adalah Master Program di dalam Penjualan Program, masing-masing dengan
+  // costing-nya sendiri. p.paket tetap array (isi satu) agar data lama terbaca. paketOf() menggabungkan bila isinya > 1.
   const paketIds = p => [].concat(p && p.paket || []).filter(Boolean);
   const paketList = p => paketIds(p).map(id => db.paket.find(x => x.id === id)).filter(Boolean);
   const paketOf = p => {
@@ -13,7 +13,17 @@
     if (l.length <= 1) return l[0] || { judul: '—', nomor: '—', lingkup: [] };
     return Object.assign({}, l[0], { judul: l.map(x => x.judul).join(' + '), nomor: l.map(x => x.nomor).join(' + '), lingkup: [].concat(...l.map(x => x.lingkup || [])), list: l });
   };
-  const mpOf = q => db.mprog.find(x => x.id === q.mp);
+  // Penjualan Program: q.mps = [{ mp, biaya, hargaJual, targetProfit }] satu per Master Program. q.biaya / q.hargaJual /
+  // q.targetProfit menyimpan jumlah seluruh Master Program (dipakai Quotation, Invoice, Pengajuan Biaya). Durasi, target
+  // peserta, tanggal, lokasi, trainer berlaku untuk seluruh program. Data tanpa mps = satu Master Program (q.mp).
+  const pjMps = q => (q && q.mps && q.mps.length ? q.mps : [{ mp: q.mp, biaya: q.biaya || [], hargaJual: q.hargaJual, targetProfit: q.targetProfit }]);
+  const mprogById = id => db.mprog.find(x => x.id === id);
+  // Lebih dari satu Master Program: satu objek gabungan (nomor digabung "+", paket = semua Product) untuk pemakai lama.
+  const mpOf = q => {
+    const l = q && q.mps && q.mps.length > 1 ? q.mps.map(m => mprogById(m.mp)).filter(Boolean) : [];
+    if (l.length > 1) return Object.assign({}, l[0], { nomor: l.map(x => x.nomor).join(' + '), paket: [].concat(...l.map(paketIds)), list: l });
+    return mprogById(q.mp);
+  };
   const companyOf = q => db.company.find(x => x.id === q.company);
   const QMP02 = q('Q-MP-02', 'Terjawab 12-11-2026: format MP-YYMM-NNN.');
   const QPJ08 = q('Q-PJ-08', 'Terjawab 12-11-2026: format Public PJP-YYMM-NNN, B2B PJB-YYMM-NNN.');
@@ -63,7 +73,7 @@
   function qtGear(q) {
     const items = [['qt-open', q.status === 'draft' ? 'Edit' : 'Lihat']];
     if (q.status === 'draft') items.push(...(can('quot', 'p') ? [['qt-final', 'Finalkan']] : []), ['qt-cancel', 'Batalkan', true]);
-    if (q.status === 'final') items.push(...(canAddQtn(q) ? [['qtn-from-pj', '+ Buat Quotation']] : []), ...(canResched(q) ? [['qt-resched', 'Reschedule']] : []), ['qt-print', 'Cetak Surat Penawaran']);
+    if (q.status === 'final') items.push(...(canAddQtn(q) ? [['qtn-from-pj', '+ Buat Quotation']] : []), ...(canResched(q) ? [['qt-resched', 'Reschedule']] : []), ['qt-print', 'Cetak Surat Penawaran'], ...(canBatalPj(q) && can('quot', 'm') ? [['qt-cancel', 'Batalkan', true]] : []));
     return gearMenu(q, items);
   }
 
@@ -139,7 +149,7 @@
   function stepSummary(n, p) {
     const c = calc(p);
     if (n === 1) {
-      if (!isQt()) return paketIds(p).length ? `${paketIds(p).length > 1 ? `${paketIds(p).length} Product: ` : ''}${esc(paketOf(p).judul)} · ${Number(p.durasi) || 0} hari · ${nPeserta(p)} peserta · ${rp(p.hargaJual)}` : 'Paket Produk belum dipilih';
+      if (!isQt()) return paketIds(p).length ? `${esc(paketOf(p).judul)} · ${Number(p.durasi) || 0} hari · ${nPeserta(p)} peserta · ${rp(p.hargaJual)}` : 'Paket Produk belum dipilih';
       return `${p.jenis === 'b2b' && companyOf(p) ? esc(companyOf(p).nama) + ' · ' : ''}${fmtRange(p.tglMulai, p.tglSelesai)} · ${nPeserta(p)} peserta · ${rp(c.harga)} / peserta`;
     }
     if (n === 2) return `Total ${rp(c.fixed)}`;
@@ -349,6 +359,51 @@
       </div>`;
   }
 
+  // ---------- Form Penjualan Program: beberapa Master Program, costing per Master Program ----------
+  // Selama form terbuka, state.pf.p memegang costing Master Program yang sedang dipilih (mp, biaya, hargaJual, targetProfit),
+  // sehingga bagian 2 – 4 dan hitungannya tetap sama. Master Program lain disimpan di state.pf.mps; digabung saat simpan.
+  const MPS_F = ['mp', 'biaya', 'hargaJual', 'targetProfit'];
+  const mpsEntry = mp => ({ mp: mp.id, biaya: clone(mp.biaya), hargaJual: mp.hargaJual, targetProfit: mp.targetProfit });
+  function pfStore() {
+    const pf = state.pf; if (!pf || pf.kind !== 'qt' || !pf.p.mp) return [];
+    if (!pf.mps) { pf.mps = []; pf.mi = 0; }
+    pf.mps[pf.mi] = Object.fromEntries(MPS_F.map(f => [f, pf.p[f]]));
+    return pf.mps;
+  }
+  function pfLoad(i) { const pf = state.pf, m = pf.mps[i]; MPS_F.forEach(f => { pf.p[f] = m[f]; }); pf.mi = i; pf.errors = {}; }
+  function pfFromRec(rec, mi = 0) {
+    const p = clone(rec), mps = clone(pjMps(rec)).map(m => Object.assign(m, { biaya: m.biaya.map(b => { const c = Object.assign({}, b); delete c.mpi; return c; }) }));
+    delete p.mps;
+    const pf = { p, mps, mi: Math.min(mi, mps.length - 1) };
+    MPS_F.forEach(f => { p[f] = mps[pf.mi][f]; });
+    return pf;
+  }
+  // Gabungan untuk disimpan: biaya diberi penanda mpi (indeks Master Program), harga & target profit dijumlah.
+  function pfAgg() {
+    const mps = pfStore(), out = clone(state.pf.p), sum = f => mps.reduce((t, m) => t + (Number(m[f]) || 0), 0);
+    return Object.assign(out, { mps: clone(mps), mp: mps[0].mp, biaya: mps.flatMap((m, i) => m.biaya.map(b => Object.assign({}, b, { mpi: i }))),
+      hargaJual: sum('hargaJual'), targetProfit: mps.every(m => m.targetProfit === '' || m.targetProfit == null) ? '' : sum('targetProfit') });
+  }
+  const mpCalc = (p, m) => calc({ durasi: p.durasi, targetPeserta: p.targetPeserta, biaya: m.biaya, hargaJual: m.hargaJual });
+  function mpsTable(p, locked) {
+    const mps = pfStore(), mi = state.pf.mi, cs = mps.map(m => mpCalc(p, m)), tot = k => cs.reduce((t, c) => t + (c[k] || 0), 0);
+    return `<div class="table-wrap"><table class="table pj-mps"><thead><tr><th>Master Program</th><th class="num">Harga jual / peserta</th><th class="num">HPP</th><th class="num">Profit</th><th class="act"><span class="sr-only">Aksi</span></th></tr></thead><tbody>
+      ${mps.map((m, i) => { const mp = mprogById(m.mp), c = cs[i];
+        return `<tr class="${i === mi ? 'on' : ''}"><td><button type="button" class="btn btn-ghost sm pj-mp-btn" data-act="pj-mp-pick" data-i="${i}" ${i === mi ? 'aria-current="true"' : ''}><span class="code">${esc(mp.nomor)}</span> ${esc(paketOf(mp).judul)}</button>${i === mi ? ' <span class="tag">costing tampil di bawah</span>' : ''}</td>
+          <td class="num">${rp(c.harga)}</td><td class="num">${rp(c.hpp)}</td><td class="num ${c.profit < 0 ? 'neg' : ''}">${rp(c.profit)}</td>
+          <td class="act">${!locked && mps.length > 1 ? `<button type="button" class="btn btn-ghost sm danger-t" data-act="pj-mp-del" data-i="${i}" aria-label="Hapus ${esc(mp.nomor)} dari penjualan ini">Hapus</button>` : ''}</td></tr>`; }).join('')}
+      </tbody>${mps.length > 1 ? `<tfoot><tr><td><b>Total program</b> <span class="muted">${mps.length} Master Program</span></td><td class="num"><b>${rp(tot('harga'))}</b></td><td class="num"><b>${rp(tot('hpp'))}</b></td><td class="num ${tot('profit') < 0 ? 'neg' : ''}"><b>${rp(tot('profit'))}</b></td><td></td></tr></tfoot>` : ''}</table></div>`;
+  }
+  function mpsBlock(p, locked) {
+    const used = pfStore().map(m => m.mp), opts = db.mprog.filter(m => m.status === 'final' && !used.includes(m.id));
+    return `<div class="csec"><p class="csec-h">Master Program <span class="muted">satu penjualan boleh berisi lebih dari satu Master Program; costing (bagian 2 – 4) diisi per Master Program. Klik nama Master Program untuk menampilkan costing-nya.</span></p>
+      <div id="pf-mps">${mpsTable(p, locked)}</div>
+      ${locked ? '' : `<div class="pickrow"><select class="input" id="pj-mp-add" aria-label="Tambah Master Program"><option value="">+ Tambah Master Program Final…</option>${opts.map(m => `<option value="${m.id}">${esc(m.nomor)} — ${esc(paketOf(m).judul)} · ${rp(m.hargaJual)}</option>`).join('')}</select></div>
+      <p class="hint">Harga jual / peserta di quotation = jumlah harga semua Master Program. Durasi, target peserta, tanggal, dan trainer berlaku untuk seluruh program.</p>`}
+      ${state.pf.errors.mps ? `<div class="err"><i>!</i>${esc(state.pf.errors.mps)}</div>` : ''}</div>`;
+  }
+  const mpAktifTag = () => (state.pf && state.pf.kind === 'qt' && state.pf.mps && state.pf.mps.length > 1 ? ` · <span class="code">${esc(mprogById(state.pf.p.mp).nomor)}</span>` : '');
+
   function viewCostForm() {
     const { kind, p, isNew, errors: E } = state.pf;
     if (kind === 'qt' && !p.jenis) return viewQtStart();
@@ -360,8 +415,8 @@
     if (kind === 'mp' && p.status === 'final') lockInfo = 'Master Program <b>Final</b> — terkunci dan tersedia di pilihan Penjualan Program. Penyesuaian harga/costing dilakukan di Penjualan Program. Master Program Final tidak dapat dibatalkan atau disalin; perubahan master: buat Master Program baru.';
     if (kind === 'mp' && p.status === 'batal') lockInfo = 'Master Program dibatalkan — tidak muncul lagi di pilihan Penjualan Program. Penjualan yang sudah terbentuk tidak terpengaruh.';
     if (qt && p.status === 'final') lockInfo = `Penjualan Program <b>Final</b> — terkunci. Buat <b>Quotation</b> dari menu Quotation (${b2b ? 'ke Company penjualan' : 'ke Company atau Personal'}) — persiapan invoice dengan peserta yang sudah fix.`
-      + (canResched(p) ? ` Jadwal, trainer, dan asisten masih dapat diubah lewat <b>Reschedule</b> sampai ${fmtTgl(addHari(p.tglMulai, -RS_H))} (H-${RS_H})${hasDeal(p) ? '; quotation dan Sales Order program ini ikut naik revisi bila tanggal berubah' : ''}.` : p.closed ? ' Program sudah Closed, jadi jadwal tidak dapat di-reschedule.' : p.tglMulai && todayIso > addHari(p.tglMulai, -RS_H) ? ` Batas reschedule H-${RS_H} (${fmtTgl(addHari(p.tglMulai, -RS_H))}) sudah lewat, jadi jadwal tidak dapat diubah lagi.` : '');
-    if (qt && p.status === 'batal') lockInfo = 'Penjualan Program dibatalkan dan tidak dapat diubah.';
+      + (canResched(p) ? ` Jadwal, trainer, dan asisten masih dapat diubah lewat <b>Reschedule</b> sampai ${fmtTgl(addHari(p.tglMulai, -RS_H))} (H-${RS_H})${hasDeal(p) ? '; bila tanggal berubah, quotation naik revisi, quotation Deal perlu Deal ulang, dan Sales Order-nya pindah ke SO Batal' : ''}.` : p.closed ? ' Program sudah Closed, jadi jadwal tidak dapat di-reschedule.' : p.tglMulai && todayIso > addHari(p.tglMulai, -RS_H) ? ` Batas reschedule H-${RS_H} (${fmtTgl(addHari(p.tglMulai, -RS_H))}) sudah lewat, jadi jadwal tidak dapat diubah lagi.` : '');
+    if (qt && p.status === 'batal') lockInfo = `Penjualan Program dibatalkan dan tidak dapat diubah.${p.batal ? ` Alasan: ${esc(p.batal.alasan)} (${esc(p.batal.oleh)}, ${fmtWaktu(p.batal.waktu.replace('T', ' '))}).` : ''}`;
 
     const header = `<div class="csec"><p class="csec-h">Header</p><div class="grid3">
       ${field(`No. ${qt ? 'penjualan' + QPJ08 : 'master program' + QMP02}`, `<input class="input" value="${esc(p.nomor || '')}" placeholder="otomatis saat disimpan" disabled>`)}
@@ -371,16 +426,13 @@
 
     let s1;
     if (!qt) {
-      const ids = paketIds(p), terpilih = paketList(p);
-      const paketOpts = db.paket.filter(x => x.aktif && !ids.includes(x.id))
-        .map(x => `<option value="${x.id}">${esc(x.nomor)} — ${esc(x.judul)} · ${esc(findRec('varian', x.varian).nama)} · ${esc(findRec('jenisSertifikasi', x.sertifikasi).nama)}</option>`).join('');
-      const rows = terpilih.map((x, i) => `<li class="mp-prod"><span><span class="code">${esc(x.nomor)}</span> <b>${esc(x.judul)}</b>
-          <span class="hint">${ATTRS.map(a => `${a.label}: ${esc(findRec(a.key, x[a.field]).nama)}`).join(' · ')}${x.aktif ? '' : ' · nonaktif'}</span></span>
-          ${locked ? '' : `<button type="button" class="btn btn-ghost sm danger-t" data-act="mp-prod-del" data-i="${i}" aria-label="Hapus ${esc(x.judul)} dari Master Program">Hapus</button>`}</li>`).join('');
+      const pid = paketIds(p)[0], x = paketList(p)[0];
+      const paketOpts = db.paket.filter(y => y.aktif || y.id === pid)
+        .map(y => `<option value="${y.id}" ${y.id === pid ? 'selected' : ''}>${esc(y.nomor)} — ${esc(y.judul)} · ${esc(findRec('varian', y.varian).nama)} · ${esc(findRec('jenisSertifikasi', y.sertifikasi).nama)}${y.aktif ? '' : ' (nonaktif)'}</option>`).join('');
       s1 = step(1, 'Informasi Program', '', `
-        ${field(`Product${req} <span class="muted">(boleh lebih dari satu)</span>`, `${terpilih.length ? `<ol class="mp-prods">${rows}</ol>` : '<p class="muted mp-prods-empty">Belum ada Product dipilih.</p>'}
-          ${locked ? '' : `<select class="input" id="mp-prod-add" aria-label="Tambah Product"><option value="">+ Tambah Product aktif…</option>${paketOpts}</select>`}
-          <span class="hint">Costing tetap satu untuk seluruh Master Program (bagian 2 – 4), berapa pun Product yang dipilih.</span>`, E.paket)}
+        ${field('Product' + req, `<select class="input" id="mp-prod-add" aria-label="Product" ${locked ? 'disabled' : ''}><option value="">— Pilih Product aktif —</option>${paketOpts}</select>
+          ${x ? `<span class="hint">${ATTRS.map(a => `${a.label}: ${esc(findRec(a.key, x[a.field]).nama)}`).join(' · ')}</span>` : ''}
+          <span class="hint">Satu Master Program = satu Product. Penjualan Program dapat menggabungkan beberapa Master Program.</span>`, E.paket)}
         ${field('Jam Pembelajaran' + req, `<div class="input-unit"><input class="input" id="mf-jp" data-pf="jamPembelajaran" aria-label="Jam Pembelajaran" type="number" min="1" step="1" inputmode="numeric" value="${esc(p.jamPembelajaran)}" placeholder="mis. 16" aria-describedby="mf-jp-unit" ${locked ? 'disabled' : ''}><span class="unit" id="mf-jp-unit">JP</span></div><span class="hint">Menjadi nilai awal di Penjualan Program, masih dapat diubah di sana</span>`, E.jamPembelajaran)}
         ${simInputs(p, locked, E, 'angka baseline; bisa disesuaikan per Penjualan Program tanpa mengubah master. Juga tampil di bagian 4.')}`);
     } else {
@@ -391,7 +443,7 @@
         ? `<span class="hint">${esc(companyOf(p).jenis)} · ${esc(companyOf(p).kota)} · PIC ${esc(companyOf(p).picNama || '—')}</span>` : '<span class="hint">dari Master Company</span>'}`, E.company) : '';
       s1 = step(1, 'Informasi Penjualan', '', `
         <div class="grid3">
-          ${field('Master Program', `<div class="static"><span class="code">${esc(mp.nomor)}</span> ${esc(paketOf(mp).judul)} <span class="muted">· ${esc(findRec('varian', paketOf(mp).varian).nama)} · ${esc(findRec('jenisSertifikasi', paketOf(mp).sertifikasi).nama)}</span></div>`)}
+          ${field(state.pf.mps && state.pf.mps.length > 1 ? 'Master Program (costing yang tampil)' : 'Master Program', `<div class="static"><span class="code">${esc(mp.nomor)}</span> ${esc(paketOf(mp).judul)} <span class="muted">· ${esc(findRec('varian', paketOf(mp).varian).nama)} · ${esc(findRec('jenisSertifikasi', paketOf(mp).sertifikasi).nama)}</span></div>`)}
           ${co}
           ${field('Tanggal mulai' + req, `<input class="input" type="date" data-pf="tglMulai" value="${esc(p.tglMulai)}" ${locked ? 'disabled' : ''}>`, E.tglMulai)}
           ${field('Tanggal selesai' + req, `<input class="input" type="date" data-pf="tglSelesai" value="${esc(p.tglSelesai)}" ${locked ? 'disabled' : ''}><span class="hint">durasi = selesai − mulai + 1 hari</span>`, E.tglSelesai)}
@@ -404,11 +456,11 @@
         ${simInputs(p, locked, E, `terisi dari ${esc(mp.nomor)}; perubahan hanya berlaku di penjualan ini. Juga tampil di bagian 4.`)}`);
     }
 
-    const s2 = step(2, 'Fixed Cost', qt ? 'disalin dari Master Program; nominal, item, dan biaya lain dapat diubah; item bernilai 0 tidak disimpan. Qty: event = 1, day = durasi.' : 'semua item aktif Master Rate langsung tampil dengan Default Cost; klik × pada item yang tidak dipakai (dapat ditambah lagi lewat + Tambah); item bernilai 0 tidak disimpan. Qty: event = 1, day = durasi.',
+    const s2 = step(2, 'Fixed Cost' + (qt ? mpAktifTag() : ''), qt ? 'disalin dari Master Program; nominal, item, dan biaya lain dapat diubah; item bernilai 0 tidak disimpan. Qty: event = 1, day = durasi.' : 'semua item aktif Master Rate langsung tampil dengan Default Cost; klik × pada item yang tidak dipakai (dapat ditambah lagi lewat + Tambah); item bernilai 0 tidak disimpan. Qty: event = 1, day = durasi.',
       costTable(0, locked) + costTable(1, locked) + `<div id="pf-tot-fixed">${totalsFixed(p)}</div>`);
-    const s3 = step(3, 'Variable Cost', 'pilih item yang dipakai saja, isi nominal per peserta; item bernilai 0 tidak disimpan. Qty otomatis dari jumlah peserta dan durasi.',
+    const s3 = step(3, 'Variable Cost' + (qt ? mpAktifTag() : ''), 'pilih item yang dipakai saja, isi nominal per peserta; item bernilai 0 tidak disimpan. Qty otomatis dari jumlah peserta dan durasi.',
       costTable(2, locked) + costTable(3, locked) + `<div id="pf-tot-var">${totalsVar(p)}</div>`);
-    const s4 = step(4, 'Simulasi Hasil', 'apakah penjualan ini untung, dan berapa titik impasnya',
+    const s4 = step(4, 'Simulasi Hasil' + (qt ? mpAktifTag() : ''), 'apakah penjualan ini untung, dan berapa titik impasnya',
       simInputs(p, locked, E, 'sama dengan bagian 1 — ubah di sini atau di bagian 1, keduanya ikut berubah') + `<div id="pf-sim" class="gap-t">${simFor(p)}</div>`);
 
     let actions = `<button type="button" class="btn btn-ghost" data-act="pf-back">${isNew ? 'Batal' : 'Kembali'}</button>`;
@@ -422,7 +474,7 @@
         <button type="button" class="btn btn-outline" data-act="pf-save">Simpan Draft</button>
         ${isNew || !can('quot', 'p') ? '' : `<button type="button" class="btn btn-accent" data-act="pf-confirm">Finalkan → ${NEXT[p.jenis]}</button>`}`;
     } else if (p.status === 'final') {
-      actions += `${canResched(p) ? `<button type="button" class="btn btn-outline" data-act="qt-resched" data-id="${p.id}">Reschedule</button>` : ''}
+      actions += `${canBatalPj(p) && can('quot', 'm') ? `<button type="button" class="btn btn-outline" data-act="qt-cancel" data-id="${p.id}">Batalkan</button>` : ''}${canResched(p) ? `<button type="button" class="btn btn-outline" data-act="qt-resched" data-id="${p.id}">Reschedule</button>` : ''}
         <button type="button" class="btn btn-accent" data-act="qt-print" data-id="${p.id}">Cetak Surat Penawaran</button>`;
     }
 
@@ -431,7 +483,7 @@
     return `<div class="pf-formbar"><button type="button" class="btn btn-ghost sm" data-act="pf-back">← Kembali</button><h2>${title}</h2><span class="ref">${ref}</span></div>
       ${lockInfo ? `<div class="alert">${lockInfo}</div>` : ''}
       <div id="pf-warn" class="alert ${warns.length ? '' : 'hidden'}">${warns.map(esc).join('<br>')}</div>
-      <div class="pub-form">${header}${s1}${qt ? reschedHistory(p) : ""}${s2}${s3}${s4}</div>
+      <div class="pub-form">${header}${qt ? mpsBlock(p, locked) : ''}${s1}${qt ? reschedHistory(p) : ""}${s2}${s3}${s4}</div>
       <div class="form-actions">${actions}</div>`;
   }
 
@@ -455,6 +507,7 @@
     $('#pf-tot-var').innerHTML = totalsVar(p);
     $('#pf-sim').innerHTML = simFor(p);
     [1, 2, 3, 4].forEach(n => { const el = $(`[data-sum="${n}"]`); if (el) el.innerHTML = stepSummary(n, p); });
+    const mt = $('#pf-mps'); if (mt) mt.innerHTML = mpsTable(p, costLocked());
     const w = costWarnings(p), box = $('#pf-warn');
     box.innerHTML = w.map(esc).join('<br>');
     box.classList.toggle('hidden', !w.length);
@@ -465,7 +518,7 @@
       // Master Program baru: semua item Fixed Cost aktif langsung terisi Default Cost; yang tidak dipakai dihapus dengan × (MP-FR-06).
       ? { id: null, nomor: null, status: 'draft', paket: [], durasi: 1, targetPeserta: 10, hargaJual: '', targetProfit: '', biaya: db.rate.fixed.filter(r => r.aktif).map(r => biayaFromRate(r)) }
       : Object.assign({ id: null, nomor: null, status: 'draft', mp: '', jenis: '' }, preset || {});
-    state.pf = { kind, p: rec ? clone(rec) : blank, isNew: !rec, errors: {}, collapsed: {} };
+    state.pf = Object.assign({ kind, p: rec ? clone(rec) : blank, isNew: !rec, errors: {}, collapsed: {} }, kind === 'qt' && rec ? pfFromRec(rec) : {});
     state.view = kind === 'mp' ? 'mpForm' : 'qtForm';
     render();
     window.scrollTo(0, 0);
@@ -474,7 +527,7 @@
   function validateCost() {
     const { kind, p } = state.pf, E = {};
     const posInt = v => v !== '' && Number.isInteger(Number(v)) && Number(v) > 0;
-    if (kind === 'mp' && !paketIds(p).length) E.paket = 'Pilih minimal satu Product';
+    if (kind === 'mp' && !paketIds(p).length) E.paket = 'Pilih Product';
     if (!posInt(p.durasi)) E.durasi = 'Durasi bilangan bulat > 0';
     if (!posInt(p.targetPeserta)) E.targetPeserta = 'Target peserta bilangan bulat > 0';
     else if (kind === 'qt' && p.jenis === 'b2b' && Number(p.targetPeserta) < B2B_MIN) E.targetPeserta = `Penjualan B2B minimal ${B2B_MIN} peserta`;
@@ -490,36 +543,41 @@
       if (b.manual && !String(b.item).trim()) E['b' + i] = 'Nama biaya lain wajib diisi';
       else if (b.harga === '' || b.harga < 0) E['b' + i] = `Nominal ${b.item} wajib diisi`;
     });
+    if (kind === 'qt') {
+      const lain = pfStore().filter((m, i) => i !== state.pf.mi && (m.hargaJual === '' || m.hargaJual < 0 || m.biaya.some(b => (b.manual && !String(b.item).trim()) || b.harga === '' || b.harga < 0)));
+      if (lain.length) E.mps = `Lengkapi harga jual dan nominal biaya: ${lain.map(m => mprogById(m.mp).nomor).join(', ')}`;
+    }
     state.pf.errors = E;
     return !Object.keys(E).length;
   }
 
   function saveCost(silent) {
-    const p0 = state.pf.p, nAwal = p0.biaya.length;
-    p0.biaya = p0.biaya.filter(b => !(b.harga !== '' && Number(b.harga) === 0));
-    const dibuang = nAwal - p0.biaya.length;
+    const p0 = state.pf.p, nol = b => b.harga !== '' && Number(b.harga) === 0;
+    let dibuang = p0.biaya.filter(nol).length;
+    p0.biaya = p0.biaya.filter(b => !nol(b));
+    if (state.pf.kind === 'qt') pfStore().forEach((m, i) => { if (i !== state.pf.mi) { dibuang += m.biaya.filter(nol).length; m.biaya = m.biaya.filter(b => !nol(b)); } });
     if (!validateCost()) {
       render();
       toast('Belum tersimpan — perbaiki isian yang ditandai', 'warn');
       return null;
     }
-    const pf = state.pf, list = pf.kind === 'mp' ? db.mprog : db.quot;
+    const pf = state.pf, list = pf.kind === 'mp' ? db.mprog : db.quot, data = pf.kind === 'qt' ? pfAgg() : clone(pf.p);
     let rec;
     if (pf.isNew) {
-      rec = Object.assign(clone(pf.p), { id: uid(), nomor: docNo(pf.kind === 'mp' ? 'MP' : PJ_PREFIX[pf.p.jenis]) });
+      rec = Object.assign(data, { id: uid(), nomor: docNo(pf.kind === 'mp' ? 'MP' : PJ_PREFIX[pf.p.jenis]) });
       list.push(rec);
     } else {
       rec = list.find(x => x.id === pf.p.id);
-      Object.assign(rec, clone(pf.p));
+      Object.assign(rec, data);
     }
-    state.pf = { kind: pf.kind, p: clone(rec), isNew: false, errors: {}, collapsed: pf.collapsed };
+    state.pf = Object.assign({ kind: pf.kind, p: clone(rec), isNew: false, errors: {}, collapsed: pf.collapsed }, pf.kind === 'qt' ? pfFromRec(rec, pf.mi) : {});
     render();
     if (!silent) toast(`${pf.kind === 'mp' ? 'Master Program' : 'Penjualan Program'} ${rec.nomor} tersimpan${rec.status === 'draft' ? ' sebagai Draft' : ''}${dibuang ? ` · ${dibuang} item bernilai 0 dibuang` : ''}`);
     return rec;
   }
 
   // Setelah aksi status: sinkronkan form yang sedang terbuka dengan data tersimpan.
-  const syncPf = rec => { if (state.pf && state.pf.p.id === rec.id && (state.view === 'mpForm' || state.view === 'qtForm')) state.pf.p = clone(rec); };
+  const syncPf = rec => { if (state.pf && state.pf.p.id === rec.id && (state.view === 'mpForm' || state.view === 'qtForm')) Object.assign(state.pf, state.pf.kind === 'qt' ? pfFromRec(rec, state.pf.mi) : { p: clone(rec) }); };
   const sumRow = (l, v) => `<div class="sum-row"><span>${l}</span><b>${v}</b></div>`;
   const warnBox = list => list.map(w => `<div class="warn"><i>!</i>${esc(w)}</div>`).join('');
 
@@ -541,7 +599,7 @@
   }
 
   function mpCancel(rec) {
-    const used = db.quot.filter(x => x.mp === rec.id).length;
+    const used = db.quot.filter(x => pjMps(x).some(m => m.mp === rec.id)).length;
     openModal({
       title: 'Batalkan Master Program',
       body: `<p style="margin:0 0 14px">Batalkan <b>${esc(rec.nomor)} — ${esc(paketOf(rec).judul)}</b>? Program tidak akan muncul lagi di pilihan Penjualan Program.
@@ -564,7 +622,7 @@
     openModal({
       title: 'Finalkan Penjualan Program',
       body: `<p>Setelah dikonfirmasi, Penjualan Program menjadi <b>Final</b> dan terkunci, lalu masuk ke <b>${NEXT[rec.jenis]}</b> untuk persiapan invoice (modul berikutnya, belum dibuat). Pastikan angka peserta dan harga sudah final.</p>
-        <div class="summary">${sumRow('Penjualan', `${esc(rec.nomor)} — ${esc(paketOf(mpOf(rec)).judul)} (${JENIS[rec.jenis]})`)}${rec.jenis === 'b2b' ? sumRow('Company', esc(companyOf(rec).nama)) : ''}${rows}</div>${warnBox(w)}`,
+        <div class="summary">${sumRow('Penjualan', `${esc(rec.nomor)} — ${esc(paketOf(mpOf(rec)).judul)} (${JENIS[rec.jenis]})`)}${pjMps(rec).length > 1 ? sumRow('Master Program', pjMps(rec).map(m => `${esc(mprogById(m.mp).nomor)} ${rp(m.hargaJual)}`).join(' + ')) : ''}${rec.jenis === 'b2b' ? sumRow('Company', esc(companyOf(rec).nama)) : ''}${rows}</div>${warnBox(w)}`,
       saveLabel: 'Ya, finalkan',
       onSave: () => { rec.status = 'final'; syncPf(rec); toast(`Penjualan Program ${rec.nomor} Final — siap ${NEXT[rec.jenis]}`); }
     });
@@ -638,9 +696,12 @@
     const out = [];
     if (tglBerubah) {
       out.push(`Nomor program menjadi ${rec.nomorDasar || rec.nomor}-rev${(rec.rev || 0) + 1}`);
+      const nDeal = qs.filter(k => k.status === 'deal').length, nInv = qs.reduce((t, k) => t + invOfQtn(k).length, 0);
       if (qs.length) out.push(`${qs.length} quotation naik revisi dan mendapat link konfirmasi baru`);
+      if (nDeal) out.push(`${nDeal} quotation Deal kembali ke Terkirim dan perlu Deal ulang setelah peserta konfirmasi ulang`);
       if (ulang) out.push(`${ulang} peserta harus konfirmasi ulang dengan surat bertanggal baru`);
-      if (sos.length) out.push(`${sos.length} Sales Order naik revisi`);
+      if (sos.length) out.push(`${sos.length} Sales Order pindah ke tab SO Batal; SO -rev terbit saat Deal ulang`);
+      if (nInv) out.push(`${nInv} invoice tetap (tidak dibatalkan), diberi penanda reschedule`);
       if (tagih) out.push(`${tagih} peserta Deal sudah membayar: boleh memilih Refund`);
     }
     if (skt && (tglBerubah || timBerubah)) out.push(`Surat Tugas ${skt.nomor} diganti surat baru dengan nomor baru`);
@@ -660,12 +721,19 @@
     if (tglBerubah) { rec.nomorDasar = rec.nomorDasar || rec.nomor; rec.rev = (rec.rev || 0) + 1; rec.nomor = `${rec.nomorDasar}-rev${rec.rev}`; ref.rev = rec.rev; }
     rec.reschedule = (rec.reschedule || []).concat([ref]);
     syncPf(rec);
+    // Tanggal berubah (input/Master - Buat Program/2026-11-13-reschedule-deal-ulang-so-batal/): semua quotation naik revisi
+    // dan dapat link baru; quotation yang sudah Deal kembali ke Terkirim menunggu Deal ulang, SO-nya pindah ke SO Batal,
+    // invoice-nya tetap tetapi diberi penanda reschedule.
     if (tglBerubah) {
-      qtnOfPj(rec).filter(k => k.status !== 'batal').forEach(k => qtnRevisi(k, ref)); // QTN-FR-34, QTN-FR-35
-      soOfPj(rec).forEach(s => {
-        const dulu = soNomor(s);
-        s.rev = (s.rev || 0) + 1; s.revAt = waktuUbah;
-        logAct('Quotation', 'Sales Order', 'Revisi', soNomor(s), s.id, `Revisi Sales Order ${dulu} → ${soNomor(s)} karena reschedule ${rec.nomor}: ${alasan}`);
+      qtnOfPj(rec).filter(k => k.status !== 'batal').forEach(k => {
+        const deal = k.status === 'deal';
+        qtnRevisi(k, ref); // QTN-FR-34, QTN-FR-35
+        if (deal) {
+          soBatal(k, { rev: k.rev, alasan, waktu: waktuUbah, prog: rec.nomor });
+          k.status = 'terkirim'; k.dealUlang = { rev: k.rev, waktu: waktuUbah };
+          invOfQtn(k).forEach(i => { i.resched = { rev: k.rev, waktu: waktuUbah }; });
+          linkPublish(k);
+        } else if (k.dealUlang) k.dealUlang.rev = k.rev;
       });
     }
     if (tglBerubah || timBerubah) sktRenew(rec, ref); // SO-FR-12: surat baru, nomor baru
@@ -717,12 +785,56 @@
     });
   }
 
+  // Batalkan Penjualan Program (input/Master - Buat Program/2026-11-13-multi-master-batal-top-refund/ butir 2):
+  // Draft dan Final (belum Closed) boleh dibatalkan, termasuk setelah quotation. Semua yang terbentuk sesudahnya ikut Batal:
+  // quotation, Sales Order (pindah ke SO Batal), invoice belum dibayar, Surat Tugas, pengajuan biaya yang masih menunggu.
+  // Invoice yang sudah dibayar tidak diubah; dananya dikembalikan lewat modul Refund (perlu approval).
+  const canBatalPj = pj => !pj.closed && (pj.status === 'draft' || pj.status === 'final');
+  function pjDampakBatal(pj) {
+    const qs = qtnOfPj(pj).filter(k => k.status !== 'batal'), inv = qs.flatMap(k => invOfQtn(k).filter(i => i.status !== 'batal'));
+    return { qs, so: soOfPj(pj), invBelum: inv.filter(i => !i.bayar), invBayar: inv.filter(i => i.bayar), skt: db.skt.filter(r => r.pj === pj.id && r.status === 'berlaku'),
+      pb: db.pb.filter(p => p.pj === pj.id && p.status === 'menunggu').concat(db.ob.filter(o => o.pj === pj.id && o.status === 'menunggu')) };
+  }
+  function pjBatal(pj, alasan) {
+    const d = pjDampakBatal(pj), waktu = isoNow().slice(0, 16), sebab = `Penjualan Program ${pj.nomor} dibatalkan: ${alasan}`;
+    d.qs.forEach(k => {
+      if (soOfQtn(k)) soBatal(k, { rev: k.rev || 0, alasan, waktu, prog: pj.nomor, sebab: 'program' });
+      invOfQtn(k).filter(i => i.status !== 'batal').forEach(i => {
+        if (!i.bayar) { ivcBatal(i, sebab); return; }
+        const satu = !isB2bQtn(k) && (i.peserta || []).length === 1;
+        i.refund = rfCreate({ k, ps: satu ? i.peserta[0] : null, inv: i, alasan: sebab, nominal: i.total, sebab: 'batal' }).nomor;
+      });
+      k.status = 'batal'; k.batalProgram = { alasan, waktu }; delete k.dealUlang;
+      k.peserta.forEach(r => { if (r.st !== 'keluar') r.st = 'batal'; });
+      if (k.link) linkPublish(k); // link konfirmasi ikut tertutup
+    });
+    d.skt.forEach(r => { r.status = 'batal'; r.aktif = false; r.batal = { alasan, waktu }; });
+    d.pb.forEach(r => { r.status = 'batal'; r.alasanBatal = sebab; });
+    pj.status = 'batal'; pj.batal = { alasan, waktu, oleh: meName() }; syncPf(pj);
+    return d;
+  }
   function qtCancel(rec) {
+    if (!canBatalPj(rec)) { toast(rec.closed ? `${rec.nomor} sudah Closed dan tidak dapat dibatalkan` : `${rec.nomor} sudah Batal`, 'warn'); return; }
+    const d = pjDampakBatal(rec), li = [
+      d.qs.length && `${d.qs.length} quotation menjadi <b>Batal</b> dan link konfirmasinya ditutup`,
+      d.so.length && `${d.so.length} Sales Order pindah ke tab <b>SO Batal</b>`,
+      d.invBelum.length && `${d.invBelum.length} invoice belum dibayar dibatalkan`,
+      d.invBayar.length && `${d.invBayar.length} invoice sudah dibayar tetap ada; refund ${rp(d.invBayar.reduce((t, i) => t + i.total, 0))} masuk modul <b>Refund</b> (menunggu approval)`,
+      d.skt.length && 'Surat Tugas trainer menjadi Batal',
+      d.pb.length && `${d.pb.length} pengajuan biaya yang menunggu approval dibatalkan`
+    ].filter(Boolean);
     openModal({
       title: 'Batalkan Penjualan Program',
-      body: `<p style="margin:0 0 14px">Batalkan <b>${esc(rec.nomor)}</b>? Penjualan Program Batal tidak dapat diubah.</p>`,
-      saveLabel: 'Batalkan', danger: true,
-      onSave: () => { rec.status = 'batal'; syncPf(rec); toast(`Penjualan Program ${rec.nomor} dibatalkan`); }
+      body: `<p style="margin:0 0 14px">Batalkan <b>${esc(rec.nomor)}</b>? Penjualan Program Batal tidak dapat diubah.</p>
+        ${li.length ? `<div class="notice"><span>Yang ikut terdampak:<ul class="gap-t">${li.map(t => `<li>${t}</li>`).join('')}</ul></span></div>` : ''}
+        ${field('Alasan pembatalan' + req, '<textarea class="input" name="alasan" rows="2" maxlength="300" placeholder="mis. peserta tidak memenuhi kuota minimum"></textarea>', '', 'gap-t')}`,
+      saveLabel: 'Batalkan Program', danger: true,
+      onSave: f => {
+        const alasan = f.alasan.value.trim();
+        if (!alasan) return invalid(f.alasan, 'Isi alasan pembatalan');
+        pjBatal(rec, alasan);
+        toast(`Penjualan Program ${rec.nomor} dibatalkan${li.length ? `; ${d.qs.length} quotation, ${d.so.length} SO, ${d.invBelum.length} invoice ikut batal${d.invBayar.length ? `, ${d.invBayar.length} refund menunggu approval` : ''}` : ''}`);
+      }
     });
   }
   // ---------- Tutorial highlight (driver.js) modul Penjualan Program (permintaan BA 12-11-2026) ----------
@@ -750,7 +862,7 @@
     const p = state.pf.p, draft = p.status === 'draft';
     return [
       { element: '.pf-formbar', popover: { title: draft ? 'Form Master Program' : `Master Program ${p.status === 'final' ? 'Final' : 'Batal'}`, description: draft ? 'Isi dari atas ke bawah. Setiap bagian dapat dibuka/tutup dengan klik judulnya; ringkasannya tampil di sebelah judul.' : 'Program ini terkunci. Isian hanya dapat dilihat.' } },
-      { element: tourStep(1), popover: { title: '1. Informasi Program', description: 'Pilih <b>satu atau lebih Product</b> aktif lewat "+ Tambah Product", lalu isi angka baseline: durasi, target peserta, harga jual standar per peserta, dan target profit.' } },
+      { element: tourStep(1), popover: { title: '1. Informasi Program', description: 'Pilih <b>satu Product</b> aktif, lalu isi Jam Pembelajaran dan angka baseline: durasi, target peserta, harga jual standar per peserta, dan target profit. Beberapa program digabung nanti di Penjualan Program.' } },
       { element: tourStep(2), popover: { title: '2. Fixed Cost', description: 'Biaya yang keluar berapa pun jumlah pesertanya (trainer, ruangan, dll.), per event atau per hari. Item terisi dari Master Rate; nominal boleh diubah, item yang tidak dipakai dihapus dengan ×.' } },
       { element: tourStep(3), popover: { title: '3. Variable Cost', description: 'Biaya per peserta (per event atau per hari), mis. makan, seminar kit. Tambah hanya item yang dipakai.' } },
       { element: tourStep(4), popover: { title: '4. Simulasi Hasil', description: 'Pendapatan, HPP, profit, dan <b>titik impas</b> dihitung otomatis setiap angka berubah. Peringatan muncul bila rugi atau titik impas di atas target peserta.' } },
@@ -768,18 +880,19 @@
     return [
       { popover: { title: 'Daftar Penjualan Program', description: 'Jadwal penjualan dari Master Program Final: <b>Public</b> atau <b>B2B</b>, tanggal, lokasi, trainer, asisten trainer, dan harga. Dari sini quotation dibuat.' } },
       { element: '.toolbar', popover: { title: 'Cari dan saring', description: 'Saring menurut jenis Public / B2B, status, serta Tahun dan Bulan tanggal acara.' } },
+      row && { element: tourKol(row, 'Master Program'), popover: { title: 'Master Program', description: 'Satu penjualan boleh berisi <b>lebih dari satu Master Program</b>; judulnya digabung dengan "+".' } },
       row && { element: tourKol(row, 'Pelaksanaan'), popover: { title: 'Pelaksanaan', description: 'Tanggal, Jam Pembelajaran, lokasi, trainer, dan asisten. Program yang pernah di-reschedule bertanda <b>Reschedule n×</b>.' } },
-      row && { element: tourKol(row, 'Status'), popover: { title: 'Status', description: '<b>Draft</b>: masih bisa diubah. <b>Final</b>: terkunci dan siap dibuatkan quotation. <b>Batal</b>: hanya dari Draft.' } },
-      draft && { element: draft.querySelector('.gear'), popover: { title: 'Aksi program Draft', description: '<b>Edit</b>: ubah isian.<br><b>Finalkan</b>: kunci angka penjualan (butuh hak Approve: Manajemen atau Sales/Marketing).<br><b>Batalkan</b>: hanya untuk Draft.' } },
-      final && { element: final.querySelector('.gear'), popover: { title: 'Aksi program Final', description: '<b>Lihat</b>: buka program beserta Riwayat Reschedule.<br><b>+ Buat Quotation</b>: tawarkan ke customer.<br><b>Reschedule</b>: ganti tanggal, trainer, atau asisten, paling lambat <b>H-7</b>; alasan dan evidence wajib.<br><b>Cetak Surat Penawaran</b>: ringkasan penawaran program.' } },
-      resch && { element: tourKol(resch, 'Nomor'), popover: { title: 'Setelah reschedule', description: 'Nomor program, quotation, dan Sales Order menjadi <b>-rev</b>. Peserta diminta konfirmasi ulang lewat link baru: <b>Pindah jadwal</b>, lalu <b>Refund</b> bila sudah bayar atau <b>Batal ikut</b> bila belum. Biaya dan harga tidak berubah.' } },
+      row && { element: tourKol(row, 'Status'), popover: { title: 'Status', description: '<b>Draft</b>: masih bisa diubah. <b>Final</b>: terkunci dan siap dibuatkan quotation. <b>Batal</b>: dari Draft, atau dari Final yang belum Closed; quotation, SO, dan invoice sesudahnya ikut Batal.' } },
+      draft && { element: draft.querySelector('.gear'), popover: { title: 'Aksi program Draft', description: '<b>Edit</b>: ubah isian.<br><b>Finalkan</b>: kunci angka penjualan (butuh hak Approve: Manajemen atau Sales/Marketing).<br><b>Batalkan</b>: Draft maupun Final yang belum Closed. Semua quotation, SO, invoice belum dibayar ikut Batal; yang sudah dibayar masuk Refund.' } },
+      final && { element: final.querySelector('.gear'), popover: { title: 'Aksi program Final', description: '<b>Lihat</b>: buka program beserta Riwayat Reschedule.<br><b>+ Buat Quotation</b>: tawarkan ke customer.<br><b>Reschedule</b>: ganti tanggal, trainer, atau asisten, paling lambat <b>H-7</b>; alasan dan evidence wajib.<br><b>Cetak Surat Penawaran</b>: ringkasan penawaran program.<br><b>Batalkan</b>: selama belum Closed, juga setelah ada quotation; quotation, SO, dan invoice belum dibayar ikut Batal, invoice yang sudah dibayar masuk Refund.' } },
+      resch && { element: tourKol(resch, 'Nomor'), popover: { title: 'Setelah reschedule', description: 'Nomor program dan quotation menjadi <b>-rev</b>. Quotation yang sudah Deal kembali ke Terkirim; Sales Order-nya pindah ke <b>SO Batal</b>. Peserta mengisi link konfirmasi baru: <b>Pindah jadwal</b>, atau <b>Refund</b> bila sudah bayar / <b>Batal ikut</b> bila belum. Setelah itu <b>Deal ulang</b> menerbitkan SO dengan nomor sama + -rev. Biaya, harga, dan invoice tidak berubah.' } },
       { element: '[data-act="qt-new"]', popover: { title: 'Mulai: Buat Penjualan Program', description: 'Klik tombol ini untuk membuat jadwal penjualan. Tutorial berlanjut di form.' },
         lanjut: { label: 'Buka form', run: () => openCostForm('qt'), ke: 'qtStart' } }
     ];
   };
   // Form Penjualan Program, layar awal: pilih Master Program dan jenis
   TOUR.qtStart = () => [
-    { element: '#qt-mp', popover: { title: '1. Pilih Master Program', description: 'Hanya Master Program berstatus <b>Final</b> yang muncul. Durasi, target peserta, harga, dan costing disalin dari program ini.' } },
+    { element: '#qt-mp', popover: { title: '1. Pilih Master Program', description: 'Hanya Master Program berstatus <b>Final</b> yang muncul. Ini Master Program pertama; durasi, target peserta, harga, dan costing disalin dari program ini. Master Program lain ditambah di form berikutnya.' } },
     { element: '[data-jenis="public"]', popover: { title: '2a. Penjualan Public', description: 'Acara terbuka; boleh banyak quotation ke Company atau Personal.' } },
     { element: '[data-jenis="b2b"]', popover: { title: '2b. Penjualan B2B', description: 'Acara untuk satu company (in-house). Company wajib, target peserta minimal 10, satu quotation ke company itu.' } },
     { popover: { title: 'Lanjut ke isian penjualan', description: 'Pilih Master Program dan jenis untuk membuka form. Untuk tutorial, sistem mengisi contoh: Master Program Final pertama, jenis Public. Tidak ada yang tersimpan sampai Anda klik Simpan Draft.' },
@@ -794,14 +907,17 @@
     const riwayat = [...document.querySelectorAll('.csec-h')].find(h => h.textContent.startsWith('Riwayat Reschedule'));
     return [
       { element: '.pf-formbar', popover: { title: draft ? 'Form Penjualan Program' : `Penjualan Program ${final ? 'Final' : 'Batal'}`, description: draft ? 'Angka disalin dari Master Program dan boleh disesuaikan untuk penjualan ini tanpa mengubah Master Program.' : final ? 'Program Final terkunci. Yang masih bisa diubah hanya jadwal, trainer, dan asisten lewat Reschedule.' : 'Program Batal tidak dapat diubah.' } },
-      { element: tourStep(1), popover: { title: '1. Informasi Penjualan', description: `${b2b ? '<b>Company</b> wajib dipilih dari Master Company. ' : ''}Isi <b>tanggal mulai dan selesai</b> (durasi dihitung otomatis), waktu, <b>Jam Pembelajaran</b> (dicetak di Penawaran), lokasi, lalu input simulasi: target peserta dan harga jual per peserta.` } },
+      { element: '#pf-mps', popover: { title: 'Master Program & costing', description: `Daftar Master Program dalam penjualan ini dengan harga, HPP, dan profit masing-masing${draft ? '. <b>+ Tambah Master Program</b> untuk menggabungkan program lain; tiap program membawa costing sendiri' : ''}. Klik nama Master Program untuk menampilkan costing-nya di bagian 2–4. Harga jual / peserta di quotation = jumlah semua Master Program.` } },
+      draft && { element: '#pj-mp-add', popover: { title: '+ Tambah Master Program', description: 'Pilih Master Program Final lain. Costing-nya disalin dan langsung tampil di bagian 2–4.' } },
+      { element: tourStep(1), popover: { title: '1. Informasi Penjualan', description: `${b2b ? '<b>Company</b> wajib dipilih dari Master Company. ' : ''}Isi <b>tanggal mulai dan selesai</b> (durasi dihitung otomatis), waktu, <b>Jam Pembelajaran</b> (dicetak di Penawaran), lokasi, lalu input simulasi. Tanggal, durasi, target peserta, trainer, dan asisten berlaku untuk seluruh program; harga jual per peserta milik Master Program yang sedang tampil.` } },
       { element: tourField('Trainer'), popover: { title: 'Trainer', description: 'Wajib, dari Master Trainer aktif. Satu trainer per event; menerima Surat Tugas.' } },
       { element: tourField('Asisten trainer'), popover: { title: 'Asisten trainer', description: 'Wajib, staf LabMania dari Master User. Ikut tercetak di Surat Tugas.' } },
-      { element: tourStep(2), popover: { title: '2–3. Fixed & Variable Cost', description: 'Costing disalin dari Master Program. Nominal dan item boleh disesuaikan; item bernilai 0 dibuang saat disimpan.' } },
-      { element: tourStep(4), popover: { title: '4. Simulasi Hasil', description: 'Pendapatan, HPP, profit, dan titik impas penjualan ini, dihitung ulang setiap angka berubah.' } },
+      { element: tourStep(2), popover: { title: '2–3. Fixed & Variable Cost', description: 'Costing Master Program yang sedang tampil (nomornya di judul bagian). Nominal dan item boleh disesuaikan; item bernilai 0 dibuang saat disimpan.' } },
+      { element: tourStep(4), popover: { title: '4. Simulasi Hasil', description: 'Pendapatan, HPP, profit, dan titik impas Master Program yang sedang tampil, dihitung ulang setiap angka berubah. Total seluruh program ada di tabel Master Program.' } },
       riwayat && { element: riwayat.parentElement, popover: { title: 'Riwayat Reschedule', description: 'Jadwal lama dan baru, alasan, evidence, dan dampaknya (quotation & SO -rev, Surat Tugas baru).' } },
       draft && { element: '[data-act="pf-save"]', popover: { title: 'Simpan Draft', description: 'Menyimpan tanpa mengunci; nomor penjualan dibuat saat pertama disimpan.' } },
       draft && { element: '[data-act="pf-confirm"]', popover: { title: 'Finalkan', description: 'Mengunci angka penjualan; muncul ringkasan dan peringatan bila rugi. Tombol ini muncul setelah penjualan pernah disimpan.' } },
+      final && { element: '.form-actions [data-act="qt-cancel"]', popover: { title: 'Batalkan', description: 'Membatalkan program beserta quotation, Sales Order, invoice belum dibayar, Surat Tugas, dan pengajuan biaya yang menunggu. Invoice yang sudah dibayar masuk modul Refund. Alasan wajib.' } },
       final && { element: '[data-act="qt-resched"]', popover: { title: 'Reschedule', description: 'Ganti tanggal, trainer, atau asisten paling lambat H-7. Modal menampilkan dampaknya sebelum disimpan.' } },
       final && { element: '[data-act="qt-print"]', popover: { title: 'Cetak Surat Penawaran', description: 'Ringkasan penawaran dari angka Final.' } },
       { popover: { title: 'Langkah berikutnya', description: 'Setelah <b>Final</b>, program ditawarkan lewat <b>Daftar Quotation</b>: buat quotation, bagikan link Konfirmasi Kehadiran, lalu tandai Deal.' },
