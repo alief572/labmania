@@ -65,7 +65,7 @@
   // Satu surat Berlaku per program. Reschedule yang mengubah tanggal/trainer/asisten: surat lama Diganti, surat baru nomor baru
   // (jawaban 12-11-2026). Surat menyimpan salinan jadwal, trainer, dan asisten saat terbit agar surat Diganti tetap tercetak apa adanya.
   const sktOfPj = id => db.skt.find(x => x.pj === id && x.status === 'berlaku');
-  // Beberapa Master Program ([JMR-1]): satu surat per program memuat tim tiap Master Program (usulan analis).
+  // Beberapa Master Program ([JMR-1]): satu surat per program memuat tim tiap Master Program (disetujui 13-11-2026, [JUM-1]).
   const sktSnap = pj => ({ tglMulai: pj.tglMulai, tglSelesai: pj.tglSelesai, waktu: pj.waktu || '', lokasi: pj.lokasi || '', durasi: pj.durasi, trainer: pj.trainer || '', asisten: pj.asisten || '',
     tim: pjMulti(pj) ? pj.mps.map(m => ({ mp: mprogById(m.mp).nomor, judul: paketOf(mprogById(m.mp)).judul, tglMulai: m.tglMulai, tglSelesai: m.tglSelesai, trainer: m.trainer, asisten: m.asisten })) : null });
   function sktNew(pj, tgl, ref) {

@@ -347,7 +347,7 @@
     }
     if (t.id === 'qt-mp') { state.pf.p.mp = Number(t.value) || ''; render(); }
     if (t.id === 'mp-prod-add') { state.pf.p.paket = t.value ? [+t.value] : []; state.pf.errors = {}; render(); } // Master Program = satu Product (13-11-2026)
-    if (t.id === 'pj-mp-add' && t.value) { const m = mprogById(+t.value), mps = pfStore(); mps.push(mpsEntry(m, mps[mps.length - 1])); pfLoad(mps.length - 1); render(); toast(`${m.nomor} ditambahkan; costing-nya tampil di bagian 2 – 4`); }
+    if (t.id === 'pj-mp-add' && t.value) { const m = mprogById(+t.value), mps = pfStore(); mps.push(mpsEntry(m)); pfLoad(mps.length - 1); render(); toast(`${m.nomor} ditambahkan; pilih tanggal, trainer, dan asistennya di bagian 1`); }
   });
 
   document.addEventListener('keydown', e => {

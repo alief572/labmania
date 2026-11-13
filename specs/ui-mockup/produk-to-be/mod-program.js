@@ -367,10 +367,9 @@
   // dan jadwalnya (tanggal, durasi, JP, trainer, asisten; [JMR-1]), sehingga bagian 1 – 4 dan hitungannya tetap sama.
   // Master Program lain disimpan di state.pf.mps; digabung saat simpan.
   const MPS_F = ['mp', 'biaya', 'hargaJual', 'targetProfit', 'tglMulai', 'tglSelesai', 'durasi', 'jamPembelajaran', 'trainer', 'asisten'];
-  // Master Program tambahan: tanggal mulai sehari setelah Master Program terakhir selesai, trainer & asisten disalin (dapat diubah).
-  const mpsEntry = (mp, prev) => { const mulai = prev && prev.tglSelesai ? addHari(prev.tglSelesai, 1) : '', d = Number(mp.durasi) || 1;
-    return { mp: mp.id, biaya: clone(mp.biaya), hargaJual: mp.hargaJual, targetProfit: mp.targetProfit, tglMulai: mulai, tglSelesai: mulai ? addHari(mulai, d - 1) : '', durasi: d,
-      jamPembelajaran: mp.jamPembelajaran || '', trainer: prev ? prev.trainer : '', asisten: prev ? prev.asisten : '' }; };
+  // Master Program tambahan: tanggal, trainer, dan asisten kosong, dipilih sendiri (input/Master - Buat Program/2026-11-13-jawaban-usulan-multi-master/ [JUM-2]).
+  const mpsEntry = mp => ({ mp: mp.id, biaya: clone(mp.biaya), hargaJual: mp.hargaJual, targetProfit: mp.targetProfit, tglMulai: '', tglSelesai: '', durasi: Number(mp.durasi) || 1,
+    jamPembelajaran: mp.jamPembelajaran || '', trainer: '', asisten: '' });
   function pfStore() {
     const pf = state.pf; if (!pf || pf.kind !== 'qt' || !pf.p.mp) return [];
     if (!pf.mps) { pf.mps = []; pf.mi = 0; }
@@ -419,7 +418,7 @@
     return `<div class="csec"><p class="csec-h">Master Program <span class="muted">satu penjualan boleh berisi lebih dari satu Master Program; tanggal, Jam Pembelajaran, trainer, asisten (bagian 1) dan costing (bagian 2 – 4) diisi per Master Program. Klik nama Master Program untuk menampilkan isiannya.</span></p>
       <div id="pf-mps">${mpsTable(p, locked)}</div>
       ${locked ? '' : `<div class="pickrow"><select class="input" id="pj-mp-add" aria-label="Tambah Master Program"><option value="">+ Tambah Master Program Final…</option>${opts.map(m => `<option value="${m.id}">${esc(m.nomor)} — ${esc(paketOf(m).judul)} · ${rp(m.hargaJual)}</option>`).join('')}</select></div>
-      <p class="hint">Harga jual / peserta di quotation = jumlah harga semua Master Program; peserta ikut semua Master Program. Target peserta, waktu, dan lokasi berlaku untuk seluruh program. Jadwal program = tanggal mulai paling awal s.d. selesai paling akhir.</p>`}
+      <p class="hint">Master Program tambahan: pilih tanggal, trainer, dan asistennya sendiri (klik namanya). Harga jual / peserta di quotation = jumlah harga semua Master Program; peserta ikut semua Master Program. Target peserta, waktu, dan lokasi berlaku untuk seluruh program. Jadwal program = tanggal mulai paling awal s.d. selesai paling akhir.</p>`}
       ${state.pf.errors.mps ? `<div class="err"><i>!</i>${esc(state.pf.errors.mps)}</div>` : ''}</div>`;
   }
   const mpAktifTag = () => (state.pf && state.pf.kind === 'qt' && state.pf.mps && state.pf.mps.length > 1 ? ` · <span class="code">${esc(mprogById(state.pf.p.mp).nomor)}</span>` : '');
@@ -706,8 +705,8 @@
     return `<div class="csec"><p class="csec-h">Riwayat Reschedule <span class="muted">${r.length} kali; jadwal lama, alasan, dan dampaknya</span></p><div class="step-body">
       <div class="table-wrap"><table class="table"><thead><tr><th>Waktu</th><th>Oleh</th><th>Jadwal lama</th><th>Jadwal baru</th><th>Alasan</th><th>Evidence</th><th>Dampak</th></tr></thead><tbody>
       ${r.slice().reverse().map(x => `<tr><td class="nowrap">${esc(String(x.waktuUbah).replace('T', ' '))}${x.rev ? `<br><span class="code">rev${x.rev}</span>` : '<br><span class="muted">tanpa rev</span>'}</td><td>${esc(x.oleh)}</td>
-        <td>${x.mp ? `<span class="code">${esc(x.mp)}</span><br>` : ''}${jadwalTxt(x.lama.tglMulai, x.lama.tglSelesai, x.lama.waktu, x.lama.lokasi, x.lama.trainer, x.lama.asisten)}</td>
-        <td>${jadwalTxt(x.baru.tglMulai, x.baru.tglSelesai, x.baru.waktu, x.baru.lokasi, x.baru.trainer, x.baru.asisten)}</td><td>${esc(x.alasan)}</td><td>${(x.evidence || []).length ? x.evidence.map(f => `<span class="code">${esc(f)}</span>`).join('<br>') : '<span class="muted">—</span>'}</td>
+        <td>${x.rincian ? x.rincian.map(r => `<span class="code">${esc(r.mp)}</span> ${jadwalTxt(r.lama.tglMulai, r.lama.tglSelesai, '', '', r.lama.trainer, r.lama.asisten)}`).join('<br>') : jadwalTxt(x.lama.tglMulai, x.lama.tglSelesai, x.lama.waktu, x.lama.lokasi, x.lama.trainer, x.lama.asisten)}</td>
+        <td>${x.rincian ? x.rincian.map(r => `<span class="code">${esc(r.mp)}</span> ${jadwalTxt(r.baru.tglMulai, r.baru.tglSelesai, '', '', r.baru.trainer, r.baru.asisten)}`).join('<br>') : jadwalTxt(x.baru.tglMulai, x.baru.tglSelesai, x.baru.waktu, x.baru.lokasi, x.baru.trainer, x.baru.asisten)}</td><td>${esc(x.alasan)}</td><td>${(x.evidence || []).length ? x.evidence.map(f => `<span class="code">${esc(f)}</span>`).join('<br>') : '<span class="muted">—</span>'}</td>
         <td>${(x.dampak || []).length ? x.dampak.map(esc).join('<br>') : '<span class="muted">Tidak ada dokumen turunan</span>'}</td></tr>`).join('')}
       </tbody></table></div></div></div>`;
   }
@@ -734,21 +733,33 @@
   }
 
   // Dipakai modal Reschedule dan data contoh. Satu transaksi di aplikasi (PJ-NFR-10).
-  // Program dengan beberapa Master Program: yang di-reschedule satu Master Program (mi), atau semua digeser bersamaan (mi = -1,
-  // trainer & asisten tiap Master Program tetap; usulan analis). Jadwal program dihitung ulang ([JMR-1]).
+  // Program dengan beberapa Master Program ([JMR-1], [JUM-3]): satu kali reschedule boleh mengubah tanggal, trainer, dan asisten
+  // beberapa Master Program sekaligus (jadwal = [{ i, mulai, trainer, asisten }]); mi = -1 = semua digeser sejumlah hari yang sama,
+  // mi = n = satu Master Program (dipakai data contoh). Jadwal program dihitung ulang.
   const selisihHari = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
-  function reschedApply(rec, { mulai, trainer, asisten, alasan, evidence = [], oleh = meName(), waktuUbah = isoNow().slice(0, 16), mi = 0 }) {
-    const multi = pjMulti(rec), semua = multi && mi === -1, m = semua ? rec : multi ? rec.mps[mi] : rec;
-    if (semua) { trainer = rec.trainer; asisten = rec.asisten; }
-    const d = Number(m.durasi) || 1, selesai = addHari(mulai, d - 1);
-    const lama = { tglMulai: m.tglMulai, tglSelesai: m.tglSelesai, waktu: rec.waktu || '', lokasi: rec.lokasi || '', trainer: m.trainer, asisten: m.asisten };
-    const baru = Object.assign({}, lama, { tglMulai: mulai, tglSelesai: selesai, trainer, asisten });
-    const tglBerubah = mulai !== lama.tglMulai, timBerubah = trainer !== lama.trainer || asisten !== lama.asisten;
-    const dampak = reschedDampak(rec, tglBerubah, timBerubah);
-    if (semua) { const geser = selisihHari(mulai, rec.tglMulai); rec.mps.forEach(x => { x.tglMulai = addHari(x.tglMulai, geser); x.tglSelesai = addHari(x.tglSelesai, geser); }); baru.tglSelesai = addHari(rec.tglSelesai, geser); }
-    else Object.assign(m, { tglMulai: mulai, tglSelesai: selesai, trainer, asisten });
-    if (multi) pjJadwalAgg(rec, rec.mps);
-    const ref = { lama, baru, alasan, evidence, oleh, waktuUbah, dampak, mp: semua ? 'Semua Master Program' : multi ? mprogById(m.mp).nomor : '' };
+  const jadwalProg = rec => ({ tglMulai: rec.tglMulai, tglSelesai: rec.tglSelesai, waktu: rec.waktu || '', lokasi: rec.lokasi || '', trainer: rec.trainer, asisten: rec.asisten });
+  function reschedApply(rec, { mulai, trainer, asisten, alasan, evidence = [], oleh = meName(), waktuUbah = isoNow().slice(0, 16), mi = 0, jadwal = null }) {
+    const multi = pjMulti(rec);
+    let tglBerubah, timBerubah, lama, baru, rincian = null, selesai, dampak;
+    if (multi) {
+      if (!jadwal) jadwal = mi === -1 ? rec.mps.map((x, i) => ({ i, mulai: addHari(x.tglMulai, selisihHari(mulai, rec.tglMulai)), trainer: x.trainer, asisten: x.asisten }))
+        : [{ i: mi, mulai, trainer, asisten }];
+      const ubah = jadwal.map(j => { const x = rec.mps[j.i]; return Object.assign({}, j, { x, selesai: addHari(j.mulai, (Number(x.durasi) || 1) - 1) }); })
+        .filter(j => j.mulai !== j.x.tglMulai || j.trainer !== j.x.trainer || j.asisten !== j.x.asisten);
+      tglBerubah = ubah.some(j => j.mulai !== j.x.tglMulai); timBerubah = ubah.some(j => j.trainer !== j.x.trainer || j.asisten !== j.x.asisten);
+      lama = jadwalProg(rec);
+      rincian = ubah.map(j => ({ mp: mprogById(j.x.mp).nomor, lama: { tglMulai: j.x.tglMulai, tglSelesai: j.x.tglSelesai, trainer: j.x.trainer, asisten: j.x.asisten }, baru: { tglMulai: j.mulai, tglSelesai: j.selesai, trainer: j.trainer, asisten: j.asisten } }));
+      dampak = reschedDampak(rec, tglBerubah, timBerubah);
+      ubah.forEach(j => Object.assign(j.x, { tglMulai: j.mulai, tglSelesai: j.selesai, trainer: j.trainer, asisten: j.asisten }));
+      pjJadwalAgg(rec, rec.mps); baru = jadwalProg(rec); selesai = rec.tglSelesai;
+    } else {
+      const d = Number(rec.durasi) || 1; selesai = addHari(mulai, d - 1);
+      lama = jadwalProg(rec); baru = Object.assign({}, lama, { tglMulai: mulai, tglSelesai: selesai, trainer, asisten });
+      tglBerubah = mulai !== lama.tglMulai; timBerubah = trainer !== lama.trainer || asisten !== lama.asisten;
+      dampak = reschedDampak(rec, tglBerubah, timBerubah);
+      Object.assign(rec, { tglMulai: mulai, tglSelesai: selesai, trainer, asisten });
+    }
+    const ref = { lama, baru, alasan, evidence, oleh, waktuUbah, dampak, rincian, mp: rincian ? rincian.map(r => r.mp).join(', ') : '' };
     // Nomor Penjualan Program ikut -rev{n} bersama quotation & SO (input/Master - Buat Program/2026-11-12-opsi-konfirmasi-ulang-rev-program/).
     if (tglBerubah) { rec.nomorDasar = rec.nomorDasar || rec.nomor; rec.rev = (rec.rev || 0) + 1; rec.nomor = `${rec.nomorDasar}-rev${rec.rev}`; ref.rev = rec.rev; }
     rec.reschedule = (rec.reschedule || []).concat([ref]);
@@ -772,23 +783,77 @@
     return { selesai, dampak, tglBerubah };
   }
 
-  function qtResched(rec, mi = 0) {
+  // Modal reschedule program dengan beberapa Master Program ([JUM-3]): satu baris per Master Program; tanggal, trainer, dan asisten
+  // beberapa baris boleh diubah sekaligus. "Geser semua" mengisi tanggal semua baris sejumlah hari yang sama. Baris lewat H-7 terkunci.
+  function qtReschedMulti(rec) {
+    const minTgl = addHari(todayIso, RS_H), mps = rec.mps;
+    const opt = (list, val) => list.map(x => `<option value="${x.id}" ${x.id === val ? 'selected' : ''}>${esc(x.nama)}${x.aktif ? '' : ' (nonaktif)'}</option>`).join('');
+    const rows = mps.map((x, i) => { const buka = rsBuka(x), mp = mprogById(x.mp);
+      return `<tr class="${buka ? '' : 'is-off'}" data-rs-row="${i}"><td><span class="code">${esc(mp.nomor)}</span> ${esc(paketOf(mp).judul)}<br><span class="muted">sekarang ${fmtRange(x.tglMulai, x.tglSelesai)} · ${x.durasi} hari${buka ? '' : ` · lewat H-${RS_H}, tidak dapat diubah`}</span></td>
+        <td><input class="input" type="date" name="mulai${i}" value="${esc(x.tglMulai)}" min="${minTgl}" ${buka ? '' : 'disabled'} aria-label="Tanggal mulai baru ${esc(mp.nomor)}"><span class="hint" data-rs-sel="${i}">selesai ${fmtTgl(x.tglSelesai)}</span></td>
+        <td><select class="input" name="trainer${i}" ${buka ? '' : 'disabled'} aria-label="Trainer ${esc(mp.nomor)}">${opt(db.trainer.filter(t => t.aktif || t.id === x.trainer), x.trainer)}</select></td>
+        <td><select class="input" name="asisten${i}" ${buka ? '' : 'disabled'} aria-label="Asisten ${esc(mp.nomor)}">${opt(db.user.filter(u => u.aktif || u.id === x.asisten), x.asisten)}</select></td></tr>`; }).join('');
+    const dampakBox = (tgl, tim) => { const l = reschedDampak(rec, tgl, tim); return l.length ? `<b>Yang ikut berubah bila disimpan:</b><ul class="rs-dampak">${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul><span class="muted">Invoice tidak diubah karena biaya tetap.</span>` : '<span class="muted">Belum ada quotation, Sales Order, atau Surat Tugas yang terdampak.</span>'; };
+    const baca = f => mps.map((x, i) => ({ i, mulai: f[`mulai${i}`].value, trainer: +f[`trainer${i}`].value, asisten: +f[`asisten${i}`].value }));
+    openModal({
+      title: `Reschedule ${esc(rec.nomor)}`, wide: 'x',
+      body: `<p class="hint top">Program ini berisi ${mps.length} Master Program dengan jadwal, trainer, dan asisten masing-masing. Ubah satu atau beberapa baris sekaligus; biaya, waktu, dan lokasi tetap, durasi tiap Master Program tetap. Master Program yang mulainya kurang dari ${RS_H} hari lagi terkunci.${q('Q-PJ-23', 'Terjawab: tanpa approval; hak Reschedule diatur di Role & Permission (usulan: Manage pada Daftar Penjualan Program).')}</p>
+        <div class="rs-geser"><label for="rs-geser">Geser semua tanggal</label><div class="input-unit"><input class="input" type="number" id="rs-geser" step="1" inputmode="numeric" placeholder="0"><span class="unit">hari</span></div>
+          <button type="button" class="btn btn-outline sm" data-rs="geser">Terapkan ke semua</button><span class="hint">opsional; tanggal tiap baris tetap dapat diubah sesudahnya</span></div>
+        <div class="table-wrap gap-t"><table class="table rs-tbl"><thead><tr><th>Master Program</th><th>Tanggal mulai baru</th><th>Trainer</th><th>Asisten trainer</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="grid2 gap-t">
+          ${field('Alasan reschedule' + req, '<textarea class="input" name="alasan" rows="3" maxlength="500" required placeholder="mis. Kuota peserta belum terpenuhi"></textarea>', '', 'span2')}
+          ${field('Evidence' + req, `<label class="pb-drop"><input type="file" name="evidence" multiple accept=".jpg,.jpeg,.png,.doc,.docx,.pdf" hidden><b>Pilih file evidence</b><span class="hint">JPG, PNG, DOC/DOCX, PDF · maks. 5 MB per file · boleh lebih dari satu</span></label>
+            <div class="hint" id="rs-files" aria-live="polite">Belum ada file</div>`, '', 'span2')}
+        </div>
+        <div class="notice gap-t" id="rs-dampak" aria-live="polite"><span>${dampakBox(false, false)}</span><span class="ref">PJ-FR-27, PJ-FR-34</span></div>`,
+      saveLabel: 'Simpan jadwal baru',
+      onMount: form => {
+        const box = $('#rs-dampak span', form);
+        const upd = () => { const j = baca(form.elements);
+          j.forEach(r => { const o = form.querySelector(`[data-rs-sel="${r.i}"]`); if (o) o.textContent = r.mulai ? `selesai ${fmtTgl(addHari(r.mulai, (Number(mps[r.i].durasi) || 1) - 1))}` : '—'; });
+          box.innerHTML = dampakBox(j.some(r => r.mulai !== mps[r.i].tglMulai), j.some(r => r.trainer !== mps[r.i].trainer || r.asisten !== mps[r.i].asisten)); };
+        ['input', 'change'].forEach(ev => form.addEventListener(ev, e => { if (/^(mulai|trainer|asisten)\d+$/.test(e.target.name)) upd(); }));
+        form.addEventListener('click', e => { if (!e.target.closest('[data-rs="geser"]')) return; const n = Math.round(Number($('#rs-geser', form).value) || 0); if (!n) return;
+          mps.forEach((x, i) => { const el = form.elements[`mulai${i}`]; if (!el.disabled) el.value = addHari(x.tglMulai, n); }); upd(); });
+        const ev = form.elements.evidence, list = $('#rs-files', form);
+        ev.addEventListener('change', () => { list.textContent = [...ev.files].map(x => x.name).join(', ') || 'Belum ada file'; });
+      },
+      onSave: f => {
+        const j = baca(f), alasan = f.alasan.value.trim(), files = [...f.evidence.files];
+        let ok = true;
+        j.forEach(r => { const x = mps[r.i], el = f[`mulai${r.i}`]; if (el.disabled) return;
+          if (!r.mulai) ok = invalid(el, 'Isi tanggal mulai');
+          else if (r.mulai !== x.tglMulai && r.mulai < minTgl) ok = invalid(el, `Paling cepat ${fmtTgl(minTgl)}`); });
+        if (!alasan) ok = invalid(f.alasan, 'Alasan reschedule wajib diisi');
+        const salahTipe = files.find(x => !EVID_EXT.includes(x.name.split('.').pop().toLowerCase())), besar = files.find(x => x.size > EVID_MAX);
+        if (!files.length) ok = invalid(f.evidence, 'Unggah minimal satu file evidence');
+        else if (salahTipe) ok = invalid(f.evidence, `${salahTipe.name}: hanya JPG, PNG, DOC/DOCX, atau PDF`);
+        else if (besar) ok = invalid(f.evidence, `${besar.name} lebih dari 5 MB`);
+        if (!ok) return false;
+        const ubah = j.filter(r => r.mulai !== mps[r.i].tglMulai || r.trainer !== mps[r.i].trainer || r.asisten !== mps[r.i].asisten);
+        if (!ubah.length) return invalid(f.mulai0.disabled ? f.alasan : f.mulai0, 'Jadwal belum berubah: ganti tanggal, trainer, atau asisten minimal satu Master Program');
+        const h = reschedApply(rec, { jadwal: ubah, alasan, evidence: files.map(x => x.name) });
+        toast(`${rec.nomor} di-reschedule (${ubah.length} Master Program) ke ${fmtRange(rec.tglMulai, h.selesai)}${h.dampak.length ? `. ${h.dampak.join('; ')}` : ''}`);
+      }
+    });
+  }
+
+  function qtResched(rec) {
     if (!canResched(rec)) { toast(`Reschedule hanya untuk Penjualan Program Final, paling lambat H-${RS_H} sebelum acara`, 'warn'); return; }
-    const multi = pjMulti(rec);
-    if (multi && mi >= 0 && !rsBuka(rec.mps[mi])) mi = rec.mps.findIndex(rsBuka);
-    const semua = multi && mi === -1, m = multi && !semua ? rec.mps[mi] : rec;
+    if (pjMulti(rec)) return qtReschedMulti(rec);
+    const m = rec;
     const d = Number(m.durasi) || 1, minTgl = addHari(todayIso, RS_H);
     const dampakBox = (tgl, tim) => { const l = reschedDampak(rec, tgl, tim); return l.length ? `<b>Yang ikut berubah bila disimpan:</b><ul class="rs-dampak">${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul><span class="muted">Invoice tidak diubah karena biaya tetap.</span>` : '<span class="muted">Belum ada quotation, Sales Order, atau Surat Tugas yang terdampak.</span>'; };
     openModal({
       title: `Reschedule ${esc(rec.nomor)}`, wide: true,
       body: `<p class="hint top">Yang dapat diganti hanya <b>tanggal</b>, <b>trainer</b>, dan <b>asisten trainer</b>. Biaya, waktu, dan lokasi tetap. Durasi tetap ${d} hari, jadi tanggal selesai mengikuti tanggal mulai. Batas reschedule H-${RS_H}: ${fmtTgl(addHari(m.tglMulai, -RS_H))}.${q('Q-PJ-23', 'Terjawab: tanpa approval; hak Reschedule diatur di Role & Permission (usulan: Manage pada Daftar Penjualan Program).')}</p>
-        ${multi ? field('Master Program yang di-reschedule', `<select class="input" id="rs-mp"><option value="-1" ${semua ? 'selected' : ''} ${rec.mps.every(rsBuka) ? '' : 'disabled'}>Semua Master Program (geser bersamaan, trainer & asisten tetap)</option>${rec.mps.map((x, i) => `<option value="${i}" ${i === mi ? 'selected' : ''} ${rsBuka(x) ? '' : 'disabled'}>${esc(mprogById(x.mp).nomor)} — ${esc(paketOf(mprogById(x.mp)).judul)} · ${fmtRange(x.tglMulai, x.tglSelesai)}${rsBuka(x) ? '' : ' (lewat H-7)'}</option>`).join('')}</select><span class="hint">Tiap Master Program punya jadwal, trainer, dan asisten sendiri. Jadwal program dihitung ulang dari semua Master Program.</span>`) : ''}
         <div class="summary">${sumRow('Jadwal sekarang', jadwalTxt(m.tglMulai, m.tglSelesai, rec.waktu, rec.lokasi, m.trainer, m.asisten))}${sumRow('Sudah di-reschedule', `${(rec.reschedule || []).length} kali`)}</div>
         <div class="grid2 gap-t">
           ${field('Tanggal mulai baru' + req + QPJ28, `<input class="input" type="date" name="tglMulai" id="rs-mulai" value="${esc(m.tglMulai)}" min="${minTgl}" required><span class="hint">paling cepat ${fmtTgl(minTgl)}</span>`)}
           ${field('Tanggal selesai', `<output class="static" id="rs-selesai" for="rs-mulai">${fmtTgl(m.tglSelesai) || '—'}</output><span class="hint">otomatis: mulai + ${d - 1} hari</span>`)}
-          ${field('Trainer', `<select class="input" name="trainer" ${semua ? 'disabled' : ''}>${db.trainer.filter(x => x.aktif || x.id === m.trainer).map(x => `<option value="${x.id}" ${x.id === m.trainer ? 'selected' : ''}>${esc(x.nama)}${x.aktif ? '' : ' (nonaktif)'}</option>`).join('')}</select>`)}
-          ${field('Asisten trainer', `<select class="input" name="asisten" ${semua ? 'disabled' : ''}>${db.user.filter(x => x.aktif || x.id === m.asisten).map(x => `<option value="${x.id}" ${x.id === m.asisten ? 'selected' : ''}>${esc(x.nama)}${x.aktif ? '' : ' (nonaktif)'}</option>`).join('')}</select>`)}
+          ${field('Trainer', `<select class="input" name="trainer">${db.trainer.filter(x => x.aktif || x.id === m.trainer).map(x => `<option value="${x.id}" ${x.id === m.trainer ? 'selected' : ''}>${esc(x.nama)}${x.aktif ? '' : ' (nonaktif)'}</option>`).join('')}</select>`)}
+          ${field('Asisten trainer', `<select class="input" name="asisten">${db.user.filter(x => x.aktif || x.id === m.asisten).map(x => `<option value="${x.id}" ${x.id === m.asisten ? 'selected' : ''}>${esc(x.nama)}${x.aktif ? '' : ' (nonaktif)'}</option>`).join('')}</select>`)}
           ${field('Alasan reschedule' + req, `<textarea class="input" name="alasan" rows="3" maxlength="500" required placeholder="mis. Kuota peserta belum terpenuhi"></textarea>`, '', 'span2')}
           ${field('Evidence' + req, `<label class="pb-drop"><input type="file" name="evidence" multiple accept=".jpg,.jpeg,.png,.doc,.docx,.pdf" hidden><b>Pilih file evidence</b><span class="hint">JPG, PNG, DOC/DOCX, PDF · maks. 5 MB per file · boleh lebih dari satu</span></label>
             <div class="hint" id="rs-files" aria-live="polite">Belum ada file</div>`, '', 'span2')}
@@ -796,10 +861,9 @@
         <div class="notice gap-t" id="rs-dampak" aria-live="polite"><span>${dampakBox(false, false)}</span><span class="ref">PJ-FR-27</span></div>`,
       saveLabel: 'Simpan jadwal baru',
       onMount: form => {
-        const jd = multi ? rec.mps[mi] : rec, m = form.elements.tglMulai, out = $('#rs-selesai', form), box = $('#rs-dampak span', form);
+        const jd = rec, m = form.elements.tglMulai, out = $('#rs-selesai', form), box = $('#rs-dampak span', form);
         const upd = () => { out.textContent = m.value ? fmtTgl(addHari(m.value, d - 1)) : '—';
           box.innerHTML = dampakBox(!!m.value && m.value !== jd.tglMulai, +form.elements.trainer.value !== jd.trainer || +form.elements.asisten.value !== jd.asisten); };
-        const rsMp = $('#rs-mp', form); if (rsMp) rsMp.addEventListener('change', () => { closeModal(); qtResched(rec, +rsMp.value); });
         ['input', 'change'].forEach(ev => form.addEventListener(ev, e => { if (['tglMulai', 'trainer', 'asisten'].includes(e.target.name)) upd(); }));
         const ev = form.elements.evidence, list = $('#rs-files', form);
         ev.addEventListener('change', () => { list.textContent = [...ev.files].map(x => x.name).join(', ') || 'Belum ada file'; });
@@ -815,8 +879,8 @@
         else if (salahTipe) ok = invalid(f.evidence, `${salahTipe.name}: hanya JPG, PNG, DOC/DOCX, atau PDF`);
         else if (besar) ok = invalid(f.evidence, `${besar.name} lebih dari 5 MB`);
         if (!ok) return false;
-        if (mulai === m.tglMulai && (semua || (trainer === m.trainer && asisten === m.asisten))) return invalid(f.tglMulai, 'Jadwal belum berubah: ganti tanggal, trainer, atau asisten');
-        const h = reschedApply(rec, { mulai, trainer, asisten, alasan, evidence: files.map(x => x.name), mi });
+        if (mulai === m.tglMulai && trainer === m.trainer && asisten === m.asisten) return invalid(f.tglMulai, 'Jadwal belum berubah: ganti tanggal, trainer, atau asisten');
+        const h = reschedApply(rec, { mulai, trainer, asisten, alasan, evidence: files.map(x => x.name) });
         toast(`${rec.nomor} di-reschedule ke ${fmtRange(mulai, h.selesai)}${h.dampak.length ? `. ${h.dampak.join('; ')}` : ''}`);
       }
     });
@@ -945,7 +1009,7 @@
     return [
       { element: '.pf-formbar', popover: { title: draft ? 'Form Penjualan Program' : `Penjualan Program ${final ? 'Final' : 'Batal'}`, description: draft ? 'Angka disalin dari Master Program dan boleh disesuaikan untuk penjualan ini tanpa mengubah Master Program.' : final ? 'Program Final terkunci. Yang masih bisa diubah hanya jadwal, trainer, dan asisten lewat Reschedule.' : 'Program Batal tidak dapat diubah.' } },
       { element: '#pf-mps', popover: { title: 'Master Program & costing', description: `Daftar Master Program dalam penjualan ini: jadwal, trainer, asisten, harga, HPP, dan profit masing-masing${draft ? '. <b>+ Tambah Master Program</b> untuk menggabungkan program lain; tiap program membawa jadwal dan costing sendiri' : ''}. Klik nama Master Program untuk menampilkan isiannya di bagian 1–4. Harga jual / peserta di quotation = jumlah semua Master Program; jadwal program = mulai paling awal s.d. selesai paling akhir.` } },
-      draft && { element: '#pj-mp-add', popover: { title: '+ Tambah Master Program', description: 'Pilih Master Program Final lain. Costing-nya disalin; tanggal mulai otomatis sehari setelah Master Program sebelumnya selesai, trainer dan asisten disalin. Semua dapat diubah.' } },
+      draft && { element: '#pj-mp-add', popover: { title: '+ Tambah Master Program', description: 'Pilih Master Program Final lain. Costing dan JP disalin; <b>tanggal, trainer, dan asisten dipilih sendiri</b> di bagian 1 (klik nama Master Program-nya).' } },
       { element: tourStep(1), popover: { title: '1. Informasi Penjualan', description: `${b2b ? '<b>Company</b> wajib dipilih dari Master Company. ' : ''}Isi <b>tanggal mulai dan selesai</b> (durasi dihitung otomatis), waktu, <b>Jam Pembelajaran</b> (dicetak di Penawaran), lokasi, lalu input simulasi. Tanggal, Jam Pembelajaran, trainer, asisten, dan harga jual milik <b>Master Program yang sedang tampil</b>; target peserta, waktu, dan lokasi berlaku untuk seluruh program.` } },
       { element: tourField('Trainer'), popover: { title: 'Trainer', description: 'Wajib, dari Master Trainer aktif. Satu trainer per event; menerima Surat Tugas.' } },
       { element: tourField('Asisten trainer'), popover: { title: 'Asisten trainer', description: 'Wajib, staf LabMania dari Master User. Ikut tercetak di Surat Tugas.' } },
@@ -955,7 +1019,7 @@
       draft && { element: '[data-act="pf-save"]', popover: { title: 'Simpan Draft', description: 'Menyimpan tanpa mengunci; nomor penjualan dibuat saat pertama disimpan.' } },
       draft && { element: '[data-act="pf-confirm"]', popover: { title: 'Finalkan', description: 'Mengunci angka penjualan; muncul ringkasan dan peringatan bila rugi. Tombol ini muncul setelah penjualan pernah disimpan.' } },
       final && { element: '.form-actions [data-act="qt-cancel"]', popover: { title: 'Batalkan', description: 'Membatalkan program beserta quotation, Sales Order, invoice belum dibayar, Surat Tugas, dan pengajuan biaya yang menunggu. Invoice yang sudah dibayar masuk modul Refund. Alasan wajib.' } },
-      final && { element: '[data-act="qt-resched"]', popover: { title: 'Reschedule', description: 'Ganti tanggal, trainer, atau asisten paling lambat H-7. Program dengan beberapa Master Program: pilih Master Program yang di-reschedule. Modal menampilkan dampaknya sebelum disimpan.' } },
+      final && { element: '[data-act="qt-resched"]', popover: { title: 'Reschedule', description: 'Ganti tanggal, trainer, atau asisten paling lambat H-7. Program dengan beberapa Master Program: ubah satu atau beberapa Master Program sekaligus dalam satu modal (ada juga Geser semua). Modal menampilkan dampaknya sebelum disimpan.' } },
       final && { element: '[data-act="qt-print"]', popover: { title: 'Cetak Surat Penawaran', description: 'Ringkasan penawaran dari angka Final.' } },
       { popover: { title: 'Langkah berikutnya', description: 'Setelah <b>Final</b>, program ditawarkan lewat <b>Daftar Quotation</b>: buat quotation, bagikan link Konfirmasi Kehadiran, lalu tandai Deal.' },
         lanjut: { label: 'Ke Quotation', run: () => go('qtn'), ke: null } }

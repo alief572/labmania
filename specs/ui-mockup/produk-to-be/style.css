@@ -1605,3 +1605,10 @@ textarea.input { font-family: inherit; }
 .pj-mps .pj-mp-btn { text-align: left; white-space: normal; padding-left: 0; }
 .pj-mps tr.on .pj-mp-btn { font-weight: 700; }
 .pj-mps td.num, .pj-mps th.num { white-space: nowrap; }
+
+/* Reschedule beberapa Master Program sekaligus, 13-11-2026 */
+.rs-geser { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.rs-geser label { font-weight: 600; font-size: 13px; }
+.rs-geser .input-unit { max-width: 140px; }
+.rs-tbl td { vertical-align: top; }
+.rs-tbl .input { min-width: 140px; }
