@@ -1,0 +1,24 @@
+# Compose >= 2.24.4: !override replaces port 8090, rather than publishing both ports.
+services:
+  app:
+    image: labmania-realdata:local
+    profiles: [preview]
+    environment:
+      APP_NAME: Labmania Rehearsal Data Asli
+      APP_URL: http://localhost:8081
+      APP_TIMEZONE: Asia/Jakarta
+      TZ: Asia/Jakarta
+      MAIL_MAILER: log
+      LOCAL_UAT_ENABLED: 'false'
+      LOCAL_UAT_PASSWORD_ONLY: 'false'
+      LOCAL_REHEARSAL_PASSWORD_ONLY: 'true'
+    ports: !override
+      - '127.0.0.1:8081:80'
+  rehearsal-db:
+    # Hanya rehearsal data asli: dump CI3 memuat zero date (0000-00-00) pada dua tabel di luar cakupan Laravel.
+    # Default MySQL 8.0 memuat NO_ZERO_DATE/NO_ZERO_IN_DATE sehingga restore gagal (1292). Mode ini sama dengan
+    # karantina yang terbukti: STRICT tetap aktif, nilai asli tidak diubah. Tidak berlaku untuk UAT atau production.
+    command:
+      - --sql-mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+      - --local-infile=OFF
+      - --event-scheduler=OFF

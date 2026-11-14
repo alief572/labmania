@@ -1,0 +1,22 @@
+<script setup lang="ts">
+import ActionMenu from "../../components/ActionMenu.vue";
+import { reactive } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import AppLayout from '../../layouts/AppLayout.vue';
+import Pagination from '../../components/Pagination.vue';
+import { money, type PageRows, type Program } from '../../types/salesOrder';
+type Row = Program & { judul: string; jumlah_so: number; peserta_deal: number; nilai_so: string; statuses: Record<string, number>; program_nomor?: string; status?: string; tanggal?: string; facts?: { judul: string; program: Program; trainer: { nama: string; bidang_keahlian: string }; asisten: { nama: string } } | null };
+const props = defineProps<{ rows: PageRows<Row>; filters: Record<string, string>; tab: string; canRefund: boolean; refundPending: number; counts: { so: number; surat: number } }>();
+const f = reactive({ q: '', jenis: '', tahun: '', bulan: '', ...props.filters, tab: props.tab });
+const search = () => router.get('/sales-order', f);
+</script>
+<template>
+    <Head title="Sales Order" /><AppLayout title="Sales Order">
+        <h1>Sales Order</h1><nav class="tabs" aria-label="Jenis dokumen"><Link href="/sales-order" :aria-current="tab === 'so' ? 'page' : undefined">Sales Order ({{ counts.so }})</Link><Link href="/sales-order?tab=surat" :aria-current="tab === 'surat' ? 'page' : undefined">Surat Kerja Trainer ({{ counts.surat }})</Link><Link v-if="canRefund" href="/sales-order/refund">Refund ({{ refundPending }} menunggu)</Link></nav>
+        <p v-for="e in $page.props.errors" :key="String(e)" class="error" role="alert">{{ e }}</p>
+        <form class="filters" @submit.prevent="search"><label>Cari<input v-model="f.q" type="search" maxlength="100" placeholder="Program, SO, quotation, customer" /></label><label>Jenis<select v-model="f.jenis"><option value="">Public &amp; B2B</option><option value="public">Public</option><option value="b2b">B2B</option></select></label><label>Tahun acara<input v-model="f.tahun" type="number" min="1900" max="2200" /></label><label>Bulan acara<select v-model="f.bulan"><option value="">Semua</option><option v-for="n in 12" :key="n" :value="n">{{ n }}</option></select></label><button class="primary">Terapkan</button></form>
+        <div class="table-wrap"><table v-if="tab === 'so'"><caption class="sr-only">Sales Order per program</caption><thead><tr><th>Penjualan Program</th><th>Sales Order</th><th>Peserta Deal</th><th>Nilai SO</th><th>Aksi</th></tr></thead><tbody><tr v-for="p in rows.data" :key="p.id"><td>{{ p.nomor }} · {{ p.jenis.toUpperCase() }}<small>{{ p.judul }}</small><small>{{ p.tgl_mulai }} s.d. {{ p.tgl_selesai }} · {{ p.lokasi }}</small></td><td>{{ p.jumlah_so }} SO<small v-for="(n, status) in p.statuses" :key="status">{{ status }}: {{ n }}</small></td><td>{{ p.peserta_deal }}</td><td>{{ money(p.nilai_so) }}</td><td><ActionMenu><Link :href="`/sales-order/program/${p.id}`">Lihat SO</Link></ActionMenu></td></tr><tr v-if="!rows.data.length"><td colspan="5" class="empty">SO terbentuk saat quotation ditandai Deal. Belum ada SO sesuai filter.</td></tr></tbody></table>
+        <table v-else><caption class="sr-only">Surat Kerja Trainer</caption><thead><tr><th>Nomor Surat</th><th>Status</th><th>Penjualan Program</th><th>Trainer &amp; Asisten</th><th>Peserta Deal</th><th>Aksi</th></tr></thead><tbody><tr v-for="s in rows.data" :key="s.id"><td><Link :href="`/surat-kerja-trainer/${s.id}`">{{ s.nomor }}</Link><small>{{ s.tanggal }}</small></td><td>{{ s.status === 'diganti' ? 'Diganti' : 'Berlaku' }}</td><td>{{ s.facts?.program.nomor || s.program_nomor }}<small>{{ s.facts?.judul || 'Snapshot belum tersedia — perlu rekonsiliasi' }}</small><small>{{ s.facts?.program.tgl_mulai }} s.d. {{ s.facts?.program.tgl_selesai }} · {{ s.facts?.program.lokasi }}</small></td><td>{{ s.facts?.trainer.nama }}<small>{{ s.facts?.trainer.bidang_keahlian }}</small><small>Asisten: {{ s.facts?.asisten.nama }}</small></td><td>{{ s.peserta_deal }}</td><td><ActionMenu ><Link :href="`/surat-kerja-trainer/${s.id}`">View</Link><a :href="`/surat-kerja-trainer/${s.id}/pdf`" target="_blank" rel="noopener">Print Out Surat Kerja</a></ActionMenu></td></tr><tr v-if="!rows.data.length"><td colspan="6" class="empty">Surat Tugas terbentuk saat SO pertama program dibuat.</td></tr></tbody></table></div>
+        <Pagination :page="rows" label="Halaman Sales Order" />
+    </AppLayout>
+</template>

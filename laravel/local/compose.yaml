@@ -1,0 +1,90 @@
+name: labmania
+
+services:
+  web:
+    image: labmania-laravel-local:latest
+    build:
+      context: ./laravel
+      dockerfile: rehearsal/Dockerfile
+    container_name: labmania_web
+    restart: unless-stopped
+    command: ['sh', '-c', 'chown -R www-data:www-data storage && exec apache2-foreground']
+    ports:
+      - '127.0.0.1:8080:80'
+    environment:
+      APP_NAME: Labmania UAT
+      APP_ENV: local
+      APP_DEBUG: 'false'
+      APP_KEY: '${UAT_APP_KEY:?Jalankan scripts/laravel-local.ps1 dahulu}'
+      APP_URL: http://localhost:8080
+      APP_TIMEZONE: Asia/Jakarta
+      TZ: Asia/Jakarta
+      LOCAL_UAT_ENABLED: 'true'
+      LOCAL_UAT_PASSWORD_ONLY: 'true'
+      DB_CONNECTION: mysql
+      DB_HOST: uat-db
+      DB_PORT: '3306'
+      DB_DATABASE: labmania_laravel
+      DB_USERNAME: labmania_uat
+      DB_PASSWORD: '${UAT_DB_PASSWORD:?Password DB UAT belum tersedia}'
+      DB_URL: ''
+      SESSION_DRIVER: file
+      SESSION_COOKIE: labmania_local_uat_session
+      SESSION_SECURE_COOKIE: 'false'
+      SESSION_ENCRYPT: 'true'
+      SESSION_DOMAIN: 'null'
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
+      AUDIT_RETENTION_ENABLED: 'false'
+      ACTIVITY_LOG_ROLE_IDS: '3'
+      LEGACY_DOCUMENT_ROOT: ''
+      PARTICIPANT_FONT_DIR: /fonts
+      INVOICE_COA_UANG_MUKA_WAPU_ID: '9005'
+      INVOICE_COA_HUTANG_WAPU_ID: '9006'
+      INVOICE_BANK: BANK UAT SINTETIS
+      INVOICE_REKENING: '0000000000'
+      INVOICE_ATAS_NAMA: COMPANY UAT SINTETIS
+      INVOICE_PENANDA_TANGAN: PENANDATANGAN UAT
+      INVOICE_JABATAN: PETUGAS UAT
+    volumes:
+      - uat_storage:/var/www/laravel/storage
+      - '${UAT_FONT_DIR:?Folder font Windows belum tersedia}:/fonts:ro'
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '--silent', 'http://127.0.0.1/up']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      uat-db:
+        condition: service_healthy
+    networks: [local-web, uat]
+
+  uat-db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: labmania_laravel
+      MYSQL_USER: labmania_uat
+      MYSQL_PASSWORD: '${UAT_DB_PASSWORD:?Password DB UAT belum tersedia}'
+      MYSQL_ROOT_PASSWORD: '${UAT_DB_ROOT_PASSWORD:?Password root UAT belum tersedia}'
+      TZ: Asia/Jakarta
+    volumes:
+      - uat_mysql:/var/lib/mysql
+      - ./laravel/database/schema/rehearsal.mysql.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '--silent']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [uat]
+
+networks:
+  local-web:
+    driver: bridge
+  uat:
+    internal: true
+
+volumes:
+  uat_mysql:
+  uat_storage:

@@ -1,0 +1,114 @@
+<script setup lang="ts">
+import ActionMenu from "../../components/ActionMenu.vue";
+import { ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import AppLayout from '../../layouts/AppLayout.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
+import FormField from '../../components/FormField.vue';
+import Pagination from '../../components/Pagination.vue';
+import StatusBadge from '../../components/StatusBadge.vue';
+
+type Row = { id: number; kode: string; nama: string; nik: string | null; tmp_lahir: string | null; tgl_lahir: string | null; id_group: number | null; nm_group: string | null; gender: string | null; agama: string | null; telp: string | null; email: string | null; alamat: string | null; npwp: string | null; tgl_masuk: string | null; tipe: string | null; jobdesc: string | null; aktif: number; id_user: number | null; username: string | null; n_override: number; has_2fa: number };
+const props = defineProps<{
+    filters: { q: string; role: string | number; status: string }; roles: { id_group: number; nm_group: string }[]; superadmin: number; me: number;
+    options: { gender: string[]; agama: string[]; tipe: string[] };
+    rows: { data: Row[]; current_page: number; last_page: number; prev_page_url: string | null; next_page_url: string | null; from: number | null };
+    can: { add: boolean; manage: boolean };
+}>();
+const filter = ref({ ...props.filters });
+const apply = () => router.get('/master/user', Object.fromEntries(Object.entries(filter.value).filter(([, v]) => v !== '')), { preserveScroll: true });
+const blank = () => ({ nama: '', id_group: '' as string | number, nik: '', tmp_lahir: '', tgl_lahir: '', gender: '', agama: '', telp: '', email: '', alamat: '', npwp: '', tgl_masuk: '', tipe: '', jobdesc: '', akun: false, username: '', password: '', password_confirmation: '' });
+const form = useForm(blank());
+const mode = ref<'add' | 'edit' | null>(null);
+const current = ref<Row | null>(null);
+const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
+const dateOnly = (v: unknown) => str(v).slice(0, 10);
+function openAdd() { form.reset(); form.clearErrors(); Object.assign(form, blank()); current.value = null; mode.value = 'add'; }
+function openEdit(row: Row) {
+    form.clearErrors(); current.value = row; mode.value = 'edit';
+    Object.assign(form, { ...blank(), nama: row.nama, id_group: row.id_group ?? '', nik: str(row.nik), tmp_lahir: str(row.tmp_lahir), tgl_lahir: dateOnly(row.tgl_lahir), gender: str(row.gender), agama: str(row.agama), telp: str(row.telp), email: str(row.email), alamat: str(row.alamat), npwp: str(row.npwp), tgl_masuk: dateOnly(row.tgl_masuk), tipe: str(row.tipe), jobdesc: str(row.jobdesc), akun: !!row.id_user, username: str(row.username) });
+}
+const close = () => { mode.value = null; };
+function save() {
+    const done = { preserveScroll: true, onSuccess: close };
+    if (mode.value === 'edit') form.put(`/master/user/${current.value!.id}`, done);
+    else form.post('/master/user', done);
+}
+const toggle = (row: Row) => router.post(`/master/user/${row.id}/toggle`, {}, { preserveScroll: true });
+const reset2fa = (row: Row) => { if (window.confirm(`Reset autentikator ${row.username}? Sesi login aktifnya berakhir dan ia harus mendaftar ulang dengan token enroll.`)) router.post(`/master/user/${row.id}/reset-2fa`, {}, { preserveScroll: true }); };
+const enroll = (row: Row) => router.post(`/permissions/users/${row.id_user}/enroll-token`, {}, { preserveScroll: true });
+const resetting = ref<Row | null>(null);
+const resetForm = useForm({ password: '', password_confirmation: '' });
+const doReset = () => resetForm.post(`/master/user/${resetting.value!.id}/reset-password`, { preserveScroll: true, onSuccess: () => { resetting.value = null; resetForm.reset(); } });
+const locked = () => current.value?.id_group === props.superadmin;
+const err = (k: string) => (form.errors as Record<string, string>)[k];
+</script>
+
+<template>
+    <Head title="Master User" />
+    <AppLayout title="Master User">
+        <div class="page-head"><h1>Master User</h1><button v-if="can.add" type="button" class="primary" @click="openAdd">+ Tambah User</button></div>
+        <p v-if="($page.props.errors as Record<string, string>).status" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).status }}</p>
+        <form class="filters" @submit.prevent="apply">
+            <label>Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Employee ID, nama, username" /></label>
+            <label>Role<select v-model="filter.role"><option value="">Semua</option><option v-for="r in roles" :key="r.id_group" :value="r.id_group">{{ r.nm_group }}</option></select></label>
+            <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
+            <button class="primary">Terapkan</button>
+        </form>
+        <div class="table-wrap"><table>
+            <caption class="sr-only">Daftar user</caption>
+            <thead><tr><th scope="col">No</th><th scope="col">Employee ID</th><th scope="col">Nama</th><th scope="col">Role</th><th scope="col">Akun login</th><th scope="col">Status</th><th scope="col">Aksi</th></tr></thead>
+            <tbody>
+                <tr v-for="(row, i) in rows.data" :key="row.id">
+                    <td>{{ (rows.from ?? 1) + i }}</td><td>{{ row.kode }}</td><td>{{ row.nama }}</td><td>{{ row.nm_group ?? '—' }}<small v-if="row.tipe">{{ row.tipe }}</small></td>
+                    <td>{{ row.username ?? 'Tanpa akun' }}<small v-if="row.n_override">Override {{ row.n_override }} hak</small></td><td><StatusBadge :active="row.aktif" /></td>
+                    <td><ActionMenu v-if="can.manage" >
+                        <button type="button" @click="openEdit(row)">Edit</button>
+                        <button v-if="row.id_user && row.id_user !== me" type="button" @click="toggle(row)">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button>
+                        <button v-else-if="!row.id_user" type="button" @click="toggle(row)">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button>
+                        <button v-if="row.id_user" type="button" @click="resetting = row">Reset Password</button>
+                        <button v-if="row.id_user && row.id_user !== me && row.has_2fa" type="button" @click="reset2fa(row)">Reset 2FA</button>
+                        <button v-else-if="row.id_user && row.id_user !== me" type="button" @click="enroll(row)">Token enroll</button>
+                        <Link v-if="row.id_user && row.id_group !== superadmin && row.id_user !== me" :href="`/permissions/users/${row.id_user}`">Override</Link>
+                    </ActionMenu></td>
+                </tr>
+                <tr v-if="!rows.data.length"><td colspan="7" class="empty">Belum ada user.</td></tr>
+            </tbody>
+        </table></div>
+        <Pagination :page="rows" label="Halaman user" />
+
+        <ConfirmDialog v-if="mode" :title="mode === 'edit' ? `Edit User ${current?.kode}` : 'Tambah User'" :busy="form.processing" @confirm="save" @cancel="close">
+            <div class="form-grid">
+                <FormField id="unama" label="Employee Name" :error="form.errors.nama" v-slot="{ describedBy, invalid }"><input id="unama" v-model="form.nama" maxlength="100" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="urole" label="Role" :error="form.errors.id_group" v-slot="{ describedBy, invalid }"><select id="urole" v-model="form.id_group" required :disabled="locked()" :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">Pilih…</option><option v-for="r in roles.filter((x) => x.id_group !== superadmin || locked())" :key="r.id_group" :value="r.id_group">{{ r.nm_group }}</option></select></FormField>
+                <FormField id="unik" label="NIK" hint="16 digit." :error="form.errors.nik" v-slot="{ describedBy, invalid }"><input id="unik" v-model="form.nik" maxlength="16" inputmode="numeric" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="utel" label="Telepon" :error="form.errors.telp" v-slot="{ describedBy, invalid }"><input id="utel" v-model="form.telp" inputmode="tel" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="umail" label="Email" :error="form.errors.email" v-slot="{ describedBy, invalid }"><input id="umail" v-model="form.email" type="email" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="utl" label="Tempat Lahir" :error="form.errors.tmp_lahir" v-slot="{ describedBy, invalid }"><input id="utl" v-model="form.tmp_lahir" maxlength="50" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="utg" label="Birth Date" :error="form.errors.tgl_lahir" v-slot="{ describedBy, invalid }"><input id="utg" v-model="form.tgl_lahir" type="date" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="ujd" label="Join Date" :error="form.errors.tgl_masuk" v-slot="{ describedBy, invalid }"><input id="ujd" v-model="form.tgl_masuk" type="date" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="ugen" label="Gender" :error="form.errors.gender" v-slot="{ describedBy, invalid }"><select id="ugen" v-model="form.gender" :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">—</option><option v-for="g in options.gender" :key="g" :value="g">{{ g }}</option></select></FormField>
+                <FormField id="uag" label="Religion" :error="form.errors.agama" v-slot="{ describedBy, invalid }"><select id="uag" v-model="form.agama" :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">—</option><option v-for="g in options.agama" :key="g" :value="g">{{ g }}</option></select></FormField>
+                <FormField id="uti" label="Employee Type" :error="form.errors.tipe" v-slot="{ describedBy, invalid }"><select id="uti" v-model="form.tipe" :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">—</option><option v-for="g in options.tipe" :key="g" :value="g">{{ g }}</option></select></FormField>
+                <FormField id="unp" label="NPWP" :error="form.errors.npwp" v-slot="{ describedBy, invalid }"><input id="unp" v-model="form.npwp" maxlength="25" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="ualm" label="Alamat" :error="form.errors.alamat" v-slot="{ describedBy, invalid }"><input id="ualm" v-model="form.alamat" maxlength="255" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="ujob" label="Job Desc" :error="form.errors.jobdesc" v-slot="{ describedBy, invalid }"><input id="ujob" v-model="form.jobdesc" maxlength="500" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+            </div>
+            <fieldset class="stack"><legend>Akun login</legend>
+                <label><input v-model="form.akun" type="checkbox" :disabled="!!current?.id_user" /> User ini memiliki akun login</label>
+                <template v-if="form.akun">
+                    <FormField id="uusr" label="Username" hint="Huruf kecil, angka, titik, garis bawah; 3–45 karakter." :error="form.errors.username" v-slot="{ describedBy, invalid }"><input id="uusr" v-model="form.username" maxlength="45" autocomplete="off" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                    <FormField id="upw" :label="current?.id_user ? 'Password baru (kosongkan bila tidak diganti)' : 'Password'" hint="Minimal 8 karakter." :error="form.errors.password" v-slot="{ describedBy, invalid }"><input id="upw" v-model="form.password" type="password" autocomplete="new-password" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                    <FormField id="upw2" label="Konfirmasi password" :error="err('password_confirmation')" v-slot="{ describedBy, invalid }"><input id="upw2" v-model="form.password_confirmation" type="password" autocomplete="new-password" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                </template>
+            </fieldset>
+        </ConfirmDialog>
+
+        <ConfirmDialog v-if="resetting" :title="`Reset password ${resetting.username}`" :busy="resetForm.processing" confirm-label="Ganti password" @confirm="doReset" @cancel="resetting = null">
+            <div class="stack">
+                <FormField id="rp" label="Password baru" hint="Minimal 8 karakter." :error="resetForm.errors.password" v-slot="{ describedBy, invalid }"><input id="rp" v-model="resetForm.password" type="password" autocomplete="new-password" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="rp2" label="Konfirmasi password" v-slot="{ describedBy }"><input id="rp2" v-model="resetForm.password_confirmation" type="password" autocomplete="new-password" :aria-describedby="describedBy" /></FormField>
+            </div>
+        </ConfirmDialog>
+    </AppLayout>
+</template>
