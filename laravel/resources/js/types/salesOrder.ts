@@ -1,0 +1,10 @@
+export type PageRows<T> = { data: T[]; total: number; current_page: number; last_page: number; prev_page_url: string | null; next_page_url: string | null };
+export type Program = { id: number; nomor: string; jenis: string; tgl_mulai: string; tgl_selesai: string; waktu: string; lokasi: string; durasi_hari: number; jam_pembelajaran: number | null; closed_date?: string | null };
+export type Product = { nomor: string; judul: string; varian: string; sertifikat: string };
+export type Company = { name_customer: string; address_office: string; npwp: string | null; perlakuan_ppn: string | null };
+export type Participant = { id: number; nama: string; instansi: string | null; jabatan: string | null; email?: string; no_wa?: string; no_hp?: string; sumber?: string; tgl_isi?: string; surat_konfirmasi?: string | null; surat_konfirmasi_nama?: string | null; company_confirmation_id?: number | null; history?: { id: number; surat_konfirmasi_nama: string }[] };
+export type Quote = { id: number; nomor: string; kepada_nama: string; up_nama: string; alamat: string; tujuan: string; skema_harga: string; harga_peserta: string; harga_allin: string; diskon: string; is_ppn: number; dokumen_keterangan?: string };
+export type Order = { id: number; nomor: string; id_penjualan: number; tanggal: string; status: string; status_tampil: string; siap_nama: string | null; siap_date: string | null; nomor_quotation?: string; kepada_nama?: string; tujuan?: string; up_nama?: string; jumlah_peserta?: number; nama_peserta?: string; calc?: Record<string, string>; invoice?: { id: number; nomor: string } | null };
+export type Snapshot = { so: Order; quotation: Quote; program: Program; judul: string; produk: Product[]; company: Company | null; sales: string | null; peserta: Participant[]; perlakuan_ppn: string };
+export type Journal = { id?: number; jenis?: string; tanggal: string; company: string; no_coa: string; nama_coa: string; deskripsi: string; debit: string; credit: string };
+export const money = (value: string | number | null | undefined) => value == null ? '—' : `Rp ${BigInt(String(value).split('.')[0] || '0').toLocaleString('id-ID')}`;

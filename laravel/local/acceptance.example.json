@@ -1,0 +1,15 @@
+{
+  "manifest_sha256": "",
+  "accepted_by": "",
+  "accepted_at": "",
+  "source_capture_evidence": "",
+  "source_capture_confirmed": false,
+  "legacy_scope_confirmed": false,
+  "documents_confirmed": false,
+  "business_exceptions_confirmed": false,
+  "finance_confirmed": false,
+  "finance_deferred": false,
+  "roles_permissions_confirmed": false,
+  "uat_accepted": false,
+  "backup_restore_confirmed": false
+}

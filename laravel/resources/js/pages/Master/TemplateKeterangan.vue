@@ -1,0 +1,81 @@
+<script setup lang="ts">
+import { useConfirmedMutation } from "../../composables/confirmedMutation";
+import ServerTable from "../../components/ServerTable.vue";
+import ActionMenu from "../../components/ActionMenu.vue";
+import { computed, ref } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
+import AppLayout from '../../layouts/AppLayout.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
+import FormField from '../../components/FormField.vue';
+
+import StatusBadge from '../../components/StatusBadge.vue';
+
+const confirmation = useConfirmedMutation();
+const { pending: confirming } = confirmation;
+
+type Row = { id: number; kode: string; kategori: string; teks: string; berlaku_untuk: string; is_default: number; aktif: number };
+const props = defineProps<{
+    filters: { kategori: string; status: string }; kategori: string[]; untuk: string[];
+    can: { add: boolean; manage: boolean };
+}>();
+const label: Record<string, string> = { syarat: 'Syarat', termasuk: 'Termasuk', tidak: 'Tidak termasuk', dokumen: 'Dokumen', klausul: 'Klausul', semua: 'Semua', public: 'Public', b2b: 'B2B' };
+const filter = ref({ ...props.filters });
+const apply = () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); };
+const editing = ref<Row | null>(null);
+const adding = ref(false);
+const form = useForm({ kategori: '', teks: '', berlaku_untuk: 'semua', is_default: false });
+function open(row: Row | null) {
+    form.reset(); form.clearErrors(); editing.value = row; adding.value = !row;
+    if (row) Object.assign(form, { kategori: row.kategori, teks: row.teks, berlaku_untuk: row.berlaku_untuk, is_default: !!row.is_default });
+}
+const close = () => { editing.value = null; adding.value = false; };
+function save() {
+    return confirmation.form(form, editing.value ? 'put' : 'post', editing.value ? `/master/template-keterangan/${editing.value.id}` : '/master/template-keterangan', { title: editing.value ? `Simpan perubahan template ${editing.value.kode}?` : 'Tambahkan template keterangan?' }, {
+        preserveScroll: true, onSuccess: () => { close(); reload(); },
+    });
+}
+const toggle = (row: Row) => confirmation.visit('post', `/master/template-keterangan/${row.id}/toggle`, {}, {
+    title: `${row.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${'template keterangan'} (${row.kode})?`,
+    confirmLabel: row.aktif ? 'Ya, nonaktifkan' : 'Ya, aktifkan', danger: !!row.aktif,
+}, { preserveScroll: true, onSuccess: reload });
+
+const table = ref<InstanceType<typeof ServerTable> | null>(null);
+const reload = () => table.value?.reload();
+const appliedFilters = ref({ ...props.filters });
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Kategori', orderable: true }, { title: 'Teks', orderable: true }, { title: 'Berlaku untuk', orderable: true }, { title: 'Default', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+</script>
+
+<template>
+    <Head title="Template Keterangan Quotation" />
+    <AppLayout title="Template Keterangan Quotation" full-width>
+        <div class="page-head"><h1>Template Keterangan Quotation</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Butir</button></div>
+        <form class="filters" @submit.prevent="apply">
+            <label>Kategori<select v-model="filter.kategori"><option value="">Semua</option><option v-for="k in kategori" :key="k" :value="k">{{ label[k] }}</option></select></label>
+            <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
+            <button class="primary" :disabled="confirming">Terapkan</button>
+        </form>
+        <ServerTable ref="table" url="/master/template-keterangan/data" :columns="columns" :filters="appliedFilters" label="Template Keterangan Quotation">
+            <template #cell-0="{ number }">{{ number }}</template>
+            <template #cell-1="{ row }">{{ row.kode }}</template>
+            <template #cell-2="{ row }">{{ label[row.kategori] ?? row.kategori }}</template>
+            <template #cell-3="{ row }">{{ row.teks }}</template>
+            <template #cell-4="{ row }">{{ label[row.berlaku_untuk] }}</template>
+            <template #cell-5="{ row }">{{ row.is_default ? 'Ya' : '—' }}</template>
+            <template #cell-6="{ row }"><StatusBadge :active="row.aktif" /></template>
+            <template #cell-7="{ row }"><ActionMenu v-if="can.manage" ><button type="button" @click="open(row)" :disabled="confirming">Edit</button><button type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></ActionMenu></template>
+        </ServerTable>
+
+        <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit butir ${editing.kode}` : 'Tambah butir'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
+            <div class="stack">
+                <FormField id="kat" label="Kategori" :error="form.errors.kategori" v-slot="{ describedBy, invalid }">
+                    <select id="kat" v-model="form.kategori" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">Pilih…</option><option v-for="k in kategori" :key="k" :value="k">{{ label[k] }}</option></select>
+                </FormField>
+                <FormField id="teks" label="Teks" hint="Maksimal 500 karakter." :error="form.errors.teks" v-slot="{ describedBy, invalid }"><textarea id="teks" v-model="form.teks" maxlength="500" required :aria-invalid="invalid" :aria-describedby="describedBy"></textarea></FormField>
+                <FormField id="untuk" label="Berlaku untuk" :error="form.errors.berlaku_untuk" v-slot="{ describedBy, invalid }">
+                    <select id="untuk" v-model="form.berlaku_untuk" :aria-invalid="invalid" :aria-describedby="describedBy"><option v-for="u in untuk" :key="u" :value="u">{{ label[u] }}</option></select>
+                </FormField>
+                <label><input v-model="form.is_default" type="checkbox" /> Terpilih otomatis (default)</label>
+            </div>
+        </ConfirmDialog>
+    </AppLayout>
+</template>

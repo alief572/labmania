@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <!-- Suite integrasi MySQL: HANYA database berakhiran _test (guard di MysqlTestCase). Jalankan:
+         php vendor/phpunit/phpunit/phpunit -c phpunit.mysql.xml -->
+    <testsuites>
+        <testsuite name="Mysql">
+            <directory>tests/Mysql</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env force="true" name="APP_ENV" value="testing"/>
+        <env force="true" name="APP_KEY" value="base64:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="/>
+        <env force="true" name="BCRYPT_ROUNDS" value="4"/>
+        <env force="true" name="DB_CONNECTION" value="mysql"/>
+        <env force="true" name="COA_DB_CONNECTION" value="mysql"/>
+        <env force="true" name="DB_DATABASE" value="labmania_laravel_test"/>
+        <env force="true" name="DB_URL" value=""/>
+        <env force="true" name="CACHE_STORE" value="array"/>
+        <env force="true" name="SESSION_DRIVER" value="array"/>
+        <env force="true" name="QUEUE_CONNECTION" value="sync"/>
+        <env force="true" name="AUDIT_RETENTION_ENABLED" value="false"/>
+        <env force="true" name="ACTIVITY_LOG_ROLE_IDS" value=""/>
+    </php>
+</phpunit>
