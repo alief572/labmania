@@ -108,20 +108,24 @@ if (!function_exists('lm_menu_counts')) {
 
         $map = [
             'master_data.jenis_produk' => 'ms_jenis_produk', 'master_data.jenis_sertifikasi' => 'ms_jenis_sertifikasi',
-            'master_data.jenis_bidang' => 'ms_jenis_bidang', 'master_data.paket_produk' => 'paket_produk',
+            'master_data.jenis_bidang' => 'ms_jenis_bidang', 'master_data.varian_pelaksanaan' => 'ms_varian_pelaksanaan', 'master_data.paket_produk' => 'paket_produk',
             'master_data.peserta' => 'ms_peserta', 'master_data.company' => 'master_customer',
             'master_trainer' => 'ms_trainer', 'master_data.template_keterangan' => 'ms_template_keterangan',
             'master_data.template_konfirmasi' => 'ms_template_konfirmasi', 'master_data.rate' => 'ms_rate',
             'master_data.users' => 'ms_user_karyawan', 'master_program' => 'master_program',
             'penjualan_program' => 'penjualan_program', 'quotation_program' => 'quotation', 'activity_log' => 'logs',
+            'master_data.katalog' => 'paket_produk', 'sales_order' => 'sales_order', 'permission_group' => 'groups',
         ];
         $ci = &get_instance();
         $parts = [];
         $soft = ['ms_peserta', 'master_customer']; // soft delete: sama dengan total di halaman index
-        foreach ($map as $kode => $tbl) $parts[] = "SELECT '$kode' k, COUNT(*) n FROM `$tbl`" . (in_array($tbl, $soft) ? ' WHERE deleted_date IS NULL' : ''); // kode & tabel konstanta di atas, bukan input
-        $q = @$ci->db->query(implode(' UNION ALL ', $parts));
+        foreach ($map as $kode => $tbl) {
+            if (!$ci->db->table_exists($tbl)) continue; // tabel belum dimigrasi: lewati, badge lain tetap tampil
+            $parts[] = "SELECT '$kode' k, COUNT(*) n FROM `$tbl`" . (in_array($tbl, $soft) ? ' WHERE deleted_date IS NULL' : ''); // kode & tabel konstanta di atas, bukan input
+        }
         $cache = [];
-        // shortcut: COUNT(*) tiap muat halaman; satu tabel hilang membuat semua badge kosong. Cache bila logs sangat besar.
+        // shortcut: COUNT(*) tiap muat halaman. Cache bila logs sangat besar.
+        $q = $parts ? @$ci->db->query(implode(' UNION ALL ', $parts)) : false;
         if ($q) foreach ($q->result_array() as $r) $cache[$r['k']] = (int)$r['n'];
         return $cache;
     }

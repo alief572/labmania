@@ -2,6 +2,9 @@ import '../css/app.css';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { createApp, h, type DefineComponent } from 'vue';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { installSearchSelect } from './composables/searchSelect';
+
+installSearchSelect();
 
 createInertiaApp({
     title: (title) => title ? `${title} | Labmania` : 'Labmania',
