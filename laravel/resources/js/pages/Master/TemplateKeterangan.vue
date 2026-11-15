@@ -7,6 +7,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 import StatusBadge from '../../components/StatusBadge.vue';
 
@@ -42,13 +43,14 @@ const toggle = (row: Row) => confirmation.visit('post', `/master/template-ketera
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Kategori', orderable: true }, { title: 'Teks', orderable: true }, { title: 'Berlaku untuk', orderable: true }, { title: 'Default', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Kategori', orderable: true }, { title: 'Teks', orderable: true }, { title: 'Berlaku untuk', orderable: true }, { title: 'Default', orderable: true }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Template Keterangan Quotation" />
     <AppLayout title="Template Keterangan Quotation" full-width>
-        <div class="page-head"><h1>Template Keterangan Quotation</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Butir</button></div>
+        <PageHead title="Template Keterangan Quotation" description="Teks default blok Keterangan di Penawaran, per kategori. Butir Default otomatis tersalin ke quotation baru sesuai jenis penjualan, lalu dapat diedit per quotation tanpa mengubah master."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Butir</button></PageHead>
+        <p class="notice">Perubahan di sini hanya berlaku untuk quotation <strong>baru</strong>; quotation yang sudah dibuat menyimpan teksnya sendiri. Tidak dapat dihapus — gunakan Nonaktifkan.</p>
         <form class="filters" @submit.prevent="apply">
             <label>Kategori<select v-model="filter.kategori"><option value="">Semua</option><option v-for="k in kategori" :key="k" :value="k">{{ label[k] }}</option></select></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>

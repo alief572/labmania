@@ -54,7 +54,7 @@ const options: Options = {
     language: {
         search: 'Cari:', searchPlaceholder: 'Cari data…', lengthMenu: 'Tampilkan _MENU_ baris',
         info: 'Menampilkan _START_–_END_ dari _TOTAL_ data', infoEmpty: 'Tidak ada data', infoFiltered: '(disaring dari _MAX_ data)',
-        emptyTable: 'Belum ada data.', zeroRecords: 'Data tidak ditemukan.', processing: 'Memuat data…', loadingRecords: 'Memuat data…',
+        emptyTable: 'Tidak ada data yang cocok.', zeroRecords: 'Tidak ada data yang cocok.', processing: 'Memuat data…', loadingRecords: 'Memuat data…',
         paginate: { first: 'Pertama', last: 'Terakhir', next: 'Berikutnya', previous: 'Sebelumnya' },
     },
 };

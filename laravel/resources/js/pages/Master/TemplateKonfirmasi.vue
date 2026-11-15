@@ -7,6 +7,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 import StatusBadge from '../../components/StatusBadge.vue';
 
@@ -39,13 +40,14 @@ async function contoh(row: Row) { sample.value = await (await fetch(`/master/tem
 
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Default untuk', orderable: true }, { title: 'Isian', orderable: false }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Default untuk', orderable: true }, { title: 'Isian', orderable: false }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Template Formulir Konfirmasi" />
     <AppLayout title="Template Formulir Konfirmasi" full-width>
-        <div class="page-head"><h1>Template Formulir Konfirmasi</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Template</button></div>
+        <PageHead title="Template Formulir Konfirmasi" description="Template Formulir Konfirmasi Keikutsertaan yang dicetak bersama quotation. Template dipilih otomatis dari Jenis Produk paket, lalu isian dan kalimat pernyataannya dapat disesuaikan per quotation."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Template</button></PageHead>
+        <p class="notice">Perubahan di sini hanya berlaku untuk quotation <strong>baru</strong>. Tidak dapat dihapus — gunakan Nonaktifkan.</p>
         <ServerTable ref="table" url="/master/template-konfirmasi/data" :columns="columns" label="Template Formulir Konfirmasi">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }">{{ row.kode }}</template>

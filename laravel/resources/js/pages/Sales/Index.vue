@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '../../components/PageHead.vue';
 
 import ActionMenu from "../../components/ActionMenu.vue";
 
@@ -38,7 +39,7 @@ function process(row:Row,action:'finalkan'|'batalkan') {
 
     <Head title="Penjualan Program" /><AppLayout title="Penjualan Program" full-width>
 
-        <div class="page-head"><div><h1>Daftar Penjualan Program</h1><p class="muted">Tarik Master Program Final, pilih Public atau B2B, lalu sesuaikan pelaksanaan dan costing.</p></div><Link v-if="can.add" class="primary" href="/penjualan-program/create">+ Buat Penjualan Program</Link></div>
+        <PageHead title="Daftar Penjualan Program" description="Tarik Master Program Final, pilih Public atau B2B, isi tanggal & lokasi, lalu sesuaikan harga dan costing — form sama untuk kedua jenis, perubahan tidak mengubah Master Program. Setelah Final, Public maupun B2B dibuatkan Quotation (modul Quotation)."><Link v-if="can.add" class="primary" href="/penjualan-program/create">+ Buat Penjualan Program</Link></PageHead>
 
         <form class="filters" @submit.prevent="search">
 

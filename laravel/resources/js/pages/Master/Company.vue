@@ -7,6 +7,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 import StatusBadge from '../../components/StatusBadge.vue';
 import { useWilayah } from '../../composables/wilayah';
@@ -57,13 +58,13 @@ const remove = (row: Row) => confirmation.visit('delete', `/master/company/${row
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Jenis Instansi', orderable: true }, { title: 'Lokasi', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Jenis Instansi', orderable: true }, { title: 'Lokasi', orderable: true }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master Company" />
     <AppLayout title="Master Company" full-width>
-        <div class="page-head"><h1>Master Company</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Company</button></div>
+        <PageHead title="Master Company" description="Data perusahaan/instansi yang menjadi customer penjualan B2B. Company aktif dipilih di Penjualan Program B2B (wajib) dan sebagai tujuan Quotation ke Company."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Company</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <form class="filters" @submit.prevent="apply">
             <label>Jenis Instansi<select v-model="filter.jenis"><option value="">Semua</option><option v-for="j in jenis" :key="j" :value="j">{{ j }}</option></select></label>

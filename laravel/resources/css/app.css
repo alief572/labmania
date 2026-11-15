@@ -366,3 +366,5 @@ progress { accent-color: var(--gold); height: 8px; }
 .ling-row input { margin: 0; }
 .ling-no { font-size: 13px; text-align: right; color: var(--muted); }
 .ling-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.req { color: #7A5A00; }

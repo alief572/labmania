@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '../../components/PageHead.vue';
 import ServerTable from '../../components/ServerTable.vue';
 import ActionMenu from "../../components/ActionMenu.vue";
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -14,7 +15,7 @@ function status(s: string) { f.status = f.status === s ? '' : s; search(); }
 const dealRate = computed(() => { const deal = tableStats.value.find((s) => s.status === 'deal')?.jumlah ?? 0; const batal = tableStats.value.find((s) => s.status === 'batal')?.jumlah ?? 0; return deal + batal ? Math.round(deal / (deal + batal) * 100) : null; });
 </script>
 <template>
-    <Head title="Quotation" /><AppLayout title="Quotation" full-width><h1>Daftar Quotation</h1>
+    <Head title="Quotation" /><AppLayout title="Quotation" full-width><PageHead title="Daftar Quotation" description="Penjualan Program Final, Public maupun B2B, dibuatkan quotation sebagai persiapan invoice. Satu baris per Penjualan Program; Public dapat dibuatkan quotation berkali-kali. Klik Lihat detail untuk quotation-nya." />
         <nav class="tabs" aria-label="Kelompok program"><Link href="/quotation" :aria-current="tab === 'ongoing' ? 'page' : undefined">On going</Link><Link href="/quotation?tab=selesai" :aria-current="tab === 'selesai' ? 'page' : undefined">Selesai (Closed)</Link><Link href="/quotation?tab=data" :aria-current="tab === 'data' ? 'page' : undefined">Data Peserta</Link></nav>
         <form class="filters" @submit.prevent="search"><label>Jenis<select v-model="f.jenis"><option value="">Semua</option><option value="public">Public</option><option value="b2b">B2B</option></select></label><label>Tahun acara<select v-model="f.tahun"><option value="">Semua</option><option v-for="y in years" :key="y" :value="y">{{ y }}</option></select></label><label>Bulan acara<select v-model="f.bulan"><option value="">Semua</option><option v-for="n in 12" :key="n" :value="n">{{ new Date(2026, n - 1).toLocaleString('id-ID', { month: 'long' }) }}</option></select></label><button class="primary">Terapkan</button><Link href="/quotation">Reset</Link></form>
         <div v-if="tab !== 'data'" class="status-summary"><button v-for="s in tableStats" :key="s.status" type="button" :aria-pressed="f.status === s.status" @click="status(s.status)">{{ s.status }}: {{ s.jumlah }} quotation · {{ s.peserta }} peserta<span v-if="s.status === 'deal'"> · {{ rupiah(s.nilai) }}<span v-if="dealRate !== null"> · Tingkat deal {{ dealRate }}%</span></span></button></div>

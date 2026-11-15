@@ -7,6 +7,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 import { useWilayah } from '../../composables/wilayah';
 
@@ -58,13 +59,13 @@ const err = (k: string) => (form.errors as Record<string, string>)[k];
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Bidang', orderable: true }, { title: 'Lokasi', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Bidang', orderable: true }, { title: 'Lokasi', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master Peserta" />
     <AppLayout title="Master Peserta" full-width>
-        <div class="page-head"><h1>Master Peserta</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Peserta</button></div>
+        <PageHead title="Master Peserta" description="Data peserta pelatihan/sertifikasi, dikelompokkan menurut Jenis Bidang. Peserta yang Deal di quotation masuk otomatis saat Deal; yang bertanda Belum lengkap dilengkapi lewat Edit."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Peserta</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <form class="filters" @submit.prevent="apply">
             <label>Kelengkapan<select v-model="filter.kelengkapan"><option value="all">Semua</option><option value="lengkap">Lengkap</option><option value="belum">Belum lengkap</option></select></label>

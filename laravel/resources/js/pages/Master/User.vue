@@ -7,6 +7,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 import StatusBadge from '../../components/StatusBadge.vue';
 
@@ -54,13 +55,13 @@ const err = (k: string) => (form.errors as Record<string, string>)[k];
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Employee ID', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Role', orderable: true }, { title: 'Akun login', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Employee ID', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Role', orderable: true }, { title: 'Akun login', orderable: true }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master User" />
     <AppLayout title="Master User" full-width>
-        <div class="page-head"><h1>Master User</h1><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah User</button></div>
+        <PageHead title="Master User" description="Data karyawan Labmania dan akun login ke sistem. Role dipilih dari Master Role; hak aksesnya diatur di Role & Permission. Override Permission memberi satu user hak menu tambahan di luar role-nya. User nonaktif tidak dapat login; data tidak dihapus."><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah User</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).status" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).status }}</p>
         <form class="filters" @submit.prevent="apply">
             <label>Role<select v-model="filter.role"><option value="">Semua</option><option v-for="r in roles" :key="r.id_group" :value="r.id_group">{{ r.nm_group }}</option></select></label>

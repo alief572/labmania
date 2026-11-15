@@ -7,6 +7,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 const confirmation = useConfirmedMutation();
 const { pending: confirming } = confirmation;
@@ -30,13 +31,13 @@ const system = (r: Row) => r.id_group === props.admin || !!r.st_default;
 
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Nama Role', orderable: true }, { title: 'User terdaftar', orderable: true }, { title: 'Hak diatur', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Nama Role', orderable: true }, { title: 'User terdaftar', orderable: true }, { title: 'Hak diatur', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master Role" />
     <AppLayout title="Master Role" full-width>
-        <div class="page-head"><h1>Master Role</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Role</button></div>
+        <PageHead title="Master Role" description="Daftar role yang dipakai di Master User dan diatur haknya di Role & Permission. Role diinput manual. Role yang masih dipakai user tidak dapat dihapus."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Role</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <ServerTable ref="table" url="/master/role/data" :columns="columns" :label="'Role'">
             <template #cell-0="{ number }">{{ number }}</template>

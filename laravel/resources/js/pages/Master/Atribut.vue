@@ -44,14 +44,14 @@ const toggle = (row: Row) => confirmation.visit('post', `/master/${props.slug}/$
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: presentation.value?.code || 'Kode', orderable: true }, { title: presentation.value?.name || 'Nama', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: presentation.value?.code || 'Kode', orderable: true }, { title: presentation.value?.name || 'Nama', orderable: true }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head :title="label" />
     <AppLayout :title="label" full-width>
         <div class="page-head"><div><h1>{{ label }}</h1><p v-if="presentation" class="muted">{{ presentation.description }}</p></div><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah {{ label }}</button></div>
-        <p class="notice">Data master <strong>tidak dapat dihapus</strong> — gunakan <strong>Nonaktifkan</strong>. Data nonaktif tidak muncul sebagai pilihan baru.</p>
+        <p class="notice">Data master <strong>tidak dapat dihapus</strong> — gunakan <strong>Nonaktifkan</strong>. Data nonaktif tidak muncul sebagai pilihan di form Product dan Peserta.</p>
         <form class="filters" @submit.prevent="apply">
             <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
             <button class="primary" :disabled="confirming">Terapkan</button>

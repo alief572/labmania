@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '../../components/PageHead.vue';
 import ActionMenu from "../../components/ActionMenu.vue";
 import ServerTable from "../../components/ServerTable.vue";
 import {Head,Link,router,useForm} from '@inertiajs/vue3';
@@ -21,7 +22,7 @@ const exportUrl=()=>'/manage-peserta/monitoring?'+new URLSearchParams({...f,expo
 </script>
 <template>
     <Head title="Monitoring Peserta"/><AppLayout title="Monitoring Peserta" full-width>
-        <div class="page-head"><h1>Monitoring Peserta</h1><a :href="exportUrl()">Export Excel</a></div>
+        <PageHead title="Monitoring Peserta" description="Pantauan peserta Deal dari data yang sudah ada di sistem: program, PIC, invoice, dan sertifikat. Sertifikat diinput di Manage Peserta › Lihat Peserta › tab Sertifikat."><a :href="exportUrl()">Export Excel</a></PageHead>
         <div class="status-summary"><button v-for="(label,key) in followups" :key="key" :aria-pressed="f.tindak===key" @click="f.tindak=key;search()">{{label}} ({{tableCounts[key]}})</button></div>
         <form class="filters" @submit.prevent="search"><label>Tipe<select v-model="f.tipe"><option value="">Semua</option><option>Pelatihan</option><option>Sertifikasi</option><option>Training &amp; Sertifikasi</option></select></label><label>Tahun<input v-model="f.tahun" type="number" min="1900" max="2200"/></label><label>Bulan<select v-model="f.bulan"><option value="">Semua</option><option v-for="n in 12" :key="n" :value="String(n)">{{n}}</option></select></label><label>Tindak lanjut<select v-model="f.tindak"><option value="">Semua</option><option v-for="(label,key) in followups" :key="key" :value="key">{{label}}</option></select></label><button>Terapkan</button></form>
         <p>Pelatihan {{tableCounts.Pelatihan}} · Sertifikasi {{tableCounts.Sertifikasi}} · Training &amp; Sertifikasi {{tableCounts['Training & Sertifikasi']}}</p>

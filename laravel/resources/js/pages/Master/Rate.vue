@@ -8,6 +8,8 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
+import { rupiah } from '../../composables/costing';
 
 import StatusBadge from '../../components/StatusBadge.vue';
 
@@ -38,18 +40,18 @@ const toggle = (row: Row) => confirmation.visit('post', `/master/rate/${props.ti
     title: `${row.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${row.item} (${row.kode})?`,
     confirmLabel: row.aktif ? 'Ya, nonaktifkan' : 'Ya, aktifkan', danger: !!row.aktif,
 }, { preserveScroll: true, onSuccess: reload });
-const rupiah = (v: string | number) => 'Rp ' + Math.round(Number(v)).toLocaleString('id-ID');
 
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Item', orderable: true }, { title: 'Satuan', orderable: true }, { title: 'Default Cost', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Item', orderable: true }, { title: 'Satuan', orderable: true }, { title: 'Default Cost', orderable: true, className: 'dt-body-right' }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head :title="`Master Rate · ${title}`" />
     <AppLayout title="Master Rate" full-width>
-        <div class="page-head"><h1>Master Rate</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah {{ title }}</button></div>
+        <PageHead title="Master Rate" description="Item biaya beserta Default Cost yang dipakai costing Master Program dan Penjualan Program."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah {{ title }}</button></PageHead>
+        <p class="notice">Satuan <strong>Fixed Cost</strong>: Event, Day (biaya per jam dicatat sebagai Event). Satuan <strong>Variable Cost</strong>: Peserta/Event, Peserta/Day. Satu item satu Default Cost, yang dapat disesuaikan di Master Program dan Penjualan Program tanpa mengubah master. Item tidak dapat dihapus — gunakan Nonaktifkan.</p>
         <nav class="tabs" aria-label="Kategori rate">
             <Link href="/master/rate/fixed" :aria-current="tipe === 'fixed' ? 'page' : undefined">Fixed Cost</Link>
             <Link href="/master/rate/variable" :aria-current="tipe === 'variable' ? 'page' : undefined">Variable Cost</Link>

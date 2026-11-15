@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '../../components/PageHead.vue';
 
 import ServerTable from "../../components/ServerTable.vue";
 
@@ -27,7 +28,7 @@ const excel = computed(() => '/invoicing/excel?' + new URLSearchParams(Object.en
 
 <template>
 
-    <Head title="Invoicing" /><AppLayout title="Invoicing" full-width><div class="page-head"><h1>Invoicing</h1><a :href="excel">Excel</a></div><nav class="tabs" aria-label="Status Invoicing"><Link href="/invoicing" :aria-current="tab === 'uninvoiced' ? 'page' : undefined">Uninvoiced ({{ tableCounts.uninvoiced }})</Link><Link href="/invoicing?tab=invoiced" :aria-current="tab === 'invoiced' ? 'page' : undefined">Invoiced ({{ tableCounts.invoiced }})</Link></nav>
+    <Head title="Invoicing" /><AppLayout title="Invoicing" full-width><PageHead title="Invoicing" description="Tab Uninvoiced: Sales Order yang sudah ditandai Siap invoice dan belum ditagih (to be: invoice dibuat dari Sales Order, bukan langsung dari quotation). Tab Invoiced: invoice yang sudah dibuat, satu baris per invoice. Satu quotation Deal = satu invoice, tidak digabung per program; B2B per peserta = satu invoice per peserta. Saring Public / B2B dengan filter jenis; kolom No. Program untuk menelusuri."><a :href="excel">Excel</a></PageHead><nav class="tabs" aria-label="Status Invoicing"><Link href="/invoicing" :aria-current="tab === 'uninvoiced' ? 'page' : undefined">Uninvoiced ({{ tableCounts.uninvoiced }})</Link><Link href="/invoicing?tab=invoiced" :aria-current="tab === 'invoiced' ? 'page' : undefined">Invoiced ({{ tableCounts.invoiced }})</Link></nav>
 
         <p v-if="tab === 'uninvoiced'">SO Siap invoice, satu Invoice untuk seluruh peserta Deal. B2B All-in 1 company.</p>
 

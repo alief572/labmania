@@ -7,6 +7,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 import StatusBadge from '../../components/StatusBadge.vue';
 
@@ -70,13 +71,13 @@ const rowError = (i: number) => (addForm.errors as Record<string, string>)[`rows
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Product', orderable: true }, { title: 'Produk', orderable: true }, { title: 'Bidang', orderable: true }, { title: 'Varian', orderable: true }, { title: 'Sertifikat', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Product', orderable: true }, { title: 'Produk', orderable: true }, { title: 'Bidang', orderable: true }, { title: 'Varian', orderable: true }, { title: 'Sertifikat', orderable: true }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Product" />
     <AppLayout title="Product" full-width>
-        <div class="page-head"><h1>Product</h1><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah Product</button></div>
+        <PageHead title="Product" description="Daftar paket produk (kombinasi Produk, Bidang, Varian, Sertifikat). Product berstatus Aktif dapat dipilih saat membuat Master Program, satu atau lebih per program."><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah Product</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).status" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).status }}</p>
         <form class="filters" @submit.prevent="apply">
             <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '../../../components/PageHead.vue';
 import ServerTable from '../../../components/ServerTable.vue';
 import ActionMenu from "../../../components/ActionMenu.vue";
 import { ref } from 'vue';
@@ -43,7 +44,7 @@ async function ask(row: Row, action: 'finalkan' | 'batalkan') {
 <template>
     <Head title="Daftar Master Program" />
     <AppLayout title="Daftar Master Program" full-width>
-        <div class="page-head"><h1>Daftar Master Program</h1><Link v-if="can.add" class="primary" href="/program/create">+ Buat Master Program</Link></div>
+        <PageHead title="Daftar Master Program" description="Program siap jual: Paket Produk + costing baseline. Tidak ada Public/B2B, customer, tanggal, atau lokasi acara — semuanya diisi di Penjualan Program."><Link v-if="can.add" class="primary" href="/program/create">+ Buat Master Program</Link></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).program" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).program }}</p>
         <p v-if="summaryError" class="error" role="alert">{{ summaryError }}</p>
         <form class="filters" @submit.prevent="apply">

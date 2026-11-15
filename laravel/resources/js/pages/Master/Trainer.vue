@@ -7,6 +7,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 import StatusBadge from '../../components/StatusBadge.vue';
 
@@ -60,13 +61,14 @@ const lines = (v: unknown) => str(v).split(/\r?\n/).filter(Boolean);
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID Trainer', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Bidang Keahlian', orderable: true }, { title: 'Riwayat', orderable: false }, { title: 'Penjualan Program', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID Trainer', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Bidang Keahlian', orderable: true }, { title: 'Riwayat', orderable: false }, { title: 'Penjualan Program', orderable: true }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master Trainer" />
     <AppLayout title="Master Trainer" full-width>
-        <div class="page-head"><h1>Master Trainer</h1><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah Trainer</button></div>
+        <PageHead title="Master Trainer" description="Data trainer/fasilitator beserta riwayatnya (format CV trainer). Trainer aktif wajib dipilih di Penjualan Program (satu trainer per event) dan menerima Surat Kerja Trainer dari menu Sales Order."><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah Trainer</button></PageHead>
+        <p class="notice">Trainer <strong>tidak dapat dihapus</strong> — gunakan <strong>Nonaktifkan</strong>. Trainer nonaktif tidak muncul di pilihan Penjualan Program.</p>
         <form class="filters" @submit.prevent="apply">
             <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
             <button class="primary" :disabled="confirming">Terapkan</button>

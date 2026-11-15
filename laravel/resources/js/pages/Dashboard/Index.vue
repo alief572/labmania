@@ -82,11 +82,11 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
                         <thead><tr><th scope="col">Penjualan Program</th><th v-if="key !== 'final'" scope="col">Harga / peserta</th><th scope="col">Target</th><th v-if="key === 'pend'" scope="col">Pendapatan</th><template v-if="key === 'prof'"><th scope="col">Pendapatan</th><th scope="col">Fixed</th><th scope="col">Variable</th><th scope="col">Profit</th><th scope="col">Margin</th></template></tr></thead>
                         <tbody><tr v-for="f in detail.finals" :key="f.id">
                             <td>{{ f.nomor }} {{ f.judul }}<small>{{ f.jenis === 'b2b' ? 'B2B' : 'Public' }} · {{ where(f) }}</small></td>
-                            <td v-if="key !== 'final'">{{ rupiah(f.harga) }}</td><td>{{ f.target }}</td>
-                            <td v-if="key === 'pend'">{{ rupiah(f.pendapatan) }}</td>
-                            <template v-if="key === 'prof'"><td>{{ rupiah(f.pendapatan) }}</td><td>− {{ rupiah(f.fixed) }}</td><td>− {{ rupiah(f.variable) }}</td><td :class="f.profit < 0 ? 'error' : ''">{{ rupiah(f.profit) }}</td><td>{{ f.pendapatan ? pct(f.margin) : '—' }}</td></template>
+                            <td v-if="key !== 'final'" class="money">{{ rupiah(f.harga) }}</td><td class="money">{{ f.target }}</td>
+                            <td v-if="key === 'pend'" class="money">{{ rupiah(f.pendapatan) }}</td>
+                            <template v-if="key === 'prof'"><td class="money">{{ rupiah(f.pendapatan) }}</td><td class="money">− {{ rupiah(f.fixed) }}</td><td class="money">− {{ rupiah(f.variable) }}</td><td :class="['money', f.profit < 0 ? 'error' : '']">{{ rupiah(f.profit) }}</td><td>{{ f.pendapatan ? pct(f.margin) : '—' }}</td></template>
                         </tr></tbody>
-                        <tfoot><tr><th scope="row">Total {{ detail.finals.length }} penjualan</th><td v-if="key !== 'final'"></td><td>{{ sum(detail.finals, (x) => x.target) }}</td><td v-if="key === 'pend'">{{ rupiah(sum(detail.finals, (x) => x.pendapatan)) }}</td><template v-if="key === 'prof'"><td>{{ rupiah(sum(detail.finals, (x) => x.pendapatan)) }}</td><td>− {{ rupiah(sum(detail.finals, (x) => x.fixed)) }}</td><td>− {{ rupiah(sum(detail.finals, (x) => x.variable)) }}</td><td>{{ rupiah(sum(detail.finals, (x) => x.profit)) }}</td><td></td></template></tr></tfoot>
+                        <tfoot><tr><th scope="row">Total {{ detail.finals.length }} penjualan</th><td v-if="key !== 'final'"></td><td class="money">{{ sum(detail.finals, (x) => x.target) }}</td><td v-if="key === 'pend'">{{ rupiah(sum(detail.finals, (x) => x.pendapatan)) }}</td><template v-if="key === 'prof'"><td class="money">{{ rupiah(sum(detail.finals, (x) => x.pendapatan)) }}</td><td class="money">− {{ rupiah(sum(detail.finals, (x) => x.fixed)) }}</td><td class="money">− {{ rupiah(sum(detail.finals, (x) => x.variable)) }}</td><td class="money">{{ rupiah(sum(detail.finals, (x) => x.profit)) }}</td><td></td></template></tr></tfoot>
                     </table></div>
                     <p v-else class="empty">Belum ada data.</p>
                 </template>
