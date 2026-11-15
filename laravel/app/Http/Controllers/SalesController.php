@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Support\Costing;
 use App\Support\QuotationPdf;
 use App\Support\Sales;
+use App\Support\ServerDataTable;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,30 +21,43 @@ class SalesController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('menu', [self::MENU, 'View']);
+        ServerDataTable::prepare($request);
         $f = Sales::filters($request);
         $query = DB::table('penjualan_program as p')->leftJoin('master_customer as c', 'c.id_customer', '=', 'p.id_customer')
             ->leftJoin('master_program as m', 'm.id', '=', 'p.id_master_program')
             ->leftJoin('ms_trainer as t', 't.id', '=', 'p.id_trainer')
             ->leftJoin('ms_user_karyawan as a', 'a.id', '=', 'p.id_asisten');
+        ServerDataTable::scope($request, $query);
         Sales::filter($query, $f);
         if (! empty($f['status']) && in_array($f['status'], ['draft', 'final', 'batal'], true)) {
             $query->where('p.status', $f['status']);
         }
-        if (! empty($f['q'])) {
+        if (($f['q'] ?? '') !== '') {
             $query->where(fn ($w) => $w->where('p.nomor', 'like', '%'.$f['q'].'%')->orWhere('c.name_customer', 'like', '%'.$f['q'].'%')->orWhere('p.lokasi', 'like', '%'.$f['q'].'%'));
         }
-        $rows = $query->select('p.*', 'c.name_customer', 'm.nomor as master_nomor', 't.nama as trainer_nama', 'a.nama as asisten_nama')->orderByDesc('p.id')->paginate(25)->withQueryString();
-        $rows->through(function ($p) {
-            $p->judul = Sales::title($p->id_master_program);
+        $rows = $query->select('p.*', 'c.name_customer', 'm.nomor as master_nomor', 't.nama as trainer_nama', 'a.nama as asisten_nama')->orderByDesc('p.id')->pipe(fn ($builder) => ServerDataTable::page($request, $builder, [null, 'p.nomor', 'p.jenis', 'm.nomor', 'p.tgl_mulai', 'p.target_peserta', 'p.harga_jual_peserta', 'p.status', null], 'p.id'));
+        $titles = Sales::titles($rows->pluck('id_master_program')->unique()->all());
+        $reschedules = DB::table('penjualan_program_reschedule')->whereIn('id_penjualan', $rows->pluck('id'))->selectRaw('id_penjualan, COUNT(*) as total')->groupBy('id_penjualan')->pluck('total', 'id_penjualan');
+        $deals = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->whereIn('q.id_penjualan', $rows->pluck('id'))->where('x.status', 'deal')->selectRaw('q.id_penjualan, COUNT(*) as total')->groupBy('q.id_penjualan')->pluck('total', 'id_penjualan');
+        $costs = Sales::costsFor($rows->pluck('id')->all());
+        $rows->through(function ($p) use ($titles, $reschedules, $deals, $costs) {
+            $p->judul = $titles[$p->id_master_program] ?? '';
             $p->nomor = Sales::display($p);
-            $p->reschedule_count = DB::table('penjualan_program_reschedule')->where('id_penjualan', $p->id)->count();
-            $p->peserta_deal = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $p->id)->where('x.status', 'deal')->count();
+            $p->reschedule_count = (int) ($reschedules[$p->id] ?? 0);
+            $p->peserta_deal = (int) ($deals[$p->id] ?? 0);
+            $p->costing = Costing::calculate($p->durasi_hari, $p->target_peserta, $p->harga_jual_peserta, $costs->get($p->id, collect())->map(fn ($b) => (array) $b)->all());
+            $p->warnings = Costing::warnings($p->costing, $p->target_peserta);
 
             return $p;
         });
 
-        return Inertia::render('Sales/Index', ['rows' => $rows, 'filters' => $f, 'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add'])],
-            'years' => DB::table('penjualan_program')->whereNotNull('tgl_mulai')->pluck('tgl_mulai')->map(fn ($d) => (int) substr($d, 0, 4))->unique()->sortDesc()->values()]);
+        $props = ['rows' => $rows, 'filters' => $f, 'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage']), 'approve' => Gate::allows('menu', [self::MENU, 'Approve']), 'cancel' => Gate::allows('menu', [self::MENU, 'Delete']), 'quotation' => Gate::allows('menu', ['quotation_program', 'Add'])],
+            'years' => DB::table('penjualan_program')->whereNotNull('tgl_mulai')->pluck('tgl_mulai')->map(fn ($d) => (int) substr($d, 0, 4))->unique()->sortDesc()->values()];
+        if ($request->route('datatable')) {
+            return ServerDataTable::result($request, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Sales/Index', $props);
     }
 
     public function create()

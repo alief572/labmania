@@ -89,7 +89,7 @@ class TrainerTest extends MasterTestCase
         $this->post("/master/trainer/$id/toggle")->assertRedirect();
         $this->assertSame(0, (int) DB::table('ms_trainer')->where('id', $id)->value('aktif'));
         $this->assertSame(404, $this->delete("/master/trainer/$id")->status() === 405 ? 404 : 0);
-        $this->get('/master/trainer')->assertInertia(fn ($p) => $p->where('rows.data.0.n_penjualan', 0));
+        $this->getJson('/master/trainer/data')->assertOk()->assertJsonPath('data.0.n_penjualan', 0);
     }
 
     public function test_lampiran_tersimpan_privat_diunduh_berizin_dan_nama_klien_tidak_dipercaya(): void

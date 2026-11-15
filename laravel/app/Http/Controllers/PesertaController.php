@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\CodeGenerator;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -28,23 +29,23 @@ class PesertaController extends Controller
     {
         Gate::authorize('menu', [self::MENU, 'View']);
         $f = $request->validate(['q' => 'nullable|string|max:100', 'kelengkapan' => 'nullable|in:all,lengkap,belum']);
-        $rows = DB::table('ms_peserta as p')->leftJoin('ms_jenis_bidang as jb', 'jb.id', '=', 'p.id_jenis_bidang')->whereNull('p.deleted_date')
-            ->when(($f['q'] ?? null) !== null, fn ($q) => $q->where(fn ($w) => $w->where('p.kode', 'like', '%'.$f['q'].'%')->orWhere('p.nama', 'like', '%'.$f['q'].'%')
-                ->orWhere('p.instansi', 'like', '%'.$f['q'].'%')->orWhere('p.nik', 'like', '%'.$f['q'].'%')->orWhere('jb.nama', 'like', '%'.$f['q'].'%')
-                ->orWhere('p.kabupaten', 'like', '%'.$f['q'].'%')->orWhere('p.provinsi', 'like', '%'.$f['q'].'%')))
-            ->when(($f['kelengkapan'] ?? 'all') === 'belum', fn ($q) => $q->whereRaw($this->belumSql()))
-            ->when(($f['kelengkapan'] ?? 'all') === 'lengkap', fn ($q) => $q->whereRaw('NOT '.$this->belumSql()))
-            ->orderBy('p.id')
-            ->select('p.*', 'jb.nama as nama_bidang', DB::raw('(SELECT q.nomor FROM quotation_peserta qp JOIN quotation q ON q.id = qp.id_quotation WHERE qp.id_peserta = p.id ORDER BY qp.id LIMIT 1) AS asal_deal'))
-            ->paginate(25)->withQueryString();
-        $rows->through(function ($r) {
-            $r->kurang = array_values(array_filter(self::WAJIB, fn ($label, $k) => trim((string) ($r->$k ?? '')) === '', ARRAY_FILTER_USE_BOTH));
+        if ($request->route('datatable')) {
+            $base = DB::table('ms_peserta as p')->leftJoin('ms_jenis_bidang as jb', 'jb.id', '=', 'p.id_jenis_bidang')->whereNull('p.deleted_date')
+                ->orderBy('p.id')
+                ->select('p.*', 'jb.nama as nama_bidang', DB::raw('(SELECT q.nomor FROM quotation_peserta qp JOIN quotation q ON q.id = qp.id_quotation WHERE qp.id_peserta = p.id ORDER BY qp.id LIMIT 1) AS asal_deal'));
+            $query = (clone $base)
+                ->when(($f['kelengkapan'] ?? 'all') === 'belum', fn ($q) => $q->whereRaw($this->belumSql()))
+                ->when(($f['kelengkapan'] ?? 'all') === 'lengkap', fn ($q) => $q->whereRaw('NOT '.$this->belumSql()));
 
-            return $r;
-        });
+            return ServerDataTable::response($request, $base, $query, [null, 'kode', 'nama', 'nama_bidang', 'kabupaten', null], ['id', 'kode', 'nama', 'gender', 'instansi', 'id_jenis_bidang', 'nama_bidang', 'id_prov', 'provinsi', 'id_kab', 'kabupaten', 'no_telp', 'email', 'nik', 'npwp_instansi', 'id_customer', 'asal_deal', 'kurang'], 'id', ['kode', 'nama', 'instansi', 'nik', 'nama_bidang', 'kabupaten', 'provinsi'], function ($r) {
+                $r->kurang = array_values(array_filter(self::WAJIB, fn ($label, $k) => trim((string) ($r->$k ?? '')) === '', ARRAY_FILTER_USE_BOTH));
+
+                return $r;
+            });
+        }
 
         return Inertia::render('Master/Peserta', [
-            'rows' => $rows, 'filters' => ['q' => $f['q'] ?? '', 'kelengkapan' => $f['kelengkapan'] ?? 'all'],
+            'filters' => ['q' => $f['q'] ?? '', 'kelengkapan' => $f['kelengkapan'] ?? 'all'],
             'bidang' => DB::table('ms_jenis_bidang')->where('aktif', 1)->orderBy('nama')->get(['id', 'nama']),
             'companies' => $this->activeCompanies(),
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage']), 'delete' => Gate::allows('menu', [self::MENU, 'Delete'])],

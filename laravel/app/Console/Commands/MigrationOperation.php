@@ -11,7 +11,7 @@ use Illuminate\Database\QueryException;
 
 class MigrationOperation extends Command
 {
-    protected $signature = 'labmania:migrasi-operasi {aksi : sumber|kesiapan|backup|restore} {--manifest=} {--arsip=}';
+    protected $signature = 'labmania:migrasi-operasi {aksi : sumber|kesiapan|backup|restore} {--manifest=} {--arsip=} {--tunda-keuangan : Tunda tujuh konfigurasi Finance; gate transaksi/cetak tetap berlaku}';
 
     protected $description = 'Operasi CLI snapshot/backup/restore khusus rehearsal terisolasi';
 
@@ -21,12 +21,13 @@ class MigrationOperation extends Command
             $operations = new MigrationOperations;
             $action = $this->argument('aksi');
             MigrationManifest::check(in_array($action, ['sumber', 'kesiapan', 'backup', 'restore'], true), 'Aksi tidak dikenal.');
+            MigrationManifest::check(! $this->option('tunda-keuangan') || $action === 'kesiapan', 'Penundaan Finance hanya untuk pemeriksaan kesiapan.');
             if ($action !== 'kesiapan') {
                 $target = MigrationRehearsal::target(true);
                 $this->line('Lingkungan: '.app()->environment().'; koneksi: '.$target->getName().'; database: '.$target->getDatabaseName());
             }
             $report = match ($action) {
-                'kesiapan' => $operations->readiness(),
+                'kesiapan' => $operations->readiness((bool) $this->option('tunda-keuangan')),
                 'sumber' => $operations->locked(fn () => $operations->source(new MigrationManifest((string) $this->option('manifest'), false))),
                 'backup' => $operations->locked(fn () => $operations->backup((string) $this->option('arsip'))),
                 'restore' => $operations->locked(fn () => $operations->restore((string) $this->option('arsip'))),

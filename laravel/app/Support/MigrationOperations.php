@@ -161,12 +161,12 @@ class MigrationOperations
             'verified' => false, 'next' => 'Pulihkan konfigurasi rahasia ke environment project restore, buat ulang app, lalu jalankan migrasi-verifikasi.'];
     }
 
-    public function readiness(): array
+    public function readiness(bool $deferFinance = false): array
     {
         MigrationRehearsal::target();
         DB::select('SELECT 1');
         $checks = ['database' => true, 'debug_off' => ! config('app.debug'), 'retention_off' => ! config('labmania.audit_retention_enabled'),
-            'session_isolated' => config('session.cookie') === 'labmania_rehearsal_session', 'private_documents' => is_dir(config('labmania.document_root')) && ! is_dir(public_path('storage'))];
+            'session_isolated' => in_array(config('session.cookie'), ['labmania_rehearsal_session', 'labmania_realdata_session'], true), 'private_documents' => is_dir(config('labmania.document_root')) && ! is_dir(public_path('storage'))];
         $file = config('labmania.document_root').'/probe-'.bin2hex(random_bytes(8));
         $handle = @fopen($file, 'x');
         $checks['storage_write'] = is_resource($handle);
@@ -198,8 +198,14 @@ class MigrationOperations
             $menu = $schema->hasTable('ms_menu') ? DB::table('ms_menu')->where('kode', $code)->where('aktif', 1)->value('id') : null;
             $checks['menu_'.$code] = $menu !== null && $schema->hasTable('ms_menu_aksi') && DB::table('ms_menu_aksi')->where('id_menu', $menu)->where('aksi', 'lihat')->exists();
         }
+        $checks['menu_routes_mapped'] = $schema->hasTable('ms_menu') && Navigation::unmapped() === [];
 
-        return ['checks' => $checks, 'runtime_ready' => ! in_array(false, $checks, true), 'cutover_ready' => false,
+        $finance = array_intersect_key($checks, array_flip(['coa_uang_muka_wapu', 'coa_hutang_wapu',
+            'print_bank', 'print_rekening', 'print_atas_nama', 'print_penanda_tangan', 'print_jabatan']));
+        $operationalReady = ! in_array(false, array_diff_key($checks, $finance), true);
+
+        return ['checks' => $checks, 'finance_ready' => ! in_array(false, $finance, true), 'finance_deferred' => $deferFinance,
+            'operational_ready' => $operationalReady, 'runtime_ready' => $operationalReady && ($deferFinance || ! in_array(false, $finance, true)), 'cutover_ready' => false,
             'remaining' => 'Rekonsiliasi histori, dua rehearsal, restore terverifikasi, keputusan BA dan matriks akses tetap harus dibuktikan dalam checklist serah terima.'];
     }
 

@@ -2,13 +2,16 @@
 import { computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import { useConfirmedMutation } from '../../composables/confirmedMutation';
+const confirmation = useConfirmedMutation();
+const { pending: confirming } = confirmation;
 type Program = { id:number; nomor:string; revisi:number; tgl_mulai:string; tgl_selesai:string; id_trainer:number; id_asisten:number; durasi_hari:number };
 type History = { team: {trainer_lama:string|null;trainer_baru:string|null;asisten_lama:string|null;asisten_baru:string|null}|null; id:number; tgl_mulai_lama:string; tgl_selesai_lama:string; tgl_mulai_baru:string; tgl_selesai_baru:string; id_trainer_lama:number; id_trainer_baru:number; id_asisten_lama:number; id_asisten_baru:number; alasan:string; created_date:string; nm_lengkap:string; surat_lama:number|null; surat_baru:number|null; evidence:{id:number;nama_file:string}[]; revisions:{id:number;id_quotation:number;revisi:number}[] };
 const props=defineProps<{program:Program;history:History[];version:string;requestId:string;reason:string|null;canManage:boolean;minimum:string;trainers:{id:number;nama:string}[];assistants:{id:number;nama:string}[];impact:{quotation:number;peserta:number;so:number;surat:number;lunas:number}}>();
 const form=useForm({request_id:props.requestId,version:props.version,tgl_mulai:props.program.tgl_mulai,id_trainer:props.program.id_trainer,id_asisten:props.program.id_asisten,alasan:'',evidence:[] as File[]});
 const dateChanged=computed(()=>form.tgl_mulai!==props.program.tgl_mulai);
 const endDate=computed(()=>{const d=new Date(form.tgl_mulai+'T00:00:00Z');if(Number.isNaN(d.getTime()))return '';d.setUTCDate(d.getUTCDate()+props.program.durasi_hari-1);return d.toISOString().slice(0,10);});
-function save(){form.post(`/penjualan-program/${props.program.id}/reschedule`,{forceFormData:true,preserveState:'errors'});}
+function save(){return confirmation.form(form,'post',`/penjualan-program/${props.program.id}/reschedule`,{title:`Reschedule ${props.program.nomor}?`,text:`Jadwal ${props.program.tgl_mulai} menjadi ${form.tgl_mulai} s.d. ${endDate.value}. Terdampak: ${props.impact.quotation} Quotation, ${props.impact.peserta} peserta dan ${props.impact.so} Sales Order. Perubahan mengikuti proses konfirmasi ulang.`,confirmLabel:'Ya, reschedule',danger:true},{forceFormData:true,preserveState:'errors'});}
 </script>
 <template>
 <Head title="Reschedule dan Riwayat"/><AppLayout title="Reschedule"><header class="page-header"><div><h1>Reschedule {{program.nomor}}<span v-if="program.revisi">-rev{{program.revisi}}</span></h1><p>{{program.tgl_mulai}} s.d. {{program.tgl_selesai}} · Durasi {{program.durasi_hari}} hari</p></div><Link :href="`/penjualan-program/${program.id}`">Kembali ke program</Link></header>

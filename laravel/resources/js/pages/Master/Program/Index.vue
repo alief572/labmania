@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import ServerTable from '../../../components/ServerTable.vue';
 import ActionMenu from "../../../components/ActionMenu.vue";
 import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../../layouts/AppLayout.vue';
-import ConfirmDialog from '../../../components/ConfirmDialog.vue';
-import Pagination from '../../../components/Pagination.vue';
 import { rupiah } from '../../../composables/costing';
+import { useConfirmedMutation } from '../../../composables/confirmedMutation';
+const confirmation = useConfirmedMutation();
+const { pending: confirming } = confirmation;
 
 type Row = { id: number; nomor: string; judul: string; nomor_product: string; durasi_hari: number; target_peserta: number; harga_jual_peserta: number; hpp: number; status: 'draft' | 'final' | 'batal' };
 type Summary = { id: number; nomor: string; status: string; judul: string; durasi: number; target: number; harga: number; jp: number | null; hpp: number; profit: number; bep_peserta: number | null; warnings: string[]; jumlah_biaya: number; n_penjualan: number };
@@ -17,60 +19,45 @@ const props = defineProps<{
 const filter = ref({ ...props.filters });
 const apply = () => router.get('/program', Object.fromEntries(Object.entries(filter.value).filter(([, v]) => v !== '')), { preserveScroll: true });
 const label = { draft: 'Draft', final: 'Final', batal: 'Batal' } as const;
-const pending = ref<{ action: 'finalkan' | 'batalkan'; summary: Summary } | null>(null);
 const busy = ref(false);
+const summaryError = ref('');
 async function ask(row: Row, action: 'finalkan' | 'batalkan') {
-    const res = await fetch(`/program/${row.id}/ringkasan`, { headers: { Accept: 'application/json' } });
-    pending.value = { action, summary: await res.json() };
-}
-function confirm() {
+    if (busy.value || confirming.value) return;
+    const id = row.id;
     busy.value = true;
-    router.post(`/program/${pending.value!.summary.id}/${pending.value!.action}`, {}, { preserveScroll: true, onFinish: () => { busy.value = false; pending.value = null; } });
+    summaryError.value = '';
+    try {
+        const res = await fetch(`/program/${id}/ringkasan`, { headers: { Accept: 'application/json' } });
+        if (!res.ok) throw new Error('Ringkasan program gagal dimuat. Muat ulang data dan coba lagi.');
+        const summary: Summary = await res.json();
+        await confirmation.visit('post', `/program/${id}/${action}`, {}, {
+            title: `${action === 'finalkan' ? 'Finalkan' : 'Batalkan'} ${summary.nomor}?`,
+            text: `${summary.judul}\n${summary.durasi} hari / ${summary.jp ?? 'belum diisi'} JP; target ${summary.target} peserta. Harga ${rupiah(summary.harga)}, HPP ${rupiah(summary.hpp)}, profit ${rupiah(summary.profit)}, BEP ${summary.bep_peserta ?? 'tidak tercapai'}.\n${summary.warnings.join('\n')}\n${action === 'finalkan' ? 'Setelah Final, program terkunci dan tersedia di Penjualan Program.' : 'Program yang dibatalkan tidak dapat dibuka kembali.'}`,
+            confirmLabel: action === 'finalkan' ? 'Ya, finalkan' : 'Ya, batalkan', danger: action === 'batalkan',
+        }, { preserveScroll: true });
+    } catch (error) { summaryError.value = error instanceof Error ? error.message : 'Ringkasan program gagal dimuat.'; }
+    finally { busy.value = false; }
 }
 </script>
 
 <template>
     <Head title="Daftar Master Program" />
-    <AppLayout title="Daftar Master Program">
+    <AppLayout title="Daftar Master Program" full-width>
         <div class="page-head"><h1>Daftar Master Program</h1><Link v-if="can.add" class="primary" href="/program/create">+ Buat Master Program</Link></div>
         <p v-if="($page.props.errors as Record<string, string>).program" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).program }}</p>
+        <p v-if="summaryError" class="error" role="alert">{{ summaryError }}</p>
         <form class="filters" @submit.prevent="apply">
-            <label>Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Nomor program atau Product" /></label>
+            
             <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="draft">Draft</option><option value="final">Final</option><option value="batal">Batal</option></select></label>
             <button class="primary">Terapkan</button>
         </form>
-        <div class="table-wrap"><table>
-            <caption class="sr-only">Daftar Master Program</caption>
-            <thead><tr><th scope="col">No</th><th scope="col">Nomor</th><th scope="col">Judul</th><th scope="col">Durasi</th><th scope="col">Target peserta</th><th scope="col">Harga jual</th><th scope="col">HPP</th><th scope="col">Status</th><th scope="col">Aksi</th></tr></thead>
-            <tbody>
-                <tr v-for="(row, i) in rows.data" :key="row.id">
-                    <td>{{ (rows.from ?? 1) + i }}</td><td>{{ row.nomor }}</td><td>{{ row.judul || '—' }}<small>{{ row.nomor_product }}</small></td><td>{{ row.durasi_hari }} hari</td><td>{{ row.target_peserta }}</td>
-                    <td>{{ rupiah(row.harga_jual_peserta) }}</td><td>{{ rupiah(row.hpp) }}</td><td><span class="badge" :class="{ on: row.status === 'final', off: row.status === 'batal', warn: row.status === 'draft' }">{{ label[row.status] }}</span></td>
-                    <td><ActionMenu >
+        <div class="table-wrap"><ServerTable url="/program/data" label="Daftar Master Program" :columns='[{"title":"No","orderable":false},{"title":"Nomor","orderable":true},{"title":"Judul","orderable":false},{"title":"Durasi","orderable":true},{"title":"Target peserta","orderable":true,"className":"dt-body-right"},{"title":"Harga jual standar","orderable":true,"className":"dt-body-right"},{"title":"HPP","orderable":false,"className":"dt-body-right"},{"title":"Status","orderable":true},{"title":"Aksi","orderable":false}]' :filters="{ ...filters }" refresh-on-visit><template #cell-0="{ row: row, number }">{{ number }}</template><template #cell-1="{ row: row, number }">{{ row.nomor }}</template><template #cell-2="{ row: row, number }">{{ row.judul || '—' }}<small>{{ row.nomor_product }}</small></template><template #cell-3="{ row: row, number }">{{ row.durasi_hari }} hari</template><template #cell-4="{ row: row, number }">{{ row.target_peserta }}</template><template #cell-5="{ row: row, number }">{{ rupiah(row.harga_jual_peserta) }}</template><template #cell-6="{ row: row, number }">{{ rupiah(row.hpp) }}</template><template #cell-7="{ row: row, number }"><span class="badge" :class="`st-${row.status}`">{{ label[row.status as keyof typeof label] }}</span></template><template #cell-8="{ row: row, number }"><ActionMenu >
                         <Link :href="`/program/${row.id}`">{{ row.status === 'draft' && can.manage ? 'Edit' : 'Lihat' }}</Link>
                         <template v-if="row.status === 'draft'">
-                            <button v-if="can.approve" type="button" @click="ask(row, 'finalkan')">Finalkan</button>
-                            <button v-if="can.manage" type="button" class="danger" @click="ask(row, 'batalkan')">Batalkan</button>
+                            <button v-if="can.approve" type="button" :disabled="busy || confirming" @click="ask(row, 'finalkan')">Finalkan</button>
+                            <button v-if="can.manage" type="button" class="danger" :disabled="busy || confirming" @click="ask(row, 'batalkan')">Batalkan</button>
                         </template>
-                    </ActionMenu></td>
-                </tr>
-                <tr v-if="!rows.data.length"><td colspan="9" class="empty">Belum ada Master Program.</td></tr>
-            </tbody>
-        </table></div>
-        <Pagination :page="rows" label="Halaman Master Program" />
+                    </ActionMenu></template></ServerTable></div>
 
-        <ConfirmDialog v-if="pending" :title="`${pending.action === 'finalkan' ? 'Finalkan' : 'Batalkan'} ${pending.summary.nomor}?`" :confirm-label="pending.action === 'finalkan' ? 'Finalkan program' : 'Batalkan program'" :danger="pending.action === 'batalkan'" :busy="busy" @confirm="confirm" @cancel="pending = null">
-            <dl>
-                <dt>Product</dt><dd>{{ pending.summary.judul || '—' }}</dd>
-                <dt>Durasi / Jam Pembelajaran</dt><dd>{{ pending.summary.durasi }} hari · {{ pending.summary.jp ?? 'belum diisi' }} JP</dd>
-                <dt>Target peserta</dt><dd>{{ pending.summary.target }}</dd>
-                <dt>Harga jual / peserta</dt><dd>{{ rupiah(pending.summary.harga) }}</dd>
-                <dt>HPP</dt><dd>{{ rupiah(pending.summary.hpp) }}</dd>
-                <dt>Profit</dt><dd>{{ rupiah(pending.summary.profit) }}</dd>
-                <dt>BEP</dt><dd>{{ pending.summary.bep_peserta ?? 'Tidak tercapai' }}</dd>
-            </dl>
-            <p v-for="w in pending.summary.warnings" :key="w" class="notice">{{ w }}</p>
-            <p class="muted">{{ pending.action === 'finalkan' ? 'Setelah Final, program terkunci dan tersedia di Penjualan Program.' : 'Program yang dibatalkan tidak dapat dibuka kembali.' }}</p>
-        </ConfirmDialog>
     </AppLayout>
 </template>

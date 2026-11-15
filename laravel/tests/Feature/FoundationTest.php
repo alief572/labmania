@@ -7,12 +7,10 @@ use App\Support\Audit;
 use App\Support\Permissions;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PragmaRX\Google2FA\Google2FA;
 use Tests\TestCase;
 
 class FoundationTest extends TestCase
@@ -45,29 +43,12 @@ class FoundationTest extends TestCase
 
     private function verified(User $user): static
     {
-        return $this->actingAs($user)->withSession(['auth.verified_id' => $user->id_user, 'auth.factor' => hash('sha256', $user->ga_secret)]);
+        return $this->actingAs($user)->withSession(['auth.verified_id' => $user->id_user, 'auth.factor' => hash('sha256', $user->password)]);
     }
 
     private function grant(User $user, int $menu, string $action): void
     {
         DB::table('ms_user_akses')->insert(['id_user' => $user->id_user, 'id_menu' => $menu, 'aksi' => $action]);
-    }
-
-    public function test_password_alone_cannot_open_application_and_legacy_totp_keeps_id_and_hash(): void
-    {
-        $user = $this->account(['id_user' => 73]);
-        $password = $user->password;
-        $this->post('/login', ['username' => 'sales', 'password' => 'known-password'])->assertRedirect('/two-factor');
-        $this->assertGuest();
-        $this->get('/')->assertRedirect('/login');
-        $this->post('/two-factor', ['code' => (new Google2FA)->getCurrentOtp($user->ga_secret)])->assertRedirect('/');
-        $this->assertAuthenticatedAs($user);
-        $this->assertSame($password, $user->fresh()->password);
-        $this->assertSame('JBSWY3DPEHPK3PXP', $user->fresh()->ga_secret);
-        $this->get('/')->assertOk();
-        $this->post('/logout')->assertRedirect('/login');
-        $this->assertGuest();
-        $this->assertDatabaseCount('logs', 0);
     }
 
     public function test_disabled_and_ambiguous_usernames_are_rejected(): void
@@ -85,33 +66,6 @@ class FoundationTest extends TestCase
         $this->post('/login', ['username' => 'sales', 'password' => 'password'])->assertSessionHasErrors('username');
         $this->assertGuest();
         $this->assertNull(session('auth.pending_id'));
-    }
-
-    public function test_invalid_code_and_expired_challenge_do_not_authenticate(): void
-    {
-        $user = $this->account();
-        $this->withSession(['auth.pending_id' => $user->id_user, 'auth.pending_until' => time() + 300]);
-        $this->post('/two-factor', ['code' => 'wrong'])->assertSessionHasErrors('code');
-        $this->assertGuest();
-        $this->withSession(['auth.pending_until' => time() - 1])->post('/two-factor', ['code' => '123456'])->assertRedirect('/login');
-        $this->assertGuest();
-    }
-
-    public function test_setup_secret_is_saved_encrypted_only_after_valid_code(): void
-    {
-        $user = $this->account(['ga_secret' => null]);
-        Cache::put('auth.enroll.'.$user->id_user, hash('sha256', 'TOKEN123'), 900);
-        $this->post('/login', ['username' => 'sales', 'password' => 'known-password']);
-        $this->get('/two-factor')->assertOk()->assertHeader('Cache-Control', 'no-store, private')
-            ->assertViewHas('page', fn ($page) => ($page['encryptHistory'] ?? false) === true);
-        $secret = session('auth.setup_secret');
-        $this->assertNotEmpty($secret);
-        $this->assertNull($user->fresh()->ga_secret);
-        $this->post('/two-factor', ['code' => (new Google2FA)->getCurrentOtp($secret), 'enroll_token' => 'token123'])->assertRedirect('/');
-        $this->assertNull(Cache::get('auth.enroll.'.$user->id_user));
-        $this->assertStringStartsWith('encrypted:', $user->fresh()->ga_secret);
-        $this->assertSame($secret, $user->fresh()->totpSecret());
-        $this->assertStringNotContainsString($secret, DB::table('logs')->value('data'));
     }
 
     public function test_role_and_override_add_rights_without_granting_approve(): void
@@ -199,59 +153,6 @@ class FoundationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_authentication_is_throttled_and_totp_cannot_be_replayed(): void
-    {
-        $user = $this->account();
-        $code = (new Google2FA)->getCurrentOtp($user->ga_secret);
-        $this->post('/login', ['username' => 'sales', 'password' => 'known-password']);
-        $this->post('/two-factor', ['code' => $code])->assertRedirect('/');
-        $this->post('/logout');
-        $this->post('/login', ['username' => 'sales', 'password' => 'known-password']);
-        $this->post('/two-factor', ['code' => $code])->assertSessionHasErrors('code');
-        $this->assertGuest();
-        for ($i = 0; $i < 5; $i++) {
-            $this->post('/login', ['username' => 'wrong', 'password' => 'wrong'])->assertSessionHasErrors('username');
-        }
-        $this->post('/login', ['username' => 'wrong', 'password' => 'wrong'])->assertStatus(429);
-        for ($i = 0; $i < 3; $i++) {
-            $this->withSession(['auth.pending_id' => $user->id_user, 'auth.pending_until' => time() + 300]);
-            $this->post('/two-factor', ['code' => 'wrong'])->assertSessionHasErrors('code');
-        }
-        $this->post('/two-factor', ['code' => 'wrong'])->assertStatus(429);
-    }
-
-    public function test_setup_failure_rolls_back_account_and_does_not_authenticate(): void
-    {
-        $user = $this->account(['ga_secret' => null]);
-        Cache::put('auth.enroll.'.$user->id_user, hash('sha256', 'TOKEN123'), 900);
-        $this->post('/login', ['username' => 'sales', 'password' => 'known-password']);
-        $this->get('/two-factor');
-        $secret = session('auth.setup_secret');
-        DB::unprepared("CREATE TRIGGER reject_audit BEFORE INSERT ON logs BEGIN SELECT RAISE(ABORT, 'synthetic audit failure'); END;");
-        $this->post('/two-factor', ['code' => (new Google2FA)->getCurrentOtp($secret), 'enroll_token' => 'TOKEN123'])->assertStatus(500);
-        $this->assertNull($user->fresh()->ga_secret);
-        $this->assertNull($user->fresh()->login_terakhir);
-        $this->assertGuest();
-        $this->assertNull(session('auth.verified_id'));
-    }
-
-    public function test_concurrent_totp_verification_is_rejected_until_lock_is_released(): void
-    {
-        $user = $this->account();
-        $code = (new Google2FA)->getCurrentOtp($user->ga_secret);
-        $this->post('/login', ['username' => 'sales', 'password' => 'known-password']);
-        $lock = Cache::lock('auth.totp.'.hash('sha256', $code), 10);
-        $this->assertTrue($lock->get());
-        try {
-            $this->post('/two-factor', ['code' => $code])->assertSessionHasErrors('code');
-            $this->assertGuest();
-        } finally {
-            $lock->release();
-        }
-        $this->post('/two-factor', ['code' => $code])->assertRedirect('/');
-        $this->assertAuthenticatedAs($user);
-    }
-
     public function test_override_adds_to_role_and_preserves_print_and_inactive_menu_grants(): void
     {
         $admin = $this->account();
@@ -298,15 +199,6 @@ class FoundationTest extends TestCase
         // Paritas CI3: kata kunci juga mencari username pelaku.
         $this->get('/activity-log?keyword='.$user->username)->assertOk()->assertInertia(fn (Assert $page) => $page->where('logs.total', 1));
         $this->get('/activity-log?keyword=tidak-ada-orang-ini')->assertOk()->assertInertia(fn (Assert $page) => $page->where('logs.total', 0));
-    }
-
-    public function test_reset_totp_invalidates_verified_session(): void
-    {
-        $user = $this->account();
-        $this->verified($user);
-        $user->forceFill(['ga_secret' => null])->save();
-        $this->get('/')->assertRedirect('/login');
-        $this->assertGuest();
     }
 
     public function test_activity_log_override_cannot_bypass_eligible_roles(): void

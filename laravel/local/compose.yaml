@@ -20,8 +20,8 @@ services:
       APP_TIMEZONE: Asia/Jakarta
       TZ: Asia/Jakarta
       LOCAL_UAT_ENABLED: 'true'
-      LOCAL_UAT_PASSWORD_ONLY: 'true'
       DB_CONNECTION: mysql
+      COA_DB_CONNECTION: mysql
       DB_HOST: uat-db
       DB_PORT: '3306'
       DB_DATABASE: labmania_laravel

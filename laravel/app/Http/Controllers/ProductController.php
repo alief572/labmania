@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\CodeGenerator;
 use App\Support\ProductLingkup;
+use App\Support\ServerDataTable;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,14 +36,18 @@ class ProductController extends Controller
     {
         Gate::authorize('menu', [self::MENU, 'View']);
         $f = $request->validate(['q' => 'nullable|string|max:100', 'status' => 'nullable|in:all,on,off']);
-        $rows = $this->base()
-            ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('pp.aktif', 1))
-            ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('pp.aktif', 0))
-            ->when(($f['q'] ?? null) !== null, fn ($q) => $q->where(fn ($w) => $w->where('pp.nomor', 'like', '%'.$f['q'].'%')->orWhere('pp.judul', 'like', '%'.$f['q'].'%')))
-            ->orderBy('pp.id')->paginate(25)->withQueryString();
+        if ($request->route('datatable')) {
+            $base = $this->base()
+                ->orderBy('pp.id');
+            $query = (clone $base)
+                ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('pp.aktif', 1))
+                ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('pp.aktif', 0));
+
+            return ServerDataTable::response($request, $base, $query, [null, 'judul', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi', 'aktif', null], ['id', 'nomor', 'judul', 'aktif', 'id_jenis_produk', 'id_jenis_bidang', 'id_varian_pelaksanaan', 'id_jenis_sertifikasi', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi'], 'id', ['nomor', 'judul', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi'], null);
+        }
 
         return Inertia::render('Master/Product', [
-            'rows' => $rows, 'filters' => ['q' => $f['q'] ?? '', 'status' => $f['status'] ?? 'all'],
+            'filters' => ['q' => $f['q'] ?? '', 'status' => $f['status'] ?? 'all'],
             'options' => $this->options(),
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage'])],
             'lingkupMax' => config('labmania.lingkup'),

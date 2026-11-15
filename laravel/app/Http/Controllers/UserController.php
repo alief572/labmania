@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Support\CodeGenerator;
 use App\Support\Permissions;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -28,20 +28,22 @@ class UserController extends Controller
     {
         Gate::authorize('menu', [self::MENU, 'View']);
         $f = $request->validate(['q' => 'nullable|string|max:100', 'role' => 'nullable|integer', 'status' => 'nullable|in:all,on,off']);
-        $rows = DB::table('ms_user_karyawan as e')
-            ->leftJoin('users as u', fn ($j) => $j->on('u.id_user', '=', 'e.id_user')->whereRaw('IFNULL(u.deleted, 0) = 0'))
-            ->leftJoin('groups as g', 'g.id_group', '=', 'e.id_group')
-            ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('e.aktif', 1))
-            ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('e.aktif', 0))
-            ->when(($f['role'] ?? null) !== null, fn ($q) => $q->where('e.id_group', (int) $f['role']))
-            ->when(($f['q'] ?? null) !== null, fn ($q) => $q->where(fn ($w) => $w->where('e.kode', 'like', '%'.$f['q'].'%')->orWhere('e.nama', 'like', '%'.$f['q'].'%')->orWhere('u.username', 'like', '%'.$f['q'].'%')))
-            ->orderBy('e.id')->select('e.*', 'u.username', 'g.nm_group', DB::raw('(SELECT COUNT(*) FROM ms_user_akses o WHERE o.id_user = e.id_user) AS n_override'),
-                DB::raw("(u.ga_secret IS NOT NULL AND u.ga_secret <> '') AS has_2fa"))
-            ->paginate(25)->withQueryString();
+        if ($request->route('datatable')) {
+            $base = DB::table('ms_user_karyawan as e')
+                ->leftJoin('users as u', fn ($j) => $j->on('u.id_user', '=', 'e.id_user')->whereRaw('IFNULL(u.deleted, 0) = 0'))
+                ->leftJoin('groups as g', 'g.id_group', '=', 'e.id_group')
+                ->orderBy('e.id')->select('e.*', 'u.username', 'g.nm_group', DB::raw('(SELECT COUNT(*) FROM ms_user_akses o WHERE o.id_user = e.id_user) AS n_override'));
+            $query = (clone $base)
+                ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('e.aktif', 1))
+                ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('e.aktif', 0))
+                ->when(($f['role'] ?? null) !== null, fn ($q) => $q->where('e.id_group', (int) $f['role']));
+
+            return ServerDataTable::response($request, $base, $query, [null, 'kode', 'nama', 'nm_group', 'username', 'aktif', null], ['id', 'kode', 'nama', 'nik', 'tmp_lahir', 'tgl_lahir', 'id_group', 'nm_group', 'gender', 'agama', 'telp', 'email', 'alamat', 'npwp', 'tgl_masuk', 'tipe', 'jobdesc', 'aktif', 'id_user', 'username', 'n_override'], 'id', ['kode', 'nama', 'nm_group', 'username', 'tipe'], null);
+        }
         $actor = $request->user();
 
         return Inertia::render('Master/User', [
-            'rows' => $rows, 'filters' => ['q' => $f['q'] ?? '', 'role' => $f['role'] ?? '', 'status' => $f['status'] ?? 'all'],
+            'filters' => ['q' => $f['q'] ?? '', 'role' => $f['role'] ?? '', 'status' => $f['status'] ?? 'all'],
             'roles' => DB::table('groups')->orderBy('nm_group')->get(['id_group', 'nm_group']), 'superadmin' => self::SUPERADMIN,
             'options' => config('labmania.user_options'), 'me' => $actor->id_user,
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage'])],
@@ -198,36 +200,6 @@ class UserController extends Controller
         });
 
         return back()->with('success', 'Status User diperbarui.');
-    }
-
-    /**
-     * Reset autentikator oleh admin (bukan mandiri): hapus secret TOTP target, batalkan sesi terverifikasinya
-     * (VerifiedAccount membandingkan hash secret), lalu terbitkan token enroll sekali pakai 15 menit.
-     * Tidak boleh untuk diri sendiri: sesi yang dibajak tidak boleh mencopot 2FA-nya sendiri.
-     */
-    public function resetTwoFactor(int $id)
-    {
-        Gate::authorize('menu', [self::MENU, 'Manage']);
-        $token = strtoupper(bin2hex(random_bytes(6)));
-        DB::transaction(function () use ($id, $token) {
-            $old = DB::table('ms_user_karyawan')->where('id', $id)->lockForUpdate()->first() ?? abort(404);
-            $this->guardSuperadminTarget($old);
-            if (! $old->id_user) {
-                throw ValidationException::withMessages(['status' => 'User tidak memiliki akun login.']);
-            }
-            if ((int) $old->id_user === Auth::id()) {
-                throw ValidationException::withMessages(['status' => 'Anda tidak dapat mereset autentikator Anda sendiri; minta admin lain.']);
-            }
-            $account = DB::table('users')->where('id_user', $old->id_user)->lockForUpdate()->first() ?? abort(404);
-            if (! $account->ga_secret) {
-                throw ValidationException::withMessages(['status' => 'Autentikator akun ini belum aktif; buat token enroll saja.']);
-            }
-            DB::table('users')->where('id_user', $old->id_user)->update(['ga_secret' => null]);
-            Cache::put('auth.enroll.'.$old->id_user, hash('sha256', $token), now()->addMinutes(15));
-            write_log('Master User', 'Reset Autentikator', 'Reset autentikator User '.$old->kode, ['sub_module' => 'Master User'], 'ms_user_karyawan', $id, $old->kode);
-        });
-
-        return back()->with('success', 'Autentikator direset. Token enroll berlaku 15 menit dan hanya tampil sekali.')->with('enroll_token', $token);
     }
 
     public function resetPassword(Request $request, int $id)

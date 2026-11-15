@@ -35,8 +35,8 @@ trait Phase4Scenarios
             DB::table('quotation_peserta')->insert(['id_quotation' => $q, 'nama' => $name, 'status' => 'deal', 'sumber' => 'link']);
         }
         $this->so = DB::table('sales_order')->insertGetId(['nomor' => 'LMI/SO/11/26-001', 'id_quotation' => $q, 'id_penjualan' => $p, 'tanggal' => '2026-11-13', 'status' => 'open']);
-        foreach (['1030-10-1', '2010-30-6', '4010-10-3', '4010-10-2', 'WAPU-UM', 'WAPU-HT'] as $i => $number) {
-            DB::table('coa_master')->insert(['id' => 800 + $i, 'no_perkiraan' => $number, 'nama' => 'Akun uji '.$number]);
+        foreach (['1102-01-01', '2104-01-07', '4101-01-03', '4101-01-02', 'WAPU-UM', 'WAPU-HT'] as $i => $number) {
+            DB::table('coa_master')->insert(['id' => 800 + $i, 'no_perkiraan' => $number, 'nama' => 'Akun uji '.$number, 'level' => '5']);
         }
     }
 
@@ -123,12 +123,32 @@ trait Phase4Scenarios
         $this->assertNull(Invoice::row($id)->no_faktur);
     }
 
+    public function test_historical_wapu_uses_snapshot_when_master_source_changes(): void
+    {
+        DB::table('master_customer')->insert(['id_customer' => 'CO-HIST', 'name_customer' => 'Company Historis', 'perlakuan_ppn' => 'WAPU']);
+        DB::table('quotation')->update(['id_customer' => 'CO-HIST', 'tujuan' => 'company']);
+        SalesOrder::ready($this->so);
+        config(['labmania.invoice.coa.uang_muka_wapu.id' => 804, 'labmania.invoice.coa.hutang_wapu.id' => 805]);
+        $id = Invoice::save($this->so, $this->invoiceInput());
+        $before = DB::table('invoice_jurnal')->where('id_invoice', $id)->orderBy('urutan')->get()->toArray();
+        // No GL connection exists here: historical reversal must not resolve its old IDs again.
+        config(['labmania.coa_connection' => 'missing_gl_history_test']);
+        $this->post('/invoicing/'.$id.'/bukti-setor', ['tanggal' => '2026-11-14', 'nomor' => 'NTPN-HIST'])->assertSessionHasNoErrors();
+        $after = DB::table('invoice_jurnal')->where('id_invoice', $id)->where('jenis', 'invoice')->orderBy('urutan')->get()->toArray();
+        $this->assertEquals($before, $after);
+        $reverse = DB::table('invoice_jurnal')->where('jenis', 'bukti_setor')->orderBy('urutan')->get();
+        $this->assertSame(805, (int) $reverse[0]->coa);
+        $this->assertSame('WAPU-HT', $reverse[0]->no_coa);
+        $this->assertSame(804, (int) $reverse[1]->coa);
+        $this->assertSame('WAPU-UM', $reverse[1]->no_coa);
+    }
+
     public function test_account_ambiguity_invalid_ids_and_missing_faktur_are_rejected(): void
     {
         SalesOrder::ready($this->so);
         $this->post('/invoicing', $this->invoiceInput(['no_faktur' => '']))->assertSessionHasErrors('no_faktur');
         $this->post('/invoicing', $this->invoiceInput(['coa_penjualan' => 999999]))->assertSessionHasErrors('coa_penjualan');
-        DB::table('coa_master')->insert(['no_perkiraan' => '1030-10-1', 'nama' => 'Piutang cabang lain', 'kdcab' => 'UJI']);
+        DB::table('coa_master')->insert(['no_perkiraan' => '1102-01-01', 'nama' => 'Piutang cabang lain', 'kdcab' => 'UJI', 'level' => '5']);
         $this->post('/invoicing', $this->invoiceInput())->assertSessionHasErrors('coa_penjualan');
         config(['labmania.invoice.coa.piutang.id' => 800]);
         $this->post('/invoicing', $this->invoiceInput())->assertSessionHasNoErrors();

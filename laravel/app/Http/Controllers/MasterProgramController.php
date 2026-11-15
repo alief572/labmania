@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\CodeGenerator;
 use App\Support\Costing;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,13 +27,16 @@ class MasterProgramController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('menu', [self::MENU, 'View']);
+        ServerDataTable::prepare($request);
         $f = $request->validate(['q' => 'nullable|string|max:100', 'status' => 'nullable|in:all,draft,final,batal']);
-        $rows = DB::table('master_program as mp')
+        $query = DB::table('master_program as mp');
+        ServerDataTable::scope($request, $query);
+        $rows = $query
             ->when(in_array($f['status'] ?? 'all', self::STATUS, true), fn ($q) => $q->where('mp.status', $f['status']))
             ->when(($f['q'] ?? null) !== null, fn ($q) => $q->where(fn ($w) => $w->where('mp.nomor', 'like', '%'.$f['q'].'%')->orWhereExists(
                 fn ($e) => $e->select(DB::raw(1))->from('master_program_produk as x')->join('paket_produk as p', 'p.id', '=', 'x.id_paket_produk')
                     ->whereColumn('x.id_master_program', 'mp.id')->where(fn ($m) => $m->where('p.judul', 'like', '%'.$f['q'].'%')->orWhere('p.nomor', 'like', '%'.$f['q'].'%')))))
-            ->orderByDesc('mp.id')->select('mp.*')->paginate(25)->withQueryString();
+            ->orderByDesc('mp.id')->select('mp.*')->pipe(fn ($builder) => ServerDataTable::page($request, $builder, [null, 'mp.nomor', null, 'mp.durasi_hari', 'mp.target_peserta', 'mp.harga_jual_peserta', null, 'mp.status', null], 'mp.id'));
 
         $ids = $rows->pluck('id');
         $products = DB::table('master_program_produk as x')->join('paket_produk as p', 'p.id', '=', 'x.id_paket_produk')
@@ -47,10 +51,15 @@ class MasterProgramController extends Controller
             return $r;
         });
 
-        return Inertia::render('Master/Program/Index', [
+        $props = [
             'rows' => $rows, 'filters' => ['q' => $f['q'] ?? '', 'status' => $f['status'] ?? 'all'],
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage']), 'approve' => Gate::allows('menu', [self::MENU, 'Approve'])],
-        ]);
+        ];
+        if ($request->route('datatable')) {
+            return ServerDataTable::result($request, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Master/Program/Index', $props);
     }
 
     private function biayaFor(array $programIds)

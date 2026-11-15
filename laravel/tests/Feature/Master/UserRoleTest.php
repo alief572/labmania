@@ -3,9 +3,7 @@
 namespace Tests\Feature\Master;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use PragmaRX\Google2FA\Google2FA;
 
 class UserRoleTest extends MasterTestCase
 {
@@ -134,57 +132,6 @@ class UserRoleTest extends MasterTestCase
         $this->assertStringNotContainsString('sandi-baru-1', json_encode($row));
     }
 
-    public function test_reset_2fa_oleh_admin_menghapus_secret_membatalkan_sesi_dan_enroll_hanya_dengan_token(): void
-    {
-        $manager = $this->manager();
-        $target = $this->account('target');
-        $oldFactor = hash('sha256', $target->ga_secret);
-        $emp = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-020', 'nama' => 'Target', 'id_group' => 2, 'aktif' => 1, 'id_user' => $target->id_user]);
-        $this->login($manager);
-        $this->post("/master/user/$emp/reset-2fa")->assertSessionHasNoErrors()->assertSessionHas('enroll_token');
-        $token = session('enroll_token');
-        $this->assertNull($target->fresh()->ga_secret);
-        $this->assertDatabaseHas('logs', ['action' => 'Reset Autentikator', 'ref_no' => 'USR-020']);
-        $this->assertStringNotContainsString($token, (string) DB::table('logs')->where('action', 'Reset Autentikator')->value('data').DB::table('logs')->where('action', 'Reset Autentikator')->value('description'));
-
-        // Sesi terverifikasi milik target yang dibuat sebelum reset (factor lama) tidak lagi sah.
-        $this->post('/logout');
-        $this->actingAs($target->fresh())->withSession(['auth.verified_id' => $target->id_user, 'auth.factor' => $oldFactor])->get('/')->assertRedirect('/login');
-        $this->assertGuest();
-
-        // Login ulang: tanpa token ditolak; dengan token + kode sah berhasil dan secret baru terenkripsi.
-        $this->post('/login', ['username' => 'target', 'password' => 'known-password'])->assertRedirect('/two-factor');
-        $secret = (new Google2FA)->generateSecretKey();
-        $this->withSession(['auth.setup_secret' => $secret]);
-        $code = (new Google2FA)->getCurrentOtp($secret);
-        $this->post('/two-factor', ['code' => $code])->assertSessionHasErrors('enroll_token');
-        $this->post('/two-factor', ['code' => $code, 'enroll_token' => $token])->assertRedirect('/');
-        $this->assertStringStartsWith('encrypted:', $target->fresh()->ga_secret);
-        $this->assertNull(Cache::get('auth.enroll.'.$target->id_user));
-    }
-
-    public function test_reset_2fa_ditolak_untuk_diri_sendiri_superadmin_akun_tanpa_login_dan_tanpa_hak(): void
-    {
-        $manager = $this->manager();
-        $mine = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-021', 'nama' => 'Saya', 'id_group' => 2, 'aktif' => 1, 'id_user' => $manager->id_user]);
-        $root = $this->admin();
-        $rootEmp = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-022', 'nama' => 'Root', 'id_group' => 1, 'aktif' => 1, 'id_user' => $root->id_user]);
-        $noAccount = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-023', 'nama' => 'Tanpa', 'id_group' => 2, 'aktif' => 1]);
-        $fresh = $this->account('baru', ['ga_secret' => null]);
-        $freshEmp = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-024', 'nama' => 'Baru', 'id_group' => 2, 'aktif' => 1, 'id_user' => $fresh->id_user]);
-        $this->login($manager);
-        $this->post("/master/user/$mine/reset-2fa")->assertSessionHasErrors('status');
-        $this->assertNotNull($manager->fresh()->ga_secret);
-        $this->post("/master/user/$rootEmp/reset-2fa")->assertForbidden();
-        $this->assertNotNull($root->fresh()->ga_secret);
-        $this->post("/master/user/$noAccount/reset-2fa")->assertSessionHasErrors('status');
-        $this->post("/master/user/$freshEmp/reset-2fa")->assertSessionHasErrors('status');
-        $viewer = $this->account('viewer');
-        $this->allow($viewer, 'master_data.users', 'lihat');
-        $this->login($viewer)->post("/master/user/$freshEmp/reset-2fa")->assertForbidden();
-        $this->assertDatabaseMissing('logs', ['action' => 'Reset Autentikator']);
-    }
-
     public function test_hak_user_diperiksa_di_server(): void
     {
         $viewer = $this->account('viewer');
@@ -222,7 +169,7 @@ class UserRoleTest extends MasterTestCase
     public function test_role_milik_sendiri_tidak_bisa_diubah_atau_dihapus_oleh_non_superadmin(): void
     {
         $manager = $this->manager();
-        $this->allow($manager, 'permission_group', 'lihat', 'tambah', 'ubah', 'hapus');
+        $this->allow($manager, 'master_data.role', 'lihat', 'tambah', 'ubah', 'hapus');
         $this->login($manager);
         $this->put('/master/role/2', ['nama' => 'Sendiri'])->assertForbidden();
         $this->delete('/master/role/2')->assertForbidden();

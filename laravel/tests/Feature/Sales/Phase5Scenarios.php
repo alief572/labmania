@@ -51,8 +51,8 @@ trait Phase5Scenarios
         }
         $so = DB::table('sales_order')->insertGetId(['nomor' => 'LMI/SO/11/26-001', 'id_quotation' => $q, 'id_penjualan' => $p, 'tanggal' => '2026-11-14', 'status' => 'siap']);
         DB::table('surat_kerja_trainer')->insert(['nomor' => 'SKT-2611-001', 'id_penjualan' => $p, 'id_trainer' => $tr, 'id_asisten' => $as, 'tanggal' => '2026-11-14', 'status' => 'berlaku', 'snapshot' => json_encode(SalesOrder::programSnapshot(Sales::program($p)))]);
-        foreach (['1030-10-1', '2010-30-6', '4010-10-3', '4010-10-2', 'WAPU-UM', 'WAPU-HT'] as $i => $num) {
-            DB::table('coa_master')->insert(['id' => 900 + $i, 'no_perkiraan' => $num, 'nama' => 'Akun Uji '.$num]);
+        foreach (['1102-01-01', '2104-01-07', '4101-01-03', '4101-01-02', 'WAPU-UM', 'WAPU-HT'] as $i => $num) {
+            DB::table('coa_master')->insert(['id' => 900 + $i, 'no_perkiraan' => $num, 'nama' => 'Akun Uji '.$num, 'level' => '5']);
         }
         $this->ids5 = compact('p', 'q', 'so', 'tr', 'as', 'people');
     }

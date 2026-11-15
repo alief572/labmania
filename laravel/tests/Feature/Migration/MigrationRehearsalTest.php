@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Migration;
 
+use App\Support\MigrationFailure;
 use App\Support\MigrationManifest;
 use App\Support\MigrationOperations;
 use App\Support\MigrationRehearsal;
@@ -70,11 +71,11 @@ class MigrationRehearsalTest extends TestCase
         return hash('sha256', $raw);
     }
 
-    private function service(): MigrationRehearsal
+    private function service(bool $allowLoginMetadata = false): MigrationRehearsal
     {
         file_put_contents($this->root.'/snapshot/manifest.json', json_encode($this->manifest));
 
-        return new MigrationRehearsal(new MigrationManifest($this->root.'/snapshot/manifest.json'));
+        return new MigrationRehearsal(new MigrationManifest($this->root.'/snapshot/manifest.json'), $allowLoginMetadata);
     }
 
     public function test_simulation_does_not_write_and_apply_preserves_history_and_is_idempotent(): void
@@ -105,6 +106,40 @@ class MigrationRehearsalTest extends TestCase
         } finally {
             $this->assertSame('untouched', DB::table('users')->value('password'));
         }
+    }
+
+    public function test_readonly_verification_tolerates_only_login_metadata_and_still_rejects_password_changes(): void
+    {
+        foreach (['sqlite', 'migration_source'] as $connection) {
+            DB::connection($connection)->getSchemaBuilder()->table('users', function (Blueprint $t) {
+                $t->string('ip')->nullable();
+                $t->dateTime('login_terakhir')->nullable();
+            });
+        }
+        $this->manifest['tables'][0]['columns'] += ['ip' => 'ip', 'login_terakhir' => 'login_terakhir'];
+        $this->manifest['tables'][0]['source_sha256'] = $this->digest([(array) DB::connection('migration_source')->table('users')->first()]);
+        $this->service()->run('impor', true);
+        DB::table('users')->update(['ip' => '127.0.0.1', 'login_terakhir' => '2026-11-15 10:00:00']);
+        try {
+            $this->service()->run('verifikasi');
+            $this->fail('Verifikasi default harus tetap ketat.');
+        } catch (MigrationFailure $e) {
+            $this->assertStringContainsString('Konflik target: users', $e->getMessage());
+        }
+        $report = $this->service(true)->run('verifikasi');
+        $this->assertTrue($report['verified']);
+        $this->assertSame(['ip', 'login_terakhir'], $report['tables']['users']['comparison_ignored_columns']);
+        $this->assertSame(1, $report['tables']['users']['login_metadata_changed_rows']);
+        $this->assertSame('127.0.0.1', DB::table('users')->value('ip'));
+        try {
+            $this->service(true)->run('impor', true);
+            $this->fail('Toleransi tidak boleh untuk impor.');
+        } catch (MigrationFailure $e) {
+            $this->assertStringContainsString('baca-saja', $e->getMessage());
+        }
+        DB::table('users')->update(['password' => 'changed-fixture']);
+        $this->expectException(MigrationFailure::class);
+        $this->service(true)->run('verifikasi');
     }
 
     public function test_snapshot_database_tampering_is_rejected(): void
@@ -277,6 +312,41 @@ class MigrationRehearsalTest extends TestCase
         config(['labmania.document_root' => $this->root.'/snapshot/files/nested-target']);
         $this->expectException(\RuntimeException::class);
         $this->service()->run('impor', true);
+    }
+
+    public function test_finance_deferral_never_ignores_operational_failures_or_claims_production_cutover(): void
+    {
+        DB::unprepared('CREATE TABLE groups (id_group INTEGER PRIMARY KEY, nm_group TEXT);
+            CREATE TABLE ms_menu (id INTEGER PRIMARY KEY, kode TEXT, judul TEXT, link TEXT, aktif INTEGER);
+            CREATE TABLE coa_master (id INTEGER PRIMARY KEY, no_perkiraan TEXT, nama TEXT, level TEXT)');
+        DB::table('groups')->insert([['id_group' => 2, 'nm_group' => 'Admin'], ['id_group' => 3, 'nm_group' => 'Direktur']]);
+        foreach (['1102-01-01', '2104-01-07', '4101-01-03', '4101-01-02'] as $id => $number) {
+            DB::table('coa_master')->insert(['id' => $id + 1, 'no_perkiraan' => $number, 'nama' => 'Akun fixture', 'level' => '5']);
+        }
+        mkdir($this->root.'/fonts');
+        foreach (['times.ttf', 'timesbd.ttf'] as $font) {
+            file_put_contents($this->root.'/fonts/'.$font, 'fixture, bukan font cetak');
+        }
+        config(['navigation' => [], 'session.cookie' => 'labmania_realdata_session', 'app.debug' => false,
+            'labmania.operasional.font_dir' => $this->root.'/fonts', 'labmania.audit_retention_enabled' => false]);
+        foreach (['bank', 'rekening', 'atas_nama', 'penanda_tangan', 'jabatan'] as $key) {
+            config(['labmania.invoice.print.'.$key => null]);
+        }
+        $operations = new MigrationOperations;
+        $this->assertFalse($operations->readiness()['runtime_ready']);
+        $report = $operations->readiness(true);
+        $this->assertTrue($report['runtime_ready']);
+        $this->assertTrue($report['operational_ready']);
+        $this->assertTrue($report['finance_deferred']);
+        $this->assertFalse($report['finance_ready']);
+        $this->assertFalse($report['cutover_ready']);
+        $this->assertFalse($report['checks']['print_bank']);
+        DB::table('coa_master')->where('id', 1)->delete();
+        $report = $operations->readiness(true);
+        $this->assertFalse($report['runtime_ready']);
+        $this->assertFalse($report['checks']['coa_piutang']);
+        config(['session.cookie' => 'ci_session']);
+        $this->assertFalse($operations->readiness(true)['checks']['session_isolated']);
     }
 
     public function test_nullable_legacy_product_projects_child_without_dropping_header_or_fabricating_timestamp(): void

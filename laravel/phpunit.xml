@@ -25,6 +25,7 @@
         <env force="true" name="BROADCAST_CONNECTION" value="null"/>
         <env force="true" name="CACHE_STORE" value="array"/>
         <env force="true" name="DB_CONNECTION" value="sqlite"/>
+        <env force="true" name="COA_DB_CONNECTION" value="sqlite"/>
         <env force="true" name="DB_DATABASE" value=":memory:"/>
         <env force="true" name="DB_URL" value=""/>
         <env force="true" name="MAIL_MAILER" value="array"/>

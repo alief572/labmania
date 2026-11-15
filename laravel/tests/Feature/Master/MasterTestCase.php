@@ -11,7 +11,7 @@ abstract class MasterTestCase extends TestCase
 {
     /** kode menu => id */
     protected const MENUS = [
-        'activity_log' => 1, 'permission_group' => 2, 'master_program' => 31, 'master_data.users' => 22,
+        'activity_log' => 1, 'permission_group' => 2, 'master_program' => 31, 'master_data.users' => 22, 'master_data.role' => 24,
         'master_data.jenis_produk' => 11, 'master_data.jenis_sertifikasi' => 12, 'master_data.jenis_bidang' => 13, 'master_data.paket_produk' => 14,
         'master_data.katalog' => 15, 'master_data.peserta' => 16, 'master_data.company' => 17, 'master_trainer' => 18,
         'master_data.template_keterangan' => 19, 'master_data.template_konfirmasi' => 20, 'master_data.rate' => 21, 'master_data.varian_pelaksanaan' => 23,
@@ -42,7 +42,7 @@ abstract class MasterTestCase extends TestCase
 
     protected function login(User $user): static
     {
-        return $this->actingAs($user)->withSession(['auth.verified_id' => $user->id_user, 'auth.factor' => hash('sha256', $user->ga_secret)]);
+        return $this->actingAs($user)->withSession(['auth.verified_id' => $user->id_user, 'auth.factor' => hash('sha256', $user->password)]);
     }
 
     protected function admin(): User

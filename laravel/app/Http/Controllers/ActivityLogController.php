@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Audit;
+use App\Support\ServerDataTable;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,7 @@ class ActivityLogController extends Controller
     public function __invoke(Request $request)
     {
         Gate::authorize('menu', ['activity_log', 'View']);
+        ServerDataTable::prepare($request, 'keyword');
         $filters = $request->validate([
             'module' => 'nullable|string|max:50', 'action' => 'nullable|string|max:30',
             'from' => 'nullable|date_format:Y-m-d', 'to' => 'nullable|date_format:Y-m-d'.($request->filled('from') ? '|after_or_equal:from' : ''),
@@ -23,6 +25,7 @@ class ActivityLogController extends Controller
         ]);
         $query = DB::table('logs as l')->leftJoin('users as u', 'u.id_user', '=', 'l.created_by')
             ->select('l.*', 'u.nm_lengkap', 'u.username');
+        ServerDataTable::scope($request, $query);
         foreach (['module', 'action', 'ref_table', 'ref_id', 'ref_no'] as $key) {
             if (($filters[$key] ?? null) !== null) {
                 $query->where('l.'.$key, $filters[$key]);
@@ -40,7 +43,7 @@ class ActivityLogController extends Controller
         if (($filters['keyword'] ?? null) !== null) {
             $query->where(fn ($q) => $q->where('l.description', 'like', '%'.$filters['keyword'].'%')->orWhere('l.ref_no', 'like', '%'.$filters['keyword'].'%')->orWhere('u.nm_lengkap', 'like', '%'.$filters['keyword'].'%')->orWhere('u.username', 'like', '%'.$filters['keyword'].'%'));
         }
-        $logs = $query->orderByDesc('l.id')->paginate(50)->withQueryString();
+        $logs = $query->orderByDesc('l.id')->pipe(fn ($builder) => ServerDataTable::page($request, $builder, [null, 'l.created_date', 'u.nm_lengkap', 'l.module', 'l.action', 'l.ref_no', null, null], 'l.id'));
         $logs->through(function ($log) {
             $decoded = json_decode($log->data ?? '', true);
             $log->actor_label = $log->created_by === null && ($decoded['actor_type'] ?? null) === 'publik'
@@ -50,7 +53,7 @@ class ActivityLogController extends Controller
             return $log;
         });
 
-        return Inertia::render('ActivityLog', [
+        $props = [
             'logs' => $logs, 'filters' => $filters,
             ...Cache::remember('logs.filters', 300, fn () => [
                 'modules' => DB::table('logs')->distinct()->orderBy('module')->pluck('module'),
@@ -58,6 +61,11 @@ class ActivityLogController extends Controller
                 'users' => DB::table('logs as l')->leftJoin('users as u', 'u.id_user', '=', 'l.created_by')
                     ->whereNotNull('l.created_by')->distinct()->orderBy('u.nm_lengkap')->get(['l.created_by', 'u.nm_lengkap']),
             ]),
-        ]);
+        ];
+        if ($request->route('datatable')) {
+            return ServerDataTable::result($request, $props['logs'], collect($props)->except('logs')->all());
+        }
+
+        return Inertia::render('ActivityLog', $props);
     }
 }

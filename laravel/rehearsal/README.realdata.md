@@ -1,10 +1,10 @@
 # Rehearsal data asli di localhost:8081
 
-Overlay `compose.realdata.yaml` memakai importer existing, jaringan internal dan volume per proyek. Memerlukan Compose >= 2.24.4 (`!override`). UAT `labmania_web` di 8080 tidak diganti. Hanya proyek A dibuka sebagai preview; B dan restore dijalankan lewat CLI.
+Overlay `compose.realdata.yaml` memakai importer existing dan volume per proyek. DB hanya pada jaringan internal; app juga terhubung ke bridge `preview-web` agar port loopback dapat diakses pada Docker Desktop. Memerlukan Compose >= 2.24.4 (`!override`). UAT `labmania_web` di 8080 tidak diganti. Hanya satu proyek membuka preview; B dan restore dijalankan lewat CLI.
 
 ## 1. Input wajib dan capture
 
-Saat persiapan 14-11-2026, pengguna mengonfirmasi **backup DB dan arsip upload belum tersedia**. Folder/environment yang disiapkan bukan bukti snapshot lengkap. Tidak ada akses atau perubahan remote dilakukan oleh prosedur persiapan ini.
+Backup `db_labmania_Last.sql` sudah diterima dan rehearsal data asli telah dijalankan; bukti privat tersedia di artifact `migrasi_data_asli_lokal`. Arsip upload dan bukti konsistensi capture/zona waktu tetap perlu disahkan. Rehearsal bukan pengesahan sumber atau cutover production. Prosedur lokal tidak menulis DB remote.
 
 Pengelola sumber perlu menyediakan:
 
@@ -117,9 +117,9 @@ rd realdata-a --profile preview up -d --no-build app
 rd realdata-a exec --user root app php artisan up
 ```
 
-Preview: **http://localhost:8081**. Login memakai akun dan password asli yang didukung, tanpa token pada profil lokal ini. Password legacy yang tidak didukung tetap menjadi konflik; tidak diubah diam-diam. Sesi, pemeriksaan akun aktif dan permission berlaku; sesi batal jika password berubah. Guard menolak mode ini di production, DB/akun lain, debug aktif, URL selain loopback port 8081, serta saat bootstrap UAT diaktifkan. Hanya A membuka port; jangan menjalankan web B/restore bersamaan di port 8081.
+Preview: **http://localhost:8081**. Login seluruh lingkungan memakai username/password tanpa token sesuai keputusan pengguna. Password asli tidak direset; hash yang tidak didukung tetap menjadi konflik. Sesi, pemeriksaan akun aktif, rate limit dan permission berlaku; sesi batal jika password berubah. Bootstrap UAT tetap ditolak pada DB asli dan production. Hanya satu proyek membuka port; jangan menjalankan web B/restore bersamaan di port 8081.
 
-Mail diarahkan ke log privat, tidak ada scheduler/worker yang diluncurkan; jaringan app/DB internal. Pengujian otomatis lewat CLI; penerimaan tampilan dan alur kerja oleh pengguna tetap terpisah.
+Mail diarahkan ke log privat, tidak ada scheduler/worker yang diluncurkan. DB tetap internal; bridge app digunakan untuk port preview. Pengujian otomatis lewat CLI; penerimaan tampilan dan alur kerja oleh pengguna tetap terpisah.
 
 Untuk menghentikan preview: `rd realdata-a stop app`. Ini mempertahankan seluruh volume. Jangan gunakan `down -v`, menghapus CI3, atau mengganti root Compose/port 8080. Restore tidak menggunakan rollback migration.
 

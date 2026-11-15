@@ -5,9 +5,9 @@ const emit = defineEmits<{ confirm: []; cancel: [] }>();
 const box = ref<HTMLElement | null>(null);
 const previous = document.activeElement as HTMLElement | null;
 onMounted(async () => { await nextTick(); (box.value?.querySelector<HTMLElement>('input:not(:disabled), select:not(:disabled), textarea:not(:disabled)') || box.value?.querySelector<HTMLElement>('button'))?.focus(); });
-function close() { emit('cancel'); previous?.focus(); }
+function close() { if (props.busy) return; emit('cancel'); previous?.focus(); }
 function keys(event: KeyboardEvent) {
-    if (event.key === 'Escape') { event.preventDefault(); close(); return; }
+    if (event.key === 'Escape') { if (document.querySelector('.swal2-container')) return; event.preventDefault(); close(); return; }
     if (event.key !== 'Tab') return;
     const items = box.value?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input, select, textarea');
     if (!items?.length) return;

@@ -1,6 +1,11 @@
+<script lang="ts">
+let nextMenuId = 0;
+</script>
+
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, useId } from 'vue';
-const id = useId();
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+// DataTables renders cells as independent Vue roots, where useId() starts over.
+const id = `action-menu-${++nextMenuId}`;
 const trigger = ref<HTMLButtonElement | null>(null);
 const panel = ref<HTMLElement | null>(null);
 const expanded = ref(false);

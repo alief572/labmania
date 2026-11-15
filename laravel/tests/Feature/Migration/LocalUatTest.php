@@ -6,9 +6,7 @@ use App\Models\User;
 use App\Support\LocalUat;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use PragmaRX\Google2FA\Google2FA;
 use Tests\TestCase;
 
 class LocalUatTest extends TestCase
@@ -84,7 +82,7 @@ class LocalUatTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_password_only_session_expires_after_password_change_or_flag_disabled(): void
+    public function test_password_only_session_expires_after_password_change(): void
     {
         config(['labmania.local_uat_password_only' => true]);
         $passwords = LocalUat::bootstrap();
@@ -96,21 +94,8 @@ class LocalUatTest extends TestCase
         $this->assertGuest();
         $this->post('/login', array_replace($login, ['password' => 'changed-password']))->assertRedirect('/');
         config(['labmania.local_uat_password_only' => false]);
-        $this->get('/')->assertRedirect('/login');
-        $this->assertGuest();
-    }
-
-    public function test_password_only_flag_cannot_bypass_production_or_disabled_uat_guard(): void
-    {
-        config(['labmania.local_uat_password_only' => true]);
-        $passwords = LocalUat::bootstrap();
-        app()['env'] = 'production';
-        $this->assertFalse(LocalUat::passwordOnly());
-        $this->withSession(['_token' => 'production-csrf-test'])->post('/login', ['username' => 'admin', 'password' => $passwords['admin'], '_token' => 'production-csrf-test'])->assertRedirect('/two-factor');
-        $this->assertGuest();
-        app()['env'] = 'testing';
-        config(['labmania.local_uat_enabled' => false]);
-        $this->assertFalse(LocalUat::passwordOnly());
+        $this->get('/')->assertOk();
+        $this->assertAuthenticated();
     }
 
     public function test_guard_and_nonempty_database_reject_before_seed(): void
@@ -126,28 +111,6 @@ class LocalUatTest extends TestCase
         User::forceCreate(['username' => 'existing', 'st_aktif' => 1]);
         $this->expectException(\RuntimeException::class);
         LocalUat::bootstrap();
-    }
-
-    public function test_enrollment_still_requires_token_and_totp_and_does_not_reset_secret(): void
-    {
-        $passwords = LocalUat::bootstrap();
-        $user = User::where('username', 'admin')->sole();
-        $token = LocalUat::enroll('admin');
-        $this->post('/login', ['username' => $user->username, 'password' => $passwords[$user->username]])->assertRedirect('/two-factor');
-        $this->assertGuest();
-        $this->get('/two-factor')->assertOk();
-        $secret = session('auth.setup_secret');
-        $this->assertNotEmpty($secret);
-        $code = (new Google2FA)->getCurrentOtp($secret);
-        $this->post('/two-factor', ['code' => $code, 'enroll_token' => 'INVALID'])->assertSessionHasErrors('enroll_token');
-        $this->assertGuest();
-        $this->post('/two-factor', ['code' => $code, 'enroll_token' => $token])->assertRedirect('/');
-        $this->assertAuthenticatedAs($user);
-        $this->assertStringStartsWith('encrypted:', $user->fresh()->ga_secret);
-        $this->assertFalse(Cache::has('auth.enroll.'.$user->id_user));
-        $this->get('/')->assertOk();
-        $this->expectException(\RuntimeException::class);
-        LocalUat::enroll('admin');
     }
 
     public function test_mysql_guard_checks_host_database_user_url_and_environment_without_connecting(): void
@@ -175,70 +138,14 @@ class LocalUatTest extends TestCase
         }
     }
 
-    public function test_tokens_expire_and_role_grants_are_limited(): void
+    public function test_role_grants_are_limited(): void
     {
         LocalUat::bootstrap();
-        $token = LocalUat::enroll('uat_sales');
         $sales = User::where('username', 'uat_sales')->sole();
-        $this->assertSame(hash('sha256', $token), Cache::get('auth.enroll.'.$sales->id_user));
-        $this->travel(16)->minutes();
-        $this->assertFalse(Cache::has('auth.enroll.'.$sales->id_user));
-        $this->travelBack();
         $this->assertFalse(Permissions::allows($sales, 'master_program', 'Approve'));
         $this->assertFalse(Permissions::allows($sales, 'permission_group', 'Manage'));
         $this->assertTrue(Permissions::allows(User::where('username', 'uat_direktur')->sole(), 'approval_pengajuan_biaya', 'Approve'));
         $this->assertTrue(Permissions::allows(User::where('username', 'uat_manajemen')->sole(), 'activity_log', 'View'));
         $this->assertFalse(Permissions::allows(User::where('username', 'uat_admin')->sole(), 'activity_log', 'View'));
-        $this->assertStringNotContainsString($token, DB::table('logs')->pluck('data')->implode(''));
-    }
-
-    public function test_realdata_password_only_is_limited_to_loopback_rehearsal_and_never_allows_bootstrap(): void
-    {
-        $original = config('database.default');
-        $valid = ['driver' => 'mysql', 'host' => 'rehearsal-db', 'port' => 3306, 'database' => 'labmania_laravel',
-            'username' => 'labmania_rehearsal', 'password' => '', 'url' => null];
-        config(['labmania.local_uat_enabled' => false, 'labmania.local_rehearsal_password_only' => true,
-            'app.debug' => false, 'app.url' => 'http://localhost:8081', 'database.default' => 'guardprobe',
-            'database.connections.guardprobe' => $valid]);
-        app()['env'] = 'rehearsal';
-        try {
-            $this->assertTrue(LocalUat::passwordOnly());
-            foreach (['host' => '127.0.0.1', 'port' => 3307, 'database' => 'db_labmania', 'username' => 'root',
-                'url' => 'mysql://remote/db', 'driver' => 'sqlite'] as $key => $value) {
-                DB::purge('guardprobe');
-                config(['database.connections.guardprobe' => array_replace($valid, [$key => $value])]);
-                $this->assertFalse(LocalUat::passwordOnly(), 'Guard menerima '.$key.' yang salah.');
-            }
-            DB::purge('guardprobe');
-            config(['database.connections.guardprobe' => $valid]);
-            foreach (['production', 'local', 'testing'] as $environment) {
-                app()['env'] = $environment;
-                $this->assertFalse(LocalUat::passwordOnly());
-            }
-            app()['env'] = 'rehearsal';
-            foreach (['http://example.com:8081', 'http://localhost:8080', 'https://localhost:8081'] as $url) {
-                config(['app.url' => $url]);
-                $this->assertFalse(LocalUat::passwordOnly());
-            }
-            config(['app.url' => 'http://127.0.0.1:8081', 'app.debug' => true]);
-            $this->assertFalse(LocalUat::passwordOnly());
-            config(['app.debug' => false, 'labmania.local_uat_enabled' => true]);
-            $this->assertFalse(LocalUat::passwordOnly());
-            config(['labmania.local_uat_enabled' => false]);
-            $this->assertTrue(LocalUat::passwordOnly());
-            try {
-                LocalUat::bootstrap();
-                $this->fail('Rehearsal tidak boleh membuat data sintetis.');
-            } catch (\RuntimeException $e) {
-                $this->assertStringContainsString('Perintah ditolak', $e->getMessage());
-            }
-            config(['labmania.local_rehearsal_password_only' => false]);
-            $this->assertFalse(LocalUat::passwordOnly());
-        } finally {
-            DB::purge('guardprobe');
-            config(['database.default' => $original]);
-            app()['env'] = 'testing';
-        }
-        $this->assertSame(0, User::count());
     }
 }

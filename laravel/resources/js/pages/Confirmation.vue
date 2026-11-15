@@ -4,6 +4,9 @@ import { Head, useForm, usePage } from '@inertiajs/vue3';
 import type { SharedProps } from '../types';
 import { postPdf } from '../composables/pdf';
 import { rupiah } from '../composables/costing';
+import { useConfirmedMutation } from '../composables/confirmedMutation';
+const confirmation = useConfirmedMutation();
+const { pending: confirming } = confirmation;
 type Person = { nama: string; jabatan: string; email: string; wa: string; nik: string };
 type Company = { nama_perusahaan: string; alamat_perusahaan: string; pic_nama: string; pic_jabatan: string; pic_hp: string; pic_email: string };
 const props = defineProps<{ token: string; closed: string | null; info: { nomor: string; judul: string; jenis: string; tgl_mulai: string; tgl_selesai: string; waktu: string; lokasi: string; kuota: number; sisa: number; kepada: string; berlaku_sampai: string; pernyataan: string; fields: string[]; kolom: string[]; paket_maks: number | null; tambahan: string | null; sales_nama: string | null; sales_telp: string | null }; fieldLabels: Record<string, string>; company: Company | null }>();
@@ -13,7 +16,7 @@ const form = useForm({ nama: '', nik: '', jabatan: '', instansi: '', alamat: '',
 const b2b = props.info.jenis === 'b2b'; const busy = ref(false); const error = ref(''); const paste = ref('');
 const errorList = computed(() => Object.values(form.errors));
 async function preview() { busy.value = true; error.value = ''; try { await postPdf(`/konfirmasi/${props.token}/preview`, form.data()); } catch (e) { error.value = (e as Error).message; } finally { busy.value = false; } }
-function submit() { form.post(`/konfirmasi/${props.token}`, { forceFormData: true, onSuccess: () => { form.reset('surat', 'setuju', 'nama', 'nik', 'email', 'wa', 'hp'); } }); }
+function submit() { return confirmation.form(form, 'post', `/konfirmasi/${props.token}`, { title: 'Kirim konfirmasi keikutsertaan?', text: 'Periksa identitas peserta dan surat konfirmasi sebelum mengirim.', confirmLabel: 'Ya, kirim', successText: 'Konfirmasi berhasil dikirim.' }, { forceFormData: true, onSuccess: () => { form.reset('surat', 'setuju', 'nama', 'nik', 'email', 'wa', 'hp'); } }); }
 function pasteRows() {
     const columns = ['nama', ...props.info.kolom] as (keyof Person)[];
     const lines = paste.value.split(/\r?\n/).filter((line) => line.trim());
@@ -36,7 +39,7 @@ const type = (key: string) => key === 'email' ? 'email' : key === 'habis' ? 'dat
                 <div v-for="(p, i) in form.peserta" :key="i" class="participant-row"><h3>Peserta {{ i + 1 }}</h3><div class="form-grid"><label>Nama Lengkap<input v-model="p.nama" maxlength="150" required /></label><label v-for="k in (info.kolom as (keyof Person)[])" :key="k">{{ fieldLabels[k] }}<input v-model="p[k]" :type="k === 'email' ? 'email' : k === 'wa' ? 'tel' : 'text'" :maxlength="k === 'wa' || k === 'nik' ? 20 : 100" :pattern="k === 'wa' ? '[0-9]{9,15}' : undefined" /></label></div><button v-if="form.peserta.length > 10" type="button" class="danger" @click="form.peserta.splice(i, 1)">Hapus peserta {{ i + 1 }}</button></div><button type="button" :disabled="form.peserta.length >= 1000" @click="form.peserta.push(blankPerson())">Tambah peserta</button><p>{{ form.peserta.length }} peserta. PIC mengirim satu kali.</p>
             </fieldset>
             <fieldset :disabled="form.processing" class="panel"><legend>{{ b2b ? '3' : '2' }}. Surat konfirmasi dan persetujuan</legend><p>Cetak surat dari isian, tandatangani dengan pena{{ b2b ? ' dan beri cap perusahaan' : '' }}, lalu unggah foto atau hasil pindai.</p><button type="button" :disabled="busy" @click="preview">{{ busy ? 'Menyiapkan PDF…' : 'Cetak surat dari isian' }}</button><label>Surat bertanda tangan (PDF/JPG/PNG, maksimal 5 MB)<input type="file" accept=".pdf,.jpg,.jpeg,.png" required @change="form.surat = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label><p v-if="form.surat">{{ form.surat.name }}</p><label class="consent"><input v-model="form.setuju" type="checkbox" required /> {{ info.pernyataan }}</label></fieldset>
-            <progress v-if="form.progress" :value="form.progress.percentage" max="100" aria-label="Progres unggahan"></progress><button class="primary" :disabled="form.processing || busy">{{ form.processing ? 'Mengirim…' : b2b ? 'Kirim daftar peserta' : 'Kirim konfirmasi' }}</button>
+            <progress v-if="form.progress" :value="form.progress.percentage" max="100" aria-label="Progres unggahan"></progress><button class="primary" :disabled="form.processing || busy || confirming">{{ form.processing ? 'Mengirim…' : b2b ? 'Kirim daftar peserta' : 'Kirim konfirmasi' }}</button>
         </form>
     </main>
 </template>

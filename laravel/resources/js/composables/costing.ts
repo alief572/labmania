@@ -9,6 +9,18 @@ export const rupiahInput = (v: number | string) => Number(typeof v === 'string' 
 const num = (v: unknown) => Number(v) || 0;
 const isDay = (satuan: string | null) => satuan === 'Day' || satuan === 'Peserta/Day';
 
+export const costQuantity = (tipe: Biaya['tipe'], satuan: string | null, durasi: unknown, peserta: unknown) =>
+    (isDay(satuan) ? num(durasi) || 1 : 1) * (tipe === 'variable' ? num(peserta) : 1);
+
+// Same display ceiling and first profitable participant search as mod-program.js::simView.
+export function profitParticipants(fixed: number, variable: number, price: number, target: number): number | null {
+    if (target <= 0 || price <= variable) return null;
+    for (let n = Math.max(1, Math.ceil((fixed + target) / (price - variable)) - 2); n <= 100000; n++) {
+        if (price * n - (fixed + variable * n) >= target) return n;
+    }
+    return null;
+}
+
 export function calc(durasi: unknown, targetPeserta: unknown, hargaJual: unknown, biaya: Biaya[]) {
     const d = num(durasi) || 1;
     const n = num(targetPeserta);

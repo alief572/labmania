@@ -31,9 +31,5 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perHour(30)->by('user|'.$username),
             ];
         });
-        RateLimiter::for('two-factor', fn (Request $request) => [
-            Limit::perMinute(5)->by('pair|'.$request->session()->get('auth.pending_id').'|'.$request->ip()),
-            Limit::perHour(10)->by('account|'.$request->session()->get('auth.pending_id')),
-        ]);
     }
 }

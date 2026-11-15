@@ -5,9 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Permissions;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use PragmaRX\Google2FA\Google2FA;
 use Tests\TestCase;
 
 class ReviewFixesTest extends TestCase
@@ -40,7 +38,7 @@ class ReviewFixesTest extends TestCase
 
     private function verified(User $user): static
     {
-        return $this->actingAs($user)->withSession(['auth.verified_id' => $user->id_user, 'auth.factor' => hash('sha256', $user->ga_secret)]);
+        return $this->actingAs($user)->withSession(['auth.verified_id' => $user->id_user, 'auth.factor' => hash('sha256', $user->password)]);
     }
 
     private function grant(User $user, int $menu, string $action): void
@@ -102,75 +100,12 @@ class ReviewFixesTest extends TestCase
         $this->assertDatabaseHas('ms_group_akses', ['id_group' => 2, 'id_menu' => 4, 'aksi' => 'aktif']);
     }
 
-    public function test_account_without_secret_needs_admin_token_to_enroll(): void
-    {
-        $user = $this->account('newbie', ['ga_secret' => null]);
-        $this->post('/login', ['username' => 'newbie', 'password' => 'known-password'])->assertRedirect('/two-factor');
-        $this->get('/two-factor')->assertOk();
-        $this->assertNull(session('auth.setup_secret'));
-        $secret = (new Google2FA)->generateSecretKey();
-        $this->withSession(['auth.setup_secret' => $secret]);
-        $code = (new Google2FA)->getCurrentOtp($secret);
-        $this->post('/two-factor', ['code' => $code])->assertSessionHasErrors('enroll_token');
-        $this->post('/two-factor', ['code' => $code, 'enroll_token' => 'GUESS'])->assertSessionHasErrors('enroll_token');
-        $this->assertGuest();
-        $this->assertNull($user->fresh()->ga_secret);
-    }
-
-    public function test_admin_issues_one_time_expiring_token_without_logging_it(): void
-    {
-        $actor = $this->manager();
-        $target = $this->account('newbie', ['ga_secret' => null]);
-        $response = $this->verified($actor)->post('/permissions/users/'.$target->id_user.'/enroll-token');
-        $response->assertRedirect();
-        $token = session('enroll_token');
-        $this->assertNotEmpty($token);
-        $this->assertStringNotContainsString($token, (string) DB::table('logs')->value('data').DB::table('logs')->value('description'));
-        $this->post('/permissions/users/'.$actor->id_user.'/enroll-token')->assertForbidden();
-
-        $this->post('/logout');
-        $this->post('/login', ['username' => 'newbie', 'password' => 'known-password']);
-        $this->get('/two-factor')->assertOk();
-        $secret = session('auth.setup_secret');
-        $this->assertNotEmpty($secret);
-        $this->post('/two-factor', ['code' => (new Google2FA)->getCurrentOtp($secret), 'enroll_token' => $token])->assertRedirect('/');
-        $this->assertStringStartsWith('encrypted:', $target->fresh()->ga_secret);
-        $this->assertNull(Cache::get('auth.enroll.'.$target->id_user));
-        $this->post('/logout');
-
-        $other = $this->account('other', ['ga_secret' => null]);
-        Cache::put('auth.enroll.'.$other->id_user, hash('sha256', 'OLD'), 900);
-        $this->travel(16)->minutes();
-        $this->post('/login', ['username' => 'other', 'password' => 'known-password']);
-        $this->post('/two-factor', ['code' => '123456', 'enroll_token' => 'OLD'])->assertSessionHasErrors('enroll_token');
-    }
-
-    public function test_enroll_token_requires_manage_and_rejects_enrolled_target(): void
-    {
-        $plain = $this->account('plain');
-        $target = $this->account('target', ['ga_secret' => null]);
-        $this->verified($plain)->post('/permissions/users/'.$target->id_user.'/enroll-token')->assertForbidden();
-        $actor = $this->manager();
-        $this->verified($actor)->post('/permissions/users/'.$plain->id_user.'/enroll-token')->assertSessionHasErrors('enroll');
-    }
-
     public function test_login_is_limited_per_ip_and_per_username_across_pairs(): void
     {
         for ($i = 0; $i < 20; $i++) {
             $this->post('/login', ['username' => 'user'.$i, 'password' => 'x'])->assertSessionHasErrors('username');
         }
         $this->post('/login', ['username' => 'another', 'password' => 'x'])->assertStatus(429);
-    }
-
-    public function test_totp_guessing_is_limited_per_account_across_ips(): void
-    {
-        $user = $this->account('victim');
-        for ($i = 0; $i < 10; $i++) {
-            $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.'.$i])->withSession(['auth.pending_id' => $user->id_user, 'auth.pending_until' => time() + 300])
-                ->post('/two-factor', ['code' => '000000'])->assertSessionHasErrors('code');
-        }
-        $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])->withSession(['auth.pending_id' => $user->id_user, 'auth.pending_until' => time() + 300])
-            ->post('/two-factor', ['code' => '000000'])->assertStatus(429);
     }
 
     public function test_log_filters_treat_zero_as_a_real_value(): void

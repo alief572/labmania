@@ -72,7 +72,7 @@ class MysqlSmokeTest extends MysqlTestCase
         $this->post('/master/company', array_merge($company, ['npwp' => '']))->assertSessionHasErrors('npwp');
         $this->post('/master/peserta', ['nama' => 'Siti', 'gender' => 'P', 'instansi' => 'PT Uji', 'bidang' => $row['bidang'], 'id_prov' => '31', 'id_kab' => '3171', 'no_telp' => '0812-3456-7890', 'email' => 's@uji.test', 'id_customer' => 'CO-001'])->assertSessionHasNoErrors();
         DB::table('ms_peserta')->insert(['kode' => 'PS-900', 'nama' => 'Dari Deal']);
-        $this->get('/master/peserta?kelengkapan=belum')->assertOk()->assertInertia(fn ($p) => $p->where('rows.total', 1));
+        $this->getJson('/master/peserta/data?kelengkapan=belum')->assertOk()->assertJsonPath('recordsFiltered', 1);
         $this->delete('/master/company/CO-001')->assertSessionHasErrors('hapus');
 
         // Trainer, User, Role

@@ -8,10 +8,12 @@ use App\Support\Sales;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Process\Process;
+use Tests\Feature\Sales\OperationalDataTableScenarios;
 use Tests\Feature\Sales\Phase6Scenarios;
 
 class Phase6MysqlTest extends MysqlTestCase
 {
+    use OperationalDataTableScenarios;
     use Phase6Scenarios;
 
     protected function setUp(): void

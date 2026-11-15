@@ -57,7 +57,15 @@ abstract class MysqlTestCase extends BaseTestCase
         foreach (['ms_menu', 'ms_menu_aksi', 'ms_satuan'] as $table) {
             DB::statement("INSERT INTO `$table` SELECT * FROM `labmania_laravel`.`$table`");
         }
-        DB::statement('INSERT INTO coa_master (no_perkiraan, nama) SELECT no_perkiraan, nama FROM labmania_laravel.coa_master LIMIT 1');
+        // Salinan skema development dapat mendahului pemisahan menu Master Role di sidebar lokal.
+        if (! DB::table('ms_menu')->where('kode', 'master_data.role')->exists()) {
+            $id = DB::table('ms_menu')->insertGetId(['kode' => 'master_data.role', 'judul' => 'Master Role',
+                'link' => '/master/role', 'parent_id' => 0, 'kelompok' => 1, 'urutan' => 1, 'aktif' => 1, 'sistem' => 0]);
+            foreach (['lihat', 'tambah', 'ubah', 'hapus'] as $action) {
+                DB::table('ms_menu_aksi')->insert(['id_menu' => $id, 'aksi' => $action]);
+            }
+        }
+        DB::statement("INSERT INTO coa_master (no_perkiraan, nama, level) SELECT no_perkiraan, nama, level FROM labmania_laravel.coa_master WHERE level = '5' LIMIT 1");
 
         return (string) DB::table('coa_master')->value('no_perkiraan');
     }
@@ -72,7 +80,7 @@ abstract class MysqlTestCase extends BaseTestCase
 
     protected function loginAs(User $user): static
     {
-        return $this->actingAs($user)->withSession(['auth.verified_id' => $user->id_user, 'auth.factor' => hash('sha256', $user->ga_secret)]);
+        return $this->actingAs($user)->withSession(['auth.verified_id' => $user->id_user, 'auth.factor' => hash('sha256', $user->password)]);
     }
 
     protected function attributes(): array

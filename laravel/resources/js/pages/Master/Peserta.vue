@@ -1,22 +1,26 @@
 <script setup lang="ts">
+import { useConfirmedMutation } from "../../composables/confirmedMutation";
+import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
-import { ref, watch } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
-import Pagination from '../../components/Pagination.vue';
+
 import { useWilayah } from '../../composables/wilayah';
+
+const confirmation = useConfirmedMutation();
+const { pending: confirming } = confirmation;
 
 type Row = { id: number; kode: string; nama: string; gender: string | null; instansi: string | null; id_jenis_bidang: number | null; nama_bidang: string | null; id_prov: string | null; provinsi: string | null; id_kab: string | null; kabupaten: string | null; no_telp: string | null; email: string | null; nik: string | null; npwp_instansi: string | null; id_customer: string | null; asal_deal: string | null; kurang: string[] };
 const props = defineProps<{
     filters: { q: string; kelengkapan: string };
-    rows: { data: Row[]; current_page: number; last_page: number; prev_page_url: string | null; next_page_url: string | null; from: number | null };
     bidang: { id: number; nama: string }[]; companies: { id_customer: string; name_customer: string; npwp: string | null }[];
     can: { add: boolean; manage: boolean; delete: boolean };
 }>();
 const filter = ref({ ...props.filters });
-const apply = () => router.get('/master/peserta', Object.fromEntries(Object.entries(filter.value).filter(([, v]) => v !== '')), { preserveScroll: true });
+const apply = () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); };
 const wil = useWilayah();
 const editing = ref<Row | null>(null);
 const adding = ref(false);
@@ -42,41 +46,40 @@ async function open(row: Row | null) {
 }
 const close = () => { editing.value = null; adding.value = false; };
 function save() {
-    const done = { preserveScroll: true, onSuccess: close };
-    if (editing.value) form.put(`/master/peserta/${editing.value.id}`, done);
-    else form.post('/master/peserta', done);
+    return confirmation.form(form, editing.value ? 'put' : 'post', editing.value ? `/master/peserta/${editing.value.id}` : '/master/peserta', { title: `${editing.value ? 'Simpan perubahan' : 'Tambahkan'} ${form.nama}${editing.value ? ` (${editing.value.kode})` : ''}?` }, {
+        preserveScroll: true, onSuccess: () => { close(); reload(); },
+    });
 }
-const removing = ref<Row | null>(null);
-const remove = () => router.delete(`/master/peserta/${removing.value!.id}`, { preserveScroll: true, onFinish: () => { removing.value = null; } });
+const remove = (row: Row) => confirmation.visit('delete', `/master/peserta/${row.id}`, {}, {
+    title: `Hapus ${row.nama} (${row.kode})?`, text: 'Peserta dihapus dari daftar. Peserta yang sudah Deal tidak dapat dihapus.', confirmLabel: 'Ya, hapus', danger: true,
+}, { preserveScroll: true, onSuccess: reload });
 const err = (k: string) => (form.errors as Record<string, string>)[k];
+
+const table = ref<InstanceType<typeof ServerTable> | null>(null);
+const reload = () => table.value?.reload();
+const appliedFilters = ref({ ...props.filters });
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Bidang', orderable: true }, { title: 'Lokasi', orderable: true }, { title: 'Aksi', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master Peserta" />
-    <AppLayout title="Master Peserta">
-        <div class="page-head"><h1>Master Peserta</h1><button v-if="can.add" type="button" class="primary" @click="open(null)">+ Tambah Peserta</button></div>
+    <AppLayout title="Master Peserta" full-width>
+        <div class="page-head"><h1>Master Peserta</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Peserta</button></div>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <form class="filters" @submit.prevent="apply">
-            <label>Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Kode, nama, instansi, NIK" /></label>
             <label>Kelengkapan<select v-model="filter.kelengkapan"><option value="all">Semua</option><option value="lengkap">Lengkap</option><option value="belum">Belum lengkap</option></select></label>
-            <button class="primary">Terapkan</button>
+            <button class="primary" :disabled="confirming">Terapkan</button>
         </form>
-        <div class="table-wrap"><table>
-            <caption class="sr-only">Daftar peserta</caption>
-            <thead><tr><th scope="col">No</th><th scope="col">Kode</th><th scope="col">Nama</th><th scope="col">Bidang</th><th scope="col">Lokasi</th><th scope="col">Aksi</th></tr></thead>
-            <tbody>
-                <tr v-for="(row, i) in rows.data" :key="row.id">
-                    <td>{{ (rows.from ?? 1) + i }}</td><td>{{ row.kode }}</td>
-                    <td>{{ row.nama }}<small v-if="row.kurang.length"><span class="badge warn">Belum lengkap</span> {{ row.kurang.join(', ') }}</small><small v-if="row.asal_deal">Deal: {{ row.asal_deal }}</small></td>
-                    <td>{{ row.nama_bidang ?? '—' }}</td><td>{{ row.kabupaten ?? '—' }}<small>{{ row.provinsi }}</small></td>
-                    <td><ActionMenu ><button v-if="can.manage" type="button" @click="open(row)">Edit</button><button v-if="can.delete" type="button" class="danger" @click="removing = row">Hapus</button></ActionMenu></td>
-                </tr>
-                <tr v-if="!rows.data.length"><td colspan="6" class="empty">Belum ada peserta.</td></tr>
-            </tbody>
-        </table></div>
-        <Pagination :page="rows" label="Halaman peserta" />
+        <ServerTable ref="table" url="/master/peserta/data" :columns="columns" :filters="appliedFilters" :label="'Peserta'">
+            <template #cell-0="{ number }">{{ number }}</template>
+            <template #cell-1="{ row }">{{ row.kode }}</template>
+            <template #cell-2="{ row }">{{ row.nama }}<small v-if="row.kurang.length"><span class="badge warn">Belum lengkap</span> {{ row.kurang.join(', ') }}</small><small v-if="row.asal_deal">Deal: {{ row.asal_deal }}</small></template>
+            <template #cell-3="{ row }">{{ row.nama_bidang ?? '—' }}</template>
+            <template #cell-4="{ row }">{{ row.kabupaten ?? '—' }}<small>{{ row.provinsi }}</small></template>
+            <template #cell-5="{ row }"><ActionMenu ><button v-if="can.manage" type="button" @click="open(row)" :disabled="confirming">Edit</button><button v-if="can.delete" type="button" class="danger" @click="remove(row)" :disabled="confirming">Hapus</button></ActionMenu></template>
+        </ServerTable>
 
-        <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit Peserta ${editing.kode}` : 'Tambah Peserta'" :busy="form.processing" @confirm="save" @cancel="close">
+        <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit Peserta ${editing.kode}` : 'Tambah Peserta'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
             <div class="form-grid">
                 <FormField id="pnama" label="Nama Peserta" :error="form.errors.nama" v-slot="{ describedBy, invalid }"><input id="pnama" v-model="form.nama" maxlength="100" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                 <FormField id="pgender" label="Gender" :error="form.errors.gender" v-slot="{ describedBy, invalid }"><select id="pgender" v-model="form.gender" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">Pilih…</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></FormField>
@@ -91,7 +94,5 @@ const err = (k: string) => (form.errors as Record<string, string>)[k];
                 <FormField id="pnpwp" label="NPWP Instansi (opsional)" :error="form.errors.npwp_instansi" v-slot="{ describedBy, invalid }"><input id="pnpwp" v-model="form.npwp_instansi" maxlength="30" :readonly="!!form.id_customer" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
             </div>
         </ConfirmDialog>
-
-        <ConfirmDialog v-if="removing" :title="`Hapus ${removing.kode}?`" confirm-label="Hapus" danger @confirm="remove" @cancel="removing = null"><p>Peserta {{ removing.nama }} dihapus dari daftar. Peserta yang sudah Deal tidak dapat dihapus.</p></ConfirmDialog>
     </AppLayout>
 </template>

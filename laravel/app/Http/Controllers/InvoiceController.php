@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Coa;
 use App\Support\Invoice;
 use App\Support\Quotation;
 use App\Support\QuotationPdf;
 use App\Support\Reconfirmation;
 use App\Support\Sales;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -29,7 +31,7 @@ class InvoiceController extends Controller
         $query->join('quotation as q', 'q.id', '=', 's.id_quotation')->join('penjualan_program as p', 'p.id', '=', 's.id_penjualan')->leftJoin('ms_user_karyawan as u', 'u.id', '=', 'q.id_sales');
         $query->when($f['jenis'] ?? null, fn ($q, $v) => $q->where('p.jenis', $v))->when($f['program'] ?? null, fn ($q, $v) => $q->where('p.id', $v))
             ->when($f['tahun'] ?? null, fn ($q, $v) => $q->whereYear($done ? 'i.tanggal' : 'q.tanggal', $v));
-        if (! empty($f['q'])) {
+        if (($f['q'] ?? '') !== '') {
             $term = '%'.$f['q'].'%';
             $query->where(function ($w) use ($term, $done) {
                 $w->where('s.nomor', 'like', $term)->orWhere('p.nomor', 'like', $term)->orWhere('q.nomor', 'like', $term)->orWhere('q.kepada_nama', 'like', $term)->orWhere('u.nama', 'like', $term);
@@ -63,6 +65,7 @@ class InvoiceController extends Controller
             $r->judul = $s['judul'];
             $r->sales_nama = $s['sales'];
             $r->jumlah_peserta = count($s['peserta']);
+            $r->skema_harga = $s['quotation']['skema_harga'];
             unset($r->snapshot);
         } else {
             $r->nomor_so = Sales::display($r);
@@ -70,6 +73,7 @@ class InvoiceController extends Controller
             $r->nomor_program = Sales::display((object) ['nomor' => $r->nomor_program, 'revisi' => $r->revisi_program]);
             $r->judul = Sales::title($r->id_master_program);
             $q = Quotation::row($r->id_quotation);
+            $r->skema_harga = $q->skema_harga;
             $r->jumlah_peserta = Quotation::count($q);
             $r->pending = Reconfirmation::pending($q);
             $r->total_tagihan = Quotation::calculate($q, $r->jumlah_peserta)['grand_total'];
@@ -81,14 +85,21 @@ class InvoiceController extends Controller
     public function index(Request $r)
     {
         Gate::authorize('menu', ['invoicing', 'View']);
+        ServerDataTable::prepare($r);
         $f = $this->filters($r);
         $done = ($f['tab'] ?? 'uninvoiced') === 'invoiced';
-        $rows = $this->query($f)->paginate(25)->withQueryString()->through(fn ($r) => $this->listing($r, $done));
+        ServerDataTable::scope($r, $this->query(['tab' => $done ? 'invoiced' : 'uninvoiced']));
+        $rows = $this->query($f)->pipe(fn ($builder) => ServerDataTable::page($r, $builder, ($done ? [null, 'i.nomor', null, 'i.perlakuan_ppn', 'i.total_tagihan', 'i.status', null] : [null, 's.nomor', 'q.nomor', 'q.kepada_nama', 'p.nomor', 'u.nama', null, null, 's.status', null]), $done ? 'i.id' : 's.id'))->through(fn ($r) => $this->listing($r, $done));
 
-        return Inertia::render('Invoice/Index', ['rows' => $rows, 'filters' => $f, 'tab' => $done ? 'invoiced' : 'uninvoiced',
+        $props = ['rows' => $rows, 'filters' => $f, 'tab' => $done ? 'invoiced' : 'uninvoiced',
             'counts' => ['uninvoiced' => $this->query([])->count(), 'invoiced' => DB::table('invoice')->count()],
             'programs' => DB::table('penjualan_program')->whereExists(fn ($q) => $q->selectRaw('1')->from('sales_order')->whereColumn('id_penjualan', 'penjualan_program.id'))->get(['id', 'nomor']),
-            'canAdd' => Gate::allows('menu', ['invoicing', 'Add'])]);
+            'canAdd' => Gate::allows('menu', ['invoicing', 'Add'])];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Invoice/Index', $props);
     }
 
     public function create(Request $r)
@@ -111,7 +122,7 @@ class InvoiceController extends Controller
         }
 
         return Inertia::render('Invoice/Form', ['source' => array_intersect_key($source, array_flip(['so', 'quotation', 'program', 'judul', 'company', 'sales', 'peserta', 'amounts', 'perlakuan_ppn'])),
-            'coa' => $coa ?: '', 'accounts' => DB::table('coa_master')->orderBy('no_perkiraan')->orderBy('id')->get(['id', 'no_perkiraan', 'nama', 'kdcab']), 'journal' => $journal, 'configurationErrors' => $errors, 'tanggal' => $r->input('tanggal', today()->toDateString())]);
+            'coa' => $coa ?: '', 'accounts' => Coa::query()->orderBy('no_perkiraan')->orderBy('id')->get(['id', 'no_perkiraan', 'nama', 'kdcab']), 'journal' => $journal, 'configurationErrors' => $errors, 'tanggal' => $r->input('tanggal', today()->toDateString())]);
     }
 
     public function store(Request $r)

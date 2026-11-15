@@ -7,6 +7,7 @@ use App\Support\Participants;
 use App\Support\QuotationFiles;
 use App\Support\QuotationPdf;
 use App\Support\Sales;
+use App\Support\ServerDataTable;
 use App\Support\Survey;
 use App\Support\Xlsx;
 use Illuminate\Http\Request;
@@ -21,12 +22,14 @@ class ParticipantController extends Controller
     public function index(Request $r)
     {
         Gate::authorize('menu', ['manage_peserta', 'View']);
+        ServerDataTable::prepare($r);
         $f = Sales::filters($r);
         $q = DB::table('penjualan_program as p')->where('p.status', 'final');
         ($f['tab'] ?? 'ongoing') === 'selesai' ? $q->whereNotNull('p.closed_date') : $q->whereNull('p.closed_date');
+        ServerDataTable::scope($r, $q);
         Sales::filter($q, $f);
         $this->searchProgram($q, $f['q'] ?? '');
-        $rows = $q->orderBy('p.tgl_mulai')->paginate(25)->withQueryString()->through(function ($p) {
+        $rows = $q->orderBy('p.tgl_mulai')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'p.nomor', null, 'p.jenis', 'p.tgl_mulai', null, 'p.target_peserta', null, null], 'p.id'))->through(function ($p) {
             $p->nomor = Sales::display($p);
             $p->judul = Sales::title($p->id_master_program);
             $p->trainer = DB::table('ms_trainer')->where('id', $p->id_trainer)->value('nama');
@@ -38,7 +41,12 @@ class ParticipantController extends Controller
             return $p;
         });
 
-        return Inertia::render('Participants/Index', ['rows' => $rows, 'filters' => $f, 'canManage' => Gate::allows('menu', ['manage_peserta', 'Manage'])]);
+        $props = ['rows' => $rows, 'filters' => $f, 'canManage' => Gate::allows('menu', ['manage_peserta', 'Manage'])];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Participants/Index', $props);
     }
 
     private function searchProgram($query, string $term): void
@@ -54,6 +62,7 @@ class ParticipantController extends Controller
     public function show(Request $r, int $id)
     {
         Gate::authorize('menu', ['manage_peserta', 'View']);
+        ServerDataTable::prepare($r);
         $p = Sales::program($id);
         abort_unless($p->status === 'final', 404);
         $p->judul = Sales::title($p->id_master_program);
@@ -62,6 +71,7 @@ class ParticipantController extends Controller
         $p->company = $p->id_customer ? DB::table('master_customer')->where('id_customer', $p->id_customer)->value('name_customer') : 'Public';
         $f = $r->validate(['q' => 'nullable|string|max:100', 'tab' => 'nullable|in:peserta,sertifikat,survey']);
         $q = Participants::query($id);
+        ServerDataTable::scope($r, $q);
         $this->searchPerson($q, $f['q'] ?? '');
         $warnings = [];
         if (DB::table('quotation')->where('id_penjualan', $id)->whereIn('status', ['draft', 'terkirim'])->exists()) {
@@ -71,13 +81,22 @@ class ParticipantController extends Controller
             $warnings[] = 'Masih ada biaya/overbudget Menunggu Approval; pengajuan existing tetap dapat diselesaikan setelah Close.';
         }
 
-        return Inertia::render('Participants/Show', ['program' => $p, 'rows' => $this->peoplePage($q),
-            'filters' => $f, 'blockers' => Participants::blockers($p), 'warnings' => $warnings, 'canManage' => Gate::allows('menu', ['manage_peserta', 'Manage']), 'survey' => Survey::summary($id)]);
+        $props = ['program' => $p, 'rows' => $this->peoplePage($q),
+            'filters' => $f, 'blockers' => Participants::blockers($p), 'warnings' => $warnings, 'canManage' => Gate::allows('menu', ['manage_peserta', 'Manage']), 'survey' => Survey::summary($id)];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Participants/Show', $props);
     }
 
     private function peoplePage($query)
     {
-        $page = $query->orderBy('x.id')->paginate(25)->withQueryString();
+        $columns = request()->is('manage-peserta/monitoring/data')
+            ? [null, 'x.nama', 'p.nomor', null, 's.no_sertifikat', 's.no_sertifikat_bnsp', 's.berlaku_sampai', 's.catatan_monitoring', null]
+            : (request('tab') === 'sertifikat' ? [null, 'x.nama', 's.nama_sertifikat', 's.no_sertifikat', 's.no_sertifikat_bnsp', 's.berlaku_sampai', null]
+                : (request('tab') === 'survey' ? [null, 'x.nama', 'q.nomor', null, null, null] : [null, 'x.nama', 'x.instansi', 'x.no_wa', 'x.email', 'q.nomor', null]));
+        $page = ServerDataTable::page(request(), $query->orderBy('x.id'), $columns, 'x.id');
 
         return $page->setCollection(Participants::enrichRows($page->getCollection()));
     }
@@ -118,7 +137,9 @@ class ParticipantController extends Controller
     public function monitoring(Request $r)
     {
         Gate::authorize('menu', ['monitoring_peserta', 'View']);
+        ServerDataTable::prepare($r);
         $f = $r->validate(['q' => 'nullable|string|max:100', 'tahun' => 'nullable|integer|min:1900|max:2200', 'bulan' => 'nullable|integer|min:1|max:12', 'tipe' => 'nullable|in:Pelatihan,Sertifikasi,Training & Sertifikasi', 'tindak' => 'nullable|in:uninvoiced,pelatihan,bnsp,expired', 'export' => 'nullable|boolean']);
+        ServerDataTable::scope($r, $this->monitoringQuery([]));
         $q = $this->monitoringQuery($f);
         if ($r->boolean('export')) {
             return $this->export($q, 'Monitoring_Peserta', true);
@@ -132,8 +153,13 @@ class ParticipantController extends Controller
             $counts[$type] = $this->monitoringQuery(array_replace($f, ['tipe' => $type]))->count();
         }
 
-        return Inertia::render('Participants/Monitoring', ['rows' => $this->peoplePage($q), 'filters' => $f, 'counts' => $counts,
-            'canManage' => Gate::allows('menu', ['monitoring_peserta', 'Manage']), 'canCertificates' => Gate::allows('menu', ['manage_peserta', 'View']), 'canQuotation' => Gate::allows('menu', ['quotation_program', 'View'])]);
+        $props = ['rows' => $this->peoplePage($q), 'filters' => $f, 'counts' => $counts,
+            'canManage' => Gate::allows('menu', ['monitoring_peserta', 'Manage']), 'canCertificates' => Gate::allows('menu', ['manage_peserta', 'View']), 'canQuotation' => Gate::allows('menu', ['quotation_program', 'View'])];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Participants/Monitoring', $props);
     }
 
     private function export($query, string $name, bool $monitoring = false, ?object $program = null)

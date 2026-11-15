@@ -10,10 +10,9 @@ services:
       TZ: Asia/Jakarta
       MAIL_MAILER: log
       LOCAL_UAT_ENABLED: 'false'
-      LOCAL_UAT_PASSWORD_ONLY: 'false'
-      LOCAL_REHEARSAL_PASSWORD_ONLY: 'true'
     ports: !override
       - '127.0.0.1:8081:80'
+    networks: [rehearsal, preview-web]
   rehearsal-db:
     # Hanya rehearsal data asli: dump CI3 memuat zero date (0000-00-00) pada dua tabel di luar cakupan Laravel.
     # Default MySQL 8.0 memuat NO_ZERO_DATE/NO_ZERO_IN_DATE sehingga restore gagal (1292). Mode ini sama dengan
@@ -22,3 +21,7 @@ services:
       - --sql-mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
       - --local-infile=OFF
       - --event-scheduler=OFF
+
+networks:
+  preview-web:
+    driver: bridge

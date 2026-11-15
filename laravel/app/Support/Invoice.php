@@ -59,10 +59,10 @@ class Invoice
         $config = config('labmania.invoice.coa.'.$key, []);
         $id = $selected ?: ($config['id'] ?? null);
         $number = $config['number'] ?? null;
-        $query = DB::table('coa_master');
+        $query = Coa::query();
         $rows = $id ? $query->where('id', $id)->get() : ($number ? $query->where('no_perkiraan', $number)->get() : collect());
         if ($rows->count() !== 1 || trim((string) $rows->first()?->no_perkiraan) === '' || trim((string) $rows->first()?->nama) === '') {
-            throw ValidationException::withMessages(['coa_penjualan' => 'Konfigurasi COA '.$key.' belum valid atau ambigu; pilih ID akun master yang sah.']);
+            throw ValidationException::withMessages(['coa_penjualan' => 'Konfigurasi COA '.$key.' belum valid atau ambigu; pilih ID akun GL level 5 yang sah.']);
         }
 
         return $rows->first();
@@ -199,11 +199,10 @@ class Invoice
                 $original = DB::table('invoice_jurnal')->where('id_invoice', $id)->where('jenis', 'invoice')->get();
                 $advance = $original->first(fn ($j) => (int) $j->coa !== (int) $old->coa_penjualan && BigDecimal::of((string) $j->debit)->isEqualTo((string) $old->ppn) && $j->urutan === 3);
                 $liability = $original->firstWhere('urutan', 4);
-                if (! $advance || ! $liability) {
+                if (! $advance || ! $liability || trim((string) $advance->no_coa) === '' || trim((string) $advance->nama_coa) === ''
+                    || trim((string) $liability->no_coa) === '' || trim((string) $liability->nama_coa) === '') {
                     throw ValidationException::withMessages(['invoice' => 'Jurnal WAPU historis memerlukan rekonsiliasi.']);
                 }
-                self::account('uang_muka_wapu', $advance->coa);
-                self::account('hutang_wapu', $liability->coa);
                 $snapshot = json_decode($old->snapshot, true, 512, JSON_THROW_ON_ERROR);
                 $rows = [['hutang_wapu', (string) $old->ppn, '0'], ['uang_muka_wapu', '0', (string) $old->ppn]];
                 $journals = self::journals($rows, ['hutang_wapu' => (object) ['id' => $liability->coa, 'no_perkiraan' => $liability->no_coa, 'nama' => $liability->nama_coa], 'uang_muka_wapu' => (object) ['id' => $advance->coa, 'no_perkiraan' => $advance->no_coa, 'nama' => $advance->nama_coa]], $old->nomor, $snapshot['quotation']['nomor'], $input['tanggal'], 'WAPU');

@@ -57,7 +57,7 @@ class PesertaCompanyTest extends MasterTestCase
     public function test_company_lama_tanpa_npwp_tidak_diubah_dan_edit_menuntut_npwp(): void
     {
         DB::table('master_customer')->insert(['id_customer' => 'CO-009', 'name_customer' => 'Lama', 'activation' => null, 'npwp' => null]);
-        $this->get('/master/company')->assertInertia(fn ($p) => $p->where('rows.data.0.aktif', 1)->where('rows.data.0.npwp', null));
+        $this->getJson('/master/company/data')->assertOk()->assertJsonPath('data.0.aktif', 1)->assertJsonPath('data.0.npwp', null);
         $this->assertNull(DB::table('master_customer')->where('id_customer', 'CO-009')->value('npwp'));
         $this->put('/master/company/CO-009', $this->company(['npwp' => '']))->assertSessionHasErrors('npwp');
         $this->put('/master/company/CO-009', $this->company())->assertSessionHasNoErrors();
@@ -72,7 +72,7 @@ class PesertaCompanyTest extends MasterTestCase
         foreach (['inactive' => 'CO-001', 'nonaktif' => 'CO-002', 'active' => 'CO-003', 'aktif' => 'CO-004'] as $value => $id) {
             DB::table('master_customer')->insert(['id_customer' => $id, 'name_customer' => $id, 'activation' => $value]);
         }
-        $this->get('/master/company')->assertInertia(fn ($p) => $p->where('rows.data.0.aktif', 0)->where('rows.data.1.aktif', 0)->where('rows.data.2.aktif', 1)->where('rows.data.3.aktif', 1));
+        $this->getJson('/master/company/data')->assertOk()->assertJsonPath('data.0.aktif', 0)->assertJsonPath('data.1.aktif', 0)->assertJsonPath('data.2.aktif', 1)->assertJsonPath('data.3.aktif', 1);
         $this->post('/master/company/CO-001/toggle');
         $this->post('/master/company/CO-003/toggle');
         $this->assertSame('aktif', DB::table('master_customer')->where('id_customer', 'CO-001')->value('activation'));
@@ -94,7 +94,7 @@ class PesertaCompanyTest extends MasterTestCase
         $this->delete('/master/company/CO-004')->assertSessionHasNoErrors();
         $this->assertNotNull(DB::table('master_customer')->where('id_customer', 'CO-004')->value('deleted_date'));
         $this->assertDatabaseHas('logs', ['action' => 'Hapus', 'ref_no' => 'CO-004']);
-        $this->get('/master/company')->assertInertia(fn ($p) => $p->where('rows.total', 3));
+        $this->getJson('/master/company/data')->assertOk()->assertJsonPath('recordsFiltered', 3);
     }
 
     public function test_peserta_validasi_dan_kode(): void
@@ -126,11 +126,11 @@ class PesertaCompanyTest extends MasterTestCase
     {
         DB::table('ms_peserta')->insert(['kode' => 'PS-001', 'nama' => 'Dari Deal']);
         $this->post('/master/peserta', $this->peserta());
-        $this->get('/master/peserta?kelengkapan=belum')->assertInertia(fn ($p) => $p->where('rows.total', 1)->where('rows.data.0.nama', 'Dari Deal')->where('rows.data.0.kurang.0', 'Gender'));
-        $this->get('/master/peserta?kelengkapan=lengkap')->assertInertia(fn ($p) => $p->where('rows.total', 1)->where('rows.data.0.nama', 'Siti'));
+        $this->getJson('/master/peserta/data?kelengkapan=belum')->assertOk()->assertJsonPath('recordsFiltered', 1)->assertJsonPath('data.0.nama', 'Dari Deal')->assertJsonPath('data.0.kurang.0', 'Gender');
+        $this->getJson('/master/peserta/data?kelengkapan=lengkap')->assertOk()->assertJsonPath('recordsFiltered', 1)->assertJsonPath('data.0.nama', 'Siti');
         $id = DB::table('ms_peserta')->where('kode', 'PS-001')->value('id');
         $this->put("/master/peserta/$id", $this->peserta(['nama' => 'Dilengkapi']))->assertSessionHasNoErrors();
-        $this->get('/master/peserta?kelengkapan=belum')->assertInertia(fn ($p) => $p->where('rows.total', 0));
+        $this->getJson('/master/peserta/data?kelengkapan=belum')->assertOk()->assertJsonPath('recordsFiltered', 0);
     }
 
     public function test_hapus_peserta_soft_delete_dan_diblokir_bila_sudah_deal(): void

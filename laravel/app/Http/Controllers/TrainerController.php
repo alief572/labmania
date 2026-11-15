@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\CodeGenerator;
 use App\Support\QuotationPdf;
+use App\Support\ServerDataTable;
 use App\Support\TrainerCvPdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -30,19 +31,22 @@ class TrainerController extends Controller
         Gate::authorize('menu', [self::MENU, 'View']);
         $f = $request->validate(['q' => 'nullable|string|max:100', 'status' => 'nullable|in:all,on,off']);
         $count = fn (string $t) => "(SELECT COUNT(*) FROM $t x WHERE x.id_trainer = t.id)";
-        $rows = DB::table('ms_trainer as t')
-            ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('t.aktif', 1))
-            ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('t.aktif', 0))
-            ->when(($f['q'] ?? null) !== null, fn ($q) => $q->where(fn ($w) => $w->where('t.kode', 'like', '%'.$f['q'].'%')->orWhere('t.nama', 'like', '%'.$f['q'].'%')->orWhere('t.bidang_keahlian', 'like', '%'.$f['q'].'%')))
-            ->orderBy('t.id')
-            ->select('t.id', 't.kode', 't.nama', 't.no_telp', 't.bidang_keahlian', 't.aktif', 't.id_user',
-                DB::raw($count('ms_trainer_pelatihan').' AS n_pelatihan'), DB::raw($count('ms_trainer_pengalaman_kerja').' AS n_kerja'),
-                DB::raw($count('ms_trainer_pengalaman_mengajar').' AS n_mengajar'), DB::raw($count('ms_trainer_lampiran').' AS n_lampiran'),
-                DB::raw('(SELECT COUNT(*) FROM penjualan_program pj WHERE pj.id_trainer = t.id) AS n_penjualan'))
-            ->paginate(25)->withQueryString();
+        if ($request->route('datatable')) {
+            $base = DB::table('ms_trainer as t')
+                ->orderBy('t.id')
+                ->select('t.id', 't.kode', 't.nama', 't.no_telp', 't.bidang_keahlian', 't.aktif', 't.id_user',
+                    DB::raw($count('ms_trainer_pelatihan').' AS n_pelatihan'), DB::raw($count('ms_trainer_pengalaman_kerja').' AS n_kerja'),
+                    DB::raw($count('ms_trainer_pengalaman_mengajar').' AS n_mengajar'), DB::raw($count('ms_trainer_lampiran').' AS n_lampiran'),
+                    DB::raw('(SELECT COUNT(*) FROM penjualan_program pj WHERE pj.id_trainer = t.id) AS n_penjualan'));
+            $query = (clone $base)
+                ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('t.aktif', 1))
+                ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('t.aktif', 0));
+
+            return ServerDataTable::response($request, $base, $query, [null, 'kode', 'nama', 'bidang_keahlian', null, 'n_penjualan', 'aktif', null], ['id', 'kode', 'nama', 'no_telp', 'bidang_keahlian', 'aktif', 'id_user', 'n_pelatihan', 'n_kerja', 'n_mengajar', 'n_lampiran', 'n_penjualan'], 'id', ['kode', 'nama', 'no_telp', 'bidang_keahlian'], null);
+        }
 
         return Inertia::render('Master/Trainer', [
-            'rows' => $rows, 'filters' => ['q' => $f['q'] ?? '', 'status' => $f['status'] ?? 'all'],
+            'filters' => ['q' => $f['q'] ?? '', 'status' => $f['status'] ?? 'all'],
             'users' => DB::table('users')->where('st_aktif', 1)->where('deleted', 0)->orderBy('nm_lengkap')->get(['id_user', 'nm_lengkap', 'username']),
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage'])],
         ]);

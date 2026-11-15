@@ -1,6 +1,6 @@
 <?php
 
-// Navigasi sidebar. 'menu' = kode ms_menu yang harus punya View; null = selalu tampil. Hanya halaman yang sudah berfungsi.
+// Registry route legacy dan template bootstrap UAT. Struktur sidebar berasal dari ms_menu.
 return [
     ['label' => 'Beranda', 'url' => '/', 'menu' => null, 'group' => null],
 
@@ -21,7 +21,7 @@ return [
     ['label' => 'Master Company', 'url' => '/master/company', 'menu' => 'master_data.company', 'group' => 'Master Data'],
 
     ['label' => 'Master User', 'url' => '/master/user', 'menu' => 'master_data.users', 'group' => 'Master Data'],
-    ['label' => 'Master Role', 'url' => '/master/role', 'menu' => 'permission_group', 'group' => 'Master Data'],
+    ['label' => 'Master Role', 'url' => '/master/role', 'menu' => 'master_data.role', 'group' => 'Master Data'],
 
     ['label' => 'Daftar Master Program', 'url' => '/program', 'menu' => 'master_program', 'group' => 'Penjualan Program'],
     ['label' => 'Daftar Penjualan Program', 'url' => '/penjualan-program', 'menu' => 'penjualan_program', 'group' => 'Penjualan Program'],

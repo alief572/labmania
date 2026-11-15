@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\CodeGenerator;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,15 +31,19 @@ class TemplateController extends Controller
     {
         Gate::authorize('menu', ['master_data.template_keterangan', 'View']);
         $f = $request->validate(['kategori' => ['nullable', Rule::in(self::KATEGORI)], 'status' => 'nullable|in:all,on,off']);
-        $rows = DB::table('ms_template_keterangan')
-            ->when(($f['kategori'] ?? null) !== null, fn ($q) => $q->where('kategori', $f['kategori']))
-            ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('aktif', 1))
-            ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('aktif', 0))
-            ->orderByRaw("CASE kategori WHEN 'syarat' THEN 1 WHEN 'termasuk' THEN 2 WHEN 'tidak' THEN 3 WHEN 'dokumen' THEN 4 ELSE 5 END")->orderBy('id')
-            ->paginate(25)->withQueryString();
+        if ($request->route('datatable')) {
+            $base = DB::table('ms_template_keterangan')
+                ->orderByRaw("CASE kategori WHEN 'syarat' THEN 1 WHEN 'termasuk' THEN 2 WHEN 'tidak' THEN 3 WHEN 'dokumen' THEN 4 ELSE 5 END")->orderBy('id');
+            $query = (clone $base)
+                ->when(($f['kategori'] ?? null) !== null, fn ($q) => $q->where('kategori', $f['kategori']))
+                ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('aktif', 1))
+                ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('aktif', 0));
+
+            return ServerDataTable::response($request, $base, $query, [null, 'kode', 'kategori', 'teks', 'berlaku_untuk', 'is_default', 'aktif', null], ['id', 'kode', 'kategori', 'teks', 'berlaku_untuk', 'is_default', 'aktif'], 'id', ['kode', 'kategori', 'teks', 'berlaku_untuk'], null);
+        }
 
         return Inertia::render('Master/TemplateKeterangan', [
-            'rows' => $rows, 'filters' => ['kategori' => $f['kategori'] ?? '', 'status' => $f['status'] ?? 'all'],
+            'filters' => ['kategori' => $f['kategori'] ?? '', 'status' => $f['status'] ?? 'all'],
             'kategori' => self::KATEGORI, 'untuk' => self::UNTUK,
             'can' => ['add' => Gate::allows('menu', ['master_data.template_keterangan', 'Add']), 'manage' => Gate::allows('menu', ['master_data.template_keterangan', 'Manage'])],
         ]);
@@ -91,19 +96,23 @@ class TemplateController extends Controller
 
     // ---- Formulir Konfirmasi ----
 
-    public function konfirmasi()
+    public function konfirmasi(Request $request)
     {
         Gate::authorize('menu', ['master_data.template_konfirmasi', 'View']);
-        $rows = DB::table('ms_template_konfirmasi as k')->leftJoin('ms_jenis_produk as jp', 'jp.id', '=', 'k.id_jenis_produk')
-            ->orderBy('k.id')->paginate(25, ['k.*', 'jp.nama as nama_produk']);
-        $rows->through(function ($r) {
-            $r->isian = json_decode((string) $r->isian, true) ?: [];
+        if ($request->route('datatable')) {
+            $base = DB::table('ms_template_konfirmasi as k')->leftJoin('ms_jenis_produk as jp', 'jp.id', '=', 'k.id_jenis_produk')
+                ->orderBy('k.id')->select('k.*', 'jp.nama as nama_produk');
+            $query = (clone $base);
 
-            return $r;
-        });
+            return ServerDataTable::response($request, $base, $query, [null, 'kode', 'nama', 'nama_produk', null, 'aktif', null], ['id', 'kode', 'nama', 'label_kegiatan', 'id_jenis_produk', 'nama_produk', 'isian', 'pernyataan', 'catatan', 'aktif'], 'id', ['kode', 'nama', 'label_kegiatan', 'nama_produk'], function ($r) {
+                $r->isian = json_decode((string) $r->isian, true) ?: [];
+
+                return $r;
+            });
+        }
 
         return Inertia::render('Master/TemplateKonfirmasi', [
-            'rows' => $rows, 'fields' => self::KF_FIELDS, 'produk' => DB::table('ms_jenis_produk')->orderBy('nama')->get(['id', 'nama']),
+            'fields' => self::KF_FIELDS, 'produk' => DB::table('ms_jenis_produk')->orderBy('nama')->get(['id', 'nama']),
             'can' => ['add' => Gate::allows('menu', ['master_data.template_konfirmasi', 'Add']), 'manage' => Gate::allows('menu', ['master_data.template_konfirmasi', 'Manage'])],
         ]);
     }

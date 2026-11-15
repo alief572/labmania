@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\CodeGenerator;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,19 +32,21 @@ class CompanyController extends Controller
     {
         Gate::authorize('menu', [self::MENU, 'View']);
         $f = $request->validate(['q' => 'nullable|string|max:100', 'jenis' => ['nullable', Rule::in(config('labmania.jenis_instansi'))]]);
-        $rows = DB::table('master_customer')->whereNull('deleted_date')
-            ->when(($f['jenis'] ?? null) !== null, fn ($q) => $q->where('jenis_instansi', $f['jenis']))
-            ->when(($f['q'] ?? null) !== null, fn ($q) => $q->where(fn ($w) => $w->where('id_customer', 'like', '%'.$f['q'].'%')->orWhere('name_customer', 'like', '%'.$f['q'].'%')
-                ->orWhere('kota', 'like', '%'.$f['q'].'%')->orWhere('provinsi', 'like', '%'.$f['q'].'%')->orWhere('pic_name', 'like', '%'.$f['q'].'%')))
-            ->orderBy('id_customer')->paginate(25)->withQueryString();
-        $rows->through(function ($r) {
-            $r->aktif = self::isActive($r->activation) ? 1 : 0;
+        if ($request->route('datatable')) {
+            $base = DB::table('master_customer')->whereNull('deleted_date')
+                ->orderBy('id_customer')->select('*', DB::raw("CASE WHEN activation IN ('nonaktif', 'inactive') THEN 0 ELSE 1 END AS aktif"));
+            $query = (clone $base)
+                ->when(($f['jenis'] ?? null) !== null, fn ($q) => $q->where('jenis_instansi', $f['jenis']));
 
-            return $r;
-        });
+            return ServerDataTable::response($request, $base, $query, [null, 'id_customer', 'name_customer', 'jenis_instansi', 'kota', 'aktif', null], ['id_customer', 'name_customer', 'jenis_instansi', 'address_office', 'id_prov', 'provinsi', 'id_city', 'kota', 'telephone', 'email', 'pic_name', 'pic_jabatan', 'pic_hp', 'pic_email', 'npwp', 'perlakuan_ppn', 'aktif'], 'id_customer', ['id_customer', 'name_customer', 'jenis_instansi', 'kota', 'provinsi', 'pic_name'], function ($r) {
+                $r->aktif = self::isActive($r->activation) ? 1 : 0;
+
+                return $r;
+            });
+        }
 
         return Inertia::render('Master/Company', [
-            'rows' => $rows, 'filters' => ['q' => $f['q'] ?? '', 'jenis' => $f['jenis'] ?? ''], 'jenis' => config('labmania.jenis_instansi'),
+            'filters' => ['q' => $f['q'] ?? '', 'jenis' => $f['jenis'] ?? ''], 'jenis' => config('labmania.jenis_instansi'),
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage']), 'delete' => Gate::allows('menu', [self::MENU, 'Delete'])],
         ]);
     }

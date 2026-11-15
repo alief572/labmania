@@ -7,6 +7,7 @@ use Tests\Feature\Master\MasterTestCase;
 
 class Phase6Test extends MasterTestCase
 {
+    use OperationalDataTableScenarios;
     use Phase6Scenarios;
 
     protected function setUp(): void

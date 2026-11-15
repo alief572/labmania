@@ -8,6 +8,7 @@ use App\Support\QuotationFiles;
 use App\Support\QuotationPdf;
 use App\Support\Reconfirmation;
 use App\Support\Sales;
+use App\Support\ServerDataTable;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,74 +25,124 @@ class QuotationController extends Controller
     public function index(Request $r)
     {
         Gate::authorize('menu', [self::MENU, 'View']);
+        ServerDataTable::prepare($r);
         $f = Sales::filters($r);
         $tab = $f['tab'] ?? 'ongoing';
         $query = DB::table('penjualan_program as p')->where('p.status', 'final');
+        ServerDataTable::scope($r, $query);
         Sales::filter($query, $f);
         if ($tab !== 'data') {
             $tab === 'selesai' ? $query->whereNotNull('p.closed_date') : $query->whereNull('p.closed_date');
         }
-        if (! empty($f['q'])) {
+        if (($f['q'] ?? '') !== '') {
             $like = '%'.$f['q'].'%';
             $query->where(fn ($w) => $w->where('p.nomor', 'like', $like)
                 ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('master_program_produk as mp')->join('paket_produk as pr', 'pr.id', '=', 'mp.id_paket_produk')->whereColumn('mp.id_master_program', 'p.id_master_program')->where('pr.judul', 'like', $like))
                 ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('quotation as q')->leftJoin('master_customer as c', 'c.id_customer', '=', 'q.id_customer')->leftJoin('quotation_peserta as x', 'x.id_quotation', '=', 'q.id')->whereColumn('q.id_penjualan', 'p.id')->where(fn ($s) => $s->where('q.nomor', 'like', $like)->orWhere('q.kepada_nama', 'like', $like)->orWhere('c.name_customer', 'like', $like)->orWhere('x.nama', 'like', $like))));
         }
-        $statistics = DB::table('quotation')->whereIn('id_penjualan', (clone $query)->select('p.id'))->get();
-        $stats = collect(['draft', 'terkirim', 'deal', 'batal'])->map(function ($status) use ($statistics) {
-            $quotes = $statistics->where('status', $status);
-
-            return ['status' => $status, 'jumlah' => $quotes->count(), 'peserta' => $quotes->sum(fn ($q) => Quotation::count($q)), 'nilai' => $quotes->sum(fn ($q) => (float) Quotation::calculate($q, Quotation::count($q))['grand_total'])];
+        $stats = collect(['draft', 'terkirim', 'deal', 'batal'])->mapWithKeys(fn ($status) => [$status => ['status' => $status, 'jumlah' => 0, 'peserta' => 0, 'nilai' => 0]]);
+        DB::table('quotation')->whereIn('id_penjualan', (clone $query)->select('p.id'))->orderBy('id')->chunkById(250, function ($quotes) use ($stats) {
+            $counts = DB::table('quotation_peserta')->whereIn('id_quotation', $quotes->pluck('id'))->where('status', 'deal')->selectRaw('id_quotation, COUNT(*) as jumlah')->groupBy('id_quotation')->pluck('jumlah', 'id_quotation');
+            foreach ($quotes as $quote) {
+                $n = $quote->status === 'deal' ? (int) ($counts[$quote->id] ?? 0) : (int) $quote->kuota_peserta;
+                $summary = $stats[$quote->status];
+                $summary['jumlah']++;
+                $summary['peserta'] += $n;
+                $summary['nilai'] += (float) Quotation::calculate($quote, $n)['grand_total'];
+                $stats[$quote->status] = $summary;
+            }
         });
+        $stats = $stats->values();
         if (in_array($f['status'] ?? '', ['draft', 'terkirim', 'deal', 'batal'], true)) {
             $query->whereExists(fn ($q) => $q->selectRaw('1')->from('quotation as q')->whereColumn('q.id_penjualan', 'p.id')->where('q.status', $f['status']));
         }
-        $rows = $query->orderByDesc('p.id')->paginate(25)->withQueryString();
-        $rows->through(function ($p) {
+        $rows = $query->orderByDesc('p.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'p.nomor', 'p.target_peserta', null, null, null], 'p.id'));
+        $ids = $rows->pluck('id')->all();
+        $titles = Sales::titles($rows->pluck('id_master_program')->unique()->all());
+        $costs = Sales::costsFor($ids);
+        $statuses = DB::table('quotation')->whereIn('id_penjualan', $ids)->selectRaw('id_penjualan, status, COUNT(*) as jumlah, SUM(kuota_peserta) as kuota')->groupBy('id_penjualan', 'status')->get()->groupBy('id_penjualan');
+        $deals = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->whereIn('q.id_penjualan', $ids)->where('x.status', 'deal')->selectRaw('q.id_penjualan, COUNT(*) as jumlah')->groupBy('q.id_penjualan')->pluck('jumlah', 'id_penjualan');
+        $canAdd = Gate::allows('menu', [self::MENU, 'Add']);
+        $rows->through(function ($p) use ($titles, $costs, $statuses, $deals, $canAdd) {
             $p->nomor = Sales::display($p);
-            $p->judul = Sales::title($p->id_master_program);
-            $p->quotation_status = DB::table('quotation')->where('id_penjualan', $p->id)->selectRaw('status, COUNT(*) as jumlah')->groupBy('status')->pluck('jumlah', 'status');
+            $p->judul = $titles[$p->id_master_program] ?? '';
+            $groups = $statuses->get($p->id, collect());
+            $p->quotation_status = $groups->pluck('jumlah', 'status');
             $p->jumlah_quotation = $p->quotation_status->sum();
-            $p->deal = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $p->id)->where('x.status', 'deal')->count();
-            $p->menunggu = (int) DB::table('quotation')->where('id_penjualan', $p->id)->where('status', 'terkirim')->sum('kuota_peserta');
-            $p->bep = Costing::calculate($p->durasi_hari, $p->target_peserta, $p->harga_jual_peserta, Sales::costs($p->id))['bep_peserta'];
-            $p->can_add = ! $p->closed_date && Gate::allows('menu', [self::MENU, 'Add']) && ($p->jenis !== 'b2b' || ! DB::table('quotation')->where('id_penjualan', $p->id)->where('status', '!=', 'batal')->exists());
+            $p->deal = (int) ($deals[$p->id] ?? 0);
+            $p->menunggu = (int) ($groups->firstWhere('status', 'terkirim')?->kuota ?? 0);
+            $p->bep = Costing::calculate($p->durasi_hari, $p->target_peserta, $p->harga_jual_peserta, $costs->get($p->id, collect())->map(fn ($b) => (array) $b)->all())['bep_peserta'];
+            $p->can_add = ! $p->closed_date && $canAdd && ($p->jenis !== 'b2b' || $groups->where('status', '!=', 'batal')->isEmpty());
 
             return $p;
         });
 
-        return Inertia::render('Quotation/Index', ['rows' => $rows, 'filters' => $f, 'tab' => $tab, 'stats' => $stats,
-            'years' => DB::table('penjualan_program')->whereNotNull('tgl_mulai')->pluck('tgl_mulai')->map(fn ($d) => (int) substr($d, 0, 4))->unique()->sortDesc()->values()]);
+        $props = ['rows' => $rows, 'filters' => $f, 'tab' => $tab, 'stats' => $stats,
+            'years' => DB::table('penjualan_program')->whereNotNull('tgl_mulai')->pluck('tgl_mulai')->map(fn ($d) => (int) substr($d, 0, 4))->unique()->sortDesc()->values()];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Quotation/Index', $props);
     }
 
     public function batch(Request $r, int $id)
     {
         Gate::authorize('menu', [self::MENU, 'View']);
         $p = Sales::program($id);
+        ServerDataTable::prepare($r);
         $f = Sales::filters($r);
-        $r->validate(['data' => 'nullable|boolean', 'peserta_status' => 'nullable|in:aktif,batal,keluar,deal,menunggu', 'tujuan' => 'nullable|in:personal,company']);
+        $r->validate(['data' => 'nullable|boolean', 'id_quotation' => 'nullable|integer|min:1', 'peserta_status' => 'nullable|in:all,aktif,batal,keluar,deal,menunggu', 'tujuan' => 'nullable|in:personal,company']);
         $f['tujuan'] = $r->input('tujuan', '');
         $data = $r->boolean('data');
-        $qs = DB::table('quotation')->where('id_penjualan', $id)->when($f['tujuan'], fn ($q) => $q->where('tujuan', $f['tujuan']))->when(in_array($f['status'] ?? '', ['draft', 'terkirim', 'deal', 'batal'], true), fn ($q) => $q->where('status', $f['status']))
-            ->when(! empty($f['q']), fn ($q) => $q->where(fn ($w) => $w->where('nomor', 'like', '%'.$f['q'].'%')->orWhere('kepada_nama', 'like', '%'.$f['q'].'%')))->orderByDesc('id')->get();
-        foreach ($qs as $q) {
-            $q->nomor = Sales::display($q);
-            $q->calc = Quotation::calculate($q, Quotation::count($q));
-            $q->link_closed = Reconfirmation::targets($q)->exists() ? ($p->closed_date || now('Asia/Jakarta')->gte(Reconfirmation::deadline($p)) ? 'Konfirmasi ulang ditutup' : null) : Sales::linkState($q, $p);
-            $q->terisi = DB::table('quotation_peserta')->where('id_quotation', $q->id)->count();
-            $q->name_customer = $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->value('name_customer') : null;
+        if ($r->route('datatable')) {
+            if ($data) {
+                $query = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $id);
+                $query->when($r->filled('id_quotation'), fn ($q) => $q->where('q.id', $r->integer('id_quotation')));
+                ServerDataTable::scope($r, $query);
+                $status = $r->input('peserta_status', 'aktif');
+                if ($status !== 'all') {
+                    in_array($status, ['batal', 'keluar', 'deal', 'menunggu'], true) ? $query->where('x.status', $status) : $query->whereIn('x.status', ['deal', 'menunggu']);
+                }
+                if (($f['q'] ?? '') !== '') {
+                    $like = '%'.$f['q'].'%';
+                    $query->where(fn ($w) => $w->where('x.nama', 'like', $like)->orWhere('x.instansi', 'like', $like)->orWhere('x.email', 'like', $like)->orWhere('x.no_wa', 'like', $like)->orWhere('q.nomor', 'like', $like));
+                }
+                $query->select('x.*', 'q.nomor as nomor_quotation', 'q.revisi as revisi_quotation')->orderBy('x.id');
+                $rows = ServerDataTable::page($r, $query, [null, 'x.nama', 'x.instansi', 'x.email', 'q.nomor', 'x.sumber', 'x.status', null], 'x.id');
+                $rows->through(function ($person) {
+                    $person->nomor_quotation = Sales::display((object) ['nomor' => $person->nomor_quotation, 'revisi' => $person->revisi_quotation]);
+
+                    return $person;
+                });
+                $rows->setCollection(Quotation::participantDocuments(collect($rows->items())));
+            } else {
+                $query = DB::table('quotation')->where('id_penjualan', $id);
+                ServerDataTable::scope($r, $query);
+                $query->when($f['tujuan'], fn ($q) => $q->where('tujuan', $f['tujuan']))
+                    ->when(in_array($f['status'] ?? '', ['draft', 'terkirim', 'deal', 'batal'], true), fn ($q) => $q->where('status', $f['status']));
+                if (($f['q'] ?? '') !== '') {
+                    $like = '%'.$f['q'].'%';
+                    $query->where(fn ($w) => $w->where('nomor', 'like', $like)->orWhere('kepada_nama', 'like', $like));
+                }
+                $rows = ServerDataTable::page($r, $query->orderByDesc('id'), [null, 'nomor', 'kepada_nama', 'kuota_peserta', null, 'status', null], 'id');
+                $rows->through(function ($q) use ($p) {
+                    $q->nomor = Sales::display($q);
+                    $q->calc = Quotation::calculate($q, Quotation::count($q));
+                    $q->link_closed = Reconfirmation::targets($q)->exists() ? ($p->closed_date || now('Asia/Jakarta')->gte(Reconfirmation::deadline($p)) ? 'Konfirmasi ulang ditutup' : null) : Sales::linkState($q, $p);
+                    $q->terisi = DB::table('quotation_peserta')->where('id_quotation', $q->id)->count();
+                    $q->name_customer = $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->value('name_customer') : null;
+
+                    return $q;
+                });
+            }
+
+            return ServerDataTable::result($r, $rows);
         }
-        $ps = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $id)
-            ->when(($r->input('peserta_status') ?? 'aktif') === 'batal' || $r->input('peserta_status') === 'keluar', fn ($q) => $q->where('x.status', $r->input('peserta_status')), fn ($q) => $q->whereIn('x.status', ['deal', 'menunggu']))
-            ->when(in_array($r->input('peserta_status'), ['deal', 'menunggu'], true), fn ($q) => $q->where('x.status', $r->input('peserta_status')))
-            ->when(! empty($f['q']), fn ($q) => $q->where(fn ($w) => $w->where('x.nama', 'like', '%'.$f['q'].'%')->orWhere('x.instansi', 'like', '%'.$f['q'].'%')->orWhere('x.email', 'like', '%'.$f['q'].'%')->orWhere('q.nomor', 'like', '%'.$f['q'].'%')))
-            ->orderBy('x.id')->select('x.*', 'q.nomor as nomor_quotation', 'q.revisi as revisi_quotation')->get();
-        foreach ($ps as $person) {
-            $person->nomor_quotation = Sales::display((object) ['nomor' => $person->nomor_quotation, 'revisi' => $person->revisi_quotation]);
-        }
+        $hasParticipants = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $id)->whereIn('x.status', ['deal', 'menunggu'])->exists();
         $p->nomor = Sales::display($p);
 
-        return Inertia::render('Quotation/Batch', ['program' => (array) $p + ['judul' => Sales::title($p->id_master_program)], 'quotations' => $qs, 'peserta' => Quotation::participantDocuments($ps), 'dataTab' => $data, 'filters' => $f, 'canManage' => Gate::allows('menu', [self::MENU, 'Manage']),
+        return Inertia::render('Quotation/Batch', ['program' => (array) $p + ['judul' => Sales::title($p->id_master_program)], 'quotations' => [], 'peserta' => [], 'hasParticipants' => $hasParticipants, 'dataTab' => $data, 'filters' => $f, 'canManage' => Gate::allows('menu', [self::MENU, 'Manage']),
             'pesertaStatus' => $r->input('peserta_status', 'aktif'), 'canAdd' => $p->status === 'final' && ! $p->closed_date && Gate::allows('menu', [self::MENU, 'Add']) && ($p->jenis !== 'b2b' || ! DB::table('quotation')->where('id_penjualan', $id)->where('status', '!=', 'batal')->exists())]);
     }
 

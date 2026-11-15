@@ -3,6 +3,10 @@
 Target: http://localhost:8080. Hanya data sintetis; bukan konfigurasi production.
 CI3 disimpan untuk rollback. Layanan DB CI3 dan `labmania_uji` bukan bagian setup UAT.
 
+Jika snapshot asli sudah menggantikan UAT melalui `README.realdata-8080.md`,
+skrip UAT ini menolak Setup/Switch/Rollback agar lingkungan data tidak terganti.
+Gunakan Compose aktif dan runbook data asli untuk restart atau rollback.
+
 ## Setup pertama
 
 Dari root repository, dengan Docker Desktop aktif:
@@ -48,22 +52,10 @@ Bootstrap membuat enam akun: `admin` (Superadmin), `uat_sales`, `uat_manajemen`,
 saat setup pertama; simpan secara privat.
 Hak ini hanya skenario UAT, bukan keputusan role/grant production.
 
-Login Docker UAT langsung masuk setelah username/password benar, tanpa token
-enroll atau TOTP. Template mengaktifkan `LOCAL_UAT_PASSWORD_ONLY=true`; server
-tetap memeriksa guard environment dan DB UAT. Akun nonaktif/password salah
-ditolak, hak menu tetap berlaku. Perubahan password menutup sesi password-only.
-Production dan environment di luar guard tetap memerlukan TOTP.
-
-Untuk menguji alur TOTP, nonaktifkan flag tersebut pada template, terapkan ulang
-melalui `Switch`, lalu terbitkan token enroll:
-
-```powershell
-docker compose exec --user www-data web php artisan labmania:uat --enroll=admin
-```
-
-Ganti username untuk akun UAT lain. Perintah menolak akun di luar bootstrap,
-akun nonaktif, akun yang sudah enroll, dan environment/DB selain UAT khusus.
-Perintah token tidak mereset autentikator.
+Login seluruh lingkungan langsung masuk setelah username/password benar, tanpa
+token atau TOTP. Akun nonaktif/password salah ditolak, hak menu tetap berlaku,
+dan perubahan password menutup sesi lama. Endpoint dan CLI enrollment sudah
+dipensiunkan. Guard bootstrap tetap menolak DB asli dan production.
 
 ## Penggunaan berikutnya
 

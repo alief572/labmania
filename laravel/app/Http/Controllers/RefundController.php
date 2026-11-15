@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\QuotationFiles;
 use App\Support\Refund;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -14,9 +15,11 @@ class RefundController extends Controller
     public function index(Request $r)
     {
         Gate::authorize('menu', ['sales_order_refund', 'View']);
+        ServerDataTable::prepare($r);
         $f = $r->validate(['q' => 'nullable|string|max:100', 'status' => 'nullable|in:menunggu,selesai']);
-        $query = DB::table('sales_order_refund')->when($f['status'] ?? null, fn ($q, $v) => $q->where('status', $v))->when($f['q'] ?? null, fn ($q, $v) => $q->where(fn ($w) => $w->where('nomor', 'like', '%'.$v.'%')->orWhere('snapshot', 'like', '%'.$v.'%')));
-        $rows = $query->orderByRaw("CASE WHEN status='menunggu' THEN 0 ELSE 1 END")->orderByDesc('id')->paginate(25)->withQueryString()->through(function ($row) {
+        ServerDataTable::scope($r, DB::table('sales_order_refund'));
+        $query = DB::table('sales_order_refund')->when($f['status'] ?? null, fn ($q, $v) => $q->where('status', $v))->when(($f['q'] ?? '') !== '', fn ($q) => $q->where(fn ($w) => $w->where('nomor', 'like', '%'.$f['q'].'%')->orWhere('snapshot', 'like', '%'.$f['q'].'%')));
+        $rows = $query->orderByRaw("CASE WHEN status='menunggu' THEN 0 ELSE 1 END")->orderByDesc('id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'nomor', null, null, null, 'nominal_tagihan', 'status', null], 'id'))->through(function ($row) {
             $s = json_decode($row->snapshot, true);
             $row->siapa = $s['peserta'] ?: $s['company'];
             $row->invoice = $s['invoice'];
@@ -26,7 +29,12 @@ class RefundController extends Controller
             return $row;
         });
 
-        return Inertia::render('Refund/Index', ['rows' => $rows, 'filters' => $f, 'pending' => DB::table('sales_order_refund')->where('status', 'menunggu')->count()]);
+        $props = ['rows' => $rows, 'filters' => $f, 'pending' => DB::table('sales_order_refund')->where('status', 'menunggu')->count()];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Refund/Index', $props);
     }
 
     public function show(int $id)

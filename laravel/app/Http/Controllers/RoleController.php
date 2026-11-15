@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Permissions;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,19 +14,24 @@ use Inertia\Inertia;
 /** Master Role = tabel groups (FR-64). Hak per menu diatur di halaman Role & Permission (fase 1). Superadmin (id 1) terkunci. */
 class RoleController extends Controller
 {
-    private const MENU = 'permission_group';
+    private const MENU = 'master_data.role';
 
     private const ADMIN = 1;
 
-    public function index()
+    public function index(Request $request)
     {
         Gate::authorize('menu', [self::MENU, 'View']);
-        $rows = DB::table('groups as g')->orderBy('g.id_group')
-            ->select('g.*', DB::raw('(SELECT COUNT(*) FROM user_groups ug WHERE ug.id_group = g.id_group) AS n_user'), DB::raw('(SELECT COUNT(*) FROM ms_group_akses a WHERE a.id_group = g.id_group) AS n_hak'))
-            ->paginate(50);
+        if ($request->route('datatable')) {
+            $base = DB::table('groups as g')->orderBy('g.id_group')
+                ->select('g.*', DB::raw('(SELECT COUNT(*) FROM user_groups ug WHERE ug.id_group = g.id_group) AS n_user'), DB::raw('(SELECT COUNT(*) FROM ms_group_akses a WHERE a.id_group = g.id_group) AS n_hak'));
+            $query = (clone $base);
 
-        return Inertia::render('Master/Role', ['rows' => $rows, 'admin' => self::ADMIN,
-            'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage']), 'delete' => Gate::allows('menu', [self::MENU, 'Delete'])]]);
+            return ServerDataTable::response($request, $base, $query, [null, 'nm_group', 'n_user', 'n_hak', null], ['id_group', 'nm_group', 'ket', 'st_default', 'n_user', 'n_hak'], 'id_group', ['nm_group', 'ket'], null);
+        }
+
+        return Inertia::render('Master/Role', ['admin' => self::ADMIN,
+            'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage']), 'delete' => Gate::allows('menu', [self::MENU, 'Delete']),
+                'permissions' => Gate::allows('menu', ['permission_group', 'View'])]]);
     }
 
     private function data(Request $request, ?int $id): array

@@ -33,7 +33,7 @@ trait Phase6Scenarios
 
     private function login6(User $u): void
     {
-        $this->actingAs($u)->withSession(['auth.verified_id' => $u->id_user, 'auth.factor' => hash('sha256', $u->ga_secret)]);
+        $this->actingAs($u)->withSession(['auth.verified_id' => $u->id_user, 'auth.factor' => hash('sha256', $u->password)]);
     }
 
     private function grant6(User $u, string $menu, string ...$actions): void

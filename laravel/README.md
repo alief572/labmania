@@ -1,10 +1,39 @@
 # Labmania Laravel
 
-Docker UAT lokal pada http://localhost:8080 tersedia melalui [local/README.md](local/README.md).
-Lingkungan ini memakai DB/container/volume sintetis terpisah, enam akun uji dan
-bootstrap CLI dengan guard; tidak membuat akun pada DB development atau production.
-Docker UAT memakai login username/password langsung tanpa token/TOTP, dibatasi
-guard environment/DB lokal. Alur TOTP di luar UAT tetap berlaku.
+## UI indeks dan DataTables — 15-11-2026
+
+Indeks Master Program, Penjualan Program, Quotation, Sales Order/Surat Kerja,
+Invoicing, Activity Log, Menu Sidebar, Manage Peserta/Monitoring, Pengajuan Biaya/
+Approval dan Refund memakai `ServerTable` dengan DataTables server-side. Daftar
+turunan Quotation, SO per program, peserta per tab serta pengajuan/overbudget per
+program memakai endpoint `/data` dengan otorisasi yang sama. Master Data yang
+sudah memakai komponen ini tetap dipertahankan.
+
+Paging, pencarian dan sorting berjalan di SQL sebelum enrichment halaman.
+Ukuran halaman 10/25/50/100, default 25; pencarian ditunda 300 ms. Kolom turunan
+yang belum memiliki urutan SQL ditandai tidak bisa diurutkan. Matriks hak akses,
+baris input costing, rincian dokumen dan jurnal bukan indeks DataTables.
+
+Acuan UI adalah berkas langsung `../specs/ui-mockup/produk-to-be/` yang dimuat
+`Labmania.html`. Form costing memakai empat kelompok satuan, ringkasan biaya,
+input simulasi yang terikat pada header, BEP, skala peserta dan rincian hitung.
+Menu Sidebar mengikuti komponen bersama karena tidak ada mockup khususnya.
+Simulasi target profit mengikuti batas tampilan 100.000 peserta pada mockup;
+perhitungan resmi dan validasi transaksi tetap dilakukan server.
+
+Regresi: PHPUnit SQLite, tes kontrak operasional di MySQL `_test`, seluruh
+`tests/frontend/*.mjs`, serta `npm run build`. Tidak diperlukan migration DB
+atau dependency baru. Penerapan lokal memperbarui container aplikasi saja;
+build frontend harus dibuat ulang dari lockfile saat deploy lingkungan lain.
+
+Sejak 15-11-2026, http://localhost:8080 memakai preview snapshot data asli lokal
+melalui [local/README.realdata-8080.md](local/README.realdata-8080.md). Finance
+ditunda; transaksi/cetak yang memerlukan konfigurasi kosong tetap ditolak.
+Snapshot ini belum disahkan untuk production. DB CI3 dan volume UAT tetap disimpan.
+Setup UAT sintetis pada [local/README.md](local/README.md) adalah jalur terpisah;
+skrip menolak menimpa lingkungan snapshot yang sedang aktif.
+Login seluruh lingkungan memakai username/password tanpa token/TOTP sesuai keputusan pengguna.
+Guard bootstrap sintetis tetap terbatas pada DB dan lingkungan UAT lokal.
 
 Perangkat fase 7 dan runbook tersedia di [rehearsal/README.md](rehearsal/README.md).
 Kesiapan cutover memerlukan snapshot operasional lengkap, pemetaan sah, dua
@@ -35,7 +64,7 @@ Jalankan key:generate hanya saat instalasi awal dengan APP_KEY kosong. Jangan me
 
 Edit .env menggunakan kredensial khusus database Laravel terpisah. Default nama database labmania_laravel tidak membuat databasenya otomatis. Jangan arahkan ke DB aktif CI3, menjalankan SQL historis, migrate:fresh, atau seed untuk mencoba login. Impor dan rekonsiliasi seluruh tabel/ID/relasi dilakukan pada salinan terisolasi melalui fase migrasi data.
 
-Tidak ada registrasi, reset password publik, atau akun contoh. Username ambigu, akun nonaktif dan deleted ditolak. Password benar membuka challenge TOTP; session login baru dibuat setelah TOTP sah. Secret lama dan hash password tidak diubah. Setup autentikator baru memakai ga_secret berawalan encrypted:; backup APP_KEY dan database bersama-sama. Format baru hanya untuk DB Laravel dan tidak dapat langsung dibaca CI3. Rotasi kunci harus mempertahankan APP_PREVIOUS_KEYS.
+Tidak ada registrasi, reset password publik, atau akun contoh di luar UAT terisolasi. Username ambigu, akun nonaktif dan deleted ditolak. Password benar langsung membuat session dengan regenerasi ID. Perubahan password membatalkan session sebelumnya. Hash password dan secret legacy tidak diubah; endpoint/kontrol 2FA sudah dipensiunkan. Backup APP_KEY dan database bersama-sama karena data arsip terenkripsi tetap memerlukan kunci. Rotasi kunci harus mempertahankan APP_PREVIOUS_KEYS.
 
 ## Izin dan audit
 
@@ -57,9 +86,11 @@ Unggahan surat konfirmasi: PDF/JPEG/PNG, maksimal 5 MB. Dokumen customer Deal ju
 
 LEGACY_DOCUMENT_ROOT opsional untuk membaca salinan dokumen lama saat rehearsal. Nilainya root salinan repository/upload, bukan folder upload jenis tertentu. Tidak menyalin atau memindahkan berkas aktif pada fase ini. Jangan membuka folder uploads CI3 melalui public/storage Laravel.
 
-Akun tanpa autentikator tidak bisa enroll sendiri: admin dengan hak Manage Master User membuat token enroll (Override Permission > Buat token enroll, berlaku 15 menit, tampil sekali). Untuk dev lokal tanpa HTTPS, set SESSION_SECURE_COOKIE=false di `.env` (bukan di `.env.example`).
+Sidebar mengikuti `ms_menu`: label, induk, kelompok, urutan, aktif dan hak View. Registry `config/navigation.php` hanya memetakan link legacy ke route Laravel dan menjadi template bootstrap UAT. Menu tanpa route tersedia disembunyikan dari sidebar dan ditandai pada halaman Menu Sidebar; selesaikan sebelum cutover. Tautan konfirmasi CI3 `konfirmasi_kehadiran/{token}` dialihkan ke formulir Laravel dengan token yang sama.
 
-Sebelum deployment: HTTPS, APP_DEBUG=false, SESSION_SECURE_COOKIE=true, document root public/, dan permission tulis hanya storage/bootstrap/cache. Cache file dan lock TOTP cocok untuk satu instance; beberapa instance memerlukan cache bersama yang mendukung atomic lock. Konfigurasi Apache/Nginx/IIS dan perilaku browser belum diuji pada fase ini.
+Untuk dev lokal tanpa HTTPS, set SESSION_SECURE_COOKIE=false di `.env` (bukan di `.env.example`).
+
+Sebelum deployment: HTTPS, APP_DEBUG=false, SESSION_SECURE_COOKIE=true, document root public/, dan permission tulis hanya storage/bootstrap/cache. Beberapa instance memerlukan session dan cache bersama agar pembatasan login serta lock konsisten. Penerapan server production dan penerimaan pengguna tetap terpisah dari bukti lokal.
 
 ## Pemeriksaan aman
 

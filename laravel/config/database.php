@@ -32,6 +32,23 @@ return [
 
     'connections' => [
 
+        'gl' => [
+            'driver' => 'mysql',
+            'host' => env('COA_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('COA_DB_PORT', '3306'),
+            'database' => env('COA_DB_DATABASE', 'gl_labmania'),
+            'username' => env('COA_DB_USERNAME', 'laravel_gl_reader'),
+            'password' => env('COA_DB_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                Mysql::ATTR_SSL_CA => env('COA_MYSQL_SSL_CA'),
+                Mysql::ATTR_SSL_VERIFY_SERVER_CERT => true,
+            ]) : [],
+        ],
+
         'migration_source' => [
             'driver' => 'mysql',
             'host' => env('MIGRATION_SOURCE_HOST', 'rehearsal-db'),

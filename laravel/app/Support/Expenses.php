@@ -53,9 +53,33 @@ class Expenses
 
     public static function budget(int $id, string $category): array
     {
-        $p = Sales::program($id);
+        return self::budgets([$id])[$id][$category];
+    }
+
+    public static function budgets(array $ids): array
+    {
+        $programs = DB::table('penjualan_program')->whereIn('id', $ids)->get()->keyBy('id');
+        $costs = Sales::costsFor($ids);
+        $extra = DB::table('pengajuan_overbudget_detail as d')->join('pengajuan_overbudget as h', 'h.id', '=', 'd.id_overbudget')
+            ->whereIn('h.id_penjualan', $ids)->where('h.status', 'disetujui')->get(['d.*', 'h.id_penjualan', 'h.tipe_biaya'])->groupBy(['id_penjualan', 'tipe_biaya']);
+        $used = DB::table('pengajuan_biaya_detail as d')->join('pengajuan_biaya as h', 'h.id', '=', 'd.id_pengajuan')
+            ->whereIn('h.id_penjualan', $ids)->whereIn('h.status', ['menunggu', 'disetujui', 'paid'])->get(['d.*', 'h.id_penjualan', 'h.tipe_biaya'])->groupBy(['id_penjualan', 'tipe_biaya']);
+        $result = [];
+        foreach ($ids as $id) {
+            $program = $programs[$id] ?? abort(404);
+            foreach (['fixed', 'variable'] as $category) {
+                $result[$id][$category] = self::calculateBudget($program, $category,
+                    ($costs[$id] ?? collect())->map(fn ($row) => (array) $row), $extra[$id][$category] ?? [], $used[$id][$category] ?? []);
+            }
+        }
+
+        return $result;
+    }
+
+    private static function calculateBudget(object $p, string $category, $costs, $extra, $used): array
+    {
         $items = [];
-        foreach (Sales::costs($id) as $b) {
+        foreach ($costs as $b) {
             if ($b['tipe'] !== $category) {
                 continue;
             }
@@ -67,8 +91,6 @@ class Expenses
                 'item' => $b['item'], 'qty' => self::money($qty), 'harga' => self::money($b['harga']),
                 'estimasi' => self::money(BigDecimal::of((string) $b['harga'])->multipliedBy($qty)), 'overbudget' => '0.00', 'qty_overbudget' => '0.00', 'terpakai' => '0.00', 'qty_terpakai' => '0.00'];
         }
-        $extra = DB::table('pengajuan_overbudget_detail as d')->join('pengajuan_overbudget as h', 'h.id', '=', 'd.id_overbudget')
-            ->where('h.id_penjualan', $id)->where('h.tipe_biaya', $category)->where('h.status', 'disetujui')->get(['d.*']);
         foreach ($extra as $d) {
             $key = $d->id_penjualan_biaya ? 'c'.$d->id_penjualan_biaya : 'o'.$d->id;
             if (! isset($items[$key])) {
@@ -78,8 +100,6 @@ class Expenses
             $items[$key]['overbudget'] = self::money(BigDecimal::of($items[$key]['overbudget'])->plus((string) $d->total));
             $items[$key]['qty_overbudget'] = self::money(BigDecimal::of($items[$key]['qty_overbudget'])->plus((string) $d->qty));
         }
-        $used = DB::table('pengajuan_biaya_detail as d')->join('pengajuan_biaya as h', 'h.id', '=', 'd.id_pengajuan')
-            ->where('h.id_penjualan', $id)->where('h.tipe_biaya', $category)->whereIn('h.status', ['menunggu', 'disetujui', 'paid'])->get(['d.*']);
         foreach ($used as $d) {
             $key = $d->id_penjualan_biaya ? 'c'.$d->id_penjualan_biaya : 'o'.$d->id_overbudget_detail;
             if (isset($items[$key])) {

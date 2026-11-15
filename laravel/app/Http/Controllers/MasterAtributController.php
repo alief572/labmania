@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\CodeGenerator;
+use App\Support\ServerDataTable;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,14 +25,18 @@ class MasterAtributController extends Controller
         $cfg = $this->cfg($atribut);
         Gate::authorize('menu', [$cfg['menu'], 'View']);
         $filters = $request->validate(['q' => 'nullable|string|max:100', 'status' => 'nullable|in:all,on,off']);
-        $rows = DB::table($cfg['table'])
-            ->when(($filters['status'] ?? 'all') === 'on', fn ($q) => $q->where('aktif', 1))
-            ->when(($filters['status'] ?? 'all') === 'off', fn ($q) => $q->where('aktif', 0))
-            ->when(($filters['q'] ?? null) !== null, fn ($q) => $q->where(fn ($w) => $w->where('kode', 'like', '%'.$filters['q'].'%')->orWhere('nama', 'like', '%'.$filters['q'].'%')))
-            ->orderBy('id')->paginate(25)->withQueryString();
+        if ($request->route('datatable')) {
+            $base = DB::table($cfg['table'])
+                ->orderBy('id');
+            $query = (clone $base)
+                ->when(($filters['status'] ?? 'all') === 'on', fn ($q) => $q->where('aktif', 1))
+                ->when(($filters['status'] ?? 'all') === 'off', fn ($q) => $q->where('aktif', 0));
+
+            return ServerDataTable::response($request, $base, $query, [null, 'kode', 'nama', 'aktif', null], ['id', 'kode', 'nama', 'aktif'], 'id', ['kode', 'nama'], null);
+        }
 
         return Inertia::render('Master/Atribut', [
-            'slug' => $atribut, 'label' => $cfg['label'], 'rows' => $rows, 'filters' => ['q' => $filters['q'] ?? '', 'status' => $filters['status'] ?? 'all'],
+            'slug' => $atribut, 'label' => $cfg['label'], 'filters' => ['q' => $filters['q'] ?? '', 'status' => $filters['status'] ?? 'all'],
             'can' => ['add' => Gate::allows('menu', [$cfg['menu'], 'Add']), 'manage' => Gate::allows('menu', [$cfg['menu'], 'Manage'])],
         ]);
     }

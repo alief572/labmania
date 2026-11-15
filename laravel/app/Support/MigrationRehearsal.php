@@ -14,11 +14,12 @@ class MigrationRehearsal
 
     private Connection $target;
 
-    public function __construct(private readonly MigrationManifest $manifest) {}
+    public function __construct(private readonly MigrationManifest $manifest, private readonly bool $allowLoginMetadata = false) {}
 
     public function run(string $mode, bool $apply = false): array
     {
         MigrationManifest::check(in_array($mode, ['profil', 'impor', 'verifikasi'], true) && (! $apply || $mode === 'impor'), 'Mode migrasi tidak valid.');
+        MigrationManifest::check(! $this->allowLoginMetadata || ($mode === 'verifikasi' && ! $apply), 'Toleransi metadata login hanya untuk verifikasi baca-saja.');
         $start = microtime(true);
         $this->guard($apply);
         $lock = null;
@@ -274,6 +275,9 @@ class MigrationRehearsal
         $columns = array_column($schema->getColumns($table['target']), null, 'name');
         MigrationManifest::check(! array_diff($table['key'], array_keys($columns)), 'Kolom key target tidak ditemukan.');
         $missing = 0;
+        $loginChanges = 0;
+        $ignored = $this->allowLoginMetadata && $table['target'] === 'users' ? ['ip', 'login_terakhir'] : [];
+        MigrationManifest::check(! array_intersect($table['key'], $ignored), 'Key tidak boleh diabaikan dalam verifikasi.');
         $seen = [];
         // ponytail: indeks key per tabel di memori; gunakan staging unique-key jika profil volume melewati batas memori.
         $hash = hash_init('sha256');
@@ -299,7 +303,13 @@ class MigrationRehearsal
             $existing = $matches->first();
             if ($existing) {
                 $actual = array_intersect_key((array) $existing, $row);
-                MigrationManifest::check(self::canonical($actual, $columns) === self::canonical($row, $columns), 'Konflik target: '.$table['target'].' key_sha256='.hash('sha256', $signature));
+                $expected = $row;
+                if (array_intersect_key($actual, array_flip($ignored)) !== array_intersect_key($expected, array_flip($ignored))) {
+                    $loginChanges++;
+                }
+                $actual = array_diff_key($actual, array_flip($ignored));
+                $expected = array_diff_key($expected, array_flip($ignored));
+                MigrationManifest::check(self::canonical($actual, $columns) === self::canonical($expected, $columns), 'Konflik target: '.$table['target'].' key_sha256='.hash('sha256', $signature));
             } else {
                 $missing++;
                 if ($apply) {
@@ -310,7 +320,8 @@ class MigrationRehearsal
         }
         MigrationManifest::check($this->target->table($table['target'])->count() === count($seen) - ($apply ? 0 : $missing), 'Ada baris target di luar manifest: '.$table['target']);
 
-        return ['rows' => count($seen), 'missing' => $apply ? 0 : $missing, 'sha256' => hash_final($hash)];
+        return ['rows' => count($seen), 'missing' => $apply ? 0 : $missing, 'sha256' => hash_final($hash),
+            'comparison_ignored_columns' => $ignored, 'login_metadata_changed_rows' => $loginChanges];
     }
 
     public static function canonical(array $row, array $columns = []): string

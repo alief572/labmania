@@ -1,27 +1,32 @@
 <script setup lang="ts">
+import { useConfirmedMutation } from "../../composables/confirmedMutation";
+import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
-import { ref } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
-import Pagination from '../../components/Pagination.vue';
+
 import StatusBadge from '../../components/StatusBadge.vue';
+
+const confirmation = useConfirmedMutation();
+const { pending: confirming } = confirmation;
 
 type Row = { id: number; kode: string; nama: string; no_telp: string | null; bidang_keahlian: string | null; aktif: number; id_user: number | null; n_pelatihan: number; n_kerja: number; n_mengajar: number; n_lampiran: number; n_penjualan: number };
 type Detail = { trainer: Record<string, string | number | null>; pelatihan: Record<string, string>[]; pengalaman_kerja: Record<string, string>[]; pengalaman_mengajar: Record<string, string>[]; lampiran: { id: number; dokumen: string; tahun: string; ada_file: boolean }[] };
 type Lampiran = { dokumen: string; tahun: string; file: File | null; file_id: number | null; ada_file: boolean };
 const props = defineProps<{
     filters: { q: string; status: string };
-    rows: { data: Row[]; current_page: number; last_page: number; prev_page_url: string | null; next_page_url: string | null; from: number | null };
     users: { id_user: number; nm_lengkap: string; username: string }[]; can: { add: boolean; manage: boolean };
 }>();
 const filter = ref({ ...props.filters });
-const apply = () => router.get('/master/trainer', Object.fromEntries(Object.entries(filter.value).filter(([, v]) => v !== '')), { preserveScroll: true });
+const apply = () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); };
 const tabs = [['identitas', 'Identitas'], ['pendidikan', 'Pendidikan & Keahlian'], ['riwayat', 'Riwayat'], ['lampiran', 'Lampiran']] as const;
 const tab = ref<(typeof tabs)[number][0]>('identitas');
 const mode = ref<'add' | 'edit' | null>(null);
 const currentId = ref<number | null>(null);
+const currentCode = ref('');
 const blank = () => ({ nama: '', tempat_lahir: '', tgl_lahir: '', alamat: '', no_telp: '', id_user: '' as string | number, pend_smu: '', pend_diploma: '', pend_sarjana: '', pend_pascasarjana: '', bidang_keahlian: '', pengalaman_lain: '', cv_tempat: '', cv_tanggal: '', nama_ttd: '',
     pelatihan: [] as Record<string, string>[], pengalaman_kerja: [] as Record<string, string>[], pengalaman_mengajar: [] as Record<string, string>[], lampiran: [] as Lampiran[] });
 const form = useForm(blank());
@@ -30,7 +35,7 @@ const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
 function openAdd() { form.reset(); form.clearErrors(); Object.assign(form, blank()); tab.value = 'identitas'; currentId.value = null; mode.value = 'add'; }
 async function fetchDetail(id: number): Promise<Detail> { return (await fetch(`/master/trainer/${id}`, { headers: { Accept: 'application/json' } })).json(); }
 async function openEdit(row: Row) {
-    const d = await fetchDetail(row.id); form.clearErrors(); tab.value = 'identitas'; currentId.value = row.id;
+    const d = await fetchDetail(row.id); form.clearErrors(); tab.value = 'identitas'; currentId.value = row.id; currentCode.value = row.kode;
     const t = d.trainer;
     Object.assign(form, { nama: str(t.nama), tempat_lahir: str(t.tempat_lahir), tgl_lahir: str(t.tgl_lahir).slice(0, 10), alamat: str(t.alamat), no_telp: str(t.no_telp), id_user: t.id_user ?? '', pend_smu: str(t.pend_smu), pend_diploma: str(t.pend_diploma), pend_sarjana: str(t.pend_sarjana), pend_pascasarjana: str(t.pend_pascasarjana), bidang_keahlian: str(t.bidang_keahlian), pengalaman_lain: str(t.pengalaman_lain), cv_tempat: str(t.cv_tempat), cv_tanggal: str(t.cv_tanggal).slice(0, 10), nama_ttd: str(t.nama_ttd),
         pelatihan: d.pelatihan, pengalaman_kerja: d.pengalaman_kerja, pengalaman_mengajar: d.pengalaman_mengajar,
@@ -39,43 +44,46 @@ async function openEdit(row: Row) {
 }
 const close = () => { mode.value = null; };
 function save() {
-    const done = { preserveScroll: true, forceFormData: true, onSuccess: close };
-    if (mode.value === 'edit') form.post(`/master/trainer/${currentId.value}`, done);
-    else form.post('/master/trainer', done);
+    return confirmation.form(form, 'post', mode.value === 'edit' ? `/master/trainer/${currentId.value}` : '/master/trainer', { title: `${mode.value === 'edit' ? 'Simpan perubahan trainer' : 'Tambahkan trainer'} ${form.nama}${mode.value === 'edit' ? ` (${currentCode.value})` : ''}?` }, {
+        preserveScroll: true, forceFormData: true, onSuccess: () => { close(); reload(); },
+    });
 }
-const toggle = (row: Row) => router.post(`/master/trainer/${row.id}/toggle`, {}, { preserveScroll: true });
+const toggle = (row: Row) => confirmation.visit('post', `/master/trainer/${row.id}/toggle`, {}, {
+    title: `${row.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${row.nama} (${row.kode})?`,
+    confirmLabel: row.aktif ? 'Ya, nonaktifkan' : 'Ya, aktifkan', danger: !!row.aktif,
+}, { preserveScroll: true, onSuccess: reload });
 const viewCv = async (row: Row) => { cv.value = await fetchDetail(row.id); };
 const lists = [['pelatihan', 'Pelatihan & Seminar', ['judul', 'penyelenggara', 'waktu']], ['pengalaman_kerja', 'Pengalaman Kerja', ['jabatan', 'institusi', 'tahun']], ['pengalaman_mengajar', 'Pengalaman Mengajar', ['topik', 'tempat', 'tahun']]] as const;
 const err = (k: string) => (form.errors as Record<string, string>)[k];
 const lines = (v: unknown) => str(v).split(/\r?\n/).filter(Boolean);
+
+const table = ref<InstanceType<typeof ServerTable> | null>(null);
+const reload = () => table.value?.reload();
+const appliedFilters = ref({ ...props.filters });
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID Trainer', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Bidang Keahlian', orderable: true }, { title: 'Riwayat', orderable: false }, { title: 'Penjualan Program', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master Trainer" />
-    <AppLayout title="Master Trainer">
-        <div class="page-head"><h1>Master Trainer</h1><button v-if="can.add" type="button" class="primary" @click="openAdd">+ Tambah Trainer</button></div>
+    <AppLayout title="Master Trainer" full-width>
+        <div class="page-head"><h1>Master Trainer</h1><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah Trainer</button></div>
         <form class="filters" @submit.prevent="apply">
-            <label>Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="ID, nama, bidang keahlian" /></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
-            <button class="primary">Terapkan</button>
+            <button class="primary" :disabled="confirming">Terapkan</button>
         </form>
-        <div class="table-wrap"><table>
-            <caption class="sr-only">Daftar trainer</caption>
-            <thead><tr><th scope="col">No</th><th scope="col">ID Trainer</th><th scope="col">Nama</th><th scope="col">Bidang Keahlian</th><th scope="col">Riwayat</th><th scope="col">Penjualan Program</th><th scope="col">Status</th><th scope="col">Aksi</th></tr></thead>
-            <tbody>
-                <tr v-for="(row, i) in rows.data" :key="row.id">
-                    <td>{{ (rows.from ?? 1) + i }}</td><td>{{ row.kode }}</td><td>{{ row.nama }}<small>{{ row.no_telp }}</small></td>
-                    <td><span v-for="k in lines(row.bidang_keahlian)" :key="k" class="badge">{{ k }}</span></td>
-                    <td>{{ row.n_pelatihan }} · {{ row.n_kerja }} · {{ row.n_mengajar }} · {{ row.n_lampiran }}</td><td>{{ row.n_penjualan }}</td><td><StatusBadge :active="row.aktif" /></td>
-                    <td><ActionMenu ><button type="button" @click="viewCv(row)">Lihat CV</button><template v-if="can.manage"><button type="button" @click="openEdit(row)">Edit</button><button type="button" @click="toggle(row)">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></template></ActionMenu></td>
-                </tr>
-                <tr v-if="!rows.data.length"><td colspan="8" class="empty">Belum ada trainer.</td></tr>
-            </tbody>
-        </table></div>
-        <Pagination :page="rows" label="Halaman trainer" />
+        <ServerTable ref="table" url="/master/trainer/data" :columns="columns" :filters="appliedFilters" :label="'Trainer'">
+            <template #cell-0="{ number }">{{ number }}</template>
+            <template #cell-1="{ row }">{{ row.kode }}</template>
+            <template #cell-2="{ row }">{{ row.nama }}<small>{{ row.no_telp }}</small></template>
+            <template #cell-3="{ row }"><span v-for="k in lines(row.bidang_keahlian)" :key="k" class="badge">{{ k }}</span></template>
+            <template #cell-4="{ row }">{{ row.n_pelatihan }} · {{ row.n_kerja }} · {{ row.n_mengajar }} · {{ row.n_lampiran }}</template>
+            <template #cell-5="{ row }">{{ row.n_penjualan }}</template>
+            <template #cell-6="{ row }"><StatusBadge :active="row.aktif" /></template>
+            <template #cell-7="{ row }"><ActionMenu ><button type="button" @click="viewCv(row)" :disabled="confirming">Lihat CV</button><template v-if="can.manage"><button type="button" @click="openEdit(row)" :disabled="confirming">Edit</button><button type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></template></ActionMenu></template>
+        </ServerTable>
 
-        <ConfirmDialog v-if="mode" :title="mode === 'edit' ? 'Edit Trainer' : 'Tambah Trainer'" :busy="form.processing" @confirm="save" @cancel="close">
-            <div class="tabs" role="tablist"><button v-for="[key, label] in tabs" :key="key" type="button" role="tab" :aria-selected="tab === key" :class="{ active: tab === key }" @click="tab = key">{{ label }}</button></div>
+        <ConfirmDialog v-if="mode" :title="mode === 'edit' ? 'Edit Trainer' : 'Tambah Trainer'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
+            <div class="tabs" role="tablist"><button v-for="[key, label] in tabs" :key="key" type="button" role="tab" :aria-selected="tab === key" :class="{ active: tab === key }" @click="tab = key" :disabled="confirming">{{ label }}</button></div>
             <div v-show="tab === 'identitas'" class="form-grid">
                 <FormField id="tnama" label="Nama Lengkap" :error="form.errors.nama" v-slot="{ describedBy, invalid }"><input id="tnama" v-model="form.nama" maxlength="150" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                 <FormField id="ttl" label="Tempat Lahir" :error="form.errors.tempat_lahir" v-slot="{ describedBy, invalid }"><input id="ttl" v-model="form.tempat_lahir" maxlength="100" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
@@ -96,10 +104,10 @@ const lines = (v: unknown) => str(v).split(/\r?\n/).filter(Boolean);
                 <fieldset v-for="[key, label, cols] in lists" :key="key"><legend>{{ label }}</legend>
                     <div v-for="(row, i) in (form as any)[key]" :key="i" class="form-grid">
                         <label v-for="c in cols" :key="c"><span>{{ c }}</span><input v-model="row[c]" :aria-label="`${label} baris ${Number(i) + 1} ${c}`" /></label>
-                        <button type="button" class="danger" @click="(form as any)[key].splice(i, 1)">Hapus baris</button>
+                        <button type="button" class="danger" @click="(form as any)[key].splice(i, 1)" :disabled="confirming">Hapus baris</button>
                         <p v-if="err(`${key}.${i}.${cols[0]}`)" class="error" role="alert">{{ err(`${key}.${i}.${cols[0]}`) }}</p>
                     </div>
-                    <button type="button" @click="(form as any)[key].push(Object.fromEntries(cols.map((c) => [c, ''])))">+ Tambah baris</button>
+                    <button type="button" :disabled="confirming" @click="(form as any)[key].push(Object.fromEntries(cols.map((c) => [c, ''])))">+ Tambah baris</button>
                 </fieldset>
             </div>
             <div v-show="tab === 'lampiran'" class="stack">
@@ -108,10 +116,10 @@ const lines = (v: unknown) => str(v).split(/\r?\n/).filter(Boolean);
                     <label><span>Tahun</span><input v-model="row.tahun" maxlength="20" :aria-label="`Tahun lampiran ${i + 1}`" /></label>
                     <label><span>Berkas (PDF/JPG/PNG, maks 5 MB)</span><input type="file" accept=".pdf,.jpg,.jpeg,.png" :aria-label="`Berkas lampiran ${i + 1}`" @change="row.file = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>
                     <p v-if="row.ada_file && row.file_id && !row.file" class="muted"><a :href="`/documents/trainer/${row.file_id}`" target="_blank" rel="noopener">Berkas saat ini</a></p>
-                    <button type="button" class="danger" @click="form.lampiran.splice(i, 1)">Hapus baris</button>
+                    <button type="button" class="danger" @click="form.lampiran.splice(i, 1)" :disabled="confirming">Hapus baris</button>
                     <p v-if="err(`lampiran.${i}.file`)" class="error" role="alert">{{ err(`lampiran.${i}.file`) }}</p>
                 </div>
-                <button type="button" @click="form.lampiran.push({ dokumen: '', tahun: '', file: null, file_id: null, ada_file: false })">+ Tambah lampiran</button>
+                <button type="button" @click="form.lampiran.push({ dokumen: '', tahun: '', file: null, file_id: null, ada_file: false })" :disabled="confirming">+ Tambah lampiran</button>
             </div>
         </ConfirmDialog>
 

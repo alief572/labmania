@@ -14,7 +14,7 @@ class RateTemplateTest extends MasterTestCase
         foreach ([['rate_fixed', 'event', 'Event'], ['rate_fixed', 'day', 'Day'], ['rate_variable', 'peserta_event', 'Peserta/Event'], ['rate_variable', 'peserta_day', 'Peserta/Day'], ['rate_fixed', 'bulan', 'Bulan']] as [$cat, $code, $nama]) {
             $this->sat[$code] = DB::table('ms_satuan')->insertGetId(['category' => $cat, 'code' => $code, 'nama' => $nama, 'deleted' => 0]);
         }
-        DB::table('coa_master')->insert(['no_perkiraan' => '5000-01-01', 'nama' => 'Biaya Uji']);
+        DB::table('coa_master')->insert(['no_perkiraan' => '5000-01-01', 'nama' => 'Biaya Uji', 'level' => '5']);
         $this->login($this->admin());
     }
 
@@ -76,7 +76,7 @@ class RateTemplateTest extends MasterTestCase
         $this->post('/master/template-keterangan', ['kategori' => 'klausul', 'teks' => 'Klausul A', 'berlaku_untuk' => 'b2b', 'is_default' => true])->assertSessionHasNoErrors();
         $this->post('/master/template-keterangan', ['kategori' => 'syarat', 'teks' => 'Syarat A', 'berlaku_untuk' => 'semua'])->assertSessionHasNoErrors();
         $this->assertSame(['TK-001', 'TK-002'], DB::table('ms_template_keterangan')->orderBy('id')->pluck('kode')->all());
-        $this->get('/master/template-keterangan')->assertInertia(fn ($p) => $p->where('rows.data.0.kategori', 'syarat')->where('rows.data.1.kategori', 'klausul'));
+        $this->getJson('/master/template-keterangan/data')->assertOk()->assertJsonPath('data.0.kategori', 'syarat')->assertJsonPath('data.1.kategori', 'klausul');
     }
 
     public function test_template_konfirmasi_wajib_isian_dan_contoh_tanpa_kolom_lama(): void

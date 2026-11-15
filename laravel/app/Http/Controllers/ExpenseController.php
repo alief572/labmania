@@ -6,6 +6,7 @@ use App\Support\Expenses;
 use App\Support\Permissions;
 use App\Support\QuotationFiles;
 use App\Support\Sales;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,18 +18,26 @@ class ExpenseController extends Controller
     public function index(Request $r)
     {
         Gate::authorize('menu', ['pengajuan_biaya', 'View']);
+        ServerDataTable::prepare($r);
         $f = $r->validate(['tab' => 'nullable|in:program,pengajuan', 'q' => 'nullable|string|max:100', 'jenis' => 'nullable|in:public,b2b,kasbon,direct_payment', 'status' => 'nullable|in:menunggu,disetujui,paid,ditolak,batal']);
         $base = DB::table('penjualan_program as p')->where('p.status', 'final');
         Expenses::scope($base);
         $counts = ['program' => (clone $base)->count(), 'pengajuan' => (clone $base)->join('pengajuan_biaya as h', 'h.id_penjualan', '=', 'p.id')->count()];
         $done = ($f['tab'] ?? 'program') === 'pengajuan';
+        if ($r->route('datatable')) {
+            $total = clone $base;
+            if ($done) {
+                $total->join('pengajuan_biaya as h', 'h.id_penjualan', '=', 'p.id');
+            }
+            ServerDataTable::scope($r, $total);
+        }
         if ($done) {
             $base->join('pengajuan_biaya as h', 'h.id_penjualan', '=', 'p.id')->join('users as u', 'u.id_user', '=', 'h.request_by');
             $base->when($f['jenis'] ?? null, fn ($q, $v) => $q->where('h.jenis', $v))->when($f['status'] ?? null, fn ($q, $v) => $q->where('h.status', $v));
         } else {
             $base->when($f['jenis'] ?? null, fn ($q, $v) => $q->where('p.jenis', $v));
         }
-        if (! empty($f['q'])) {
+        if (($f['q'] ?? '') !== '') {
             $v = '%'.$f['q'].'%';
             $base->where(function ($w) use ($v, $done) {
                 $w->where('p.nomor', 'like', $v)->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('k.judul', 'like', $v))
@@ -41,20 +50,28 @@ class ExpenseController extends Controller
             });
         }
         $rows = $base->select($done ? ['h.id', 'h.nomor', 'h.id_penjualan', 'h.jenis', 'h.tipe_biaya', 'h.deskripsi', 'h.total', 'h.status', 'h.tanggal', 'u.nm_lengkap as pengaju', 'p.id_master_program', 'p.nomor as program_nomor'] : ['p.*'])
-            ->orderByDesc($done ? 'h.id' : 'p.id')->paginate(25)->withQueryString()->through(function ($x) use ($done) {
-                $x->judul = Sales::title($x->id_master_program);
-                if (! $done) {
-                    $x->nomor = Sales::display($x);
-                    $x->budget = ['fixed' => Expenses::budget($x->id, 'fixed'), 'variable' => Expenses::budget($x->id, 'variable')];
-                    $x->waiting = DB::table('pengajuan_biaya')->where('id_penjualan', $x->id)->where('status', 'menunggu')->count();
-                    $x->pengajuan_count = DB::table('pengajuan_biaya')->where('id_penjualan', $x->id)->count();
-                    $x->tim = $this->team($x);
-                }
+            ->orderByDesc($done ? 'h.id' : 'p.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, ($done ? [null, 'h.nomor', 'p.nomor', 'h.deskripsi', 'h.total', 'u.nm_lengkap', 'h.status', null] : [null, 'p.nomor', null, null, null, null]), $done ? 'h.id' : 'p.id'));
+        $titles = Sales::titles($rows->pluck('id_master_program')->unique()->all());
+        $budgets = $done ? [] : Expenses::budgets($rows->pluck('id')->all());
+        $rows->through(function ($x) use ($done, $titles, $budgets) {
+            $x->judul = $titles[$x->id_master_program] ?? '';
+            if (! $done) {
+                $x->nomor = Sales::display($x);
+                $x->budget = $budgets[$x->id];
+                $x->waiting = DB::table('pengajuan_biaya')->where('id_penjualan', $x->id)->where('status', 'menunggu')->count();
+                $x->pengajuan_count = DB::table('pengajuan_biaya')->where('id_penjualan', $x->id)->count();
+                $x->tim = $this->team($x);
+            }
 
-                return $x;
-            });
+            return $x;
+        });
 
-        return Inertia::render('Expenses/Index', ['rows' => $rows, 'filters' => $f, 'counts' => $counts, 'tab' => $done ? 'pengajuan' : 'program']);
+        $props = ['rows' => $rows, 'filters' => $f, 'counts' => $counts, 'tab' => $done ? 'pengajuan' : 'program'];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Expenses/Index', $props);
     }
 
     private function team(object $p): array
@@ -67,6 +84,21 @@ class ExpenseController extends Controller
     public function program(Request $r, int $id)
     {
         $p = Expenses::access($id);
+        if ($r->route('datatable')) {
+            ServerDataTable::prepare($r);
+            $f = $r->validate(['q' => 'nullable|string|max:100', 'kategori' => 'required|in:fixed,variable', 'kind' => 'required|in:pengajuan,overbudget']);
+            $table = $f['kind'] === 'overbudget' ? 'pengajuan_overbudget' : 'pengajuan_biaya';
+            $description = $f['kind'] === 'overbudget' ? 'alasan' : 'deskripsi';
+            $query = DB::table($table.' as h')->join('users as u', 'u.id_user', '=', 'h.request_by')->where('h.id_penjualan', $id)->where('h.tipe_biaya', $f['kategori']);
+            ServerDataTable::scope($r, $query);
+            if (($f['q'] ?? '') !== '') {
+                $like = '%'.$f['q'].'%';
+                $query->where(fn ($w) => $w->where('h.nomor', 'like', $like)->orWhere('h.'.$description, 'like', $like)->orWhere('u.nm_lengkap', 'like', $like));
+            }
+            $query->select('h.id', 'h.nomor', 'h.total', 'h.status', 'h.tanggal', 'u.nm_lengkap as pengaju', 'h.'.$description)->orderByDesc('h.id');
+
+            return ServerDataTable::result($r, ServerDataTable::page($r, $query, [null, 'h.nomor', 'h.'.$description, 'h.total', 'u.nm_lengkap', 'h.status', null], 'h.id'));
+        }
         $p->judul = Sales::title($p->id_master_program);
         $p->nomor = Sales::display($p);
         $p->tim = $this->team($p);
@@ -81,7 +113,7 @@ class ExpenseController extends Controller
         $inTeam = Expenses::role('Direktur') || $query->exists();
         $headers = [];
         foreach (['pengajuan_biaya', 'pengajuan_overbudget'] as $t) {
-            $headers[$t] = DB::table($t.' as h')->join('users as u', 'u.id_user', '=', 'h.request_by')->where('h.id_penjualan', $id)->where('h.tipe_biaya', $category)->orderByDesc('h.id')->get(['h.id', 'h.nomor', 'h.total', 'h.status', 'h.tanggal', 'h.request_by', 'u.nm_lengkap as pengaju', $t === 'pengajuan_biaya' ? 'h.deskripsi' : 'h.alasan']);
+            $headers[$t] = [];
         }
         $lastAccount = DB::table('pengajuan_biaya')->where('request_by', Auth::id())->where('jenis', 'kasbon')->orderByDesc('id')->first(['bank', 'no_rekening', 'nama_rekening']);
 
@@ -158,13 +190,20 @@ class ExpenseController extends Controller
     public function approval(Request $r)
     {
         Gate::authorize('menu', ['approval_pengajuan_biaya', 'View']);
+        ServerDataTable::prepare($r);
         $f = $r->validate(['tab' => 'nullable|in:pengajuan,overbudget', 'q' => 'nullable|string|max:100']);
         $kind = $f['tab'] ?? 'pengajuan';
         $table = $kind === 'overbudget' ? 'pengajuan_overbudget' : 'pengajuan_biaya';
         $q = DB::table($table.' as h')->join('penjualan_program as p', 'p.id', '=', 'h.id_penjualan')->join('users as u', 'u.id_user', '=', 'h.request_by')->where('h.status', 'menunggu')->where('p.status', 'final');
         Expenses::scope($q);
+        ServerDataTable::scope($r, $q);
         $q->when($f['q'] ?? null, fn ($w, $v) => $w->where(fn ($z) => $z->where('h.nomor', 'like', '%'.$v.'%')->orWhere('p.nomor', 'like', '%'.$v.'%')->orWhere('u.nm_lengkap', 'like', '%'.$v.'%')));
 
-        return Inertia::render('Expenses/Approval', ['rows' => $q->select('h.id', 'h.nomor', 'h.total', 'h.tanggal', 'h.tipe_biaya', 'p.nomor as program_nomor', 'u.nm_lengkap as pengaju')->orderByDesc('h.id')->paginate(25)->withQueryString(), 'kind' => $kind, 'filters' => $f]);
+        $props = ['rows' => $q->select('h.id', 'h.nomor', 'h.total', 'h.tanggal', 'h.tipe_biaya', 'p.nomor as program_nomor', 'u.nm_lengkap as pengaju')->orderByDesc('h.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'p.nomor', 'h.tipe_biaya', 'h.total', 'u.nm_lengkap', null], 'h.id')), 'kind' => $kind, 'filters' => $f];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        }
+
+        return Inertia::render('Expenses/Approval', $props);
     }
 }

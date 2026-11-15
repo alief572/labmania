@@ -54,12 +54,23 @@ class Sales
             ->where('id_penjualan', $id)->select('b.*', 's.nama as nama_satuan')->get()->map(fn ($b) => (array) $b)->all();
     }
 
-    public static function title(int $master): string
+    public static function titles(array $ids): array
     {
         return DB::table('master_program_produk as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')
             ->leftJoin('ms_varian_pelaksanaan as v', 'v.id', '=', 'p.id_varian_pelaksanaan')
-            ->where('m.id_master_program', $master)->orderBy('m.urutan')->get(['p.judul', 'v.nama as varian'])
-            ->map(fn ($p) => $p->judul.($p->varian ? ' · '.$p->varian : ''))->implode(' + ');
+            ->whereIn('m.id_master_program', $ids)->orderBy('m.urutan')->get(['m.id_master_program', 'p.judul', 'v.nama as varian'])
+            ->groupBy('id_master_program')->map(fn ($rows) => $rows->map(fn ($p) => $p->judul.($p->varian ? ' · '.$p->varian : ''))->implode(' + '))->all();
+    }
+
+    public static function title(int $master): string
+    {
+        return self::titles([$master])[$master] ?? '';
+    }
+
+    public static function costsFor(array $ids)
+    {
+        return DB::table('penjualan_program_biaya as b')->leftJoin('ms_satuan as s', 's.id', '=', 'b.id_satuan')
+            ->whereIn('b.id_penjualan', $ids)->select('b.*', 's.nama as nama_satuan')->get()->groupBy('id_penjualan');
     }
 
     public static function filters($request): array

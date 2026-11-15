@@ -48,7 +48,6 @@ class RealdataConfigTest(unittest.TestCase):
                 self.assertEqual("rehearsal", settings["APP_ENV"])
                 self.assertEqual("rehearsal-db", settings["DB_HOST"])
                 self.assertEqual("false", settings["LOCAL_UAT_ENABLED"])
-                self.assertEqual("true", settings["LOCAL_REHEARSAL_PASSWORD_ONLY"])
                 self.assertEqual("false", settings["APP_DEBUG"])
                 self.assertEqual("log", settings["MAIL_MAILER"])
                 self.assertEqual("false", settings["AUDIT_RETENTION_ENABLED"])
@@ -59,13 +58,27 @@ class RealdataConfigTest(unittest.TestCase):
                 self.assertNotIn("NO_ZERO_DATE", modes)
                 self.assertNotIn("ALLOW_INVALID_DATES", modes)
                 self.assertTrue(config["networks"]["rehearsal"]["internal"])
-                self.assertEqual(1, len(app["networks"]))
+                self.assertEqual({"rehearsal", "preview-web"}, set(app["networks"]))
+                self.assertFalse(config["networks"]["preview-web"].get("internal", False))
+                self.assertEqual({"rehearsal"}, set(config["services"]["rehearsal-db"]["networks"]))
                 snapshot = next(v for v in app["volumes"] if v["target"] == "/snapshot")
                 self.assertTrue(snapshot["read_only"])
                 for volume in config["volumes"].values():
                     self.assertTrue(volume["name"].startswith(project + "_"))
                     self.assertNotIn(volume["name"], volume_names)
                     volume_names.add(volume["name"])
+                promoted = subprocess.run(
+                    ["docker", "compose", "--env-file", str(env), "-f", str(here / "compose.yaml"),
+                     "-f", str(here / "compose.realdata.yaml"), "-f", str(here.parent / "local/compose.realdata-8080.yaml"),
+                     "-p", project, "config", "--format", "json"], capture_output=True, text=True, check=True,
+                )
+                active = json.loads(promoted.stdout)["services"]["app"]
+                self.assertFalse(active.get("profiles"))
+                self.assertEqual("http://localhost:8080", active["environment"]["APP_URL"])
+                self.assertEqual("labmania_realdata_session", active["environment"]["SESSION_COOKIE"])
+                self.assertEqual(1, len(active["ports"]))
+                self.assertEqual(("127.0.0.1", "8080"), (active["ports"][0]["host_ip"], active["ports"][0]["published"]))
+                self.assertEqual(app["volumes"], active["volumes"])
 
 
 if __name__ == "__main__":

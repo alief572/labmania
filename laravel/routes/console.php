@@ -9,11 +9,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 foreach (['profil', 'impor', 'verifikasi'] as $operation) {
-    Artisan::command('labmania:migrasi-'.$operation.' {--manifest= : Manifest snapshot dan pemetaan yang disahkan} {--terapkan : Tulis hanya untuk operasi impor}', function () use ($operation) {
+    Artisan::command('labmania:migrasi-'.$operation.' {--manifest= : Manifest snapshot dan pemetaan yang disahkan} {--terapkan : Tulis hanya untuk operasi impor} {--metadata-login-berubah : Verifikasi baca-saja mengabaikan ip/login_terakhir; password/hak tetap diperiksa}', function () use ($operation) {
         try {
             MigrationManifest::check($operation === 'impor' || ! $this->option('terapkan'), '--terapkan hanya tersedia untuk impor.');
+            MigrationManifest::check(! $this->option('metadata-login-berubah') || ($operation === 'verifikasi' && ! $this->option('terapkan')), 'Metadata login hanya boleh ditoleransi pada verifikasi baca-saja.');
             MigrationManifest::check(is_string($this->option('manifest')) && $this->option('manifest') !== '', '--manifest wajib diberikan.');
-            $service = new MigrationRehearsal(new MigrationManifest($this->option('manifest'), $operation !== 'profil'));
+            $service = new MigrationRehearsal(new MigrationManifest($this->option('manifest'), $operation !== 'profil'), (bool) $this->option('metadata-login-berubah'));
             if ($this->option('terapkan')) {
                 $target = MigrationRehearsal::target(true);
                 $this->line('Lingkungan: '.app()->environment().'; koneksi: '.$target->getName().'; database: '.$target->getDatabaseName());

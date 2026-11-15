@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\MenuCounts;
+use App\Support\Navigation;
 use App\Support\Permissions;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -19,16 +19,9 @@ class HandleInertiaRequests extends Middleware
         return [...parent::share($request),
             'auth' => fn () => $request->user()?->only(['id_user', 'username', 'nm_lengkap']),
             'permissions' => $permissions,
-            'navigation' => fn () => collect(config('navigation'))->filter(fn ($item) => ! $item['menu'] || in_array('View', $permissions()[$item['menu']] ?? [], true))->map(function ($item) {
-                if (($count = MenuCounts::for($item['menu'])) !== null) {
-                    $item['count'] = $count;
-                }
-
-                return $item;
-            })->values(),
+            'navigation' => fn () => $request->user() ? Navigation::items($permissions()) : [],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
-                'enroll_token' => fn () => $request->session()->get('enroll_token'),
             ],
         ];
     }

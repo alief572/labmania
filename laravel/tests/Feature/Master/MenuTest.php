@@ -9,6 +9,19 @@ class MenuTest extends MasterTestCase
 {
     private int $modul;
 
+    public function test_menu_datatable_keeps_parent_context_and_actions_after_search_and_sort(): void
+    {
+        $this->login($this->admin());
+        $this->post('/pengaturan/menu', $this->payload())->assertSessionHasNoErrors();
+        $id = DB::table('ms_menu')->where('link', 'laporan/uji')->value('id');
+        $this->getJson('/pengaturan/menu/data?draw=9&length=10&search[value]=Laporan%20Uji&order[0][column]=1&order[0][dir]=asc')
+            ->assertOk()->assertJsonPath('draw', 9)->assertJsonPath('recordsFiltered', 1)
+            ->assertJsonPath('data.0.id', $id)->assertJsonPath('data.0.parent_judul', 'Modul Uji')
+            ->assertJsonPath('data.0.tipe', 'menu')->assertJsonPath('data.0.aksi', ['lihat', 'tambah']);
+        $this->getJson('/pengaturan/menu/data?length=-1')->assertUnprocessable();
+        $this->login($this->account())->getJson('/pengaturan/menu/data')->assertForbidden();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

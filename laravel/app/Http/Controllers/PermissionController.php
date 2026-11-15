@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Support\Permissions;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -61,7 +60,6 @@ class PermissionController extends Controller
             'kind' => $kind, 'targetId' => $id, 'targetName' => $target?->nm_lengkap,
             'roles' => $roles, 'menus' => $menus, 'selected' => $selected, 'inherited' => $base,
             'editable' => ! $locked && $manage && ! $this->ownsTarget($actor, $kind, (int) $id),
-            'canEnroll' => $target !== null && ! $target->ga_secret && Gate::allows('menu', ['master_data.users', 'Manage']) && $this->mayEnroll($actor, $target),
             'users' => Gate::allows('menu', ['master_data.users', 'Manage']) ? User::orderBy('nm_lengkap')->get(['id_user', 'nm_lengkap']) : [],
         ]);
     }
@@ -82,20 +80,6 @@ class PermissionController extends Controller
         return $this->save($request, 'user', $user->id_user);
     }
 
-    public function enrollToken(Request $request, User $user)
-    {
-        Gate::authorize('menu', ['master_data.users', 'Manage']);
-        abort_unless($this->mayEnroll($request->user(), $user), 403);
-        if ($user->ga_secret) {
-            throw ValidationException::withMessages(['enroll' => 'Autentikator akun ini sudah aktif.']);
-        }
-        $token = strtoupper(bin2hex(random_bytes(6)));
-        Cache::put('auth.enroll.'.$user->id_user, hash('sha256', $token), now()->addMinutes(15));
-        write_log('Master Data', 'Edit', 'Buat token enroll autentikator', ['sub_module' => 'Master User'], 'users', $user->id_user, $user->username);
-
-        return back()->with('success', 'Token enroll dibuat, berlaku 15 menit dan hanya tampil sekali.')->with('enroll_token', $token);
-    }
-
     /** Aktor non-Superadmin tidak boleh mengubah hak dirinya sendiri atau role yang ia miliki. */
     private function ownsTarget(?User $actor, string $kind, int $id): bool
     {
@@ -106,12 +90,6 @@ class PermissionController extends Controller
         return $kind === 'user'
             ? $actor->id_user === $id
             : DB::table('user_groups')->where('id_user', $actor->id_user)->where('id_group', $id)->exists();
-    }
-
-    private function mayEnroll(?User $actor, User $target): bool
-    {
-        return $actor && $actor->id_user !== $target->id_user
-            && (! Permissions::superadmin($target) || Permissions::superadmin($actor));
     }
 
     private function save(Request $request, string $kind, int $id)

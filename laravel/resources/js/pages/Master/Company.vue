@@ -1,22 +1,26 @@
 <script setup lang="ts">
+import { useConfirmedMutation } from "../../composables/confirmedMutation";
+import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
-import { ref, watch } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
-import Pagination from '../../components/Pagination.vue';
+
 import StatusBadge from '../../components/StatusBadge.vue';
 import { useWilayah } from '../../composables/wilayah';
+
+const confirmation = useConfirmedMutation();
+const { pending: confirming } = confirmation;
 
 type Row = { id_customer: string; name_customer: string; jenis_instansi: string | null; address_office: string | null; id_prov: string | null; provinsi: string | null; id_city: string | null; kota: string | null; telephone: string | null; email: string | null; pic_name: string | null; pic_jabatan: string | null; pic_hp: string | null; pic_email: string | null; npwp: string | null; perlakuan_ppn: string | null; aktif: number };
 const props = defineProps<{
     filters: { q: string; jenis: string }; jenis: string[];
-    rows: { data: Row[]; current_page: number; last_page: number; prev_page_url: string | null; next_page_url: string | null };
     can: { add: boolean; manage: boolean; delete: boolean };
 }>();
 const filter = ref({ ...props.filters });
-const apply = () => router.get('/master/company', Object.fromEntries(Object.entries(filter.value).filter(([, v]) => v !== '')), { preserveScroll: true });
+const apply = () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); };
 const wil = useWilayah();
 const editing = ref<Row | null>(null);
 const adding = ref(false);
@@ -38,41 +42,44 @@ async function open(row: Row | null) {
 }
 const close = () => { editing.value = null; adding.value = false; };
 function save() {
-    const done = { preserveScroll: true, onSuccess: close };
-    if (editing.value) form.put(`/master/company/${editing.value.id_customer}`, done);
-    else form.post('/master/company', done);
+    return confirmation.form(form, editing.value ? 'put' : 'post', editing.value ? `/master/company/${editing.value.id_customer}` : '/master/company', { title: `${editing.value ? 'Simpan perubahan' : 'Tambahkan'} ${form.nama}${editing.value ? ` (${editing.value.id_customer})` : ''}?` }, {
+        preserveScroll: true, onSuccess: () => { close(); reload(); },
+    });
 }
-const toggle = (row: Row) => router.post(`/master/company/${row.id_customer}/toggle`, {}, { preserveScroll: true });
-const removing = ref<Row | null>(null);
-const remove = () => router.delete(`/master/company/${removing.value!.id_customer}`, { preserveScroll: true, onFinish: () => { removing.value = null; } });
+const toggle = (row: Row) => confirmation.visit('post', `/master/company/${row.id_customer}/toggle`, {}, {
+    title: `${row.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${row.name_customer} (${row.id_customer})?`,
+    confirmLabel: row.aktif ? 'Ya, nonaktifkan' : 'Ya, aktifkan', danger: !!row.aktif,
+}, { preserveScroll: true, onSuccess: reload });
+const remove = (row: Row) => confirmation.visit('delete', `/master/company/${row.id_customer}`, {}, {
+    title: `Hapus ${row.name_customer} (${row.id_customer})?`, text: 'Company dihapus dari daftar. Company yang sudah dipakai tidak dapat dihapus.', confirmLabel: 'Ya, hapus', danger: true,
+}, { preserveScroll: true, onSuccess: reload });
+
+const table = ref<InstanceType<typeof ServerTable> | null>(null);
+const reload = () => table.value?.reload();
+const appliedFilters = ref({ ...props.filters });
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Jenis Instansi', orderable: true }, { title: 'Lokasi', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master Company" />
-    <AppLayout title="Master Company">
-        <div class="page-head"><h1>Master Company</h1><button v-if="can.add" type="button" class="primary" @click="open(null)">+ Tambah Company</button></div>
+    <AppLayout title="Master Company" full-width>
+        <div class="page-head"><h1>Master Company</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Company</button></div>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <form class="filters" @submit.prevent="apply">
-            <label>Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Kode, nama, kota, PIC" /></label>
             <label>Jenis Instansi<select v-model="filter.jenis"><option value="">Semua</option><option v-for="j in jenis" :key="j" :value="j">{{ j }}</option></select></label>
-            <button class="primary">Terapkan</button>
+            <button class="primary" :disabled="confirming">Terapkan</button>
         </form>
-        <div class="table-wrap"><table>
-            <caption class="sr-only">Daftar Company</caption>
-            <thead><tr><th scope="col">No</th><th scope="col">Kode</th><th scope="col">Nama</th><th scope="col">Jenis Instansi</th><th scope="col">Lokasi</th><th scope="col">Status</th><th scope="col">Aksi</th></tr></thead>
-            <tbody>
-                <tr v-for="(row, i) in rows.data" :key="row.id_customer">
-                    <td>{{ i + 1 }}</td><td>{{ row.id_customer }}</td>
-                    <td>{{ row.name_customer }}<small>PIC: {{ row.pic_name ?? '—' }}</small><small v-if="!row.npwp"><span class="badge warn">NPWP kosong</span> Lengkapi lewat Edit</small></td>
-                    <td>{{ row.jenis_instansi ?? '—' }}</td><td>{{ row.kota ?? '—' }}<small>{{ row.provinsi }}</small></td><td><StatusBadge :active="row.aktif" /></td>
-                    <td><ActionMenu ><template v-if="can.manage"><button type="button" @click="open(row)">Edit</button><button type="button" @click="toggle(row)">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></template><button v-if="can.delete" type="button" class="danger" @click="removing = row">Hapus</button></ActionMenu></td>
-                </tr>
-                <tr v-if="!rows.data.length"><td colspan="7" class="empty">Belum ada Company.</td></tr>
-            </tbody>
-        </table></div>
-        <Pagination :page="rows" label="Halaman Company" />
+        <ServerTable ref="table" url="/master/company/data" :columns="columns" :filters="appliedFilters" :label="'Company'">
+            <template #cell-0="{ number }">{{ number }}</template>
+            <template #cell-1="{ row }">{{ row.id_customer }}</template>
+            <template #cell-2="{ row }">{{ row.name_customer }}<small>PIC: {{ row.pic_name ?? '—' }}</small><small v-if="!row.npwp"><span class="badge warn">NPWP kosong</span> Lengkapi lewat Edit</small></template>
+            <template #cell-3="{ row }">{{ row.jenis_instansi ?? '—' }}</template>
+            <template #cell-4="{ row }">{{ row.kota ?? '—' }}<small>{{ row.provinsi }}</small></template>
+            <template #cell-5="{ row }"><StatusBadge :active="row.aktif" /></template>
+            <template #cell-6="{ row }"><ActionMenu ><template v-if="can.manage"><button type="button" @click="open(row)" :disabled="confirming">Edit</button><button type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></template><button v-if="can.delete" type="button" class="danger" @click="remove(row)" :disabled="confirming">Hapus</button></ActionMenu></template>
+        </ServerTable>
 
-        <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit Company ${editing.id_customer}` : 'Tambah Company'" :busy="form.processing" @confirm="save" @cancel="close">
+        <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit Company ${editing.id_customer}` : 'Tambah Company'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
             <div class="form-grid">
                 <FormField id="cnama" label="Nama Company" :error="form.errors.nama" v-slot="{ describedBy, invalid }"><input id="cnama" v-model="form.nama" maxlength="150" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                 <FormField id="cjen" label="Jenis Instansi" :error="form.errors.jenis" v-slot="{ describedBy, invalid }"><select id="cjen" v-model="form.jenis" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">Pilih…</option><option v-for="j in jenis" :key="j" :value="j">{{ j }}</option></select></FormField>
@@ -89,7 +96,5 @@ const remove = () => router.delete(`/master/company/${removing.value!.id_custome
                 <FormField id="cpe" label="Email PIC" :error="form.errors.picEmail" v-slot="{ describedBy, invalid }"><input id="cpe" v-model="form.picEmail" type="email" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
             </div>
         </ConfirmDialog>
-
-        <ConfirmDialog v-if="removing" :title="`Hapus ${removing.id_customer}?`" confirm-label="Hapus" danger @confirm="remove" @cancel="removing = null"><p>Company {{ removing.name_customer }} dihapus dari daftar. Company yang sudah dipakai tidak dapat dihapus.</p></ConfirmDialog>
     </AppLayout>
 </template>

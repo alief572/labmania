@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Navigation;
+use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +14,7 @@ use Inertia\Inertia;
 /**
  * CRUD Menu Sidebar (struktur menu dan aksi di ms_menu / ms_menu_aksi). Aturan M-01..M-14 dari perilaku CI3
  * (Menu_labmania_model), lihat .artifacts/paritas_fitur_ci3/spesifikasi_crud_menu_14-11-2026.md.
- * Sidebar Laravel sendiri tetap dari config/navigation.php (D-02, menunggu keputusan BA).
+ * Sidebar membaca struktur ms_menu; config/navigation.php hanya memetakan route legacy.
  */
 class MenuController extends Controller
 {
@@ -35,9 +37,35 @@ class MenuController extends Controller
         return (int) $m['parent_id'] === 0 && $m['link'] === '#';
     }
 
-    public function index()
+    public function index(Request $request)
     {
         Gate::authorize('menu', [self::MENU, 'View']);
+        if ($request->route('datatable')) {
+            ServerDataTable::prepare($request);
+            $f = $request->validate(['q' => 'nullable|string|max:100']);
+            $query = DB::table('ms_menu as m')->leftJoin('ms_menu as parent', 'parent.id', '=', 'm.parent_id')
+                ->where(fn ($w) => $w->where('m.parent_id', 0)->orWhere('parent.parent_id', 0));
+            ServerDataTable::scope($request, $query);
+            if (($f['q'] ?? '') !== '') {
+                $like = '%'.$f['q'].'%';
+                $query->where(fn ($w) => $w->where('m.judul', 'like', $like)->orWhere('m.kode', 'like', $like)->orWhere('m.link', 'like', $like)->orWhere('parent.judul', 'like', $like));
+            }
+            $query->select('m.*', 'parent.judul as parent_judul')
+                ->orderByRaw('CASE WHEN m.parent_id = 0 THEN m.urutan ELSE parent.urutan END')
+                ->orderByRaw('CASE WHEN m.parent_id = 0 THEN m.id ELSE parent.id END')
+                ->orderByRaw('CASE WHEN m.parent_id = 0 THEN 0 ELSE 1 END')->orderBy('m.kelompok')->orderBy('m.urutan');
+            $rows = ServerDataTable::page($request, $query, [null, 'm.judul', 'm.link', 'm.kelompok', null, 'm.aktif', null], 'm.id');
+            $actions = DB::table('ms_menu_aksi')->whereIn('id_menu', $rows->pluck('id'))->get()->groupBy('id_menu');
+            $rows->through(function ($row) use ($actions) {
+                $row->level = $row->parent_id ? 1 : 0;
+                $row->tipe = self::isModul((array) $row) ? 'modul' : 'menu';
+                $row->aksi = ($actions[$row->id] ?? collect())->pluck('aksi')->sort()->values()->all();
+
+                return $row;
+            });
+
+            return ServerDataTable::result($request, $rows);
+        }
         $aksi = DB::table('ms_menu_aksi')->get()->groupBy('id_menu')->map(fn ($g) => $g->pluck('aksi')->sort()->values()->all());
         $by = DB::table('ms_menu')->orderBy('urutan')->orderBy('id')->get()->map(fn ($r) => (array) $r + ['aksi' => $aksi[$r->id] ?? []])->groupBy('parent_id');
         $rows = [];
@@ -48,8 +76,9 @@ class MenuController extends Controller
             }
         }
 
-        return Inertia::render('Menu/Index', ['rows' => $rows, 'moduls' => DB::table('ms_menu')->where('parent_id', 0)->where('link', '#')->orderBy('urutan')->get(['id', 'judul']),
-            'icons' => self::ICONS, 'aksi' => self::AKSI,
+        return Inertia::render('Menu/Index', ['rows' => $rows, 'moduls' => DB::table('ms_menu')->where('parent_id', 0)->where('link', '#')->orderBy('urutan')->get(['id', 'kode', 'judul']),
+            'groupLabels' => config('navigation-groups'),
+            'icons' => self::ICONS, 'aksi' => self::AKSI, 'unmapped' => Navigation::unmapped(),
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage'])]]);
     }
 
@@ -104,8 +133,8 @@ class MenuController extends Controller
                 if ($link === '' || $link === '#') {
                     throw ValidationException::withMessages(['link' => 'Link wajib diisi.']);
                 }
-                if (strlen($link) > 150 || ! preg_match('#^[a-z0-9_\-]+(/[a-z0-9_\-]+)*$#i', $link)) {
-                    throw ValidationException::withMessages(['link' => 'Link tidak valid (huruf, angka, _ - dan /; tanpa awalan /).']);
+                if (! ($old && $sistem) && (strlen($link) > 150 || (! $old && str_starts_with($link, '/')) || ! preg_match('#^/?[a-z0-9_\-]+(/[a-z0-9_\-]+)*$#i', $link))) {
+                    throw ValidationException::withMessages(['link' => 'Link tidak valid (path internal dengan huruf, angka, _ - dan /).']);
                 }
                 if ($parent !== 0 && ! DB::table('ms_menu')->where('id', $parent)->where('parent_id', 0)->where('link', '#')->exists()) {
                     throw ValidationException::withMessages(['parent_id' => 'Modul induk tidak valid.']);
@@ -191,10 +220,13 @@ class MenuController extends Controller
                 throw ValidationException::withMessages(['aktif' => 'Menu sudah berada di posisi '.($dir === 'up' ? 'teratas' : 'terbawah').'.']);
             }
             [$sib[$i], $sib[$to]] = [$sib[$to], $sib[$i]];
+            $orders = DB::table('ms_menu')->whereIn('id', $sib)->pluck('urutan', 'id');
+            $changes = [];
             foreach ($sib as $n => $sid) {
                 DB::table('ms_menu')->where('id', $sid)->update(['urutan' => ($n + 1) * 10]);
+                $changes['Menu '.$sid.' - Urutan'] = ['old' => (int) $orders[$sid], 'new' => ($n + 1) * 10];
             }
-            write_log('Menu Sidebar', 'Edit', 'Pindah menu '.$m['judul'].($dir === 'up' ? ' ke atas' : ' ke bawah'), null, 'ms_menu', $id, $m['kode']);
+            write_log('Menu Sidebar', 'Edit', 'Pindah menu '.$m['judul'].($dir === 'up' ? ' ke atas' : ' ke bawah'), ['detail_changes' => $changes], 'ms_menu', $id, $m['kode']);
 
             return $m;
         });

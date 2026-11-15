@@ -1,9 +1,8 @@
 <?php
 
 return [
+    'coa_connection' => env('COA_DB_CONNECTION', 'gl'),
     'local_uat_enabled' => env('LOCAL_UAT_ENABLED', false),
-    'local_uat_password_only' => env('LOCAL_UAT_PASSWORD_ONLY', false),
-    'local_rehearsal_password_only' => env('LOCAL_REHEARSAL_PASSWORD_ONLY', false),
     'operasional' => [
         // ponytail: aktifkan hanya setelah pertanyaan dan aturan publik disahkan BA; tidak menerima toggle dari UI/env.
         'survey_public_enabled' => false,
@@ -11,10 +10,10 @@ return [
     ],
     'invoice' => [
         'coa' => [
-            'piutang' => ['id' => env('INVOICE_COA_PIUTANG_ID'), 'number' => '1030-10-1'],
-            'ppn_dn' => ['id' => env('INVOICE_COA_PPN_DN_ID'), 'number' => '2010-30-6'],
-            'public' => ['id' => env('INVOICE_COA_PUBLIC_ID'), 'number' => '4010-10-3'],
-            'b2b' => ['id' => env('INVOICE_COA_B2B_ID'), 'number' => '4010-10-2'],
+            'piutang' => ['id' => env('INVOICE_COA_PIUTANG_ID'), 'number' => '1102-01-01'],
+            'ppn_dn' => ['id' => env('INVOICE_COA_PPN_DN_ID'), 'number' => '2104-01-07'],
+            'public' => ['id' => env('INVOICE_COA_PUBLIC_ID'), 'number' => '4101-01-03'],
+            'b2b' => ['id' => env('INVOICE_COA_B2B_ID'), 'number' => '4101-01-02'],
             'uang_muka_wapu' => ['id' => env('INVOICE_COA_UANG_MUKA_WAPU_ID'), 'number' => null],
             'hutang_wapu' => ['id' => env('INVOICE_COA_HUTANG_WAPU_ID'), 'number' => null],
         ],
