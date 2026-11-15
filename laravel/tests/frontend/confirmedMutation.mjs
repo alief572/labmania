@@ -232,7 +232,7 @@ try {
     scenarios.push(['Product', 'add', 'saveAdd', 'post', '/master/product'], ['Product', 'edit', 'saveEdit', 'put', '/master/product/77'],
         ['Product', 'edit', 'saveLingkup', 'put', '/master/product/77/lingkup'], ['Product', 'row', 'toggle', 'post', '/master/product/77/toggle'],
         ['Katalog', 'edit', 'save', 'put', '/master/product/77/lingkup'], ['Permissions', 'role', 'save', 'put', '/permissions/roles/2'],
-        ['Permissions', 'user', 'save', 'put', '/permissions/users/77']);
+        ['PermissionOverride', 'user', 'save', 'put', '/permissions/users/77']);
     for (const slug of ['jenis-sertifikat', 'jenis-bidang', 'varian-pelaksanaan']) {
         for (const [mode, fn, method, suffix] of [['add', 'save', 'post', ''], ['edit', 'save', 'put', '/77'], ['row', 'toggle', 'post', '/77/toggle']]) {
             scenarios.push(['Atribut', mode, fn, method, `/master/${slug}${suffix}`, { slug }]);
@@ -242,8 +242,8 @@ try {
         scenarios.push(['Rate', mode, fn, method, `/master/rate/variable${suffix}`, { tipe: 'variable' }]);
     }
     for (const [name, mode, fn, method, url, props = {}] of scenarios) {
-        const target = name === 'Permissions' ? 'Permissions' : `Master/${name}`;
-        const { app, state, original } = await page(target, name === 'Permissions' ? { kind: mode, targetId: mode === 'user' ? 77 : 2, targetName: 'Test' } : props);
+        const target = ['Permissions', 'PermissionOverride'].includes(name) ? name : `Master/${name}`;
+        const { app, state, original } = await page(target, ['Permissions', 'PermissionOverride'].includes(name) ? { kind: mode, targetId: mode === 'user' ? 77 : 2, targetName: 'Test', kpi: { roles: 2, users: 1, menus: 3, hak: 9 } } : props);
         assert.doesNotMatch(original, /\b(?:router|form|\w+Form)\.(?:post|put|patch|delete|submit)\(/, target);
         if (state.form) Object.assign(state.form, Object.fromEntries(Object.entries({ nama: 'Test', item: 'Item Test', teks: 'Keterangan Test' }).filter(([key]) => key in state.form)));
         if (mode === 'edit') {
@@ -252,6 +252,7 @@ try {
             if ('current' in state) state.current = row;
             if ('currentId' in state) { state.currentId = 77; state.currentCode = row.kode; }
         }
+        if (name === 'Permissions') { state.editing = { id_group: 2, nm_group: 'Staf', sistem: false }; state.detail = { menus: [], selected: [], editable: true, n_user: 0 }; }
         if (mode === 'reset') { state.resetting = row; state.resetForm.password = 'JanganTampil'; state.resetForm.password_confirmation = 'JanganTampil'; }
         if (name === 'Product') { state.current = row; state.editForm.judul = row.judul; state.addForm.judul = row.judul; }
         const count = requests.length;

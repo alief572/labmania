@@ -8,6 +8,7 @@ export interface SharedProps extends PageProps {
 }
 
 export interface Menu {
+    modul?: string;
     id: number;
     kode: string;
     judul: string;

@@ -110,6 +110,8 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
         Route::post('/{id}/pindah/{dir}', [MenuController::class, 'move'])->whereNumber('id')->where('dir', 'up|down');
     });
     Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions');
+    Route::get('/permissions/data', [PermissionController::class, 'index'])->defaults('datatable', true);
+    Route::get('/permissions/roles/{role}', [PermissionController::class, 'role'])->whereNumber('role');
     Route::put('/permissions/roles/{role}', [PermissionController::class, 'roleUpdate'])->whereNumber('role');
     Route::get('/permissions/users/{user}', [PermissionController::class, 'user'])->whereNumber('user');
     Route::put('/permissions/users/{user}', [PermissionController::class, 'userUpdate'])->whereNumber('user');
