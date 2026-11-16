@@ -150,6 +150,32 @@ class MasterProgramTest extends MasterTestCase
         $this->assertDatabaseHas('logs', ['action' => 'Finalkan', 'ref_no' => $mp->nomor]);
     }
 
+    public function test_penjualan_program_dibuka_dari_master_final_memilih_master_itu(): void
+    {
+        $menu = DB::table('ms_menu')->insertGetId(['kode' => 'penjualan_program', 'judul' => 'Penjualan Program', 'link' => 'penjualan-program', 'parent_id' => 0, 'kelompok' => 1, 'urutan' => 32, 'aktif' => 1, 'sistem' => 0]);
+        foreach (['lihat', 'tambah', 'ubah', 'aktif', 'hapus', 'approve'] as $aksi) {
+            DB::table('ms_menu_aksi')->insert(['id_menu' => $menu, 'aksi' => $aksi]);
+        }
+        $final = $this->draft();
+        $draft = $this->draft();
+        $this->post("/program/$final/finalkan")->assertSessionHasNoErrors();
+
+        $this->get("/penjualan-program/create?master=$final")->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Sales/Form')->where('program.id_master_program', $final));
+        // Master yang belum Final, tidak ada, atau bukan angka tidak dipilih otomatis.
+        foreach ([$draft, 999999, 'abc'] as $nilai) {
+            $this->get("/penjualan-program/create?master=$nilai")->assertOk()->assertInertia(fn ($page) => $page->where('program.id_master_program', ''));
+        }
+    }
+
+    public function test_daftar_master_program_memuat_varian_dan_sertifikat_produk_pertama(): void
+    {
+        $this->post('/program', $this->payload())->assertSessionHasNoErrors();
+        $row = $this->getJson('/program/data?draw=1&start=0&length=25')->assertOk()->json('data.0');
+        $this->assertSame('Workshop', $row['nama_varian']);
+        $this->assertSame('BNSP', $row['nama_sertifikasi']);
+    }
+
     public function test_final_dan_batal_terkunci_dan_tidak_bisa_ganda(): void
     {
         $a = $this->draft();

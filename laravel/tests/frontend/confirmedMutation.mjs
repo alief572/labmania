@@ -42,6 +42,8 @@ const apps = [];
 const pdfRequests = [];
 globalThis.__confirmationTestPdf = async url => { pdfRequests.push(url); };
 const pdfUrl = moduleUrl('export const postPdf = (...args) => globalThis.__confirmationTestPdf(...args);');
+const programTransitionUrl = moduleUrl(ts.transpileModule(readFileSync(new URL('../../resources/js/composables/programTransition.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ES2022 } }).outputText
+    .replace(/from 'vue'/g, `from '${import.meta.resolve('vue')}'`).replace(/from '\.\/confirmedMutation'/g, `from '${helperUrl}'`).replace(/from '\.\/costing'/g, `from '${new URL('../../resources/js/composables/costing.ts', import.meta.url).href}'`));
 globalThis.window = { location: { search: '' } };
 globalThis.fetch = async () => ({ ok: true, json: async () => ({
     id: 77, nomor: 'MP-077', judul: 'Test', durasi: 2, jp: 16, target: 10,
@@ -57,6 +59,7 @@ async function page(name, props = {}) {
     script = script.replace(/from (['"])([^'"]+)\1/g, (_, quote, dependency) => {
         if (dependency.endsWith('/confirmedMutation')) return `from '${helperUrl}'`;
         if (dependency.endsWith('/pdf')) return `from '${pdfUrl}'`;
+        if (dependency.endsWith('/programTransition')) return `from '${programTransitionUrl}'`;
         const url = dependency.startsWith('.') ? new URL(`${dependency}.ts`, file).href : import.meta.resolve(dependency);
         return `from '${url}'`;
     });

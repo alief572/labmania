@@ -26,6 +26,8 @@ function source() {
     form.harga_jual_peserta = Math.round(Number(m.harga_jual_peserta)); form.target_profit = Math.round(Number(m.target_profit));
     form.biaya = m.biaya.map((b) => ({ ...b, harga: Math.round(Number(b.harga)) }));
 }
+// Dibuka dari Master Program Final (?master=): isi biaya dan target dari master itu, sama seperti memilih manual.
+if (!props.program.id && props.program.id_master_program) source();
 const days = computed(() => Math.max(1, (Date.parse(form.tgl_selesai) - Date.parse(form.tgl_mulai)) / 86400000 + 1 || 1));
 const result = computed(() => calc(days.value, form.target_peserta, rupiahInput(form.harga_jual_peserta), form.biaya.map((b) => ({ ...b, harga: rupiahInput(b.harga), satuan: b.nama_satuan }))));
 const pick = ref('');

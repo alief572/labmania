@@ -20,7 +20,7 @@ function toggle(menu: Menu, action: string, checked: boolean) {
 }
 function choose(event: Event, kind: string) {
     const id = (event.target as HTMLSelectElement).value;
-    if (id) router.get(kind === 'role' ? `/permissions?role=${id}` : `/permissions/users/${id}`, {}, { preserveState: false });
+    if (id) router.get(kind === 'role' ? '/permissions' : `/permissions/users/${id}`, {}, { preserveState: false });
 }
 function save() {
     if (!props.editable || !props.targetId) return;
