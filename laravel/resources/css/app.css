@@ -403,3 +403,26 @@ progress { accent-color: var(--gold); height: 8px; }
 .ak-scope { display: inline-block; min-width: 42px; padding: 1px 8px; border-radius: 999px; background: #EEF1F6; color: var(--muted); font-size: 12px; }
 .ak-scope.on { background: #E4EAF3; color: var(--navy); font-weight: 700; }
 .dialog:has(.ak-wrap) { max-width: 1100px; }
+
+/* Master Trainer (mockup .tr-table, .tr-tabs, .letter, .summary) */
+.tr-tabs { margin-top: 0; }
+.tr-tabs .nav-count { margin-left: 6px; background: #E4EAF3; color: var(--navy); }
+.tr-table { width: 100%; border-collapse: collapse; }
+.tr-table th, .tr-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.tr-table thead th { background: #F6F8FB; font-size: 12.5px; }
+.tr-table input { margin: 0; min-height: 36px; }
+.tr-table .num { width: 44px; text-align: right; color: var(--muted); }
+.tr-table .wide { width: 40%; }
+.tr-table .yr { width: 120px; }
+.tr-table .file { min-width: 180px; }
+.tr-table .row-err { background: #FBEFF1; }
+.file-btn { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 10px; border: 1px solid #C7D2E2; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--navy); cursor: pointer; }
+.qtn-h { margin: 18px 0 8px; font-size: 14px; font-weight: 700; color: var(--navy); }
+.letter { font-size: 13.5px; }
+.summary { display: grid; gap: 0; margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.summary > div { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; border-bottom: 1px solid var(--line); }
+.summary > div:last-child { border-bottom: 0; }
+.summary dt { padding: 8px 12px; background: #F6F8FB; font-weight: 600; color: var(--muted); }
+.summary dd { margin: 0; padding: 8px 12px; overflow-wrap: anywhere; }
+.cv-pdf { margin: 16px 0 0; text-align: right; }
+.span2 { grid-column: 1 / -1; }
