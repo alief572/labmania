@@ -27,4 +27,25 @@ class Phase3Test extends MasterTestCase
         (require base_path('database/migrations/2026_11_14_090000_sales_order_invoice.php'))->up();
         (require base_path('database/migrations/2026_11_14_100000_reschedule_refund.php'))->up();
     }
+
+    public function test_halaman_quotation_memuat_jumlah_tab_dan_ringkasan_batch(): void
+    {
+        $this->login($this->admin());
+        $program = $this->program();
+        $this->quote($program);
+
+        $this->get('/quotation')->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Quotation/Index')->where('tabCounts.ongoing', 1)->where('tabCounts.selesai', 0)->has('tabCounts.data'));
+        $this->get("/quotation/batch/$program?data=1")->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Quotation/Batch')->where('summary.quotation', 1)->where('summary.total', 0)->where('summary.aktif', 0)->has('summary.harga'));
+    }
+
+    public function test_daftar_sales_order_memuat_tahun_acara_untuk_filter(): void
+    {
+        $this->login($this->admin());
+        $this->program();
+
+        $this->get('/sales-order')->assertOk()->assertInertia(fn ($page) => $page
+            ->component('SalesOrder/Index')->has('years', 1)->where('years.0', 2026));
+    }
 }

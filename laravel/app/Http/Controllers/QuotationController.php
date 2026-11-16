@@ -77,7 +77,11 @@ class QuotationController extends Controller
             return $p;
         });
 
-        $props = ['rows' => $rows, 'filters' => $f, 'tab' => $tab, 'stats' => $stats,
+        // Badge jumlah tab (mockup tabCnt): program Final on going / selesai, dan peserta semua quotation Final.
+        $final = DB::table('penjualan_program')->where('status', 'final');
+        $tabCounts = ['ongoing' => (clone $final)->whereNull('closed_date')->count(), 'selesai' => (clone $final)->whereNotNull('closed_date')->count(),
+            'data' => DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->join('penjualan_program as pp', 'pp.id', '=', 'q.id_penjualan')->where('pp.status', 'final')->count()];
+        $props = ['rows' => $rows, 'filters' => $f, 'tab' => $tab, 'stats' => $stats, 'tabCounts' => $tabCounts,
             'years' => DB::table('penjualan_program')->whereNotNull('tgl_mulai')->pluck('tgl_mulai')->map(fn ($d) => (int) substr($d, 0, 4))->unique()->sortDesc()->values()];
         if ($r->route('datatable')) {
             return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
@@ -141,8 +145,14 @@ class QuotationController extends Controller
         }
         $hasParticipants = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $id)->whereIn('x.status', ['deal', 'menunggu'])->exists();
         $p->nomor = Sales::display($p);
+        // Ringkasan header (mockup bpRows): peserta per status dan jumlah quotation batch ini; Aktif = Deal + Menunggu.
+        $perStatus = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $id)->groupBy('x.status')->selectRaw('x.status, COUNT(*) as n')->pluck('n', 'x.status');
+        $summary = ['deal' => (int) ($perStatus['deal'] ?? 0), 'menunggu' => (int) ($perStatus['menunggu'] ?? 0), 'batal' => (int) ($perStatus['batal'] ?? 0), 'keluar' => (int) ($perStatus['keluar'] ?? 0),
+            'quotation' => DB::table('quotation')->where('id_penjualan', $id)->count(), 'harga' => (float) $p->harga_jual_peserta];
+        $summary['total'] = $summary['deal'] + $summary['menunggu'] + $summary['batal'] + $summary['keluar'];
+        $summary['aktif'] = $summary['deal'] + $summary['menunggu'];
 
-        return Inertia::render('Quotation/Batch', ['program' => (array) $p + ['judul' => Sales::title($p->id_master_program)], 'quotations' => [], 'peserta' => [], 'hasParticipants' => $hasParticipants, 'dataTab' => $data, 'filters' => $f, 'canManage' => Gate::allows('menu', [self::MENU, 'Manage']),
+        return Inertia::render('Quotation/Batch', ['summary' => $summary, 'program' => (array) $p + ['judul' => Sales::title($p->id_master_program)], 'quotations' => [], 'peserta' => [], 'hasParticipants' => $hasParticipants, 'dataTab' => $data, 'filters' => $f, 'canManage' => Gate::allows('menu', [self::MENU, 'Manage']),
             'pesertaStatus' => $r->input('peserta_status', 'aktif'), 'canAdd' => $p->status === 'final' && ! $p->closed_date && Gate::allows('menu', [self::MENU, 'Add']) && ($p->jenis !== 'b2b' || ! DB::table('quotation')->where('id_penjualan', $id)->where('status', '!=', 'batal')->exists())]);
     }
 

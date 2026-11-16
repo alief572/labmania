@@ -1,22 +1,62 @@
 <script setup lang="ts">
+import PageHead from '../../components/PageHead.vue';
 import ServerTable from '../../components/ServerTable.vue';
 import ActionMenu from "../../components/ActionMenu.vue";
-import { reactive } from 'vue';
+import { onBeforeUnmount, reactive, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import { money, type PageRows, type Program } from '../../types/salesOrder';
 type Row = Program & { judul: string; jumlah_so: number; peserta_deal: number; nilai_so: string; statuses: Record<string, number>; program_nomor?: string; status?: string; tanggal?: string; facts?: { judul: string; program: Program; trainer: { nama: string; bidang_keahlian: string }; asisten: { nama: string } } | null };
-const props = defineProps<{ rows: PageRows<Row>; filters: Record<string, string>; tab: string; canRefund: boolean; refundPending: number; counts: { so: number; surat: number } }>();
+const props = defineProps<{ rows: PageRows<Row>; filters: Record<string, string>; tab: string; canRefund: boolean; refundPending: number; counts: { so: number; surat: number }; years?: number[] }>();
 const f = reactive({ q: '', jenis: '', tahun: '', bulan: '', ...props.filters, tab: props.tab });
-const search = () => router.get('/sales-order', f);
+// Filter langsung berlaku (mockup tanpa tombol Terapkan); kata kunci ditunda 300 ms.
+const search = () => router.get('/sales-order', Object.fromEntries(Object.entries(f).filter(([k, v]) => v !== '' && v !== null && !(k === 'tab' && v === 'so'))), { preserveState: true, preserveScroll: true, replace: true });
+let timer: ReturnType<typeof setTimeout> | undefined;
+watch(() => [f.jenis, f.tahun, f.bulan], () => { clearTimeout(timer); search(); });
+watch(() => f.q, () => { clearTimeout(timer); timer = setTimeout(search, 300); });
+onBeforeUnmount(() => clearTimeout(timer));
+const surat = () => props.tab === 'surat';
+const bulan = (n: number) => new Date(2026, n - 1).toLocaleString('id-ID', { month: 'long' });
+const fmt = (d?: string) => (d ? new Date(`${d.slice(0, 10)}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const range = (a?: string, b?: string) => (!b || a === b ? fmt(a) : `${fmt(a)} – ${fmt(b)}`);
+const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => `${n} ${s.toLowerCase()}`).join(', ');
 </script>
 <template>
-    <Head title="Sales Order" /><AppLayout title="Sales Order" full-width>
-        <h1>Sales Order</h1><nav class="tabs" aria-label="Jenis dokumen"><Link href="/sales-order" :aria-current="tab === 'so' ? 'page' : undefined">Sales Order ({{ counts.so }})</Link><Link href="/sales-order?tab=surat" :aria-current="tab === 'surat' ? 'page' : undefined">Surat Kerja Trainer ({{ counts.surat }})</Link><Link v-if="canRefund" href="/sales-order/refund">Refund ({{ refundPending }} menunggu)</Link></nav>
+    <Head title="Sales Order" />
+    <AppLayout title="Sales Order" full-width>
+        <PageHead title="Sales Order" :description="surat()
+            ? 'Surat Tugas untuk trainer dan asisten trainer program. Terbit saat program mendapat Sales Order pertama; bila reschedule mengganti tanggal, trainer, atau asisten, surat lama berstatus Diganti dan surat baru terbit dengan nomor baru.'
+            : 'Setiap quotation yang Deal otomatis menjadi satu Sales Order, yaitu surat konfirmasi pesanan dari LabMania ke customer. Sales Order tidak dapat dibatalkan. Buka Lihat SO untuk melihat, mencetak, dan menandai siap dibuatkan invoice. Invoice dibuat dari Sales Order yang sudah siap.'" />
         <p v-for="e in $page.props.errors" :key="String(e)" class="error" role="alert">{{ e }}</p>
-        <form class="filters" @submit.prevent="search"><label>Jenis<select v-model="f.jenis"><option value="">Public &amp; B2B</option><option value="public">Public</option><option value="b2b">B2B</option></select></label><label>Tahun acara<input v-model="f.tahun" type="number" min="1900" max="2200" /></label><label>Bulan acara<select v-model="f.bulan"><option value="">Semua</option><option v-for="n in 12" :key="n" :value="n">{{ n }}</option></select></label><button class="primary">Terapkan</button></form>
-        <div class="table-wrap"><ServerTable url="/sales-order/data" label="Sales Order" :columns='[{"title":"No","orderable":false},{"title":"Penjualan Program","orderable":true},{"title":"Sales Order","orderable":false},{"title":"Peserta Deal","orderable":false,"className":"dt-body-right"},{"title":"Nilai SO","orderable":false,"className":"dt-body-right"},{"title":"Aksi","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit v-if="tab === 'so'"><template #cell-0="{ number }">{{ number }}</template><template #cell-1="{ row: p, number }">{{ p.nomor }} · {{ p.jenis.toUpperCase() }}<small>{{ p.judul }}</small><small>{{ p.tgl_mulai }} s.d. {{ p.tgl_selesai }} · {{ p.lokasi }}</small></template><template #cell-2="{ row: p, number }">{{ p.jumlah_so }} SO<small v-for="(n, status) in p.statuses" :key="status">{{ status }}: {{ n }}</small></template><template #cell-3="{ row: p, number }">{{ p.peserta_deal }}</template><template #cell-4="{ row: p, number }">{{ money(p.nilai_so) }}</template><template #cell-5="{ row: p, number }"><ActionMenu><Link :href="`/sales-order/program/${p.id}`">Lihat SO</Link></ActionMenu></template></ServerTable>
-        <ServerTable url="/sales-order/data" label="Sales Order" :columns='[{"title":"No","orderable":false},{"title":"Nomor Surat","orderable":true},{"title":"Status","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Trainer & Asisten","orderable":false},{"title":"Peserta Deal","orderable":false,"className":"dt-body-right"},{"title":"Aksi","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit v-else><template #cell-0="{ number }">{{ number }}</template><template #cell-1="{ row: s, number }"><Link :href="`/surat-kerja-trainer/${s.id}`">{{ s.nomor }}</Link><small>{{ s.tanggal }}</small></template><template #cell-2="{ row: s, number }">{{ s.status === 'diganti' ? 'Diganti' : 'Berlaku' }}</template><template #cell-3="{ row: s, number }">{{ s.facts?.program.nomor || s.program_nomor }}<small>{{ s.facts?.judul || 'Snapshot belum tersedia — perlu rekonsiliasi' }}</small><small>{{ s.facts?.program.tgl_mulai }} s.d. {{ s.facts?.program.tgl_selesai }} · {{ s.facts?.program.lokasi }}</small></template><template #cell-4="{ row: s, number }">{{ s.facts?.trainer.nama }}<small>{{ s.facts?.trainer.bidang_keahlian }}</small><small>Asisten: {{ s.facts?.asisten.nama }}</small></template><template #cell-5="{ row: s, number }">{{ s.peserta_deal }}</template><template #cell-6="{ row: s, number }"><ActionMenu ><Link :href="`/surat-kerja-trainer/${s.id}`">View</Link><a :href="`/surat-kerja-trainer/${s.id}/pdf`" target="_blank" rel="noopener">Print Out Surat Kerja</a></ActionMenu></template></ServerTable></div>
-        
+        <div class="batch-card">
+            <nav class="tabs" aria-label="Jenis dokumen">
+                <Link href="/sales-order" :aria-current="tab === 'so' ? 'page' : undefined">Sales Order<span class="nav-count">{{ counts.so }}</span></Link>
+                <Link href="/sales-order?tab=surat" :aria-current="tab === 'surat' ? 'page' : undefined">Surat Kerja Trainer<span class="nav-count">{{ counts.surat }}</span></Link>
+                <Link v-if="canRefund" href="/sales-order/refund">Refund<span class="nav-count">{{ refundPending }}</span></Link>
+            </nav>
+            <div class="filters">
+                <label class="grow">Cari<input v-model="f.q" type="search" maxlength="100" :placeholder="surat() ? 'Cari nomor surat, program, judul, trainer…' : 'Cari nomor program, judul, nomor SO, quotation, customer…'" /></label>
+                <label>Jenis<select v-model="f.jenis"><option value="">Public &amp; B2B</option><option value="public">Program Public</option><option value="b2b">Program B2B</option></select></label>
+                <label>Tahun<select v-model="f.tahun"><option value="">Semua tahun</option><option v-for="y in years ?? []" :key="y" :value="y">{{ y }}</option></select></label>
+                <label>Bulan<select v-model="f.bulan"><option value="">Semua bulan</option><option v-for="n in 12" :key="n" :value="n">{{ bulan(n) }}</option></select></label>
+            </div>
+            <ServerTable v-if="tab === 'so'" url="/sales-order/data" label="Sales Order" :columns='[{"title":"No","orderable":false},{"title":"Penjualan Program","orderable":true},{"title":"Sales Order","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Nilai SO","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
+                <template #cell-0="{ number }">{{ number }}</template>
+                <template #cell-1="{ row: p }"><span class="code">{{ p.nomor }}</span> <span class="tag" :class="p.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ p.jenis === 'b2b' ? 'B2B' : 'Public' }}</span><br>{{ p.judul }}<small>{{ range(p.tgl_mulai, p.tgl_selesai) }} · {{ p.lokasi || '—' }}</small></template>
+                <template #cell-2="{ row: p }"><b>{{ p.jumlah_so }}</b> SO<small>{{ statusText(p) }}</small></template>
+                <template #cell-3="{ row: p }">{{ p.peserta_deal }}</template>
+                <template #cell-4="{ row: p }">{{ money(p.nilai_so) }}</template>
+                <template #cell-5="{ row: p }"><ActionMenu><Link :href="`/sales-order/program/${p.id}`">Lihat SO</Link></ActionMenu></template>
+            </ServerTable>
+            <ServerTable v-else url="/sales-order/data" label="Surat Kerja Trainer" :columns='[{"title":"No","orderable":false},{"title":"Nomor Surat","orderable":true},{"title":"Status","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Trainer & Asisten","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
+                <template #cell-0="{ number }">{{ number }}</template>
+                <template #cell-1="{ row: s }"><Link class="code" :href="`/surat-kerja-trainer/${s.id}`">{{ s.nomor }}</Link><small>{{ fmt(s.tanggal) }}</small></template>
+                <template #cell-2="{ row: s }"><span v-if="s.status === 'diganti'" class="badge st-draft">Diganti</span><span v-else class="badge st-terkirim">Berlaku</span></template>
+                <template #cell-3="{ row: s }"><span class="code">{{ s.facts?.program.nomor || s.program_nomor }}</span><br>{{ s.facts?.judul || 'Snapshot belum tersedia — perlu rekonsiliasi' }}<small>{{ range(s.facts?.program.tgl_mulai, s.facts?.program.tgl_selesai) }} · {{ s.facts?.program.lokasi }}</small></template>
+                <template #cell-4="{ row: s }"><b v-if="s.facts?.trainer.nama">{{ s.facts?.trainer.nama }}</b><span v-else class="muted">Trainer belum dipilih</span><small>{{ s.facts?.trainer.bidang_keahlian }}</small><small>Asisten: {{ s.facts?.asisten.nama || '—' }}</small></template>
+                <template #cell-5="{ row: s }">{{ s.peserta_deal }}</template>
+                <template #cell-6="{ row: s }"><ActionMenu><Link :href="`/surat-kerja-trainer/${s.id}`">View</Link><a :href="`/surat-kerja-trainer/${s.id}/pdf`" target="_blank" rel="noopener">Print Out Surat Kerja</a></ActionMenu></template>
+            </ServerTable>
+        </div>
     </AppLayout>
 </template>
