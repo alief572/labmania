@@ -37,7 +37,7 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
 
 <template>
     <Head title="Dashboard" />
-    <AppLayout title="Dashboard">
+    <AppLayout title="Dashboard" full-width>
         <PageHead title="Dashboard" description="Ringkasan Master Program dan Penjualan Program. Angka adalah total seluruh Penjualan Program Final (rencana)." />
         <div class="kpis" role="list">
             <button type="button" class="kpi" role="listitem" @click="open('final')"><span class="kpi-l">Total Penjualan Program Final <small>rincian ›</small></span><strong class="kpi-v">{{ kpi.final }}</strong><span class="kpi-s">Public {{ kpi.public }} · B2B {{ kpi.b2b }}</span></button>
