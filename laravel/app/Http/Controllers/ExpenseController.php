@@ -95,9 +95,10 @@ class ExpenseController extends Controller
                 $like = '%'.$f['q'].'%';
                 $query->where(fn ($w) => $w->where('h.nomor', 'like', $like)->orWhere('h.'.$description, 'like', $like)->orWhere('u.nm_lengkap', 'like', $like));
             }
-            $query->select('h.id', 'h.nomor', 'h.total', 'h.status', 'h.tanggal', 'u.nm_lengkap as pengaju', 'h.'.$description)->orderByDesc('h.id');
+            $query->select('h.id', 'h.nomor', 'h.total', 'h.status', 'h.tanggal', 'u.nm_lengkap as pengaju', 'h.'.$description)
+                ->selectRaw($f['kind'] === 'overbudget' ? "'Overbudget' as jenis" : 'h.jenis')->orderByDesc('h.id');
 
-            return ServerDataTable::result($r, ServerDataTable::page($r, $query, [null, 'h.nomor', 'h.'.$description, 'h.total', 'u.nm_lengkap', 'h.status', null], 'h.id'));
+            return ServerDataTable::result($r, ServerDataTable::page($r, $query, [null, 'h.nomor', $f['kind'] === 'overbudget' ? null : 'h.jenis', 'h.tanggal', 'h.'.$description, 'h.total', 'u.nm_lengkap', 'h.status', null], 'h.id'));
         }
         $p->judul = Sales::title($p->id_master_program);
         $p->nomor = Sales::display($p);
@@ -117,7 +118,7 @@ class ExpenseController extends Controller
         }
         $lastAccount = DB::table('pengajuan_biaya')->where('request_by', Auth::id())->where('jenis', 'kasbon')->orderByDesc('id')->first(['bank', 'no_rekening', 'nama_rekening']);
 
-        return Inertia::render('Expenses/Program', ['program' => $p, 'category' => $category, 'budget' => Expenses::budget($id, $category), 'headers' => $headers,
+        return Inertia::render('Expenses/Program', ['program' => $p, 'category' => $category, 'budget' => Expenses::budget($id, $category), 'budgets' => Expenses::budgets([$id])[$id], 'headers' => $headers,
             'canAdd' => ! $p->closed_date && Gate::allows('menu', ['pengajuan_biaya', 'Add']), 'notTeam' => ! $inTeam, 'lastAccount' => $lastAccount, 'creating' => $creating, 'requestBy' => Auth::user()->nm_lengkap, 'today' => today()->toDateString()]);
     }
 
@@ -193,17 +194,34 @@ class ExpenseController extends Controller
         ServerDataTable::prepare($r);
         $f = $r->validate(['tab' => 'nullable|in:pengajuan,overbudget', 'q' => 'nullable|string|max:100']);
         $kind = $f['tab'] ?? 'pengajuan';
-        $table = $kind === 'overbudget' ? 'pengajuan_overbudget' : 'pengajuan_biaya';
-        $q = DB::table($table.' as h')->join('penjualan_program as p', 'p.id', '=', 'h.id_penjualan')->join('users as u', 'u.id_user', '=', 'h.request_by')->where('h.status', 'menunggu')->where('p.status', 'final');
-        Expenses::scope($q);
-        ServerDataTable::scope($r, $q);
-        $q->when($f['q'] ?? null, fn ($w, $v) => $w->where(fn ($z) => $z->where('h.nomor', 'like', '%'.$v.'%')->orWhere('p.nomor', 'like', '%'.$v.'%')->orWhere('u.nm_lengkap', 'like', '%'.$v.'%')));
-
-        $props = ['rows' => $q->select('h.id', 'h.nomor', 'h.total', 'h.tanggal', 'h.tipe_biaya', 'p.nomor as program_nomor', 'u.nm_lengkap as pengaju')->orderByDesc('h.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'p.nomor', 'h.tipe_biaya', 'h.total', 'u.nm_lengkap', null], 'h.id')), 'kind' => $kind, 'filters' => $f];
-        if ($r->route('datatable')) {
-            return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
+        $base = fn (string $table) => DB::table($table.' as h')->join('penjualan_program as p', 'p.id', '=', 'h.id_penjualan')
+            ->join('users as u', 'u.id_user', '=', 'h.request_by')->where('h.status', 'menunggu')->where('p.status', 'final');
+        $counts = [];
+        foreach (['pengajuan' => 'pengajuan_biaya', 'overbudget' => 'pengajuan_overbudget'] as $key => $table) {
+            $query = $base($table);
+            Expenses::scope($query);
+            $counts[$key] = $query->count();
+            if ($key === $kind) {
+                $q = $query;
+            }
         }
-
+        ServerDataTable::scope($r, $q);
+        $description = $kind === 'overbudget' ? 'alasan' : 'deskripsi';
+        $q->when($f['q'] ?? null, fn ($w, $v) => $w->where(fn ($z) => $z->where('h.nomor', 'like', '%'.$v.'%')->orWhere('p.nomor', 'like', '%'.$v.'%')->orWhere('h.'.$description, 'like', '%'.$v.'%')->orWhere('u.nm_lengkap', 'like', '%'.$v.'%')));
+        $canApprove = (Permissions::superadmin(Auth::user()) || Expenses::role('Direktur')) && Gate::allows('menu', ['approval_pengajuan_biaya', 'Approve']);
+        $rows = $q->select('h.id', 'h.nomor', 'h.request_by', 'h.total', 'h.tanggal', 'h.tipe_biaya', 'h.'.$description, 'p.id_master_program', 'p.jenis as jenis_program', 'p.nomor as program_nomor', 'u.nm_lengkap as pengaju')
+            ->selectRaw($kind === 'overbudget' ? "'Overbudget' as jenis" : 'h.jenis')->orderByDesc('h.id')
+            ->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'h.nomor', 'p.nomor', 'h.tipe_biaya', 'h.'.$description, 'h.total', 'u.nm_lengkap', null], 'h.id'));
+        $titles = Sales::titles($rows->pluck('id_master_program')->unique()->all());
+        $rows->through(function ($row) use ($canApprove, $titles) {
+            $row->judul = $titles[$row->id_master_program] ?? '';
+            $row->canApprove = $canApprove && (int) $row->request_by !== (int) Auth::id();
+            return $row;
+        });
+        $props = ['rows' => $rows, 'kind' => $kind, 'filters' => $f, 'counts' => $counts, 'canApprove' => $canApprove];
+        if ($r->route('datatable')) {
+            return ServerDataTable::result($r, $rows, collect($props)->except('rows')->all());
+        }
         return Inertia::render('Expenses/Approval', $props);
     }
 }

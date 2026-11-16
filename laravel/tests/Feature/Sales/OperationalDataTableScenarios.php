@@ -62,6 +62,15 @@ trait OperationalDataTableScenarios
         $this->assertSame($counts[0], $counts[1], 'Query ringkasan dan enrichment Quotation tidak boleh bertambah per baris.');
     }
 
+    public function test_approval_counts_ignore_search_and_self_approval_is_hidden(): void
+    {
+        $this->post('/pengajuan-biaya/program/'.$this->program6.'/pengajuan', $this->input6())->assertSessionHasNoErrors();
+        $this->getJson('/pengajuan-biaya/approval/data')->assertOk()->assertJsonPath('meta.counts.pengajuan', 1)
+            ->assertJsonPath('data.0.canApprove', false)->assertJsonStructure(['data' => [['nomor', 'request_by', 'jenis', 'judul', 'jenis_program', 'deskripsi']]]);
+        $this->getJson('/pengajuan-biaya/approval/data?q=no-such-request')->assertOk()->assertJsonPath('recordsFiltered', 0)->assertJsonPath('meta.counts.pengajuan', 1);
+        $this->get('/pengajuan-biaya/program/'.$this->program6)->assertOk()->assertInertia(fn ($p) => $p->has('budgets.fixed')->has('budgets.variable'));
+    }
+
     public function test_operational_datatables_contract_and_permissions(): void
     {
         foreach (['penjualan_program', 'quotation_program', 'sales_order_refund'] as $code) {

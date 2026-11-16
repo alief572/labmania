@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHead from '../../components/PageHead.vue';
 import {Head,Link,useForm} from '@inertiajs/vue3';
 import {ref} from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
@@ -15,7 +16,7 @@ function start(kind:string){form.clearErrors();if(['setujui','batal'].includes(k
 </script>
 <template>
     <Head :title="header.nomor"/><AppLayout title="Pengajuan Biaya">
-        <div class="page-head"><h1>{{header.nomor}}</h1><Link :href="`/pengajuan-biaya/program/${program.id}?kategori=${header.tipe_biaya}`">Program {{program.nomor}}</Link></div>
+        <PageHead :title="header.nomor" :description="program.judul"><Link :href="`/pengajuan-biaya/program/${program.id}?kategori=${header.tipe_biaya}`">Program {{program.nomor}}</Link></PageHead>
         <section class="panel stack">
             <h2>{{program.judul}}</h2><p>{{header.jenis==='kasbon'?'Kasbon':header.jenis==='direct_payment'?'Direct Payment':'Overbudget'}} · {{header.tipe_biaya}} · {{header.tanggal}} · Request By {{header.pengaju}}</p><p>{{header.deskripsi || header.alasan}}</p><p>Progres: {{kind==='overbudget'?header.status:progress[header.status]}}</p>
             <ol v-if="kind==='pengajuan' && !['ditolak','batal'].includes(header.status)" aria-label="Progres pengajuan"><li v-for="s in ['menunggu','disetujui','paid']" :key="s" :aria-current="s===header.status?'step':undefined">{{progress[s]}}{{s===header.status?' (saat ini)':''}}</li></ol>
