@@ -98,6 +98,25 @@ class DashboardTest extends MasterTestCase
         $this->assertNotContains($past, array_column($this->get('/')->viewData('page')['props']['jadwal'], 'id'));
     }
 
+    public function test_datatable_pages_searches_and_keeps_full_totals(): void
+    {
+        $id = $this->sale('2026-12-20', '2026-12-21', false, 1000000, 0);
+        $row = (array) DB::table('penjualan_program')->where('id', $id)->first();
+        unset($row['id']);
+        for ($i = 1; $i < 12; $i++) {
+            DB::table('penjualan_program')->insert(array_replace($row, ['nomor' => 'PAGING-'.$i]));
+        }
+        $first = $this->getJson('/dashboard/kpi/pend/data?draw=7&length=10')->assertOk()
+            ->assertJsonPath('draw', 7)->assertJsonPath('recordsTotal', 12)->assertJsonCount(10, 'data')
+            ->assertJsonPath('meta.totals.count', 12)->assertJsonPath('meta.totals.target', 120);
+        $second = $this->getJson('/dashboard/kpi/pend/data?draw=8&length=10&start=10')->assertOk()->assertJsonCount(2, 'data');
+        $this->assertSame([], array_intersect(array_column($first->json('data'), 'id'), array_column($second->json('data'), 'id')));
+        $this->assertEquals(120000000, $first->json('meta.totals.pendapatan'));
+        $this->getJson('/dashboard/kpi/final/data?q=PAGING-11')->assertOk()->assertJsonPath('recordsFiltered', 1)->assertJsonCount(1, 'data');
+        $this->getJson('/dashboard/kpi/prof/data?length=-1')->assertUnprocessable();
+        $this->login($this->account())->getJson('/dashboard/kpi/final/data')->assertForbidden();
+    }
+
     public function test_detail_returns_rows_that_add_up_to_the_kpi_and_rejects_unknown_key(): void
     {
         $this->sale('2026-12-20', '2026-12-21', false, 1000000, 100000);

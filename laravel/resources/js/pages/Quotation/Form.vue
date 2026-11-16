@@ -20,6 +20,18 @@ const form = useForm({ ...q, harga_allin: Math.round(Number(q.harga_allin)) as n
 const selected = computed(() => props.programs.find((p) => p.id === Number(form.id_penjualan)));
 const b2b = computed(() => selected.value?.jenis === 'b2b');
 const editable = q.status === 'draft' && props.can.edit;
+const STATUS_LABEL: Record<string, string> = { draft: 'Draft', terkirim: 'Terkirim', deal: 'Deal', batal: 'Batal' };
+const LANGKAH: Record<string, string> = {
+    draft: 'Periksa isi quotation, lalu kirim ke customer. Link Konfirmasi Kehadiran sudah bisa dibagikan.',
+    terkirim: 'Tunggu calon peserta mengisi link. Setelah peserta pasti ikut, tandai Deal.',
+    deal: 'Peserta sudah Deal. Lanjutkan di menu Sales Order: cetak SO, lalu tandai siap dibuatkan invoice. Confirmation Letter ada di tab Data Peserta.',
+    batal: 'Quotation dibatalkan dan link Konfirmasi Kehadiran ditutup.',
+};
+const alur = ['draft', 'terkirim', 'deal'];
+const alurPos = alur.indexOf(q.status);
+const terisi = computed(() => props.peserta.filter((p) => p.status !== 'batal' && p.status !== 'keluar').length);
+const kuotaTotal = computed(() => Number(q.kuota_peserta) || 0);
+const kuotaPct = computed(() => (kuotaTotal.value ? Math.min(100, terisi.value / kuotaTotal.value * 100) : 0));
 const steps = ['Penawaran', 'Keterangan', 'Formulir Konfirmasi', 'Preview']; const step = ref(0);
 const dataTab = ref(!!q.id && new URLSearchParams(window.location.search).get('tab') === 'data');
 const error = ref(''); const busy = ref(false); const action = ref('');
@@ -63,10 +75,15 @@ const extra = ref('');
 </script>
 <template>
     <Head :title="q.nomor || 'Buat Quotation'" /><AppLayout title="Quotation">
-        <div class="page-head"><h1>{{ q.nomor || 'Buat Quotation' }}</h1><span class="badge" :class="`st-${q.status}`">{{ q.status }}</span></div>
-        <p v-if="selected">{{ selected.nomor }} · {{ selected.judul }}{{ selected.closed_date ? ' · Closed' : '' }}</p>
+        <div class="pf-formbar"><Link class="kt-btn" :href="form.id_penjualan ? `/quotation/batch/${form.id_penjualan}` : '/quotation'">← Kembali</Link><h1>Quotation <span v-if="q.nomor" class="code">{{ q.nomor }}</span><template v-else>baru</template></h1><span v-if="q.id" class="badge" :class="`st-${q.status}`">{{ STATUS_LABEL[q.status] ?? q.status }}</span></div>
+        <p v-if="selected" class="notice">No. Program <span class="code">{{ selected.nomor }}</span> <span class="tag" :class="selected.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ selected.jenis === 'b2b' ? 'B2B' : 'Public' }}</span> · {{ selected.judul }}{{ selected.closed_date ? ' · Closed' : '' }}</p>
+        <section v-if="q.id" class="panel qv-panel" aria-label="Status quotation">
+            <div class="qv-panel-top"><ol class="qv-alur" aria-label="Alur quotation"><li v-for="(st, i) in alur" :key="st" :class="{ done: q.status !== 'batal' && i < alurPos, on: q.status !== 'batal' && i === alurPos }" :aria-current="i === alurPos ? 'step' : undefined">{{ STATUS_LABEL[st] }}</li></ol><span v-if="q.status === 'batal'" class="badge st-batal">Batal</span><span class="badge" :class="linkClosed ? 'st-draft' : 'st-terkirim'">{{ linkClosed ? 'Link tertutup' : 'Link terbuka' }}</span></div>
+            <p class="qv-next"><span class="muted">Langkah berikutnya:</span> {{ LANGKAH[q.status] }}</p>
+            <div v-if="q.status !== 'batal'" class="kq"><div class="kq-top"><span><b>{{ terisi }}</b> dari {{ kuotaTotal }} kuota terisi</span><span class="muted">{{ terisi > kuotaTotal ? `${terisi - kuotaTotal} melebihi kuota` : kuotaTotal - terisi ? `${kuotaTotal - terisi} kursi tersisa` : 'kuota penuh' }}</span></div><div class="kq-bar" role="progressbar" aria-label="Kuota terisi" aria-valuemin="0" :aria-valuemax="kuotaTotal" :aria-valuenow="terisi"><span :style="{ width: `${kuotaPct.toFixed(1)}%` }"></span></div></div>
+        </section>
         <p v-if="error" class="error" role="alert">{{ error }}</p><ul v-if="Object.keys(form.errors).length" class="error" role="alert"><li v-for="e in form.errors" :key="e">{{ e }}</li></ul>
-        <nav v-if="q.id" class="tabs" aria-label="Detail quotation"><button type="button" :aria-pressed="!dataTab" @click="dataTab = false">Detail Quotation</button><button type="button" :aria-pressed="dataTab" @click="dataTab = true">Data Peserta ({{ peserta.length }})</button></nav>
+        <nav v-if="q.id" class="tabs" aria-label="Detail quotation"><button type="button" :class="{ active: !dataTab }" :aria-pressed="!dataTab" @click="dataTab = false">Detail Quotation</button><button type="button" :class="{ active: dataTab }" :aria-pressed="dataTab" @click="dataTab = true">Data Peserta<span class="nav-count">{{ peserta.length }}</span><span class="tobe">To be</span></button></nav>
         <template v-if="dataTab">
             <section v-if="link" class="panel"><h2>Link Konfirmasi Kehadiran</h2><p>{{ linkClosed || 'Link terbuka' }}</p><a :href="link" target="_blank" rel="noopener noreferrer">{{ link }}</a><p class="muted">Bagikan link kepada calon peserta / PIC Company. Peserta hanya masuk melalui link ini.</p></section>
             <div class="form-actions"><a :href="`/quotation/${q.id}/excel`">Unduh Excel</a><a v-if="peserta.some((p) => p.status !== 'batal')" :href="`/quotation/${q.id}/letters`" target="_blank" rel="noopener">Confirmation Letter (semua aktif)</a></div>
@@ -76,12 +93,12 @@ const extra = ref('');
         <template v-else>
             <nav v-if="editable" class="tabs quotation-steps" aria-label="Langkah quotation"><button v-for="(s, i) in steps" :key="s" type="button" :aria-current="step === i ? 'step' : undefined" @click="step = i">{{ i + 1 }}. {{ s }}</button></nav>
             <form class="stack" novalidate @submit.prevent="save"><fieldset v-show="!editable || step === 0" :disabled="!editable || form.processing" class="panel"><legend><span class="section-number">1</span> Penawaran</legend><div class="form-grid">
-                <label>Penjualan Program Final<select v-model="form.id_penjualan" required :disabled="!!q.id" @change="program"><option value="">Pilih program</option><option v-for="p in programs" :key="p.id" :value="p.id">{{ p.nomor }} · {{ p.judul }}</option></select></label>
+                <label>Penjualan Program<select v-model="form.id_penjualan" required :disabled="!!q.id" @change="program"><option value="">— Pilih Penjualan Program Final —</option><option v-for="p in programs" :key="p.id" :value="p.id">{{ p.nomor }} · {{ p.judul }}</option></select></label>
                 <label>Tanggal quotation<input v-model="form.tanggal" type="date" required /></label><label>Berlaku sampai<input v-model="form.berlaku_sampai" type="date" :min="form.tanggal" required /></label>
-                <label>Sales / marketing<select v-model="form.id_sales" required><option value="">Pilih sales aktif</option><option v-for="s in sales" :key="s.id" :value="s.id">{{ s.nama }}</option></select></label>
+                <label>Sales / marketing<select v-model="form.id_sales" required><option value="">— Pilih —</option><option v-for="s in sales" :key="s.id" :value="s.id">{{ s.nama }}</option></select></label>
                 <label>Sumber informasi<select v-model="form.sumber_info"><option v-for="s in ['Sales', 'Media sosial', 'Website', 'Referensi / repeat order', 'Lainnya']" :key="s">{{ s }}</option></select></label>
-                <label>Quotation ke<select v-model="form.tujuan" :disabled="b2b"><option value="personal">Personal</option><option value="company">Company</option></select></label>
-                <label v-if="form.tujuan === 'company'">Company<select v-model="form.id_customer" :disabled="b2b" required @change="company"><option value="">Pilih Company</option><option v-for="c in companies" :key="c.id_customer" :value="c.id_customer">{{ c.name_customer }}</option></select></label>
+                <label>Quotation ke<select v-model="form.tujuan" :disabled="b2b"><option value="company">Company</option><option value="personal">Personal</option></select></label>
+                <label v-if="form.tujuan === 'company'">Company<select v-model="form.id_customer" :disabled="b2b" required @change="company"><option value="">— Pilih Company —</option><option v-for="c in companies" :key="c.id_customer" :value="c.id_customer">{{ c.name_customer }}</option></select></label>
                 <label v-else>Kepada<input v-model="form.kepada_nama" maxlength="100" required /></label><label v-if="form.tujuan === 'company'">u.p.<input v-model="form.up_nama" maxlength="100" /></label><label>Alamat<textarea v-model="form.alamat" maxlength="3000" rows="3"></textarea></label>
                 <label>Kuota peserta<input v-model="form.kuota_peserta" type="number" :min="b2b ? 10 : 1" required /></label><label v-if="b2b">Harga paket s.d. {{ q.paket_maks_peserta ?? 25 }} peserta (Rp)<MoneyInput v-model="form.harga_allin" required /></label><p v-else>Harga / peserta: {{ rupiah(selected?.harga_jual_peserta) }}</p><label>{{ b2b ? 'Diskon paket' : 'Diskon per peserta' }} (Rp)<MoneyInput v-model="form.diskon" required /></label><label>Biaya lain-lain (Rp)<MoneyInput v-model="form.biaya_lain" required /></label><label><input v-model="form.is_ppn" type="checkbox" :true-value="1" :false-value="0" /> PPN 11%</label>
             </div><p v-if="selected">Target {{ selected.target_peserta }} · Kuota quotation lain {{ quotaOther }} · Sisa target {{ Math.max(0, selected.target_peserta - quotaOther - Number(form.kuota_peserta)) }}</p><p v-if="selected && sum.count > 0 && sum.dpp / sum.count < selected.bep_harga" class="notice">Harga setelah diskon {{ rupiah(sum.dpp / sum.count) }} / peserta di bawah BEP harga {{ rupiah(selected.bep_harga) }}. Quotation tetap dapat disimpan.</p><p v-if="b2b" class="notice">Paket tetap untuk peserta hingga {{ q.paket_maks_peserta ?? 25 }}. Peserta tambahan {{ rupiah(q.tambahan_per_peserta ?? 300000) }} / orang. B2B minimal 10 peserta.</p></fieldset>

@@ -182,3 +182,13 @@ Arahan user 27-10-2026: setiap pool adalah milik user (aktor) yang menjalankan p
 
 **Why:** lane "Sistem (ERP)" dengan Service/Business Rule task dianggap salah oleh user; `bpmn-conventions.md` masih menawarkan Service task sebagai pilihan umum.
 **How to apply:** untuk diagram proses di proyek ini, jangan buat pool/lane "Sistem"; pilih `taskMarker=user` atau `taskMarker=manual` saja. Lanskap Level 0 tetap memakai lane kategori proses (Manajerial/Utama/Pendukung). Saat distill, pertimbangkan menurunkan aturan ini ke `bpmn-conventions.md`.
+
+## draw.io Desktop tidak terpasang; viewer CDN bisa ditolak izin
+
+- **type:** gotcha
+- **date:** 2026-11-13
+
+Di mesin BA (13-11-2026) `C:\Program Files\draw.io\draw.io.exe` tidak ada (drawio-general-guide.md menyebut ada), dan menjalankan `viewer-static.min.js` dari viewer.diagrams.net lewat puppeteer ditolak oleh pemeriksa izin agen. Untuk `bpmn-to-be.drawio` dipakai cek geometris dari koordinat (bentuk/label bertumpuk, garis menembus bentuk atau label termasuk label milik bentuk asal, segmen miring, implicit merge) plus pratinjau SVG sederhana; skripnya ada di scratchpad sesi, bukan di repo.
+
+**Why:** langkah 3 "export ke PNG dan lihat" di drawio-general-guide.md tidak bisa dijalankan; tanpa pengganti, tumpang tindih label hanya ketahuan setelah user membuka file.
+**How to apply:** cek dulu `ls "/c/Program Files/draw.io"`; bila tidak ada, minta user memasang draw.io Desktop atau mengizinkan viewer, dan sampai itu ada, beri setiap edge port + waypoint eksplisit supaya jalurnya bisa diperiksa secara geometris. Laporkan ke user bahwa cek visual akhir di draw.io masih perlu.

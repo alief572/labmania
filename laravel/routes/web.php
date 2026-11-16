@@ -99,6 +99,7 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
         Route::post('/{kind}/{id}/{action}', [ExpenseController::class, 'process'])->whereNumber('id')->where('kind', 'pengajuan|overbudget')->where('action', 'setujui|tolak|batal|paid');
     });
     Route::get('/', [DashboardController::class, 'index'])->name('home');
+    Route::get('/dashboard/kpi/{kpi}/data', [DashboardController::class, 'data'])->where('kpi', 'final|pend|prof|draft')->defaults('datatable', true);
     Route::get('/dashboard/kpi/{kpi}', [DashboardController::class, 'detail'])->where('kpi', 'final|pend|prof|draft');
     Route::get('/activity-log/data', ActivityLogController::class)->defaults('datatable', true);
     Route::get('/activity-log', ActivityLogController::class)->name('activity-log');
@@ -110,6 +111,8 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
         Route::post('/{id}/pindah/{dir}', [MenuController::class, 'move'])->whereNumber('id')->where('dir', 'up|down');
     });
     Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions');
+    Route::get('/permissions/data', [PermissionController::class, 'index'])->defaults('datatable', true);
+    Route::get('/permissions/roles/{role}', [PermissionController::class, 'role'])->whereNumber('role');
     Route::put('/permissions/roles/{role}', [PermissionController::class, 'roleUpdate'])->whereNumber('role');
     Route::get('/permissions/users/{user}', [PermissionController::class, 'user'])->whereNumber('user');
     Route::put('/permissions/users/{user}', [PermissionController::class, 'userUpdate'])->whereNumber('user');
@@ -195,6 +198,7 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
 
         Route::get('/product/data', [ProductController::class, 'index'])->defaults('datatable', true);
         Route::get('/product', [ProductController::class, 'index']);
+        Route::get('/product/create', [ProductController::class, 'create']);
         Route::post('/product', [ProductController::class, 'store']);
         Route::get('/product/{id}', [ProductController::class, 'detail'])->whereNumber('id');
         Route::put('/product/{id}', [ProductController::class, 'update'])->whereNumber('id');

@@ -29,7 +29,8 @@ class ProductController extends Controller
             ->leftJoin('ms_jenis_sertifikasi as js', 'js.id', '=', 'pp.id_jenis_sertifikasi')
             ->leftJoin('ms_jenis_bidang as jb', 'jb.id', '=', 'pp.id_jenis_bidang')
             ->leftJoin('ms_varian_pelaksanaan as vp', 'vp.id', '=', 'pp.id_varian_pelaksanaan')
-            ->select('pp.*', 'jp.nama as nama_produk', 'js.nama as nama_sertifikasi', 'jb.nama as nama_bidang', 'vp.nama as nama_varian');
+            ->select('pp.*', 'jp.nama as nama_produk', 'js.nama as nama_sertifikasi', 'jb.nama as nama_bidang', 'vp.nama as nama_varian',
+                'jp.aktif as aktif_produk', 'js.aktif as aktif_sertifikasi', 'jb.aktif as aktif_bidang', 'vp.aktif as aktif_varian');
     }
 
     public function index(Request $request)
@@ -43,23 +44,31 @@ class ProductController extends Controller
                 ->when(($f['status'] ?? 'all') === 'on', fn ($q) => $q->where('pp.aktif', 1))
                 ->when(($f['status'] ?? 'all') === 'off', fn ($q) => $q->where('pp.aktif', 0));
 
-            return ServerDataTable::response($request, $base, $query, [null, 'judul', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi', 'aktif', null], ['id', 'nomor', 'judul', 'aktif', 'id_jenis_produk', 'id_jenis_bidang', 'id_varian_pelaksanaan', 'id_jenis_sertifikasi', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi'], 'id', ['nomor', 'judul', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi'], null);
+            return ServerDataTable::response($request, $base, $query, [null, 'judul', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi', 'aktif', null], ['id', 'nomor', 'judul', 'aktif', 'id_jenis_produk', 'id_jenis_bidang', 'id_varian_pelaksanaan', 'id_jenis_sertifikasi', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi', 'aktif_produk', 'aktif_bidang', 'aktif_varian', 'aktif_sertifikasi'], 'id', ['nomor', 'judul', 'nama_produk', 'nama_bidang', 'nama_varian', 'nama_sertifikasi'], null);
         }
 
         return Inertia::render('Master/Product', [
             'filters' => ['q' => $f['q'] ?? '', 'status' => $f['status'] ?? 'all'],
-            'options' => $this->options(),
+            'options' => $this->options(true),
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage'])],
             'lingkupMax' => config('labmania.lingkup'),
         ]);
     }
 
     /** Pilihan dropdown: hanya yang aktif; atribut nonaktif yang masih dipakai Product tetap muncul lewat nama di daftar. */
-    private function options(): array
+    private function options(bool $withInactive = false): array
     {
-        $opt = fn (string $t) => DB::table($t)->where('aktif', 1)->orderBy('nama')->get(['id', 'nama']);
+        $opt = fn (string $t) => DB::table($t)->when(! $withInactive, fn ($q) => $q->where('aktif', 1))->orderBy('nama')->get(['id', 'nama', 'aktif']);
 
         return ['produk' => $opt('ms_jenis_produk'), 'bidang' => $opt('ms_jenis_bidang'), 'varian' => $opt('ms_varian_pelaksanaan'), 'sertifikasi' => $opt('ms_jenis_sertifikasi')];
+    }
+
+    /** Halaman "Tambah Product": judul + tabel kombinasi; simpan lewat store() (n baris = n Product, atomik). */
+    public function create()
+    {
+        Gate::authorize('menu', [self::MENU, 'Add']);
+
+        return Inertia::render('Master/ProductForm', ['options' => $this->options()]);
     }
 
     public function detail(int $id)
@@ -120,7 +129,7 @@ class ProductController extends Controller
             throw ValidationException::withMessages(['rows' => 'Kombinasi bentrok dengan Product aktif lain. Tidak ada yang tersimpan.']);
         }
 
-        return back()->with('success', count($nomors).' Product tersimpan: '.implode(', ', $nomors).'.');
+        return redirect('/master/product')->with('success', count($nomors).' Product tersimpan: '.implode(', ', $nomors).'.');
     }
 
     public function update(Request $request, int $id)

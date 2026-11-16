@@ -7,6 +7,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 
 import StatusBadge from '../../components/StatusBadge.vue';
 import { useWilayah } from '../../composables/wilayah';
@@ -20,7 +21,7 @@ const props = defineProps<{
     can: { add: boolean; manage: boolean; delete: boolean };
 }>();
 const filter = ref({ ...props.filters });
-const apply = () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); };
+watch(() => filter.value.jenis, () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); });
 const wil = useWilayah();
 const editing = ref<Row | null>(null);
 const adding = ref(false);
@@ -57,43 +58,49 @@ const remove = (row: Row) => confirmation.visit('delete', `/master/company/${row
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode', orderable: true }, { title: 'Nama', orderable: true }, { title: 'Jenis Instansi', orderable: true }, { title: 'Lokasi', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kode Company', orderable: true }, { title: 'Nama Company', orderable: true }, { title: 'Jenis Instansi', orderable: true }, { title: 'Lokasi', orderable: true }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head title="Master Company" />
     <AppLayout title="Master Company" full-width>
-        <div class="page-head"><h1>Master Company</h1><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Company</button></div>
+        <PageHead title="Master Company" description="Data perusahaan/instansi yang menjadi customer penjualan B2B. Company aktif dipilih di Penjualan Program B2B (wajib) dan sebagai tujuan Quotation ke Company."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Company</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
-        <form class="filters" @submit.prevent="apply">
-            <label>Jenis Instansi<select v-model="filter.jenis"><option value="">Semua</option><option v-for="j in jenis" :key="j" :value="j">{{ j }}</option></select></label>
-            <button class="primary" :disabled="confirming">Terapkan</button>
-        </form>
-        <ServerTable ref="table" url="/master/company/data" :columns="columns" :filters="appliedFilters" :label="'Company'">
+        <div class="filters">
+            <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode, nama, kota, atau PIC…" /></label>
+            <label>Jenis Instansi<select v-model="filter.jenis"><option value="">Semua jenis instansi</option><option v-for="j in jenis" :key="j" :value="j">{{ j }}</option></select></label>
+        </div>
+        <ServerTable ref="table" url="/master/company/data" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'Company'">
             <template #cell-0="{ number }">{{ number }}</template>
-            <template #cell-1="{ row }">{{ row.id_customer }}</template>
+            <template #cell-1="{ row }"><span class="code">{{ row.id_customer }}</span></template>
             <template #cell-2="{ row }">{{ row.name_customer }}<small>PIC: {{ row.pic_name ?? '—' }}</small><small v-if="!row.npwp"><span class="badge warn">NPWP kosong</span> Lengkapi lewat Edit</small></template>
-            <template #cell-3="{ row }">{{ row.jenis_instansi ?? '—' }}</template>
+            <template #cell-3="{ row }">{{ row.jenis_instansi ?? '—' }}<small>PPN: {{ row.perlakuan_ppn === 'KB' ? 'Kawasan Berikat' : (row.perlakuan_ppn || 'PKP') }}</small></template>
             <template #cell-4="{ row }">{{ row.kota ?? '—' }}<small>{{ row.provinsi }}</small></template>
             <template #cell-5="{ row }"><StatusBadge :active="row.aktif" /></template>
-            <template #cell-6="{ row }"><ActionMenu ><template v-if="can.manage"><button type="button" @click="open(row)" :disabled="confirming">Edit</button><button type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></template><button v-if="can.delete" type="button" class="danger" @click="remove(row)" :disabled="confirming">Hapus</button></ActionMenu></template>
+            <template #cell-6="{ row }"><ActionMenu ><template v-if="can.manage"><button type="button" @click="open(row)" :disabled="confirming">Edit</button><button type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></template><button v-if="can.delete" type="button" class="danger" @click="remove(row)" :disabled="confirming">Delete</button></ActionMenu></template>
         </ServerTable>
 
-        <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit Company ${editing.id_customer}` : 'Tambah Company'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
-            <div class="form-grid">
+        <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit Company ${editing.id_customer}` : 'Tambah Master Company'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
+            <div class="grid2">
+                <FormField class="span2" id="ckode" label="Kode Company" v-slot="{ describedBy }"><input id="ckode" :value="editing?.id_customer ?? ''" placeholder="Dibuat otomatis" readonly aria-readonly="true" :aria-describedby="describedBy" /></FormField>
+                <div class="form-sec span2">1 · Identitas</div>
                 <FormField id="cnama" label="Nama Company" :error="form.errors.nama" v-slot="{ describedBy, invalid }"><input id="cnama" v-model="form.nama" maxlength="150" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
-                <FormField id="cjen" label="Jenis Instansi" :error="form.errors.jenis" v-slot="{ describedBy, invalid }"><select id="cjen" v-model="form.jenis" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">Pilih…</option><option v-for="j in jenis" :key="j" :value="j">{{ j }}</option></select></FormField>
-                <FormField id="cppn" label="Perlakuan PPN" :error="form.errors.perlakuan_ppn" v-slot="{ describedBy, invalid }"><select id="cppn" v-model="form.perlakuan_ppn" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">Pilih perlakuan PPN</option><option value="PKP">PKP</option><option value="WAPU">WAPU</option><option value="KB">Kawasan Berikat</option></select></FormField>
-                <FormField id="cnpwp" label="NPWP Instansi" hint="Wajib; 15 atau 16 digit." :error="form.errors.npwp" v-slot="{ describedBy, invalid }"><input id="cnpwp" v-model="form.npwp" maxlength="40" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
-                <FormField id="calm" label="Alamat Lengkap" :error="form.errors.alamat" v-slot="{ describedBy, invalid }"><input id="calm" v-model="form.alamat" maxlength="255" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
-                <FormField id="cprov" label="Provinsi" :error="form.errors.id_prov" v-slot="{ describedBy, invalid }"><select id="cprov" v-model="form.id_prov" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">Pilih…</option><option v-for="w in wil.provinces.value" :key="w.code" :value="w.code">{{ w.name }}</option></select></FormField>
-                <FormField id="ckab" label="Kota/Kabupaten" :error="form.errors.id_kab" v-slot="{ describedBy, invalid }"><select id="ckab" v-model="form.id_kab" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">Pilih…</option><option v-for="w in wil.regencies.value" :key="w.code" :value="w.code">{{ w.name }}</option></select></FormField>
-                <FormField id="ctel" label="Telepon Kantor" :error="form.errors.telp" v-slot="{ describedBy, invalid }"><input id="ctel" v-model="form.telp" inputmode="tel" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
-                <FormField id="cmail" label="Email Kantor" :error="form.errors.email" v-slot="{ describedBy, invalid }"><input id="cmail" v-model="form.email" type="email" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="cjen" label="Jenis Instansi" :error="form.errors.jenis" v-slot="{ describedBy, invalid }"><select id="cjen" v-model="form.jenis" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">— Pilih —</option><option v-for="j in jenis" :key="j" :value="j">{{ j }}</option></select></FormField>
+                <div class="form-sec span2">2 · Alamat</div>
+                <FormField class="span2" id="calm" label="Alamat Lengkap" :error="form.errors.alamat" v-slot="{ describedBy, invalid }"><textarea id="calm" v-model="form.alamat" rows="2" maxlength="255" required :aria-invalid="invalid" :aria-describedby="describedBy"></textarea></FormField>
+                <FormField id="cprov" label="Provinsi" :error="form.errors.id_prov" v-slot="{ describedBy, invalid }"><select id="cprov" v-model="form.id_prov" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">— Pilih Provinsi —</option><option v-for="w in wil.provinces.value" :key="w.code" :value="w.code">{{ w.name }}</option></select></FormField>
+                <FormField id="ckab" label="Kota/Kabupaten" hint="Tersaring menurut provinsi" :error="form.errors.id_kab" v-slot="{ describedBy, invalid }"><select id="ckab" v-model="form.id_kab" required :disabled="!form.id_prov" :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">— Pilih Kota/Kabupaten —</option><option v-for="w in wil.regencies.value" :key="w.code" :value="w.code">{{ w.name }}</option></select></FormField>
+                <div class="form-sec span2">3 · Kontak Kantor</div>
+                <FormField id="ctel" label="Telepon Kantor" :error="form.errors.telp" v-slot="{ describedBy, invalid }"><input id="ctel" v-model="form.telp" inputmode="tel" placeholder="021xxxxxxx" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="cmail" label="Email Kantor" :error="form.errors.email" v-slot="{ describedBy, invalid }"><input id="cmail" v-model="form.email" type="email" placeholder="info@perusahaan.co.id" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <div class="form-sec span2">4 · PIC</div>
                 <FormField id="cpn" label="Nama PIC" :error="form.errors.picNama" v-slot="{ describedBy, invalid }"><input id="cpn" v-model="form.picNama" maxlength="100" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                 <FormField id="cpj" label="Jabatan PIC" :error="form.errors.picJabatan" v-slot="{ describedBy, invalid }"><input id="cpj" v-model="form.picJabatan" maxlength="100" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
-                <FormField id="cpt" label="Telp/WA PIC" :error="form.errors.picTelp" v-slot="{ describedBy, invalid }"><input id="cpt" v-model="form.picTelp" inputmode="tel" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="cpt" label="Telp/WA PIC" :error="form.errors.picTelp" v-slot="{ describedBy, invalid }"><input id="cpt" v-model="form.picTelp" inputmode="tel" placeholder="08xxxxxxxxxx" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                 <FormField id="cpe" label="Email PIC" :error="form.errors.picEmail" v-slot="{ describedBy, invalid }"><input id="cpe" v-model="form.picEmail" type="email" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <div class="form-sec span2">5 · Pajak</div>
+                <FormField id="cnpwp" label="NPWP Company" :error="form.errors.npwp" v-slot="{ describedBy, invalid }"><input id="cnpwp" v-model="form.npwp" maxlength="40" inputmode="numeric" placeholder="15 atau 16 digit" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
+                <FormField id="cppn" label="Perlakuan PPN" hint="Dipakai invoice untuk perhitungan dan jurnal. WAPU biasanya BUMN; Kawasan Berikat tidak bayar PPN." :error="form.errors.perlakuan_ppn" v-slot="{ describedBy, invalid }"><select id="cppn" v-model="form.perlakuan_ppn" required :aria-invalid="invalid" :aria-describedby="describedBy"><option value="">— Pilih perlakuan PPN —</option><option value="PKP">PKP</option><option value="WAPU">WAPU (PPN disetor customer)</option><option value="KB">Kawasan Berikat</option></select></FormField>
             </div>
         </ConfirmDialog>
     </AppLayout>

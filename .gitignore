@@ -32,5 +32,10 @@ application/config/config.php
 !/tests/ExpenseReportJournalRepairTest.php
 Dockerfile
 
+!/docker/apache.conf
+!/laravel/rehearsal/Dockerfile
+/.env
+/application/config.zip
+
 # Artifact dokumentasi per fitur (AGENTS.md: .artifacts/ diabaikan git)
 .artifacts/

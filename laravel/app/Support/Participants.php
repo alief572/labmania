@@ -14,10 +14,11 @@ class Participants
         return DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')
             ->join('penjualan_program as p', 'p.id', '=', 'q.id_penjualan')
             ->leftJoin('quotation_peserta_sertifikat as s', 's.id_quotation_peserta', '=', 'x.id')
+            ->leftJoin('ms_peserta as master_peserta', 'master_peserta.id', '=', 'x.id_peserta')
             ->leftJoin('ms_user_karyawan as u', 'u.id', '=', 'q.id_sales')
             ->where('x.status', 'deal')->where('q.status', 'deal')->where('p.status', 'final')
             ->when($id !== null, fn ($w) => $w->where('p.id', $id))
-            ->select('x.*', 'q.nomor as nomor_quotation', 'q.revisi as revisi_quotation', 'p.id as id_penjualan', 'p.nomor as nomor_program', 'p.revisi as revisi_program',
+            ->select('x.*', 'master_peserta.kode', 'q.nomor as nomor_quotation', 'q.revisi as revisi_quotation', 'p.id as id_penjualan', 'p.nomor as nomor_program', 'p.revisi as revisi_program',
                 'p.id_master_program', 'p.jenis', 'p.tgl_mulai', 'p.tgl_selesai', 'p.lokasi', 'p.closed_date', 'u.nama as sales', 'q.kepada_nama as pic_customer',
                 's.id as sertifikat_id', 's.nama_sertifikat', 's.no_sertifikat', 's.tgl_terbit', 's.status_kirim', 's.tgl_kirim', 's.kirim_via', 's.lsp as sertifikat_lsp', 's.skema', 's.metode', 's.hasil', 's.no_sertifikat_bnsp', 's.tgl_terima_bnsp', 's.tgl_kirim_bnsp', 's.berlaku_sampai as sertifikat_berlaku', 's.id_card', 's.catatan_monitoring', 's.draft_kirim_date', 's.nama_konfirmasi_by', 's.nama_konfirmasi_date')
             ->selectRaw("CASE WHEN s.file_sertifikat_bnsp IS NOT NULL AND s.file_sertifikat_bnsp <> '' THEN 1 ELSE 0 END AS has_bnsp_file");
@@ -95,6 +96,18 @@ class Participants
             }
             write_log('Manage Peserta', $action, $action.' '.$x->nama, ['sub_module' => $action === 'Catatan' ? 'Monitoring Peserta' : 'Sertifikat', 'old' => $safe, 'new' => array_merge($safe, $log)], 'quotation_peserta', $id, $x->nomor_program);
         });
+    }
+
+    public static function warnings(int $id): array
+    {
+        $warnings = [];
+        if (DB::table('quotation')->where('id_penjualan', $id)->whereIn('status', ['draft', 'terkirim'])->exists()) {
+            $warnings[] = 'Masih ada quotation Draft/Terkirim; setelah Close tidak dapat diproses.';
+        }
+        if (DB::table('pengajuan_biaya')->where('id_penjualan', $id)->where('status', 'menunggu')->exists() || DB::table('pengajuan_overbudget')->where('id_penjualan', $id)->where('status', 'menunggu')->exists()) {
+            $warnings[] = 'Masih ada biaya/overbudget Menunggu Approval; pengajuan existing tetap dapat diselesaikan setelah Close.';
+        }
+        return $warnings;
     }
 
     public static function blockers(object $p): array

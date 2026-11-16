@@ -42,6 +42,8 @@ const apps = [];
 const pdfRequests = [];
 globalThis.__confirmationTestPdf = async url => { pdfRequests.push(url); };
 const pdfUrl = moduleUrl('export const postPdf = (...args) => globalThis.__confirmationTestPdf(...args);');
+const programTransitionUrl = moduleUrl(ts.transpileModule(readFileSync(new URL('../../resources/js/composables/programTransition.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ES2022 } }).outputText
+    .replace(/from 'vue'/g, `from '${import.meta.resolve('vue')}'`).replace(/from '\.\/confirmedMutation'/g, `from '${helperUrl}'`).replace(/from '\.\/costing'/g, `from '${new URL('../../resources/js/composables/costing.ts', import.meta.url).href}'`));
 globalThis.window = { location: { search: '' } };
 globalThis.fetch = async () => ({ ok: true, json: async () => ({
     id: 77, nomor: 'MP-077', judul: 'Test', durasi: 2, jp: 16, target: 10,
@@ -57,6 +59,7 @@ async function page(name, props = {}) {
     script = script.replace(/from (['"])([^'"]+)\1/g, (_, quote, dependency) => {
         if (dependency.endsWith('/confirmedMutation')) return `from '${helperUrl}'`;
         if (dependency.endsWith('/pdf')) return `from '${pdfUrl}'`;
+        if (dependency.endsWith('/programTransition')) return `from '${programTransitionUrl}'`;
         const url = dependency.startsWith('.') ? new URL(`${dependency}.ts`, file).href : import.meta.resolve(dependency);
         return `from '${url}'`;
     });
@@ -72,7 +75,7 @@ async function page(name, props = {}) {
         history: [], reason: null, minimum: '', canManage: true, canAdd: true, canApprove: true, canCancel: true, canPay: true,
         salesOrder: null, sales: [], companyConfirmation: null, link: null, linkClosed: null, calc: null,
         tanggal: '2026-11-15', today: '2026-11-15', configurationErrors: {}, journal: [], snapshot: {}, setor: null,
-        category: 'fixed', headers: {}, budget: { items: [] }, notTeam: false, lastAccount: null, requestBy: 'Test',
+        category: 'fixed', headers: {}, budgets: {}, budget: { items: [] }, notTeam: false, lastAccount: null, requestBy: 'Test',
         details: [], files: [], rows: [], counts: {}, canCertificates: true, canQuotation: true, survey: {},
         icons: [], aksi: {}, unmapped: [], closed: false, fieldLabels: {}, company: null, program: {},
         nomor: 'PJP-077', judul: 'Test', oldDate: null, newDate: '', endDate: '', deadline: '', canRegister: false,
@@ -229,10 +232,10 @@ try {
         if (['Peserta', 'Company', 'Role'].includes(name)) scenarios.push([name, 'row', 'remove', 'delete', `${base}/${id}`]);
     }
     scenarios.push(['User', 'reset', 'doReset', 'post', '/master/user/77/reset-password']);
-    scenarios.push(['Product', 'add', 'saveAdd', 'post', '/master/product'], ['Product', 'edit', 'saveEdit', 'put', '/master/product/77'],
-        ['Product', 'edit', 'saveLingkup', 'put', '/master/product/77/lingkup'], ['Product', 'row', 'toggle', 'post', '/master/product/77/toggle'],
+    scenarios.push(['ProductForm', 'add', 'save', 'post', '/master/product'], ['Product', 'edit', 'saveEdit', 'put', '/master/product/77'],
+        ['Product', 'row', 'toggle', 'post', '/master/product/77/toggle'],
         ['Katalog', 'edit', 'save', 'put', '/master/product/77/lingkup'], ['Permissions', 'role', 'save', 'put', '/permissions/roles/2'],
-        ['Permissions', 'user', 'save', 'put', '/permissions/users/77']);
+        ['PermissionOverride', 'user', 'save', 'put', '/permissions/users/77']);
     for (const slug of ['jenis-sertifikat', 'jenis-bidang', 'varian-pelaksanaan']) {
         for (const [mode, fn, method, suffix] of [['add', 'save', 'post', ''], ['edit', 'save', 'put', '/77'], ['row', 'toggle', 'post', '/77/toggle']]) {
             scenarios.push(['Atribut', mode, fn, method, `/master/${slug}${suffix}`, { slug }]);
@@ -242,8 +245,8 @@ try {
         scenarios.push(['Rate', mode, fn, method, `/master/rate/variable${suffix}`, { tipe: 'variable' }]);
     }
     for (const [name, mode, fn, method, url, props = {}] of scenarios) {
-        const target = name === 'Permissions' ? 'Permissions' : `Master/${name}`;
-        const { app, state, original } = await page(target, name === 'Permissions' ? { kind: mode, targetId: mode === 'user' ? 77 : 2, targetName: 'Test' } : props);
+        const target = ['Permissions', 'PermissionOverride'].includes(name) ? name : `Master/${name}`;
+        const { app, state, original } = await page(target, ['Permissions', 'PermissionOverride'].includes(name) ? { kind: mode, targetId: mode === 'user' ? 77 : 2, targetName: 'Test', kpi: { roles: 2, users: 1, menus: 3, hak: 9 } } : props);
         assert.doesNotMatch(original, /\b(?:router|form|\w+Form)\.(?:post|put|patch|delete|submit)\(/, target);
         if (state.form) Object.assign(state.form, Object.fromEntries(Object.entries({ nama: 'Test', item: 'Item Test', teks: 'Keterangan Test' }).filter(([key]) => key in state.form)));
         if (mode === 'edit') {
@@ -252,8 +255,10 @@ try {
             if ('current' in state) state.current = row;
             if ('currentId' in state) { state.currentId = 77; state.currentCode = row.kode; }
         }
+        if (name === 'Permissions') { state.editing = { id_group: 2, nm_group: 'Staf', sistem: false }; state.detail = { menus: [], selected: [], editable: true, n_user: 0 }; }
         if (mode === 'reset') { state.resetting = row; state.resetForm.password = 'JanganTampil'; state.resetForm.password_confirmation = 'JanganTampil'; }
-        if (name === 'Product') { state.current = row; state.editForm.judul = row.judul; state.addForm.judul = row.judul; }
+        if (name === 'Product') { state.current = row; state.editForm.judul = row.judul; }
+        if (name === 'ProductForm') { state.form.judul = row.judul; }
         const count = requests.length;
         let pending = state[fn](row);
         const title = dialogs.at(-1).options;
@@ -294,13 +299,14 @@ try {
         ['Quotation/Form', quoteProps, 'saveDocuments', [], '/quotation/77/deal'],
         ['components/ReadyInvoice', { so: row, kepada: 'Test', count: 1, total: '100000' }, 'save', [], '/sales-order/77/siap-invoice'],
         ['Invoice/Form', { source: { so: row, amounts: { total_tagihan: '100000' } }, accounts: [], coa: 7 }, 'save', [], '/invoicing'],
-        ['Invoice/Show', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/pembayaran', 'post', s => { s.action = 'pembayaran'; }],
-        ['Invoice/Show', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/bukti-setor', 'post', s => { s.action = 'bukti-setor'; }],
-        ['Refund/Show', { refund: { id: 77, nomor: 'RF-077', nominal_tagihan: '987654321012345678.00' } }, 'save', [], '/sales-order/refund/77'],
+        ['components/InvoiceDetail', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/pembayaran', 'post', s => { s.action = 'pembayaran'; }],
+        ['components/InvoiceDetail', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/bukti-setor', 'post', s => { s.action = 'bukti-setor'; }],
+        ['components/RefundDetail', { refund: { id: 77, nomor: 'RF-077', nominal_tagihan: '987654321012345678.00' } }, 'save', [], '/sales-order/refund/77'],
         ...['pengajuan', 'overbudget'].map(creating => ['Expenses/Program', { ...base, creating, budget: { items: [] } }, 'submit', [], `/pengajuan-biaya/program/77/${creating}`]),
         ...['setujui', 'tolak', 'batal', 'paid'].map(kind => ['Expenses/Show', { header: { id: 77, nomor: 'PB-077', total: '100000' }, kind: 'pengajuan' }, 'send', [kind], `/pengajuan-biaya/pengajuan/77/${kind}`]),
         ['Participants/Show', { program, filters: {}, warnings: [], blockers: [] }, 'save', [], '/manage-peserta/peserta/77/nama', 'post', s => { s.editing = row; }],
         ['Participants/Show', { program, filters: {}, warnings: [], blockers: [] }, 'closeProgram', [], '/manage-peserta/77/close'],
+        ['Participants/Index', {}, 'closeProgram', [{...program,warnings:['Sertifikat belum dikirim'],blockers:[]}], '/manage-peserta/77/close'],
         ...['buka', 'tutup'].map(kind => ['Participants/Show', { program, filters: {}, warnings: [], blockers: [] }, 'surveyStatus', [kind], `/manage-peserta/77/survey/${kind}`]),
         ['Participants/Monitoring', {}, 'save', [], '/manage-peserta/peserta/77/catatan', 'post', s => { s.editing = row; }],
         ['components/QuotationParticipants', { rows: [], manage: true }, 'save', [], '/quotation/peserta/77/surat', 'post', s => { s.replacing = row; }],
@@ -343,7 +349,7 @@ try {
         request.options.onError({ field: 'Validasi gagal.' });
         finish(request);
         if (form && 'surat' in form) assert.equal(form.surat, file, 'Error mempertahankan lampiran.');
-        if (name === 'Refund/Show') assert.equal(request.options.data.nominal_refund, '987654321012345678');
+        if (name === 'components/RefundDetail') assert.equal(request.options.data.nominal_refund, '987654321012345678');
         app.unmount();
     }
     const pdfPage = await page('Quotation/Form', quoteProps);

@@ -212,7 +212,7 @@
     .filter(x => state.status === 'all' || (MON_TL[state.status] && MON_TL[state.status][1](x)))
     .filter(x => matches([x.p.nama, pesertaCo(x.p), x.p.email, x.p.telp, x.pj.nomor, mpJudul(x.pj), x.k.nomor, (salesOf(x.k) || {}).nama, x.s.lsp, x.s.skema, x.s.noLatih, x.s.noBnsp]));
   const badgeOn = (on, txt) => `<span class="badge ${on ? 'on' : 'off'}">${esc(txt)}</span>`;
-  const latihTxt = s => `${s.noLatih ? `<span class="code">${esc(s.noLatih)}</span>` : '<span class="muted">Belum terbit</span>'}<br>${badgeOn(s.kirim !== 'belum', SERT_KIRIM[s.kirim])}${s.tglKirim ? ` <span class="muted">${fmtTgl(s.tglKirim)}${s.via ? ` · ${esc(s.via)}` : ''}</span>` : ''}`;
+  const latihTxt = s => `${s.noMp ? s.noMp.map(n => `<span class="code">${esc(n)}</span>`).join('<br>') : s.noLatih ? `<span class="code">${esc(s.noLatih)}</span>` : '<span class="muted">Belum terbit</span>'}<br>${badgeOn(s.kirim !== 'belum', SERT_KIRIM[s.kirim])}${s.tglKirim ? ` <span class="muted">${fmtTgl(s.tglKirim)}${s.via ? ` · ${esc(s.via)}` : ''}</span>` : ''}`;
   const bnspTxt = (pj, s) => !monSert(pj) ? '<span class="muted">— (program pelatihan)</span>'
     : `${badgeOn(s.hasil === 'k', SERT_HASIL[s.hasil])} <span class="muted">${SERT_METODE[s.metode]}</span><br><span class="muted">${esc(s.lsp || 'LSP —')} · ${esc(s.skema || 'skema —')}</span>
       <br><span class="muted">${s.noBnsp ? `No. <span class="code">${esc(s.noBnsp)}</span> · ` : ''}Diterima ${s.bnspTerima ? fmtTgl(s.bnspTerima) : '—'} · Dikirim ${s.bnspKirim ? fmtTgl(s.bnspKirim) : '—'} · ID card ${SERT_IDCARD[s.idcard].toLowerCase()}</span>`;
@@ -222,16 +222,21 @@
   // Tab Sertifikat di halaman peserta program (Manage Peserta › Lihat Peserta).
   // Sertifikat pelatihan dibuat di sistem dari data peserta & program; template dan format nomor sementara (input/Invoice & Pengajuan/2026-11-09-buat-sertifikat-di-sistem/).
   // Sertifikat BNSP tetap diunggah karena diterbitkan LSP/BNSP.
-  const QSRT = q('Q-MON-06', 'Format sertifikat dan nomor menyusul dari LabMania. Sementara: nomor SRT/LMI/MM/yy-zzz (urut per bulan terbit), satu sertifikat per peserta per program, tanda tangan Trainer dan Direktur.');
+  const QSRT = q('Q-MON-06', 'Format sertifikat dan nomor menyusul dari LabMania. Sementara: nomor SRT/LMI/MM/yy-zzz (urut per bulan terbit), satu sertifikat per peserta per Master Program (Product) (13-11-2026), tanda tangan Trainer dan Direktur.');
   db.sertSeq = db.sertSeq || {};
   const sertNo = iso => { const mm = iso.slice(5, 7), yy = iso.slice(2, 4), key = yy + mm, n = (db.sertSeq[key] || 0) + 1; db.sertSeq[key] = n; return `SRT/LMI/${mm}/${yy}-${String(n).padStart(3, '0')}`; };
   // Nama tercetak = Nama di sertifikat yang sudah dikonfirmasi (SRT-FR-04), atau nama isian link selama belum diperbaiki.
   const namaSrt = x => x.s.namaSrt || x.p.nama;
-  function pageSertifikat(x, draft = false) {
-    const pj = x.pj, tr = trainerById(pj.trainer), s = x.s;
-    return pdfPage(`<div class="srt-doc${draft ? ' srt-draft' : ''}">${draft ? '<p class="srt-wm" aria-hidden="true">DRAFT</p>' : ''}<p class="srt-h">SERTIFIKAT</p><p class="srt-no">Nomor: ${draft ? '(terbit setelah nama dikonfirmasi)' : esc(s.noLatih)}</p>
+  // Beberapa Master Program ([JMR-2]): satu sertifikat per Master Program (Product), nomor masing-masing di s.noMp;
+  // konfirmasi nama tetap satu per peserta. Judul, tanggal, JP, dan trainer dari Master Program itu.
+  const sertBagian = pj => (pjMulti(pj) ? pj.mps.map((m, i) => ({ i, judul: paketOf(mprogById(m.mp)).judul, nomor: mprogById(m.mp).nomor, tglMulai: m.tglMulai, tglSelesai: m.tglSelesai, jp: m.jamPembelajaran, trainer: m.trainer })) : [null]);
+  const sertPages = (x, draft) => sertBagian(x.pj).map(b => pageSertifikat(x, draft, b)).join('');
+  function pageSertifikat(x, draft = false, b = null) {
+    const pj = b ? Object.assign({}, x.pj, { tglMulai: b.tglMulai, tglSelesai: b.tglSelesai, jamPembelajaran: b.jp, trainer: b.trainer }) : x.pj, tr = trainerById(pj.trainer), s = x.s;
+    const noS = b && s.noMp ? s.noMp[b.i] : s.noLatih;
+    return pdfPage(`<div class="srt-doc${draft ? ' srt-draft' : ''}">${draft ? '<p class="srt-wm" aria-hidden="true">DRAFT</p>' : ''}<p class="srt-h">SERTIFIKAT</p><p class="srt-no">Nomor: ${draft ? '(terbit setelah nama dikonfirmasi)' : esc(noS)}</p>
       <p>diberikan kepada</p><p class="srt-nama">${esc(namaSrt(x))}</p><p class="srt-inst">${esc(pesertaCo(x.p))}</p>
-      <p>atas partisipasinya sebagai <b>peserta</b> dalam</p><p class="srt-judul">${esc(mpJudul(pj))}</p>
+      <p>atas partisipasinya sebagai <b>peserta</b> dalam</p><p class="srt-judul">${esc(b ? b.judul : mpJudul(pj))}</p>
       <p>${esc(varianTxt(pj))} · ${esc(rangePanjang(pj.tglMulai, pj.tglSelesai))} · ${esc(pj.lokasi || '')}${pj.jamPembelajaran ? ` · ${pj.jamPembelajaran} JP` : ''}</p>
       <div class="srt-ttd"><div>Trainer<div class="pdf-ttd"></div><b>${esc(tr ? tr.nama : '..............................')}</b></div>
         <div>Bekasi, ${draft ? '..................' : tglPanjang(s.tglTerbit)}<br>PT LabMania Indonesia Jaya<div class="pdf-ttd"></div><b>(..............................)</b><br>Direktur</div></div></div>`,
@@ -244,9 +249,9 @@
     if (tunda.length && tunda.length === list.length) { toast(`Konfirmasi nama dulu: ${tunda.map(x => x.p.nama).join(', ')}. Kirim draft sertifikat ke peserta, lalu catat jawabannya.`, 'warn'); return; }
     list = list.filter(x => x.s.noLatih || x.s.namaOk);
     const baru = list.filter(x => !x.s.noLatih);
-    baru.forEach(x => { Object.assign(x.s, { noLatih: sertNo(todayIso), tglTerbit: todayIso, fileLatih: '' }); });
+    baru.forEach(x => { const bag = sertBagian(x.pj), no = bag.map(() => sertNo(todayIso)); Object.assign(x.s, { noLatih: no[0], noMp: bag[0] ? no : null, tglTerbit: todayIso, fileLatih: '' }); });
     if (baru.length) logAct('Manage Peserta', 'Sertifikat', 'Tambah', judul, null, `Buat sertifikat pelatihan ${baru.length} peserta: ${baru.map(x => x.s.noLatih).join(', ')}`);
-    openModal({ title: `Sertifikat: ${judul}`, wide: 'x', info: true, body: pdfWrap(list.map(pageSertifikat).join(''), `${list.length} sertifikat${baru.length ? ` (${baru.length} baru dibuat)` : ''}${tunda.length ? ` · ${tunda.length} belum dibuat karena nama belum dikonfirmasi` : ''} · template sementara${QSRT}`), onMount: pdfMount });
+    openModal({ title: `Sertifikat: ${judul}`, wide: 'x', info: true, body: pdfWrap(list.map(x => sertPages(x)).join(''), `${list.reduce((t, x) => t + sertBagian(x.pj).length, 0)} sertifikat${baru.length ? ` (${baru.length} baru dibuat)` : ''}${tunda.length ? ` · ${tunda.length} belum dibuat karena nama belum dikonfirmasi` : ''} · template sementara${QSRT}`), onMount: pdfMount });
     if (baru.length) toast(`${baru.length} sertifikat dibuat`);
   }
   // ---------- Konfirmasi nama sebelum sertifikat terbit (SRT-FR-04) ----------
@@ -263,7 +268,7 @@
     list.forEach(x => { x.s.draftAt = todayIso; });
     logAct('Manage Peserta', 'Sertifikat', 'Draft', judul, null, `Draft sertifikat untuk dicek peserta: ${list.map(x => namaSrt(x)).join(', ')}`);
     openModal({ title: `Draft sertifikat: ${esc(judul)}`, wide: 'x', info: true,
-      body: pdfWrap(list.map(x => pageSertifikat(x, true)).join(''), `${list.length} draft tanpa nomor${baru.length < list.length ? ` (${list.length - baru.length} pernah dikirim)` : ''}. Kirim ke peserta lewat WhatsApp atau email, lalu catat jawabannya lewat <b>Konfirmasi nama</b>.`), onMount: pdfMount });
+      body: pdfWrap(list.map(x => sertPages(x, true)).join(''), `${list.length} draft tanpa nomor${baru.length < list.length ? ` (${list.length - baru.length} pernah dikirim)` : ''}. Kirim ke peserta lewat WhatsApp atau email, lalu catat jawabannya lewat <b>Konfirmasi nama</b>.`), onMount: pdfMount });
     render();
   }
   function sertDraft(p) { const x = sertRow(p); if (!x) return; if (x.s.noLatih) { toast('Sertifikat sudah terbit; nama sudah terkunci', 'warn'); return; } sertDraftOpen([x], p.nama); }

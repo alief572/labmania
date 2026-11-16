@@ -79,7 +79,7 @@
     const v = state.view;
     if (v === 'dashboard') return null;
     if (v === 'qtForm') return state.pf && state.pf.p.jenis ? 'qtForm' : 'qtStart';
-    if (v === 'so') return state.soTab === 'skt' ? 'skt' : state.soTab === 'refund' ? 'refund' : 'so';
+    if (v === 'so') return state.soTab === 'skt' ? 'skt' : 'so';
     if (v === 'mpst' && state.mpPj) return 'mpstDetail';
     if (MASTERS[v]) return 'master';
     return TOUR[v] ? v : null;
@@ -157,6 +157,8 @@
     ['Perencanaan sampling', 'Teknik pengambilan contoh', 'Penanganan, pengawetan, dan pengiriman contoh', 'Dokumentasi dan rantai pengawasan contoh'],
     ['Penyiapan larutan dan pereaksi', 'Analisis gravimetri dan volumetri', 'Analisis instrumen', 'Validasi metode dan pelaporan hasil']
   ].forEach((l, i) => { db.paket[i].lingkup = [...l]; });
+  // Harga "start from" contoh (perkiraan promosi, bukan data klien); paket lain sengaja kosong.
+  [3500000, 4250000, 2750000].forEach((h, i) => { db.paket[i].hargaMulai = h; });
 
   // Contoh data wilayah — sumber data wilayah masih Q-07b.
   const WILAYAH = {
@@ -239,10 +241,13 @@
   // Nominal × faktor satuan: Event / Peserta/Event = 1, Day / Peserta/Day = durasi (fr-nfr-master-program.md bagian 8).
   const perUnit = (b, d) => (Number(b.harga) || 0) * ((b.satuan === 'Day' || b.satuan === 'Peserta/Day') ? d : 1);
 
+  // Penjualan Program dengan beberapa Master Program (p.mps): biaya per hari memakai durasi Master Program masing-masing
+  // (input/Master - Buat Program/2026-11-13-jawaban-multi-master-refund-top/ [JMR-1]); sisanya sama.
   function calc(p) {
-    const d = Number(p.durasi) || 0, n = nPeserta(p);
-    const fixed = p.biaya.filter(b => b.tipe === 'fixed').reduce((s, b) => s + perUnit(b, d), 0);
-    const varPer = p.biaya.filter(b => b.tipe === 'variable').reduce((s, b) => s + perUnit(b, d), 0);
+    const n = nPeserta(p);
+    const parts = p.mps && p.mps.length ? p.mps.map(m => ({ d: Number(m.durasi != null ? m.durasi : p.durasi) || 0, biaya: m.biaya || [] })) : [{ d: Number(p.durasi) || 0, biaya: p.biaya }];
+    const sumT = tipe => parts.reduce((t, x) => t + x.biaya.filter(b => b.tipe === tipe).reduce((s, b) => s + perUnit(b, x.d), 0), 0);
+    const fixed = sumT('fixed'), varPer = sumT('variable');
     const totalVar = varPer * n;
     const hpp = fixed + totalVar;
     const harga = Number(p.hargaJual) || 0;
@@ -283,10 +288,9 @@
     status: 'draft', paket: [pidOf('PC-003')], durasi: 1, targetPeserta: 20, hargaJual: 750000,
     biaya: allFixed().concat(fromRate(['Sertifikat', 'Makan Siang Training']))
   });
-  // Contoh Master Program dengan lebih dari satu Product (Pelatihan + Sertifikasi), costing tetap satu
-  // (input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/).
+  // Master Program = satu Product (koreksi 13-11-2026). Contoh gabungan ada di Penjualan Program (mp1 + mp4).
   const mp4 = seedMP({
-    status: 'final', paket: [pidOf('PC-001'), pidOf('PC-003')], durasi: 2, targetPeserta: 20, hargaJual: 900000,
+    status: 'final', paket: [pidOf('PC-003')], durasi: 2, targetPeserta: 20, hargaJual: 900000,
     biaya: allFixed().concat(fromRate(['Modul', 'Sertifikat', 'Makan Siang Training', 'Coffee Break']))
   });
 
@@ -309,7 +313,14 @@
     biaya: clone(mp2.biaya).concat([{ rate: null, tipe: 'fixed', item: 'Sewa alat peraga', satuan: 'Event', mode: 'manual', manual: true, harga: 1500000 }])
   }));
   seedQT(Object.assign(fromMP(mp1, 'b2b'), { company: db.company[1].id, hargaJual: 700000, targetPeserta: 15, jamPembelajaran: 16, tglMulai: '2026-11-24', tglSelesai: '2026-11-25', lokasi: 'In house — Surabaya' }));
-  seedQT(Object.assign(fromMP(mp4, 'public'), { status: 'final', durasi: 2, jamPembelajaran: 16, tglMulai: '2026-12-01', tglSelesai: '2026-12-02', lokasi: 'Online (Zoom)' }));
+  // Penjualan Program berisi dua Master Program, costing masing-masing (input/Master - Buat Program/2026-11-13-multi-master-batal-top-refund/ butir 1).
+  // Tiap Master Program punya tanggal, JP, trainer, dan asisten sendiri ([JMR-1]); trainer & asisten diisi di mod-sales-order.js.
+  const fromMPs = (list, jenis, jadwal) => { const q = fromMP(list[0], jenis), mps = list.map((m, i) => Object.assign({ mp: m.id, biaya: clone(m.biaya), hargaJual: m.hargaJual, targetProfit: m.targetProfit,
+      jamPembelajaran: m.jamPembelajaran, trainer: '', asisten: '' }, jadwal[i], { durasi: Math.round((Date.parse(jadwal[i].tglSelesai) - Date.parse(jadwal[i].tglMulai)) / 864e5) + 1 }));
+    return Object.assign(q, { mps, biaya: mps.flatMap((m, i) => m.biaya.map(b => Object.assign({}, b, { mpi: i }))), hargaJual: mps.reduce((t, m) => t + (Number(m.hargaJual) || 0), 0),
+      targetProfit: mps.reduce((t, m) => t + (Number(m.targetProfit) || 0), 0) || '', jamPembelajaran: mps.reduce((t, m) => t + (Number(m.jamPembelajaran) || 0), 0),
+      tglMulai: jadwal[0].tglMulai, tglSelesai: jadwal[jadwal.length - 1].tglSelesai }); };
+  seedQT(Object.assign(fromMPs([mp1, mp4], 'public', [{ tglMulai: '2026-12-01', tglSelesai: '2026-12-02' }, { tglMulai: '2026-12-03', tglSelesai: '2026-12-04' }]), { status: 'final', lokasi: 'Online (Zoom)' }));
 
   // ---------- State & navigation ----------
   const state = {
@@ -358,6 +369,12 @@
       ]
     },
     {
+      // Modul Refund sendiri (input/Master - Buat Program/2026-11-13-multi-master-batal-top-refund/ butir 6).
+      name: 'Refund', icon: ICON_INV, groups: [
+        { group: 'Refund', items: [['refund', 'Daftar Refund'], ['rfAppr', 'Approval Refund']] }
+      ]
+    },
+    {
       // Peserta Deal per program: daftar, cetak, export, Close Program (input/Invoice & Pengajuan/2026-11-04-manage-peserta/).
       name: 'Manage Peserta', icon: ICON_MP, groups: [
         { group: 'Peserta', items: [['mpst', 'Manage Peserta'], ['mon', 'Monitoring Peserta']] }
@@ -380,7 +397,7 @@
   // paket itu plus menu umum (Pengguna, Activity Log). Tanpa data-paket semua modul tampil (mockup kerja).
   const PAKET_MENU = {
     'master-quotation': { 'Master Data': null, 'Penjualan Program': null, Quotation: null, 'Activity Log': null },
-    'invoice-pengajuan': { 'Master Data': ['User'], Invoice: null, 'Manage Peserta': null, 'Pengajuan Biaya': null, 'Activity Log': null }
+    'invoice-pengajuan': { 'Master Data': ['User'], Invoice: null, Refund: null, 'Manage Peserta': null, 'Pengajuan Biaya': null, 'Activity Log': null }
   };
   const paketMenu = PAKET_MENU[document.documentElement.dataset.paket];
   if (paketMenu) {
@@ -535,8 +552,20 @@
   const STATUS_COL = { label: 'Status', cls: 'nowrap', render: r => badge(r.aktif) };
   // Kolom Action: ikon gear, opsi muncul di menu melayang (di luar .table-wrap agar tidak terpotong).
   const GEAR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>';
-  const gearMenu = (r, items) => `<button class="gear" data-act="gear" aria-haspopup="menu" aria-label="Opsi">${GEAR}</button>
-    <template>${items.concat(r.createdAt && canLog() ? [['hist-open', 'Lihat Riwayat']] : []).map(([act, label, danger]) => `<button class="menu-item ${danger ? 'danger' : ''}" role="menuitem" data-act="${act}" data-id="${r.id}">${label}</button>`).join('')}</template>`;
+  // Isi menu dikelompokkan dan dipisah garis (permintaan BA 13-11-2026): Lihat & cetak, Proses, aksi berisiko, Riwayat.
+  // Judul kelompok hanya tampil bila aksinya banyak (>= 5), supaya menu pendek tetap ringkas.
+  const GEAR_LIHAT = /^(Lihat|View|Cetak|Print|Unduh|Buka|Preview|Export)/i;
+  const gearGroups = items => {
+    const g = { lihat: [], proses: [], bahaya: [], riwayat: [] };
+    items.forEach(it => (it[0] === 'hist-open' ? g.riwayat : it[2] ? g.bahaya : GEAR_LIHAT.test(it[1]) ? g.lihat : g.proses).push(it));
+    return [['Lihat & cetak', g.lihat], ['Proses', g.proses], ['Batalkan / hapus', g.bahaya], ['Riwayat', g.riwayat]].filter(([, l]) => l.length);
+  };
+  const gearMenu = (r, items) => {
+    const all = items.concat(r.createdAt && canLog() ? [['hist-open', 'Lihat Riwayat']] : []), judul = all.length >= 5;
+    const btn = ([act, label, danger]) => `<button type="button" class="menu-item ${danger ? 'danger' : ''}" role="menuitem" data-act="${act}" data-id="${r.id}">${label}</button>`;
+    const isi = gearGroups(all).map(([nama, list], i) => `${i ? '<div class="menu-sep" role="separator"></div>' : ''}<div class="menu-grp" role="group" aria-label="${nama}">${judul && (nama === 'Lihat & cetak' || nama === 'Proses') ? `<div class="menu-h" aria-hidden="true">${nama}</div>` : ''}${list.map(btn).join('')}</div>`).join('');
+    return `<button class="gear" data-act="gear" aria-haspopup="menu" aria-expanded="false" aria-label="Opsi">${GEAR}</button><template>${isi}</template>`;
+  };
   const toggleItem = r => ['toggle', r.aktif ? 'Nonaktifkan' : 'Aktifkan'];
 
   const req = ' <span class="req">*</span>';

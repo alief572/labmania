@@ -2,11 +2,12 @@
 import CostingSimulation from "../../../components/CostingSimulation.vue";
 import MoneyInput from "../../../components/MoneyInput.vue";
 import { computed, ref } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../../layouts/AppLayout.vue';
 import FormField from '../../../components/FormField.vue';
 import { calc, rupiah, costQuantity } from '../../../composables/costing';
 import { useConfirmedMutation } from '../../../composables/confirmedMutation';
+import { useProgramTransition } from '../../../composables/programTransition';
 
 const confirmation = useConfirmedMutation();
 const { pending: confirming } = confirmation;
@@ -58,13 +59,24 @@ const warnings = computed(() => {
     return w;
 });
 const statusLabel = { draft: 'Draft', final: 'Final', batal: 'Batal' } as const;
+const { ask, busy, error: transitionError } = useProgramTransition(confirmation);
+const isNew = !props.program.id;
+const back = () => router.get('/program');
+// Product terpilih sebagai daftar bernomor + satu pilihan "+ Tambah Product aktif…" (mockup bagian 1).
+const chosen = computed(() => form.paket.map((id) => props.products.find((p) => p.id === id)).filter((p): p is Product => !!p));
+const addable = computed(() => props.products.filter((p) => p.aktif && !form.paket.includes(p.id)));
+const addProduct = (event: Event) => { const el = event.target as HTMLSelectElement; if (el.value) form.paket.push(Number(el.value)); el.value = ''; };
+const lockText = computed(() => props.program.status === 'final'
+    ? 'Master Program Final — terkunci dan tersedia di pilihan Penjualan Program. Penyesuaian harga/costing dilakukan di Penjualan Program. Master Program Final tidak dapat dibatalkan atau disalin; perubahan master: buat Master Program baru.'
+    : props.program.status === 'batal' ? 'Master Program dibatalkan — tidak muncul lagi di pilihan Penjualan Program. Penjualan yang sudah terbentuk tidak terpengaruh.' : '');
 </script>
 
 <template>
     <Head :title="program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program'" />
     <AppLayout :title="program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program'">
-        <div class="page-head"><h1>{{ program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program' }}</h1><span class="badge" :class="`st-${program.status}`">{{ statusLabel[program.status] }}</span></div>
-        <p v-if="!draft" class="notice">Master Program berstatus {{ statusLabel[program.status] }} terkunci dan tidak dapat diubah.</p>
+        <div class="pf-formbar"><button type="button" class="kt-btn" @click="back">← Kembali</button><h1>{{ program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program' }}</h1></div>
+        <p v-if="lockText" class="notice">{{ lockText }}</p>
+        <p v-if="transitionError" class="error" role="alert">{{ transitionError }}</p>
         <p v-if="err('program')" class="error" role="alert">{{ err('program') }}</p>
 
         <form class="stack" @submit.prevent="save">
@@ -73,14 +85,20 @@ const statusLabel = { draft: 'Draft', final: 'Final', batal: 'Batal' } as const;
                 <div><strong>Jenis</strong><p class="muted">Umum — Public/B2B dipilih di Penjualan Program</p></div>
                 <div><strong>Status</strong><p><span class="badge" :class="`st-${program.status}`">{{ statusLabel[program.status] }}</span></p></div>
             </div></section>
-            <section class="panel" aria-labelledby="sec-product"><h2 id="sec-product">1. Master Program</h2>
-                <p v-if="err('paket')" class="error" role="alert">{{ err('paket') }}</p>
-                <div v-for="(pid, i) in form.paket" :key="i" class="form-grid">
-                    <label><span>Product {{ i + 1 }}{{ i === 0 ? ' (utama)' : '' }}</span>
-                        <select v-model="form.paket[i]" :disabled="!editable" :aria-label="`Product ${i + 1}`"><option value="">Pilih…</option><option v-for="p in productsLeft" :key="p.id" :value="p.id" :disabled="form.paket.includes(p.id) && form.paket[i] !== p.id">{{ p.nomor }} · {{ p.judul }} · {{ p.sertifikat }}{{ p.aktif ? '' : ' (nonaktif)' }}</option></select></label>
-                    <button v-if="editable && form.paket.length > 1" type="button" class="danger" @click="form.paket.splice(i, 1)">Hapus</button>
+            <section class="panel" aria-labelledby="sec-product"><h2 id="sec-product"><span class="section-number">1</span> Informasi Program</h2>
+                <div class="field">
+                    <span class="static-label">Product <span class="req" aria-hidden="true">*</span> <span class="muted">(boleh lebih dari satu)</span></span>
+                    <ol v-if="chosen.length" class="mp-prods">
+                        <li v-for="(p, i) in chosen" :key="p.id" class="mp-prod">
+                            <span><span class="code">{{ p.nomor }}</span> <b>{{ p.judul }}</b><small>Produk: {{ p.produk }} · Bidang: {{ p.bidang }} · Varian: {{ p.varian ?? '—' }} · Sertifikat: {{ p.sertifikat }}{{ p.aktif ? '' : ' · nonaktif' }}</small></span>
+                            <button v-if="editable" type="button" class="danger" :aria-label="`Hapus ${p.judul} dari Master Program`" @click="form.paket.splice(i, 1)">Hapus</button>
+                        </li>
+                    </ol>
+                    <p v-else class="muted">Belum ada Product dipilih.</p>
+                    <select v-if="editable" aria-label="Tambah Product" @change="addProduct"><option value="">+ Tambah Product aktif…</option><option v-for="p in addable" :key="p.id" :value="p.id">{{ p.nomor }} — {{ p.judul }} · {{ p.varian ?? '—' }} · {{ p.sertifikat }}</option></select>
+                    <small>Costing tetap satu untuk seluruh Master Program (bagian 2 – 4), berapa pun Product yang dipilih.</small>
+                    <p v-if="err('paket')" class="error" role="alert">{{ err('paket') }}</p>
                 </div>
-                <button v-if="editable" type="button" @click="form.paket.push('')">+ Tambah Product aktif</button>
                 <div class="form-grid">
                     <FormField id="durasi" label="Durasi (hari)" :error="form.errors.durasi_hari" v-slot="{ describedBy, invalid }"><input id="durasi" v-model="form.durasi_hari" inputmode="numeric" :disabled="!editable" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                     <FormField id="jp" label="Jam Pembelajaran (JP)" hint="Wajib; nilai awal untuk Penjualan Program." :error="form.errors.jam_pembelajaran" v-slot="{ describedBy, invalid }"><input id="jp" v-model="form.jam_pembelajaran" inputmode="numeric" :disabled="!editable" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
@@ -116,9 +134,12 @@ const statusLabel = { draft: 'Draft', final: 'Final', batal: 'Batal' } as const;
                 <p class="muted">Angka resmi dihitung ulang server saat simpan dan Finalkan.</p>
             </section>
 
-            <div class="form-actions">
+            <div class="form-actions page-actions">
+                <Link href="/program">{{ isNew ? 'Batal' : 'Kembali' }}</Link>
+                <button v-if="draft && !isNew && can.cancel" type="button" :disabled="busy || confirming" @click="ask(program.id!, 'batalkan')">Batalkan Program</button>
                 <button v-if="editable" class="primary" :disabled="form.processing || confirming">{{ form.processing ? 'Menyimpan…' : 'Simpan Draft' }}</button>
-                <Link href="/program">Kembali ke daftar</Link>
+                <button v-if="draft && !isNew && can.approve" type="button" class="primary" :disabled="busy || confirming" @click="ask(program.id!, 'finalkan')">Finalkan program</button>
+                <Link v-if="program.status === 'final'" class="primary" :href="`/penjualan-program/create?master=${program.id}`">Buat Penjualan Program</Link>
             </div>
         </form>
     </AppLayout>

@@ -60,11 +60,13 @@ class SalesController extends Controller
         return Inertia::render('Sales/Index', $props);
     }
 
-    public function create()
+    /** ?master=<id> dari tombol "Buat Penjualan Program" di Master Program Final: memilih master itu lebih dulu (hanya yang Final). */
+    public function create(Request $request)
     {
         Gate::authorize('menu', [self::MENU, 'Add']);
+        $master = $request->integer('master') ?: null;
 
-        return $this->form(null);
+        return $this->form(null, $master && DB::table('master_program')->where('id', $master)->where('status', 'final')->exists() ? $master : null);
     }
 
     public function show(int $id)
@@ -85,7 +87,7 @@ class SalesController extends Controller
         return QuotationPdf::response($pdf, 'Penawaran-Program-'.$id.'.pdf');
     }
 
-    private function form(?object $p)
+    private function form(?object $p, ?int $presetMaster = null)
     {
         $masters = DB::table('master_program')->where('status', 'final')->get();
         foreach ($masters as $m) {
@@ -96,6 +98,9 @@ class SalesController extends Controller
             'tgl_mulai' => '', 'tgl_selesai' => '', 'waktu' => '', 'lokasi' => '', 'jam_pembelajaran' => '', 'target_peserta' => 10, 'harga_jual_peserta' => 0, 'target_profit' => 0, 'durasi_hari' => 1, 'closed_date' => null];
         if ($p) {
             $program['nomor'] = Sales::display($p);
+        }
+        if (! $p && $presetMaster) {
+            $program['id_master_program'] = $presetMaster;
         }
         $program['biaya'] = $p ? Sales::costs($p->id) : [];
         $actual = null;

@@ -25,6 +25,7 @@ class ParticipantController extends Controller
         ServerDataTable::prepare($r);
         $f = Sales::filters($r);
         $q = DB::table('penjualan_program as p')->where('p.status', 'final');
+        $counts = ['ongoing' => (clone $q)->whereNull('p.closed_date')->count(), 'selesai' => (clone $q)->whereNotNull('p.closed_date')->count()];
         ($f['tab'] ?? 'ongoing') === 'selesai' ? $q->whereNotNull('p.closed_date') : $q->whereNull('p.closed_date');
         ServerDataTable::scope($r, $q);
         Sales::filter($q, $f);
@@ -36,12 +37,13 @@ class ParticipantController extends Controller
             $p->company = $p->id_customer ? DB::table('master_customer')->where('id_customer', $p->id_customer)->value('name_customer') : 'Public';
             $p->peserta = Participants::query($p->id)->count();
             $p->blockers = $p->closed_date ? [] : Participants::blockers($p);
+            $p->warnings = $p->closed_date ? [] : Participants::warnings($p->id);
             $p->operational_status = $p->closed_date ? 'Closed' : ($p->tgl_selesai < today()->toDateString() ? 'Acara selesai' : 'On going');
 
             return $p;
         });
 
-        $props = ['rows' => $rows, 'filters' => $f, 'canManage' => Gate::allows('menu', ['manage_peserta', 'Manage'])];
+        $props = ['rows' => $rows, 'filters' => $f, 'counts' => $counts, 'canManage' => Gate::allows('menu', ['manage_peserta', 'Manage'])];
         if ($r->route('datatable')) {
             return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
         }
@@ -73,16 +75,8 @@ class ParticipantController extends Controller
         $q = Participants::query($id);
         ServerDataTable::scope($r, $q);
         $this->searchPerson($q, $f['q'] ?? '');
-        $warnings = [];
-        if (DB::table('quotation')->where('id_penjualan', $id)->whereIn('status', ['draft', 'terkirim'])->exists()) {
-            $warnings[] = 'Masih ada quotation Draft/Terkirim; setelah Close tidak dapat diproses.';
-        }
-        if (DB::table('pengajuan_biaya')->where('id_penjualan', $id)->where('status', 'menunggu')->exists() || DB::table('pengajuan_overbudget')->where('id_penjualan', $id)->where('status', 'menunggu')->exists()) {
-            $warnings[] = 'Masih ada biaya/overbudget Menunggu Approval; pengajuan existing tetap dapat diselesaikan setelah Close.';
-        }
-
         $props = ['program' => $p, 'rows' => $this->peoplePage($q),
-            'filters' => $f, 'blockers' => Participants::blockers($p), 'warnings' => $warnings, 'canManage' => Gate::allows('menu', ['manage_peserta', 'Manage']), 'survey' => Survey::summary($id)];
+            'filters' => $f, 'blockers' => Participants::blockers($p), 'warnings' => Participants::warnings($id), 'canManage' => Gate::allows('menu', ['manage_peserta', 'Manage']), 'survey' => Survey::summary($id)];
         if ($r->route('datatable')) {
             return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
         }
@@ -95,7 +89,7 @@ class ParticipantController extends Controller
         $columns = request()->is('manage-peserta/monitoring/data')
             ? [null, 'x.nama', 'p.nomor', null, 's.no_sertifikat', 's.no_sertifikat_bnsp', 's.berlaku_sampai', 's.catatan_monitoring', null]
             : (request('tab') === 'sertifikat' ? [null, 'x.nama', 's.nama_sertifikat', 's.no_sertifikat', 's.no_sertifikat_bnsp', 's.berlaku_sampai', null]
-                : (request('tab') === 'survey' ? [null, 'x.nama', 'q.nomor', null, null, null] : [null, 'x.nama', 'x.instansi', 'x.no_wa', 'x.email', 'q.nomor', null]));
+                : (request('tab') === 'survey' ? [null, 'x.nama', 'q.nomor', null, null, null] : [null, 'master_peserta.kode', 'x.nama', 'x.instansi', 'x.no_wa', 'x.email', 'q.nomor', null]));
         $page = ServerDataTable::page(request(), $query->orderBy('x.id'), $columns, 'x.id');
 
         return $page->setCollection(Participants::enrichRows($page->getCollection()));
@@ -105,7 +99,7 @@ class ParticipantController extends Controller
     {
         if ($term !== '') {
             $query->where(function ($w) use ($term) {
-                foreach (['x.nama', 'x.instansi', 'x.no_wa', 'x.email', 'q.nomor', 'p.nomor', 'p.lokasi', 's.no_sertifikat', 's.no_sertifikat_bnsp', 's.lsp', 'u.nama'] as $col) {
+                foreach (['master_peserta.kode', 'x.nama', 'x.instansi', 'x.no_wa', 'x.email', 'q.nomor', 'p.nomor', 'p.lokasi', 's.no_sertifikat', 's.no_sertifikat_bnsp', 's.lsp', 'u.nama'] as $col) {
                     $w->orWhere($col, 'like', '%'.$term.'%');
                 }
                 $w->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('k.judul', 'like', '%'.$term.'%'));
@@ -153,7 +147,8 @@ class ParticipantController extends Controller
             $counts[$type] = $this->monitoringQuery(array_replace($f, ['tipe' => $type]))->count();
         }
 
-        $props = ['rows' => $this->peoplePage($q), 'filters' => $f, 'counts' => $counts,
+        $years = $this->monitoringQuery([])->reorder()->distinct()->pluck('p.tgl_mulai')->filter()->map(fn ($date) => (int) substr($date, 0, 4))->unique()->sortDesc()->values();
+        $props = ['rows' => $this->peoplePage($q), 'filters' => $f, 'counts' => $counts, 'years' => $years,
             'canManage' => Gate::allows('menu', ['monitoring_peserta', 'Manage']), 'canCertificates' => Gate::allows('menu', ['manage_peserta', 'View']), 'canQuotation' => Gate::allows('menu', ['quotation_program', 'View'])];
         if ($r->route('datatable')) {
             return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());

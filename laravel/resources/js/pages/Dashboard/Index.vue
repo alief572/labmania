@@ -1,31 +1,36 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import PageHead from '../../components/PageHead.vue';
+import ServerTable from '../../components/ServerTable.vue';
+import { Head, Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import { rupiah } from '../../composables/costing';
-import type { SharedProps } from '../../types';
+
 
 type Pj = { id: number; nomor: string; judul: string; jenis: string; lokasi: string | null; company: string | null; tgl_mulai: string | null; tgl_selesai: string | null; target: number; status: string };
-type Finals = Pj & { harga: number; pendapatan: number; fixed: number; variable: number; hpp: number; profit: number; margin: number };
 type Todo = { type: 'mp' | 'pj'; id: number; nomor: string; judul: string; msg: string; warn: boolean };
 const props = defineProps<{
     kpi: { final: number; public: number; b2b: number; pendapatan: number; peserta: number; profit: number; margin: number; draft: number };
     jadwal: Pj[]; todo: Todo[]; todoTotal: number; can: { master: boolean; sales: boolean };
 }>();
-const page = usePage<SharedProps>();
+
 const key = ref<'final' | 'pend' | 'prof' | 'draft' | null>(null);
-const detail = ref<{ finals?: Finals[]; master?: { id: number; nomor: string; judul: string }[]; penjualan?: Pj[] } | null>(null);
-const loading = ref(false);
+const totals = ref<Record<string, number>>({});
 const titles = { final: 'Total Penjualan Program Final', pend: 'Total pendapatan rencana', prof: 'Total profit rencana', draft: 'Total masih Draft' } as const;
-const FINAL_SRC = 'menu Daftar Penjualan Program, hanya yang berstatus Final (Draft dan Batal tidak dihitung). Angka rencana = isian Penjualan Program saat difinalkan.';
-async function open(k: 'final' | 'pend' | 'prof' | 'draft') {
-    key.value = k; detail.value = null; loading.value = true;
-    try { detail.value = await (await fetch(`/dashboard/kpi/${k}`, { headers: { Accept: 'application/json' } })).json(); } finally { loading.value = false; }
-}
+const FINAL_SRC = 'Daftar Penjualan Program berstatus Final. Angka rencana memakai costing saat program difinalkan.';
+function open(k: 'final' | 'pend' | 'prof' | 'draft') { totals.value = {}; key.value = k; }
+const columns = () => [
+    { title: 'No', orderable: false }, { title: 'Penjualan Program', orderable: true },
+    ...(key.value !== 'final' ? [{ title: 'Harga / peserta', orderable: false, className: 'dt-body-right' }] : []),
+    { title: 'Target', orderable: false, className: 'dt-body-right' },
+    ...(key.value === 'pend' ? [{ title: 'Pendapatan', orderable: false, className: 'dt-body-right' }] : []),
+    ...(key.value === 'prof' ? ['Pendapatan', 'Fixed', 'Variable', 'Profit', 'Margin'].map(title => ({ title, orderable: false, className: 'dt-body-right' })) : []),
+];
+const loaded = (result: { meta?: Record<string, unknown> }) => { totals.value = (result.meta?.totals ?? {}) as Record<string, number>; };
 const range = (a: string | null, b: string | null) => (a && b && a !== b ? `${a} s/d ${b}` : a || b || '—');
 const where = (p: Pj) => (p.jenis === 'b2b' && p.company ? p.company : p.lokasi || '—');
-const sum = (list: Finals[], f: (x: Finals) => number) => list.reduce((s, x) => s + f(x), 0);
+
 const link = (t: Todo) => (t.type === 'mp' ? `/program/${t.id}` : `/sales/${t.id}`);
 const pct = (v: number) => String(v).replace('.', ',') + '%';
 </script>
@@ -33,8 +38,7 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
 <template>
     <Head title="Dashboard" />
     <AppLayout title="Dashboard">
-        <h1>Dashboard</h1>
-        <p class="muted">Ringkasan Master Program dan Penjualan Program. Angka adalah total seluruh Penjualan Program Final (rencana). Pengguna: {{ page.props.auth?.nm_lengkap || page.props.auth?.username }}.</p>
+        <PageHead title="Dashboard" description="Ringkasan Master Program dan Penjualan Program. Angka adalah total seluruh Penjualan Program Final (rencana)." />
         <div class="kpis" role="list">
             <button type="button" class="kpi" role="listitem" @click="open('final')"><span class="kpi-l">Total Penjualan Program Final <small>rincian ›</small></span><strong class="kpi-v">{{ kpi.final }}</strong><span class="kpi-s">Public {{ kpi.public }} · B2B {{ kpi.b2b }}</span></button>
             <button type="button" class="kpi" role="listitem" @click="open('pend')"><span class="kpi-l">Total pendapatan rencana <small>rincian ›</small></span><strong class="kpi-v">{{ rupiah(kpi.pendapatan) }}</strong><span class="kpi-s">{{ kpi.peserta }} peserta = total target peserta dari {{ kpi.final }} Penjualan Final</span></button>
@@ -65,31 +69,31 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
         </div>
 
         <ConfirmDialog v-if="key" :title="titles[key]" confirm-label="Tutup" @confirm="key = null" @cancel="key = null">
-            <p v-if="loading" role="status">Memuat rincian…</p>
-            <template v-else-if="detail">
-                <template v-if="key === 'draft'">
-                    <h3>Master Program Draft</h3>
-                    <ul v-if="detail.master?.length"><li v-for="m in detail.master" :key="m.id"><Link :href="`/program/${m.id}`">{{ m.nomor }}</Link> {{ m.judul }}</li></ul><p v-else class="empty">Belum ada data.</p>
-                    <h3>Penjualan Program Draft</h3>
-                    <ul v-if="detail.penjualan?.length"><li v-for="p in detail.penjualan" :key="p.id"><Link :href="`/sales/${p.id}`">{{ p.nomor }}</Link> {{ p.judul }}</li></ul><p v-else class="empty">Belum ada data.</p>
-                </template>
-                <template v-else>
-                    <p class="muted"><b>Sumber data:</b> {{ FINAL_SRC }}</p>
-                    <p v-if="key === 'pend'" class="muted"><b>Rumus:</b> pendapatan = harga jual / peserta × target peserta, lalu dijumlah semua penjualan.</p>
-                    <p v-if="key === 'prof'" class="muted"><b>Rumus:</b> profit = pendapatan − HPP. HPP = Fixed Cost + Variable Cost. Margin = profit ÷ pendapatan.</p>
-                    <div v-if="detail.finals?.length" class="table-wrap"><table>
-                        <caption class="sr-only">{{ titles[key] }}</caption>
-                        <thead><tr><th scope="col">Penjualan Program</th><th v-if="key !== 'final'" scope="col">Harga / peserta</th><th scope="col">Target</th><th v-if="key === 'pend'" scope="col">Pendapatan</th><template v-if="key === 'prof'"><th scope="col">Pendapatan</th><th scope="col">Fixed</th><th scope="col">Variable</th><th scope="col">Profit</th><th scope="col">Margin</th></template></tr></thead>
-                        <tbody><tr v-for="f in detail.finals" :key="f.id">
-                            <td>{{ f.nomor }} {{ f.judul }}<small>{{ f.jenis === 'b2b' ? 'B2B' : 'Public' }} · {{ where(f) }}</small></td>
-                            <td v-if="key !== 'final'">{{ rupiah(f.harga) }}</td><td>{{ f.target }}</td>
-                            <td v-if="key === 'pend'">{{ rupiah(f.pendapatan) }}</td>
-                            <template v-if="key === 'prof'"><td>{{ rupiah(f.pendapatan) }}</td><td>− {{ rupiah(f.fixed) }}</td><td>− {{ rupiah(f.variable) }}</td><td :class="f.profit < 0 ? 'error' : ''">{{ rupiah(f.profit) }}</td><td>{{ f.pendapatan ? pct(f.margin) : '—' }}</td></template>
-                        </tr></tbody>
-                        <tfoot><tr><th scope="row">Total {{ detail.finals.length }} penjualan</th><td v-if="key !== 'final'"></td><td>{{ sum(detail.finals, (x) => x.target) }}</td><td v-if="key === 'pend'">{{ rupiah(sum(detail.finals, (x) => x.pendapatan)) }}</td><template v-if="key === 'prof'"><td>{{ rupiah(sum(detail.finals, (x) => x.pendapatan)) }}</td><td>− {{ rupiah(sum(detail.finals, (x) => x.fixed)) }}</td><td>− {{ rupiah(sum(detail.finals, (x) => x.variable)) }}</td><td>{{ rupiah(sum(detail.finals, (x) => x.profit)) }}</td><td></td></template></tr></tfoot>
-                    </table></div>
-                    <p v-else class="empty">Belum ada data.</p>
-                </template>
+            <template v-if="key === 'draft'">
+                <section v-for="source in ['master', 'penjualan']" :key="source">
+                    <h3>{{ source === 'master' ? 'Master Program Draft' : 'Penjualan Program Draft' }}</h3>
+                    <ServerTable url="/dashboard/kpi/draft/data" :label="source + ' Draft'" :filters="{ source }" :columns="[{ title: 'No', orderable: false }, { title: 'Program', orderable: true }]">
+                        <template #cell-0="{ number }">{{ number }}</template>
+                        <template #cell-1="{ row }"><Link v-if="source === 'master' ? can.master : can.sales" :href="source === 'master' ? `/program/${row.id}` : `/sales/${row.id}`">{{ row.nomor }}</Link><span v-else>{{ row.nomor }}</span><small>{{ row.judul }}</small></template>
+                    </ServerTable>
+                </section>
+            </template>
+            <template v-else>
+                <p class="muted"><b>Sumber data:</b> {{ FINAL_SRC }}</p>
+                <p v-if="key === 'pend'">Pendapatan = harga jual / peserta × target peserta.</p>
+                <p v-if="key === 'prof'">Profit = pendapatan − Fixed Cost − Variable Cost.</p>
+                <ServerTable :key="key" :url="`/dashboard/kpi/${key}/data`" :label="titles[key]" :columns="columns()" @loaded="loaded">
+                    <template #cell-0="{ number }">{{ number }}</template>
+                    <template #cell-1="{ row }"><Link v-if="can.sales" :href="`/sales/${row.id}`">{{ row.nomor }}</Link><span v-else>{{ row.nomor }}</span><small>{{ row.judul }} · {{ where(row) }}</small></template>
+                    <template #cell-2="{ row }">{{ key === 'final' ? row.target : rupiah(row.harga) }}</template>
+                    <template #cell-3="{ row }">{{ row.target }}</template>
+                    <template #cell-4="{ row }">{{ rupiah(row.pendapatan) }}</template>
+                    <template #cell-5="{ row }">{{ rupiah(row.fixed) }}</template>
+                    <template #cell-6="{ row }">{{ rupiah(row.variable) }}</template>
+                    <template #cell-7="{ row }"><span :class="{ error: row.profit < 0 }">{{ rupiah(row.profit) }}</span></template>
+                    <template #cell-8="{ row }">{{ row.pendapatan ? pct(row.margin) : '—' }}</template>
+                </ServerTable>
+                <div class="status-summary" role="status"><b>Total {{ totals.count ?? 0 }} penjualan</b><span>Target {{ totals.target ?? 0 }} peserta</span><span v-if="key !== 'final'">Pendapatan {{ rupiah(totals.pendapatan ?? 0) }}</span><template v-if="key === 'prof'"><span>Fixed {{ rupiah(totals.fixed ?? 0) }}</span><span>Variable {{ rupiah(totals.variable ?? 0) }}</span><span>Profit {{ rupiah(totals.profit ?? 0) }}</span></template></div>
             </template>
         </ConfirmDialog>
     </AppLayout>

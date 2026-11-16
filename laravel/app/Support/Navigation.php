@@ -34,7 +34,7 @@ class Navigation
         return null;
     }
 
-    /** Kode menu => tabel ERD untuk badge sidebar (mockup core.js countOf). Menu tanpa tabel sendiri tidak diberi badge. */
+    /** Badge master memakai jumlah data; badge operasional mengikuti daftar dan scope pengguna. */
     private const COUNT_TABLES = [
         'master_data.jenis_produk' => 'ms_jenis_produk', 'master_data.jenis_sertifikasi' => 'ms_jenis_sertifikasi',
         'master_data.jenis_bidang' => 'ms_jenis_bidang', 'master_data.varian_pelaksanaan' => 'ms_varian_pelaksanaan',
@@ -52,10 +52,37 @@ class Navigation
     private static function count(string $code): ?int
     {
         $table = self::COUNT_TABLES[$code] ?? null;
-        if ($table === null) {
-            return null;
-        }
         try {
+            if ($code === 'invoicing') {
+                return Invoice::uninvoiced()->count();
+            }
+            if ($code === 'manage_peserta') {
+                return DB::table('penjualan_program')->where('status', 'final')->whereNull('closed_date')->count();
+            }
+            if ($code === 'monitoring_peserta') {
+                return Participants::query()->count();
+            }
+            if ($code === 'sales_order_refund') {
+                return DB::table('sales_order_refund')->where('status', 'menunggu')->count();
+            }
+            if ($code === 'pengajuan_biaya') {
+                $query = DB::table('penjualan_program as p')->where('p.status', 'final');
+                Expenses::scope($query);
+                return $query->count();
+            }
+            if ($code === 'approval_pengajuan_biaya') {
+                $count = 0;
+                foreach (['pengajuan_biaya', 'pengajuan_overbudget'] as $source) {
+                    $query = DB::table($source.' as h')->join('penjualan_program as p', 'p.id', '=', 'h.id_penjualan')
+                        ->join('users as u', 'u.id_user', '=', 'h.request_by')->where('p.status', 'final')->where('h.status', 'menunggu');
+                    Expenses::scope($query);
+                    $count += $query->count();
+                }
+                return $count;
+            }
+            if ($table === null) {
+                return null;
+            }
             $query = DB::table($table);
             if (in_array($table, self::SOFT_DELETE, true)) {
                 $query->whereNull('deleted_date');

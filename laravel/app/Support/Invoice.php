@@ -11,6 +11,13 @@ use Illuminate\Validation\ValidationException;
 
 class Invoice
 {
+    public static function uninvoiced()
+    {
+        return DB::table('sales_order as s')->where('s.status', 'siap')
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('invoice as i')->whereColumn('i.id_sales_order', 's.id')->where('i.status', 'invoiced'))
+            ->whereExists(fn ($q) => $q->selectRaw('1')->from('quotation_peserta as x')->whereColumn('x.id_quotation', 's.id_quotation')->where('x.status', 'deal'));
+    }
+
     public static function rupiah(string|int $value): string
     {
         $rounded = (string) BigDecimal::of((string) $value)->toScale(0, RoundingMode::HalfUp);

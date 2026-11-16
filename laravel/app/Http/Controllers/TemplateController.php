@@ -102,9 +102,12 @@ class TemplateController extends Controller
         if ($request->route('datatable')) {
             $base = DB::table('ms_template_konfirmasi as k')->leftJoin('ms_jenis_produk as jp', 'jp.id', '=', 'k.id_jenis_produk')
                 ->orderBy('k.id')->select('k.*', 'jp.nama as nama_produk');
-            $query = (clone $base);
+            $status = $request->validate(['status' => 'nullable|in:all,on,off'])['status'] ?? 'all';
+            $query = (clone $base)
+                ->when($status === 'on', fn ($q) => $q->where('k.aktif', 1))
+                ->when($status === 'off', fn ($q) => $q->where('k.aktif', 0));
 
-            return ServerDataTable::response($request, $base, $query, [null, 'kode', 'nama', 'nama_produk', null, 'aktif', null], ['id', 'kode', 'nama', 'label_kegiatan', 'id_jenis_produk', 'nama_produk', 'isian', 'pernyataan', 'catatan', 'aktif'], 'id', ['kode', 'nama', 'label_kegiatan', 'nama_produk'], function ($r) {
+            return ServerDataTable::response($request, $base, $query, [null, 'kode', 'nama', 'nama_produk', null, null, 'aktif', null], ['id', 'kode', 'nama', 'label_kegiatan', 'id_jenis_produk', 'nama_produk', 'isian', 'pernyataan', 'catatan', 'aktif'], 'id', ['kode', 'nama', 'label_kegiatan', 'nama_produk'], function ($r) {
                 $r->isian = json_decode((string) $r->isian, true) ?: [];
 
                 return $r;

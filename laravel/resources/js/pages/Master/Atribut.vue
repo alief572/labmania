@@ -2,7 +2,7 @@
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
@@ -25,7 +25,7 @@ const presentation = computed(() => ({
     'jenis-bidang': { code: 'Kode Bidang', name: 'Jenis Bidang', description: 'Bidang keilmuan/standar yang dibahas di pelatihan. Juga dipakai untuk mengelompokkan peserta.' },
     'varian-pelaksanaan': { code: 'Kode Varian', name: 'Varian', description: 'Cara melaksanakan suatu jenis bidang.' },
 } as Record<string, { code: string; name: string; description: string }>)[props.slug]);
-const apply = () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); };
+watch(() => filter.value.status, () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); });
 const editing = ref<Row | null>(null);
 const adding = ref(false);
 const form = useForm({ nama: '' });
@@ -44,32 +44,33 @@ const toggle = (row: Row) => confirmation.visit('post', `/master/${props.slug}/$
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
 const appliedFilters = ref({ ...props.filters });
-const columns = computed(() => [{ title: 'No', orderable: false }, { title: presentation.value?.code || 'Kode', orderable: true }, { title: presentation.value?.name || 'Nama', orderable: true }, { title: 'Status', orderable: true }, { title: 'Aksi', orderable: false }]);
+const columns = computed(() => [{ title: 'No', orderable: false }, { title: presentation.value?.code || 'Kode', orderable: true }, { title: presentation.value?.name || 'Nama', orderable: true }, { title: 'Status', orderable: true }, { title: 'Action', orderable: false }]);
 </script>
 
 <template>
     <Head :title="label" />
     <AppLayout :title="label" full-width>
         <div class="page-head"><div><h1>{{ label }}</h1><p v-if="presentation" class="muted">{{ presentation.description }}</p></div><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah {{ label }}</button></div>
-        <p class="notice">Data master <strong>tidak dapat dihapus</strong> — gunakan <strong>Nonaktifkan</strong>. Data nonaktif tidak muncul sebagai pilihan baru.</p>
-        <form class="filters" @submit.prevent="apply">
-            <label>Status<select v-model="filter.status"><option value="all">Semua</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
-            <button class="primary" :disabled="confirming">Terapkan</button>
-        </form>
-        <ServerTable ref="table" :url="`/master/${props.slug}/data`" :columns="columns" :filters="appliedFilters" :label="label">
+        <p class="notice">Data master <strong>tidak dapat dihapus</strong> — gunakan <strong>Nonaktifkan</strong>. Data nonaktif tidak muncul sebagai pilihan di form Product dan Peserta.</p>
+        <div class="filters">
+            <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode atau nama…" /></label>
+            <label>Status<select v-model="filter.status"><option value="all">Semua status</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
+        </div>
+        <ServerTable ref="table" :url="`/master/${props.slug}/data`" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="label">
             <template #cell-0="{ number }">{{ number }}</template>
-            <template #cell-1="{ row }">{{ row.kode }}</template>
+            <template #cell-1="{ row }"><span class="code">{{ row.kode }}</span></template>
             <template #cell-2="{ row }">{{ row.nama }}</template>
             <template #cell-3="{ row }"><StatusBadge :active="row.aktif" /></template>
             <template #cell-4="{ row }"><ActionMenu v-if="can.manage" ><button type="button" @click="open(row)" :disabled="confirming">Edit</button><button type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></ActionMenu></template>
         </ServerTable>
 
         <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit ${label} ${editing.kode}` : `Tambah ${label}`" :busy="form.processing || confirming" @confirm="save" @cancel="close">
-            <label>{{ presentation?.code || 'Kode' }}<input :value="editing?.kode || 'Dibuat otomatis saat disimpan'" readonly /></label>
-            <FormField id="nama" :label="presentation?.name || 'Nama'" :error="form.errors.nama" v-slot="{ describedBy, invalid }">
-                <input id="nama" v-model="form.nama" maxlength="100" required :aria-invalid="invalid" :aria-describedby="describedBy" @keydown.enter.prevent="save" />
+            <FormField id="akode" :label="presentation?.code || 'Kode'" hint="Diisi otomatis oleh sistem saat disimpan" v-slot="{ describedBy }">
+                <input id="akode" :value="editing?.kode || ''" placeholder="Dibuat otomatis" readonly aria-readonly="true" :aria-describedby="describedBy" />
             </FormField>
-            <p v-if="adding" class="muted">Kode dibuat otomatis.</p>
+            <FormField id="nama" :label="presentation?.name || 'Nama'" :error="form.errors.nama" v-slot="{ describedBy, invalid }">
+                <input id="nama" v-model="form.nama" maxlength="100" required :placeholder="`Ketik ${(presentation?.name || 'nama').toLowerCase()}`" :aria-invalid="invalid" :aria-describedby="describedBy" @keydown.enter.prevent="save" />
+            </FormField>
         </ConfirmDialog>
     </AppLayout>
 </template>

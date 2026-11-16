@@ -8,7 +8,7 @@ import 'datatables.net-dt/css/dataTables.dataTables.css';
 import { lastTablePage, tableError, tableQuery } from '../composables/serverTable';
 
 DataTable.use(DataTablesCore);
-const props = defineProps<{ url: string; label: string; columns: { title: string; orderable: boolean; className?: string }[]; filters?: Record<string, string | number>; refreshOnVisit?: boolean }>();
+const props = defineProps<{ url: string; label: string; columns: { title: string; orderable: boolean; className?: string }[]; filters?: Record<string, string | number>; refreshOnVisit?: boolean; keyword?: string }>();
 const emit = defineEmits<{ loaded: [result: { recordsTotal: number; recordsFiltered: number; data?: unknown[]; meta?: Record<string, unknown> }] }>();
 const instance = shallowRef<{ dt?: Api } | null>(null);
 const error = ref('');
@@ -50,23 +50,29 @@ const load: AjaxFunction = async (data, callback) => {
 };
 const options: Options = {
     serverSide: true, processing: true, pageLength: 25, lengthMenu: [10, 25, 50, 100], searchDelay: 300,
-    order: [], autoWidth: false, scrollX: true, stateSave: false, search: { search: String(props.filters?.q ?? props.filters?.keyword ?? '') },
+    order: [], autoWidth: false, scrollX: true, stateSave: false, search: { search: String(props.keyword ?? props.filters?.q ?? props.filters?.keyword ?? '') },
     language: {
         search: 'Cari:', searchPlaceholder: 'Cari data…', lengthMenu: 'Tampilkan _MENU_ baris',
         info: 'Menampilkan _START_–_END_ dari _TOTAL_ data', infoEmpty: 'Tidak ada data', infoFiltered: '(disaring dari _MAX_ data)',
-        emptyTable: 'Belum ada data.', zeroRecords: 'Data tidak ditemukan.', processing: 'Memuat data…', loadingRecords: 'Memuat data…',
+        emptyTable: 'Tidak ada data yang cocok.', zeroRecords: 'Tidak ada data yang cocok.', processing: 'Memuat data…', loadingRecords: 'Memuat data…',
         paginate: { first: 'Pertama', last: 'Terakhir', next: 'Berikutnya', previous: 'Sebelumnya' },
     },
 };
 async function reload(reset = false) { await nextTick(); instance.value?.dt?.ajax.reload(undefined, reset); }
 watch(() => props.filters, () => { if (props.refreshOnVisit) reload(true); }, { deep: true });
+// Kotak cari milik halaman (toolbar mockup) memakai search[value] bawaan DataTables; kotak "Cari:" bawaan disembunyikan lewat CSS.
+let keywordTimer: ReturnType<typeof setTimeout> | undefined;
+watch(() => props.keyword, (value) => {
+    clearTimeout(keywordTimer);
+    keywordTimer = setTimeout(() => { const api = instance.value?.dt; if (api && api.search() !== (value ?? '')) api.search(value ?? '').draw(); }, 300);
+});
 const removeVisit = props.refreshOnVisit ? router.on('success', () => reload()) : undefined;
-onBeforeUnmount(() => { disposed = true; pending?.abort(); removeVisit?.(); });
+onBeforeUnmount(() => { disposed = true; clearTimeout(keywordTimer); pending?.abort(); removeVisit?.(); });
 defineExpose({ reload });
 </script>
 
 <template>
-    <section class="server-table" :aria-label="label">
+    <section class="server-table" :aria-label="label" :data-own-search="keyword !== undefined ? '' : undefined">
         <p v-if="error" class="error table-error" role="alert">{{ error }} <button type="button" @click="reload()">Coba lagi</button></p>
         <DataTable ref="instance" :columns="columns" :ajax="load" :options="options" class="display" style="width: 100%">
             <caption class="sr-only">{{ label }}</caption>

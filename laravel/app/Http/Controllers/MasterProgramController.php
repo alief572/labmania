@@ -40,12 +40,16 @@ class MasterProgramController extends Controller
 
         $ids = $rows->pluck('id');
         $products = DB::table('master_program_produk as x')->join('paket_produk as p', 'p.id', '=', 'x.id_paket_produk')
-            ->whereIn('x.id_master_program', $ids)->orderBy('x.urutan')->get(['x.id_master_program', 'p.nomor', 'p.judul'])->groupBy('id_master_program');
+            ->leftJoin('ms_varian_pelaksanaan as v', 'v.id', '=', 'p.id_varian_pelaksanaan')->leftJoin('ms_jenis_sertifikasi as s', 's.id', '=', 'p.id_jenis_sertifikasi')
+            ->whereIn('x.id_master_program', $ids)->orderBy('x.urutan')->get(['x.id_master_program', 'p.nomor', 'p.judul', 'v.nama as nama_varian', 's.nama as nama_sertifikasi'])->groupBy('id_master_program');
         $biaya = $this->biayaFor($ids->all())->groupBy('id_master_program');
         $rows->through(function ($r) use ($products, $biaya) {
             $list = $products[$r->id] ?? collect();
             $r->judul = $list->pluck('judul')->implode(' + ');
             $r->nomor_product = $list->pluck('nomor')->implode(' + ');
+            // Atribut dari Product pertama, sama seperti paketOf() di mockup (gabungan = atribut Product pertama).
+            $r->nama_varian = $list->first()->nama_varian ?? null;
+            $r->nama_sertifikasi = $list->first()->nama_sertifikasi ?? null;
             $r->hpp = Costing::calculate($r->durasi_hari, $r->target_peserta, $r->harga_jual_peserta, ($biaya[$r->id] ?? collect())->map(fn ($b) => (array) $b)->all())['total_hpp'];
 
             return $r;

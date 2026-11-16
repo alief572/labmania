@@ -32,6 +32,14 @@ class RateTemplateTest extends MasterTestCase
         $this->assertSame('Sewa Ruang', $log['item']);
     }
 
+    public function test_halaman_rate_memuat_jumlah_per_tab(): void
+    {
+        $this->post('/master/rate/fixed', $this->rate())->assertSessionHasNoErrors();
+        $this->post('/master/rate/fixed', $this->rate(['item' => 'Konsumsi']))->assertSessionHasNoErrors();
+        $this->get('/master/rate/variable')->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Master/Rate')->where('counts.fixed', 2)->where('counts.variable', 0)->where('tipe', 'variable'));
+    }
+
     public function test_satuan_lintas_tab_dan_di_luar_daftar_ditolak_server(): void
     {
         $this->post('/master/rate/fixed', $this->rate(['id_satuan' => $this->sat['peserta_event']]))->assertSessionHasErrors('id_satuan');
@@ -91,5 +99,21 @@ class RateTemplateTest extends MasterTestCase
         $this->assertSame('KF-001', $row->kode);
         $this->get("/master/template-konfirmasi/{$row->id}/contoh")->assertOk()->assertJsonPath('template.nama', 'Form A')->assertJsonPath('program', null);
         $this->get('/master/template-konfirmasi')->assertOk();
+    }
+
+    public function test_daftar_template_konfirmasi_menyaring_status_dan_mencari_kode(): void
+    {
+        $base = ['nama' => 'Form A', 'label_kegiatan' => 'Workshop', 'pernyataan' => 'Saya menyatakan benar.', 'isian' => ['nama']];
+        $this->post('/master/template-konfirmasi', $base)->assertSessionHasNoErrors();
+        $this->post('/master/template-konfirmasi', ['nama' => 'Form B'] + $base)->assertSessionHasNoErrors();
+        $off = DB::table('ms_template_konfirmasi')->where('nama', 'Form B')->value('id');
+        $this->post("/master/template-konfirmasi/$off/toggle")->assertRedirect();
+
+        $url = '/master/template-konfirmasi/data?draw=1&start=0&length=25';
+        $this->getJson($url)->assertOk()->assertJsonPath('recordsFiltered', 2);
+        $this->getJson($url.'&status=on')->assertOk()->assertJsonPath('recordsFiltered', 1)->assertJsonPath('data.0.nama', 'Form A');
+        $this->getJson($url.'&status=off')->assertOk()->assertJsonPath('recordsFiltered', 1)->assertJsonPath('data.0.nama', 'Form B');
+        $this->getJson($url.'&search[value]=KF-002')->assertOk()->assertJsonPath('recordsFiltered', 1);
+        $this->getJson($url.'&status=salah')->assertUnprocessable();
     }
 }

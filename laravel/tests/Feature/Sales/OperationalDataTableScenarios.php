@@ -62,6 +62,48 @@ trait OperationalDataTableScenarios
         $this->assertSame($counts[0], $counts[1], 'Query ringkasan dan enrichment Quotation tidak boleh bertambah per baris.');
     }
 
+    public function test_participant_tabs_count_closed_only_and_expose_searchable_master_code(): void
+    {
+        DB::table('penjualan_program')->where('id', $this->program6)->update(['tgl_selesai' => '2020-01-01']);
+        $this->getJson('/manage-peserta/data')->assertOk()->assertJsonPath('meta.counts.ongoing', 1)->assertJsonPath('meta.counts.selesai', 0)->assertJsonCount(1, 'data');
+        $this->getJson('/manage-peserta/'.$this->program6.'/data')->assertOk()->assertJsonStructure(['data' => [['kode', 'nama']]]);
+        $this->getJson('/manage-peserta/monitoring/data')->assertOk()->assertJsonStructure(['meta' => ['years']]);
+        DB::table('penjualan_program')->where('id', $this->program6)->update(['closed_date' => now()]);
+        $this->getJson('/manage-peserta/data?tab=selesai')->assertOk()->assertJsonPath('meta.counts.ongoing', 0)->assertJsonPath('meta.counts.selesai', 1)->assertJsonCount(1, 'data');
+    }
+
+    public function test_approval_counts_ignore_search_and_self_approval_is_hidden(): void
+    {
+        $this->post('/pengajuan-biaya/program/'.$this->program6.'/pengajuan', $this->input6())->assertSessionHasNoErrors();
+        $this->getJson('/pengajuan-biaya/approval/data')->assertOk()->assertJsonPath('meta.counts.pengajuan', 1)
+            ->assertJsonPath('data.0.canApprove', false)->assertJsonStructure(['data' => [['nomor', 'request_by', 'jenis', 'judul', 'jenis_program', 'deskripsi']]]);
+        $this->getJson('/pengajuan-biaya/approval/data?q=no-such-request')->assertOk()->assertJsonPath('recordsFiltered', 0)->assertJsonPath('meta.counts.pengajuan', 1);
+        $this->get('/pengajuan-biaya/program/'.$this->program6)->assertOk()->assertInertia(fn ($p) => $p->has('budgets.fixed')->has('budgets.variable'));
+    }
+
+    public function test_operational_sidebar_badges_follow_list_scope_and_view_permission(): void
+    {
+        $codes = ['invoicing', 'manage_peserta', 'monitoring_peserta', 'pengajuan_biaya', 'approval_pengajuan_biaya', 'sales_order_refund'];
+        foreach ($codes as $code) {
+            $url = collect(config('navigation'))->firstWhere('menu', $code)['url'];
+            DB::table('ms_menu')->where('kode', $code)->update(['parent_id' => 0, 'link' => $url]);
+        }
+        $permissions = array_fill_keys($codes, ['View']);
+        $this->post('/pengajuan-biaya/program/'.$this->program6.'/pengajuan', $this->input6())->assertSessionHasNoErrors();
+        $items = collect(\App\Support\Navigation::items($permissions))->keyBy('menu');
+        $this->assertSame(0, $items['invoicing']['count']);
+        $this->assertSame(1, $items['manage_peserta']['count']);
+        $this->assertSame(1, $items['monitoring_peserta']['count']);
+        $this->assertSame(1, $items['pengajuan_biaya']['count']);
+        $this->assertSame(1, $items['approval_pengajuan_biaya']['count']);
+        $this->assertSame(0, $items['sales_order_refund']['count']);
+        $this->login6($this->user6('badge_unrelated'));
+        $items = collect(\App\Support\Navigation::items($permissions))->keyBy('menu');
+        $this->assertSame(0, $items['pengajuan_biaya']['count']);
+        $this->assertSame(0, $items['approval_pengajuan_biaya']['count']);
+        $this->assertSame([], \App\Support\Navigation::items([]));
+    }
+
     public function test_operational_datatables_contract_and_permissions(): void
     {
         foreach (['penjualan_program', 'quotation_program', 'sales_order_refund'] as $code) {
