@@ -20,6 +20,7 @@ $row = function ($l, $v) { return '<div class="sum-row"><span>' . $l . '</span><
           <?= $row('Program', $e($p['nama_paket']) . ' <span class="muted">(' . $e($p['nama_sertifikasi']) . ')</span>'); ?>
           <?= $row('Pelaksanaan', $e($pelaksanaan)); ?>
           <?= $row('Durasi', (int)$p['durasi_hari'] . ' hari'); ?>
+          <?= !empty($p['jam_pembelajaran']) ? $row('Jam Pembelajaran', (int)$p['jam_pembelajaran'] . ' JP') : ''; ?>
           <?= !empty($p['nama_trainer']) ? $row('Trainer', $e($p['nama_trainer'])) : ''; ?>
           <?= $row('Harga / peserta', $rp($p['harga_jual_peserta'])); ?>
           <?= $row('Jumlah peserta', (int)$p['target_peserta'] . ' peserta'); ?>

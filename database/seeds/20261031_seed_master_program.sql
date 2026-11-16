@@ -1,6 +1,9 @@
 -- Seed Master Program dari Mockup BA
 -- Acuan: specs/final/Mock Up Master - Quotation/app.js (lines 208-220)
 
+-- CATATAN (12-11-2026): seed ini ditulis untuk skema lama (master_program.id_paket_produk).
+-- Setelah migrasi 20261112_master_program_produk.sql kolom itu tidak ada; isi master_program_produk (id_master_program, id_paket_produk, urutan) sebagai gantinya.
+
 -- 1. MP-2610-001 (Final)
 INSERT IGNORE INTO `master_program` (`id`, `nomor`, `id_paket_produk`, `durasi_hari`, `target_peserta`, `harga_jual_peserta`, `target_profit`, `status`, `confirmed_by`, `confirmed_date`, `created_date`) VALUES
 (1, 'MP-2610-001', 1, 2, 25, 600000.00, 3000000.00, 'final', 1, NOW(), NOW());

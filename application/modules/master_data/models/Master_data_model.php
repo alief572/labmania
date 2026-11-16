@@ -253,11 +253,12 @@ class Master_data_model extends CI_Model
 
     public function get_paket_produk($id = null)
     {
-        $this->db->select('pp.*, jp.nama as nama_produk, js.nama as nama_sertifikasi, jb.nama as nama_bidang');
+        $this->db->select('pp.*, jp.nama as nama_produk, js.nama as nama_sertifikasi, jb.nama as nama_bidang, vp.nama as nama_varian');
         $this->db->from('paket_produk pp');
         $this->db->join('ms_jenis_produk jp', 'pp.id_jenis_produk = jp.id', 'left');
         $this->db->join('ms_jenis_sertifikasi js', 'pp.id_jenis_sertifikasi = js.id', 'left');
         $this->db->join('ms_jenis_bidang jb', 'pp.id_jenis_bidang = jb.id', 'left');
+        $this->db->join('ms_varian_pelaksanaan vp', 'pp.id_varian_pelaksanaan = vp.id', 'left');
 
         if ($id) {
             return $this->db->where('pp.id', $id)->get()->row_array();
@@ -272,13 +273,13 @@ class Master_data_model extends CI_Model
     public function save_combine($judul, array $rows)
     {
         $userId = $this->session->userdata('app_session')['id_user'] ?? 1;
-        $labels = ['produk' => 'Produk', 'bidang' => 'Bidang', 'sertifikasi' => 'Sertifikat'];
+        $labels = ['produk' => 'Produk', 'bidang' => 'Bidang', 'varian' => 'Varian', 'sertifikasi' => 'Sertifikat'];
         $errors = [];
         $seen = [];
         $clean = [];
 
         foreach ($rows as $i => $r) {
-            $ids = ['produk' => (int)($r['produk'] ?? 0), 'bidang' => (int)($r['bidang'] ?? 0), 'sertifikasi' => (int)($r['sertifikasi'] ?? 0)];
+            $ids = ['produk' => (int)($r['produk'] ?? 0), 'bidang' => (int)($r['bidang'] ?? 0), 'varian' => (int)($r['varian'] ?? 0), 'sertifikasi' => (int)($r['sertifikasi'] ?? 0)];
             $kosong = [];
             foreach ($ids as $f => $v) if (!$v) $kosong[] = $labels[$f];
             if ($kosong) { $errors[$i] = 'Pilih ' . implode(', ', $kosong); continue; }
@@ -286,6 +287,7 @@ class Master_data_model extends CI_Model
             $key = implode('|', $ids);
             $dup = $this->db->get_where('paket_produk', [
                 'id_jenis_produk' => $ids['produk'], 'id_jenis_sertifikasi' => $ids['sertifikasi'], 'id_jenis_bidang' => $ids['bidang'],
+                'id_varian_pelaksanaan' => $ids['varian'],
             ])->row_array();
             if ($dup) $errors[$i] = 'Kombinasi sama persis dengan paket ' . $dup['nomor'] . ' — ' . $dup['judul'];
             elseif (isset($seen[$key])) $errors[$i] = 'Kombinasi sama persis dengan baris ' . ($seen[$key] + 1);
@@ -307,12 +309,13 @@ class Master_data_model extends CI_Model
                 'id_jenis_produk'      => $ids['produk'],
                 'id_jenis_sertifikasi' => $ids['sertifikasi'],
                 'id_jenis_bidang'      => $ids['bidang'],
+                'id_varian_pelaksanaan' => $ids['varian'],
                 'aktif'                => 1,
                 'created_by'           => $userId,
                 'created_date'         => date('Y-m-d H:i:s')
             ];
             $this->db->insert('paket_produk', $data);
-            write_log('Master Produk', 'Tambah', 'Tambah Product Combine ' . $nomor, $data, 'paket_produk', $this->db->insert_id(), $nomor);
+            write_log('Master Produk', 'Tambah', 'Tambah Product ' . $nomor, $data, 'paket_produk', $this->db->insert_id(), $nomor);
             $nomors[] = $nomor;
         }
         $this->db->trans_complete();
@@ -323,19 +326,20 @@ class Master_data_model extends CI_Model
         return ['status' => 1, 'msg' => count($nomors) . ' paket produk tersimpan: ' . implode(', ', $nomors), 'nomor' => $nomors];
     }
 
-    /** Edit judul + 3 atribut (FR-43); keunikan kombinasi FR-22 tanpa paket itu sendiri. $ids = [produk, bidang, sertifikasi]. */
+    /** Edit judul + 4 atribut (FR-43); keunikan kombinasi FR-22 tanpa paket itu sendiri. $ids = [produk, bidang, varian, sertifikasi]. */
     public function update_paket($id, $judul, array $ids)
     {
         $old = $this->db->get_where('paket_produk', ['id' => $id])->row_array();
         if (!$old) return ['status' => 0, 'msg' => 'Data tidak ditemukan'];
 
-        $labels = ['produk' => 'Produk', 'bidang' => 'Bidang', 'sertifikasi' => 'Sertifikat'];
+        $labels = ['produk' => 'Produk', 'bidang' => 'Bidang', 'varian' => 'Varian', 'sertifikasi' => 'Sertifikat'];
         $ids = array_map('intval', $ids);
         foreach ($labels as $f => $l) {
             if (empty($ids[$f])) return ['status' => 0, 'msg' => $l . ' wajib dipilih'];
         }
         $dup = $this->db->where('id !=', $id)->get_where('paket_produk', [
             'id_jenis_produk' => $ids['produk'], 'id_jenis_sertifikasi' => $ids['sertifikasi'], 'id_jenis_bidang' => $ids['bidang'],
+            'id_varian_pelaksanaan' => $ids['varian'],
         ])->row_array();
         if ($dup) return ['status' => 0, 'msg' => 'Kombinasi sama persis dengan paket ' . $dup['nomor'] . ' — ' . $dup['judul']];
 
@@ -345,17 +349,132 @@ class Master_data_model extends CI_Model
             'id_jenis_produk'      => $ids['produk'],
             'id_jenis_sertifikasi' => $ids['sertifikasi'],
             'id_jenis_bidang'      => $ids['bidang'],
+            'id_varian_pelaksanaan' => $ids['varian'],
             'updated_by'   => $userId,
             'updated_date' => date('Y-m-d H:i:s')
         ];
         $this->db->where('id', $id)->update('paket_produk', $data);
 
-        write_log('Master Produk', 'Edit', 'Update Paket Produk ' . $old['nomor'], [
+        write_log('Master Produk', 'Edit', 'Update Product ' . $old['nomor'], [
             'old' => $old,
             'new' => array_merge($old, $data)
         ], 'paket_produk', $id, $old['nomor']);
 
         return ['status' => 1, 'msg' => $old['nomor'] . ' berhasil diperbarui'];
+    }
+
+    // ----- Katalog Produk (FR-14, FR-60 - FR-63) & Lingkup per Paket (FR-67, FR-68) -----
+
+    const LINGKUP_MAX = 20;   // item per paket (usulan analis, Q-38c)
+    const LINGKUP_LEN = 200;  // karakter per item
+
+    /**
+     * Paket Produk aktif beserta nama atribut dan daftar Lingkup (urut input). Katalog tidak disimpan sendiri,
+     * disusun dari paket_produk setiap dibuka (FR-14). Filter: bidang, sert (id), q (kata kunci, juga mencari teks Lingkup).
+     */
+    public function katalog_rows($bidang = 'all', $sert = 'all', $q = '')
+    {
+        $rows = $this->db->select('pp.*, jp.nama AS nama_produk, jb.nama AS nama_bidang, vp.nama AS nama_varian, js.nama AS nama_sertifikasi')
+            ->from('paket_produk pp')
+            ->join('ms_jenis_produk jp', 'jp.id = pp.id_jenis_produk', 'left')
+            ->join('ms_jenis_bidang jb', 'jb.id = pp.id_jenis_bidang', 'left')
+            ->join('ms_varian_pelaksanaan vp', 'vp.id = pp.id_varian_pelaksanaan', 'left')
+            ->join('ms_jenis_sertifikasi js', 'js.id = pp.id_jenis_sertifikasi', 'left')
+            ->where('pp.aktif', 1)->get()->result_array();
+        if (!$rows) return [];
+
+        $ids = array_column($rows, 'id');
+        $lk = [];
+        foreach ($this->db->where_in('id_paket_produk', $ids)->order_by('id_paket_produk, urutan')->get('paket_produk_lingkup')->result_array() as $l) {
+            $lk[$l['id_paket_produk']][] = $l['lingkup'];
+        }
+
+        $q = mb_strtolower(trim($q));
+        $out = [];
+        foreach ($rows as $r) {
+            $r['lingkup'] = $lk[$r['id']] ?? [];
+            if ($bidang !== 'all' && (string)$r['id_jenis_bidang'] !== (string)$bidang) continue;
+            if ($sert !== 'all' && (string)$r['id_jenis_sertifikasi'] !== (string)$sert) continue;
+            if ($q !== '') {
+                $hay = mb_strtolower(implode(' ', array_merge([$r['nomor'], $r['judul'], $r['nama_produk'], $r['nama_bidang'], $r['nama_varian'], $r['nama_sertifikasi']], $r['lingkup'])));
+                if (mb_strpos($hay, $q) === false) continue;
+            }
+            $out[] = $r;
+        }
+        return $out;
+    }
+
+    /** Kelompok per Bidang (urut nama); paket di dalamnya urut Judul lalu Sertifikat (FR-61). */
+    public function katalog_groups(array $rows)
+    {
+        $cmp = function ($a, $b) { return strcasecmp((string)$a, (string)$b); };
+        $g = [];
+        foreach ($rows as $r) {
+            $k = (int)$r['id_jenis_bidang'];
+            if (!isset($g[$k])) $g[$k] = ['id' => $k, 'nama' => $r['nama_bidang'] ?? '—', 'items' => []];
+            $g[$k]['items'][] = $r;
+        }
+        foreach ($g as &$grp) {
+            usort($grp['items'], function ($a, $b) use ($cmp) { return $cmp($a['judul'], $b['judul']) ?: $cmp($a['nama_sertifikasi'], $b['nama_sertifikasi']); });
+        }
+        unset($grp);
+        uasort($g, function ($a, $b) use ($cmp) { return $cmp($a['nama'], $b['nama']); });
+        return array_values($g);
+    }
+
+    /** Pilihan filter Bidang/Sertifikat: hanya nilai yang dipakai paket aktif, dengan jumlah paketnya. */
+    public function katalog_filter_options()
+    {
+        $one = function ($tbl, $col) {
+            return $this->db->query("SELECT m.id, m.nama, COUNT(*) AS n FROM paket_produk pp JOIN `$tbl` m ON m.id = pp.`$col` WHERE pp.aktif = 1 GROUP BY m.id, m.nama ORDER BY m.nama")->result_array();
+        };
+        return ['bidang' => $one('ms_jenis_bidang', 'id_jenis_bidang'), 'sert' => $one('ms_jenis_sertifikasi', 'id_jenis_sertifikasi')];
+    }
+
+    /**
+     * Simpan Lingkup satu paket (FR-67): baris kosong diabaikan, item kembar (tanpa beda huruf besar/kecil) ditolak,
+     * maks. LINGKUP_MAX item x LINGKUP_LEN karakter. Semua baris kosong = Lingkup dikosongkan.
+     * Perubahan tercatat sebagai Edit Paket Produk, field Lingkup (old -> new).
+     */
+    public function save_lingkup($idPaket, $items)
+    {
+        $paket = $this->db->get_where('paket_produk', ['id' => (int)$idPaket])->row_array();
+        if (!$paket) return ['status' => 0, 'msg' => 'Paket Produk tidak ditemukan'];
+
+        $items = is_array($items) ? $items : [];
+        $clean = []; $seen = []; $errors = [];
+        foreach ($items as $i => $v) {
+            $t = trim((string)$v);
+            if ($t === '') continue;
+            if (mb_strlen($t) > self::LINGKUP_LEN) { $errors[$i] = 'Maksimal ' . self::LINGKUP_LEN . ' karakter'; continue; }
+            $key = mb_strtolower($t);
+            if (isset($seen[$key])) { $errors[$i] = 'Item ini sama dengan item lain'; continue; }
+            $seen[$key] = true;
+            $clean[] = $t;
+        }
+        if (count($clean) > self::LINGKUP_MAX) return ['status' => 0, 'msg' => 'Maksimal ' . self::LINGKUP_MAX . ' item lingkup per paket'];
+        if ($errors) return ['status' => 0, 'msg' => 'Belum tersimpan — perbaiki item yang ditandai', 'errors' => $errors];
+
+        $lama = array_column($this->db->order_by('urutan')->get_where('paket_produk_lingkup', ['id_paket_produk' => $paket['id']])->result_array(), 'lingkup');
+        if ($lama === $clean) return ['status' => 1, 'msg' => 'Lingkup tidak berubah', 'jumlah' => count($clean)];
+
+        $userId = $this->session->userdata('app_session')['id_user'] ?? 1;
+        $now = date('Y-m-d H:i:s');
+        $this->db->trans_start();
+        $this->db->where('id_paket_produk', $paket['id'])->delete('paket_produk_lingkup');
+        foreach ($clean as $n => $t) {
+            $this->db->insert('paket_produk_lingkup', ['id_paket_produk' => $paket['id'], 'urutan' => $n + 1, 'lingkup' => $t, 'created_by' => $userId, 'created_date' => $now]);
+        }
+        $this->db->trans_complete();
+        if (!$this->db->trans_status()) return ['status' => 0, 'msg' => 'Gagal menyimpan lingkup, tidak ada data yang berubah'];
+
+        $fmt = function ($l) { return $l ? implode("\n", array_map(function ($t, $i) { return ($i + 1) . '. ' . $t; }, $l, array_keys($l))) : ''; };
+        write_log('Master Produk', 'Edit', 'Update Lingkup Product ' . $paket['nomor'], [
+            'old' => array_merge($paket, ['lingkup' => $fmt($lama)]),
+            'new' => array_merge($paket, ['lingkup' => $fmt($clean)]),
+        ], 'paket_produk', $paket['id'], $paket['nomor']);
+
+        return ['status' => 1, 'msg' => $clean ? 'Lingkup ' . $paket['nomor'] . ' tersimpan: ' . count($clean) . ' item' : 'Lingkup ' . $paket['nomor'] . ' dikosongkan', 'jumlah' => count($clean)];
     }
 
     // =========================================================================
@@ -376,18 +495,49 @@ class Master_data_model extends CI_Model
         return $this->db->order_by('p.id', 'ASC')->get()->result_array();
     }
 
-    /** Server-side DataTables daftar peserta: No, Kode, Nama, Bidang, Lokasi (FR-15). */
+    /**
+     * Field wajib Master Peserta (FR-16). Peserta yang masuk dari Deal quotation (QTN-FR-33) boleh kosong
+     * sampai admin melengkapi lewat Edit; selama ada yang kosong peserta bertanda "Belum lengkap".
+     * Kunci = kolom di ms_peserta, nilai = label tampilan.
+     */
+    const PESERTA_WAJIB = [
+        'nama' => 'Nama Peserta', 'gender' => 'Gender', 'instansi' => 'Instansi/Perusahaan', 'id_jenis_bidang' => 'Bidang',
+        'id_prov' => 'Provinsi', 'id_kab' => 'Kota/Kabupaten', 'no_telp' => 'No Telp/WhatsApp', 'email' => 'Email',
+    ];
+
+    /** Label field wajib yang masih kosong pada satu baris ms_peserta. */
+    public function peserta_kurang($r)
+    {
+        $kurang = [];
+        foreach (self::PESERTA_WAJIB as $k => $label) {
+            if (!isset($r[$k]) || trim((string)$r[$k]) === '') $kurang[] = $label;
+        }
+        return $kurang;
+    }
+
+    /** Kondisi SQL "belum lengkap" (salah satu field wajib NULL/kosong); dipakai filter kelengkapan. */
+    private function peserta_belum_sql()
+    {
+        $c = [];
+        foreach (array_keys(self::PESERTA_WAJIB) as $k) $c[] = "(p.`$k` IS NULL OR TRIM(p.`$k`) = '')";
+        return '(' . implode(' OR ', $c) . ')';
+    }
+
+    /** Server-side DataTables daftar peserta: No, Kode, Nama, Bidang, Lokasi (FR-15). Filter `kelengkapan`: all|lengkap|belum. */
     public function peserta_datatable($p)
     {
         $total = $this->db->where('deleted_date IS NULL')->count_all_results('ms_peserta');
 
         $search = trim($p['search']['value'] ?? '');
-        $apply = function () use ($search) {
+        $kelengkapan = $p['kelengkapan'] ?? 'all';
+        $apply = function () use ($search, $kelengkapan) {
             $this->db->from('ms_peserta p')->join('ms_jenis_bidang jb', 'p.id_jenis_bidang = jb.id', 'left')->where('p.deleted_date IS NULL');
             if ($search !== '') {
-                $this->db->group_start()->like('p.kode', $search)->or_like('p.nama', $search)->or_like('p.instansi', $search)
+                $this->db->group_start()->like('p.kode', $search)->or_like('p.nama', $search)->or_like('p.instansi', $search)->or_like('p.nik', $search)
                     ->or_like('jb.nama', $search)->or_like('p.kabupaten', $search)->or_like('p.provinsi', $search)->group_end();
             }
+            if ($kelengkapan === 'belum') $this->db->where($this->peserta_belum_sql(), null, false);
+            elseif ($kelengkapan === 'lengkap') $this->db->where('NOT ' . $this->peserta_belum_sql(), null, false);
         };
 
         $apply();
@@ -399,7 +549,10 @@ class Master_data_model extends CI_Model
         $dir  = strtolower($ord['dir'] ?? '') === 'desc' ? 'DESC' : 'ASC';
 
         $apply();
-        $this->db->select('p.*, jb.nama as nama_bidang, jb.aktif as bidang_aktif')->order_by($col, $dir);
+        // asal_deal: nomor quotation tempat peserta ini Deal (quotation_peserta.id_peserta diisi saat Deal).
+        $this->db->select('p.*, jb.nama as nama_bidang, jb.aktif as bidang_aktif, '
+            . '(SELECT q.nomor FROM quotation_peserta qp JOIN quotation q ON q.id = qp.id_quotation WHERE qp.id_peserta = p.id ORDER BY qp.id LIMIT 1) AS asal_deal', false)
+            ->order_by($col, $dir);
         $len = (int)($p['length'] ?? 10);
         if ($len > 0) $this->db->limit(min($len, 1000), max(0, (int)($p['start'] ?? 0)));
         $rows = $this->db->get()->result_array();
@@ -420,6 +573,7 @@ class Master_data_model extends CI_Model
         if (!isset($e['no_telp']) && !preg_match('/^\+?\d{9,15}$/', preg_replace('/[\s-]/', '', $t('no_telp')))) $e['no_telp'] = 'Nomor hanya angka, 9–15 digit';
         if (!isset($e['nama']) && mb_strlen($t('nama')) > 100) $e['nama'] = 'Nama Peserta maksimal 100 karakter';
         if (!isset($e['instansi']) && mb_strlen($t('instansi')) > 150) $e['instansi'] = 'Instansi/Perusahaan maksimal 150 karakter';
+        if (mb_strlen($t('nik')) > 20) $e['nik'] = 'NIK maksimal 20 karakter';
         return $e;
     }
 
@@ -451,6 +605,7 @@ class Master_data_model extends CI_Model
             'no_telp'         => trim($post['no_telp']),
             'email'           => trim($post['email']),
             'npwp_instansi'   => trim($post['npwp_instansi'] ?? ''),
+            'nik'             => trim($post['nik'] ?? '') !== '' ? trim($post['nik']) : null,
             'id_customer'     => $idCustomer
         ];
 
@@ -486,10 +641,11 @@ class Master_data_model extends CI_Model
         $old = $this->db->get_where('ms_peserta', ['id' => $id])->row_array();
         if (!$old) return ['status' => 0, 'msg' => 'Data tidak ditemukan'];
 
-        // Cek apakah peserta sudah masuk dalam quotation
-        $used = $this->db->get_where('quotation_peserta', ['id_peserta' => $id])->row_array();
+        // Peserta yang terhubung lewat Deal (quotation_peserta.id_peserta) tidak dapat dihapus (QTN-FR-33).
+        $used = $this->db->select('q.nomor')->from('quotation_peserta qp')->join('quotation q', 'q.id = qp.id_quotation', 'left')
+            ->where('qp.id_peserta', $id)->limit(1)->get()->row_array();
         if ($used) {
-            return ['status' => 0, 'msg' => 'Peserta ' . $old['kode'] . ' sudah terdaftar dalam Quotation — tidak dapat dihapus.'];
+            return ['status' => 0, 'msg' => 'Peserta ' . $old['kode'] . ' sudah Deal di Quotation ' . ($used['nomor'] ?? '—') . ', tidak dapat dihapus.'];
         }
 
         $userId = $this->session->userdata('app_session')['id_user'] ?? 1;

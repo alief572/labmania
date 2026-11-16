@@ -78,7 +78,7 @@
   /** Ringkasan di judul tiap langkah. ctx.paket = objek paket terpilih (atau null). */
   function stepSummary(n, p, ctx) {
     var c = calc(p);
-    if (n === 1) return ctx && ctx.paket ? esc(ctx.paket.judul) + ' · ' + num(p.durasi) + ' hari · ' + num(p.targetPeserta) + ' peserta · ' + rp(p.hargaJual) : 'Paket Produk belum dipilih';
+    if (n === 1) return ctx && ctx.paket ? esc(ctx.paket.judul) + ' · ' + num(p.durasi) + ' hari · ' + num(p.targetPeserta) + ' peserta · ' + rp(p.hargaJual) : 'Product belum dipilih';
     if (n === 2) return 'Total ' + rp(c.fixed);
     if (n === 3) return 'Total ' + rp(c.totalVar);
     return c.target && c.pendapatan ? 'Profit <b class="' + (c.profit < 0 ? 'neg' : 'pos') + '">' + rp(c.profit) + '</b>' : '—';
@@ -264,6 +264,7 @@
     esc: esc, rp: rp, GROUPS: GROUPS, calc: calc, lineQty: lineQty, lineQtyTxt: lineQtyTxt, lineTotal: lineTotal, groupItems: groupItems, groupSum: groupSum,
     warnings: warnings, stepSummary: stepSummary, totalsFixed: totalsFixed, totalsVar: totalsVar, simHtml: simHtml,
     configure: function (o) { cfg = Object.assign(cfg, o); },
+    base: function () { return cfg.base; },
     confirmFinal: confirmFinal, confirmCancel: confirmCancel, penawaran: penawaran
   };
 })(window);

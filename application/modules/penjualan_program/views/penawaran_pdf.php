@@ -7,6 +7,7 @@ $rows = [
     ['Pelaksanaan', $e($pelaksanaan)],
     ['Durasi', (int)$p['durasi_hari'] . ' hari'],
 ];
+if (!empty($p['jam_pembelajaran'])) $rows[] = ['Jam Pembelajaran', (int)$p['jam_pembelajaran'] . ' JP'];
 if (!empty($p['nama_trainer'])) $rows[] = ['Trainer', $e($p['nama_trainer'])];
 $rows[] = ['Harga / peserta', $rp($p['harga_jual_peserta'])];
 $rows[] = ['Jumlah peserta', (int)$p['target_peserta'] . ' peserta'];

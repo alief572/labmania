@@ -46,6 +46,7 @@ class Qtn_pdf
     ];
 
     private $ci;
+    private $level = 0; // error_reporting semula, dipulihkan setelah mPDF selesai
 
     public function __construct()
     {
@@ -81,7 +82,7 @@ class Qtn_pdf
     {
         $db = $this->ci->db;
         $pk = $db->select('pp.nomor, pp.judul')->from('penjualan_program pj')->join('master_program mp', 'mp.id = pj.id_master_program', 'left')
-            ->join('paket_produk pp', 'pp.id = mp.id_paket_produk', 'left')->where('pj.id', (int)$q['id_penjualan'])->get()->row_array() ?: [];
+            ->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false)->where('pj.id', (int)$q['id_penjualan'])->get()->row_array() ?: [];
         $sales = $db->query('SELECT u.nm_lengkap, COALESCE(k.email, u.email) AS email, COALESCE(k.telp, u.hp) AS telp, COALESCE(k.division, k.department) AS divisi
                              FROM users u LEFT JOIN ms_user_karyawan k ON k.id_user = u.id_user WHERE u.id_user = ?', [(int)$q['id_sales']])->row_array() ?: [];
         $tpl = !empty($q['id_template_konfirmasi']) ? ($db->get_where('ms_template_konfirmasi', ['id' => (int)$q['id_template_konfirmasi']])->row_array() ?: []) : [];
@@ -155,7 +156,8 @@ class Qtn_pdf
             $this->page($m, $h1, $this->foot('DP/LMI-TR-01/01/Ed.Rev-1.1', '1 dari 2', '21/10/2024'));
             $this->page($m, $h2, $this->foot('DP/LMI-TR-01/01/Ed.Rev-1.1', '2 dari 2', '21/10/2024'));
         }
-        if (($q['jenis_pj'] ?? '') !== 'b2b') {
+        if ($mode === 'konfirmasi' && ($q['jenis_pj'] ?? '') !== 'b2b') {
+            // Dipakai export PDF Data Peserta (QTN-FR-29): satu halaman per peserta dari isian link.
             foreach ($q['peserta'] as $p) {
                 $this->page($m, $this->konfirmasi($q, $p, $pk, $sales, $tpl), $this->foot('FR/LMI-TR-01/02/Ed.Rev-1.0', '1 dari 1', '01/08/2023'));
             }
@@ -170,15 +172,27 @@ class Qtn_pdf
     {
         $e = [$this, 'e'];
         $c = $q['calc'];
-        $kepada = $q['tujuan'] === 'company' ? ($q['nama_company'] ?? '—') : ($q['peserta'][0]['nama_peserta'] ?? '—');
+        // Personal: "Kepada" diisi di form (peserta belum ada saat quotation dibuat, QTN-FR-05).
+        $kepada = $q['tujuan'] === 'company' ? ($q['nama_company'] ?? '—') : (($q['kepada_nama'] ?? '') !== '' ? $q['kepada_nama'] : '—');
         $up = $q['tujuan'] === 'company' ? ($q['up_nama'] ?? '') : $kepada;
-        $nama = array_filter(array_column($q['peserta'], 'nama_peserta'));
+        // Setelah Deal: daftar nama peserta Deal; sebelumnya peserta belum fix (usulan QTN-FR-14).
+        $nama = ($q['status'] ?? '') === 'deal' ? array_filter(array_column($q['peserta'], 'nama_peserta')) : [];
         $allin = $c['skema'] === 'allin';
+        $jp = !empty($q['jam_pembelajaran']) ? (int)$q['jam_pembelajaran'] . ' JP<br>' : '';
 
-        $desk = (int)$q['durasi_hari'] . ' hari<br>' . $this->e($this->rentang($q['tgl_mulai'] ?? null, $q['tgl_selesai'] ?? null)) . '<br>' . $this->e($q['waktu'] ?? '—') . '<br>' . $this->e($q['lokasi'] ?? '—')
+        $desk = (int)$q['durasi_hari'] . ' hari<br>' . $jp . $this->e($this->rentang($q['tgl_mulai'] ?? null, $q['tgl_selesai'] ?? null)) . '<br>' . $this->e($q['waktu'] ?? '—') . '<br>' . $this->e($q['lokasi'] ?? '—')
             . ($nama ? '<br><span class="mut">Peserta: ' . $this->e(implode(', ', $nama)) . '</span>' : '');
-        $hargaCell = $allin ? $this->rp($c['subtotal']) . '<br><span class="mut">all-in</span>' : $this->rp($c['harga_peserta']);
+        $hargaCell = $allin ? $this->rp($c['harga_allin']) . '<br><span class="mut">all-in paket</span>' : $this->rp($c['harga_peserta']);
         $diskCell = $allin ? ($c['total_diskon'] ? $this->rp($c['total_diskon']) : '0') : ($c['diskon'] ? $this->rp($c['diskon']) : '0');
+        // B2B all-in: baris paket (1 paket, s.d. N peserta) dan, bila ada, baris Tambahan peserta (QTN-FR-20)
+        $ktsCell = $allin ? '1 paket<br><span class="mut">s.d. ' . (int)$c['paket_maks'] . ' peserta</span>' : (int)$c['n_peserta'] . ' peserta';
+        $totalCell = $allin ? $this->rp($c['harga_allin']) : $this->rp($c['subtotal']);
+        $barisTambahan = ($allin && $c['n_tambahan'] > 0)
+            ? '<tr><td></td><td>Tambahan peserta</td><td><span class="mut">Peserta di atas ' . (int)$c['paket_maks'] . ' orang</span></td><td align="right">' . (int)$c['n_tambahan'] . ' peserta</td><td align="right">' . $this->rp($c['tarif_tambahan']) . '</td><td align="right">0</td><td align="right">' . $this->rp($c['tambahan']) . '</td></tr>'
+            : '';
+        // Tanggal pada print out = tanggal dokumen dicetak, bukan Tanggal quotation (QTN-FR-30)
+        $tglCetak = date('Y-m-d');
+        $linkRow = !empty($q['link_token']) ? '<br><span class="mut">Konfirmasi kehadiran peserta: isi lewat link quotation.</span>' : '';
 
         $ket = '';
         foreach (self::KET_PDF as $kat => $judul) {
@@ -192,19 +206,19 @@ class Qtn_pdf
 
         return '<table width="100%"><tr>'
             . '<td width="50%" valign="top"><div class="box"><span class="lbl">Kepada</span><br><b>' . $this->e($kepada) . '</b><br>' . $this->e($q['alamat'] ?: '—') . '</div></td>'
-            . '<td width="4%"></td><td valign="top"><div class="box"><b style="font-size:12pt;">Penawaran</b><br>Nomor : ' . $this->e($q['nomor']) . '<br>Tanggal : ' . $this->e($this->tgl($q['tanggal'])) . '</div></td></tr></table><br>'
+            . '<td width="4%"></td><td valign="top"><div class="box"><b style="font-size:12pt;">Penawaran</b><br>Nomor : ' . $this->e($q['nomor']) . '<br>Tanggal : ' . $this->e($this->tgl($tglCetak)) . '</div></td></tr></table><br>'
             . '<table class="tbl"><thead><tr><th>No Catalog</th><th>Item</th><th>Deskripsi</th><th align="right">Kts.</th><th align="right">Harga</th><th align="right">Diskon</th><th align="right">Total Harga</th></tr></thead><tbody><tr>'
             . '<td>' . $this->e($pk['nomor'] ?? '') . '</td><td>' . $this->e($pk['judul'] ?? '') . '</td><td>' . $desk . '</td>'
-            . '<td align="right">' . (int)$c['n_peserta'] . ' peserta</td><td align="right">' . $hargaCell . '</td><td align="right">' . $diskCell . '</td><td align="right">' . $this->rp($c['subtotal']) . '</td>'
-            . '</tr></tbody></table><br>'
-            . '<table width="100%"><tr><td width="55%" valign="top"><span class="lbl">Keterangan</span><br>Up. Ibu/Bapak ' . $this->e($up ?: '—') . '<br><div class="small">' . $ket . '</div></td><td width="4%"></td>'
+            . '<td align="right">' . $ktsCell . '</td><td align="right">' . $hargaCell . '</td><td align="right">' . $diskCell . '</td><td align="right">' . $totalCell . '</td>'
+            . '</tr>' . $barisTambahan . '</tbody></table><br>'
+            . '<table width="100%"><tr><td width="55%" valign="top"><span class="lbl">Keterangan</span><br>Up. Ibu/Bapak ' . $this->e($up ?: '—') . $linkRow . '<br><div class="small">' . $ket . '</div></td><td width="4%"></td>'
             . '<td valign="top"><table class="sum">'
             . '<tr><td>Sub Total</td><td align="right">' . $this->rp($c['subtotal']) . '</td></tr>'
             . '<tr><td>Diskon</td><td align="right">' . ($c['total_diskon'] ? '− ' . $this->rp($c['total_diskon']) : '0') . '</td></tr>'
             . '<tr><td>PPN (' . rtrim(rtrim(number_format($c['ppn_persen'], 2, '.', ''), '0'), '.') . '%)</td><td align="right">' . $this->rp($c['ppn_nominal']) . '</td></tr>'
             . '<tr><td>Biaya Lain-lain</td><td align="right">' . $this->rp($c['biaya_lain']) . '</td></tr>'
             . '<tr class="tot"><td>Total</td><td align="right">' . $this->rp($c['grand_total']) . '</td></tr></table></td></tr></table><br><br>'
-            . '<table width="100%"><tr><td width="50%">' . $this->e($this->tgl($q['tanggal'])) . '<br>' . $this->e($sales['divisi'] ?? 'Divisi') . '<br><br><br><br><b>' . $this->e($sales['nm_lengkap'] ?? '—') . '</b></td>'
+            . '<table width="100%"><tr><td width="50%">' . $this->e($this->tgl($tglCetak)) . '<br>' . $this->e($sales['divisi'] ?? 'Divisi') . '<br><br><br><br><b>' . $this->e($sales['nm_lengkap'] ?? '—') . '</b></td>'
             . '<td>............., .................. 20.....<br>Disetujui oleh Pelanggan,<br><br><br><br>Nama :</td></tr></table>';
     }
 
@@ -236,8 +250,13 @@ class Qtn_pdf
             'judul' => $pk['judul'] ?? '', 'tanggal' => $this->rentang($q['tgl_mulai'] ?? null, $q['tgl_selesai'] ?? null),
             'waktu' => ($q['waktu'] ?? '') !== '' ? $q['waktu'] : '..........', 'durasi' => (int)$q['durasi_hari'], 'lokasi' => ($q['lokasi'] ?? '') !== '' ? $q['lokasi'] : '—',
         ];
-        $alamat = $q['tujuan'] === 'company' && !empty($q['alamat_company']) ? $q['alamat_company'] : ($p['alamat_peserta'] ?? '');
-        $nilai = ['nama' => $p['nama_peserta'] ?? '', 'instansi' => $p['instansi'] ?? '', 'alamat' => $alamat, 'wa' => $p['no_telp'] ?? '', 'email' => $p['email'] ?? ''];
+        // Semua isian dari isian link peserta itu, bukan Master Peserta (QTN-FR-16, TB-3)
+        $nilai = [
+            'nama' => $p['nama'] ?? '', 'nik' => $p['nik'] ?? '', 'jabatan' => $p['jabatan'] ?? '', 'instansi' => $p['instansi'] ?? '', 'alamat' => $p['alamat_instansi'] ?? '',
+            'hp' => $p['no_hp'] ?? '', 'wa' => $p['no_wa'] ?? '', 'email' => $p['email'] ?? '', 'pengalaman' => $p['pengalaman'] ?? '', 'lsp' => $p['lsp'] ?? '',
+            'habis' => !empty($p['tgl_habis_sertifikat']) ? $this->tgl($p['tgl_habis_sertifikat']) : '',
+        ];
+        $extra = json_decode((string)($p['isian_tambahan'] ?? ''), true) ?: [];
 
         $rows = '';
         foreach (Master_data_model::KF_FIELDS as $key => $label) {
@@ -245,7 +264,7 @@ class Qtn_pdf
             $rows .= '<tr><td width="42%">' . $this->e($label) . '</td><td width="3%">:</td><td>' . $this->e($nilai[$key] ?? '') . '</td></tr>';
         }
         foreach ($isian as $ex) { // isian lain (di luar 11 standar), dikosongkan untuk diisi peserta
-            if (!array_key_exists($ex, Master_data_model::KF_FIELDS)) $rows .= '<tr><td>' . $this->e($ex) . '</td><td>:</td><td></td></tr>';
+            if (!array_key_exists($ex, Master_data_model::KF_FIELDS)) $rows .= '<tr><td>' . $this->e($ex) . '</td><td>:</td><td>' . $this->e($extra[$ex] ?? '') . '</td></tr>';
         }
 
         $cat = ['email' => $sales['email'] ?? '—', 'telp' => $sales['telp'] ?? '—', 'kegiatan' => $tpl['label_kegiatan'] ?? '', 'judul' => $pk['judul'] ?? ''];
@@ -258,7 +277,142 @@ class Qtn_pdf
             . '<table class="form" width="100%">' . $rows . '</table><br>'
             . '<p>Dengan ini menyatakan:</p><ol class="small"><li>' . $this->mark($this->fill($q['konfirmasi_pernyataan'] ?? '', $vars)) . '</li>'
             . '<li>Saya <b><u>telah membaca</u></b> dan <b><u>menyetujui</u></b> syarat &amp; ketentuan yang berlaku di LabMania</li></ol><br>'
-            . '<div style="text-align:right;">..........., ...................... 20.....<br><br><br><br>(..........................................................)<br><b>Jabatan:</b></div><br>'
+            . '<div style="text-align:right;">..........., ' . $this->e($this->tgl(date('Y-m-d'))) . '<br><br><br><br><br>' . $this->e($p['nama'] ?? '') . '<br><b>Jabatan:</b> ' . $this->e($p['jabatan'] ?? '') . '</div><br>'
             . '<div class="small"><b><u>Catatan :</u></b><ul>' . $catatan . '</ul></div>';
+    }
+
+    /** Surat konfirmasi Public untuk dicetak calon peserta dari link: satu halaman, terisi data yang diketik, tanggal = hari cetak (QTN-FR-16, QTN-FR-30). */
+    public function surat_peserta(array $q, array $in)
+    {
+        $m = $this->mulai('Surat Konfirmasi ' . $q['nomor']);
+        [$pk, $sales, $tpl] = $this->extra(['id_penjualan' => $q['id_pj'], 'id_sales' => $q['id_sales'], 'id_template_konfirmasi' => $q['id_template_konfirmasi']]);
+        $q['jenis_pj'] = $q['jenis']; $q['alamat_company'] = $q['alamat_company'] ?? '';
+        $p = [
+            'nama' => trim($in['nama'] ?? ''), 'nik' => trim($in['nik'] ?? ''), 'jabatan' => trim($in['jabatan'] ?? ''), 'instansi' => $q['tujuan'] === 'company' ? ($q['nama_company'] ?? '') : trim($in['instansi'] ?? ''),
+            'alamat_instansi' => trim($in['alamat'] ?? ''), 'no_hp' => trim($in['hp'] ?? ''), 'no_wa' => trim($in['wa'] ?? ''), 'email' => trim($in['email'] ?? ''),
+            'pengalaman' => trim($in['pengalaman'] ?? ''), 'lsp' => trim($in['lsp'] ?? ''), 'tgl_habis_sertifikat' => trim($in['habis'] ?? '') ?: null,
+            'isian_tambahan' => json_encode(is_array($in['ex'] ?? null) ? $in['ex'] : []),
+        ];
+        $this->page($m, $this->konfirmasi($q, $p, $pk, $sales, $tpl), $this->foot('FR/LMI-TR-01/02/Ed.Rev-1.0', '1 dari 1', '01/08/2023'));
+        return $this->selesai($m);
+    }
+
+    /**
+     * Surat konfirmasi company B2B (QTN-FR-32): halaman 1 pernyataan + data company/PIC, halaman 2 lampiran daftar peserta.
+     * Format usulan analis; kode dokumen Labmania belum ada (Q-QTN-22). Tanggal = hari cetak.
+     */
+    public function surat_company(array $q, array $in, array $rows, array $kolom)
+    {
+        $m = $this->mulai('Surat Konfirmasi Company ' . $q['nomor']);
+        $t = function ($k) use ($in) { return trim((string)($in[$k] ?? '')); };
+        $peserta = array_values(array_filter($rows, function ($r) { return is_array($r) && trim((string)($r['nama'] ?? '')) !== ''; }));
+        $sales = $this->ci->db->query('SELECT u.nm_lengkap, COALESCE(k.email, u.email) AS email, COALESCE(k.telp, u.hp) AS telp FROM users u LEFT JOIN ms_user_karyawan k ON k.id_user = u.id_user WHERE u.id_user = ?', [(int)$q['id_sales']])->row_array() ?: [];
+        $maks = (int)($q['paket_maks_peserta'] ?: 25);
+        $tarif = (float)($q['tambahan_per_peserta'] ?: 300000);
+        $rg = $this->rentang($q['tgl_mulai'] ?? null, $q['tgl_selesai'] ?? null);
+
+        $tbl = '<table class="form" width="100%">';
+        foreach (['Nama Perusahaan' => 'nama_perusahaan', 'Alamat Perusahaan' => 'alamat_perusahaan', 'Nama PIC' => 'pic_nama', 'Jabatan' => 'pic_jabatan', 'Nomor HP / WhatsApp' => 'pic_hp', 'Email' => 'pic_email'] as $l => $k) {
+            $tbl .= '<tr><td width="38%">' . $this->e($l) . '</td><td width="3%">:</td><td>' . $this->e($t($k)) . '</td></tr>';
+        }
+        $tbl .= '</table>';
+        $hal1 = '<div class="title">Konfirmasi Keikutsertaan Perusahaan (In-House)</div><div style="text-align:center;" class="small">Quotation ' . $this->e($q['nomor']) . ' · ' . $this->e($q['nama_paket'] ?? '') . '</div><br>' . $tbl . '<br>'
+            . '<p>Dengan ini menyatakan:</p><ol class="small"><li>Mengikutsertakan <b>' . count($peserta) . ' peserta</b> (daftar terlampir) pada kegiatan <b>' . $this->e($q['nama_paket'] ?? '') . '</b> tanggal ' . $this->e($rg)
+            . ', pukul ' . $this->e(($q['waktu'] ?? '') !== '' ? $q['waktu'] : '..........') . ', ' . (int)$q['durasi_hari'] . ' hari, di ' . $this->e(($q['lokasi'] ?? '') !== '' ? $q['lokasi'] : '—') . '.</li>'
+            . '<li>Telah <b><u>membaca</u></b> dan <b><u>menyetujui</u></b> syarat &amp; ketentuan LabMania, termasuk ketentuan biaya peserta di atas ' . $maks . ' orang sesuai quotation.</li></ol><br>'
+            . '<div style="text-align:right;">..........., ' . $this->e($this->tgl(date('Y-m-d'))) . '<br>Hormat kami,<br><br><br><br><br>' . $this->e($t('pic_nama')) . '<br><b>Jabatan:</b> ' . $this->e($t('pic_jabatan')) . '<br><span class="mut">tanda tangan dan cap perusahaan</span></div><br>'
+            . '<div class="small"><b><u>Catatan :</u></b><ul><li>Nama lengkap pada lampiran menjadi acuan penulisan di sertifikat.</li>'
+            . '<li>Harga paket mencakup s.d. ' . $maks . ' peserta; peserta ke-' . ($maks + 1) . ' dan seterusnya dikenakan tambahan ' . $this->rp($tarif) . '/orang.</li>'
+            . '<li>Perubahan daftar peserta hubungi sales quotation: ' . $this->e($sales['nm_lengkap'] ?? '—') . ', ' . $this->e($sales['email'] ?? '—') . ', ' . $this->e($sales['telp'] ?? '—') . '.</li></ul></div>';
+        $this->page($m, $hal1, $this->foot('[kode dokumen menyusul]', '1 dari 2', '—'));
+
+        $lab = ['jabatan' => 'Jabatan', 'email' => 'Email', 'wa' => 'WhatsApp', 'nik' => 'NIK'];
+        $head = '<th width="8%">No</th><th>Nama Lengkap</th>'; foreach ($kolom as $k) $head .= '<th>' . $this->e($lab[$k] ?? $k) . '</th>';
+        $body = '';
+        foreach ($peserta as $i => $r) {
+            $body .= '<tr><td>' . ($i + 1) . '</td><td>' . $this->e($r['nama']) . '</td>';
+            foreach ($kolom as $k) $body .= '<td>' . $this->e($r[$k] ?? '') . '</td>';
+            $body .= '</tr>';
+        }
+        $hal2 = '<div class="title">Lampiran: Daftar Peserta</div><div style="text-align:center;" class="small">' . $this->e($t('nama_perusahaan')) . ' · ' . $this->e($q['nomor']) . ' · ' . $this->e($q['nama_paket'] ?? '') . ' · ' . $this->e($rg) . '</div><br>'
+            . '<table class="tbl"><thead><tr>' . $head . '</tr></thead><tbody>' . $body . '</tbody></table>';
+        $this->page($m, $hal2, $this->foot('[kode dokumen menyusul]', '2 dari 2', '—'));
+        return $this->selesai($m);
+    }
+
+    /** mPDF kosong siap pakai (A4, kop, CSS) untuk surat tunggal. */
+    private function mulai($judul)
+    {
+        $this->level = error_reporting();
+        error_reporting($this->level & ~E_DEPRECATED);
+        $tmp = sys_get_temp_dir() . '/labmania_mpdf';
+        if (!is_dir($tmp)) @mkdir($tmp, 0775, true);
+        $m = new \Mpdf\Mpdf(['format' => 'A4', 'orientation' => 'P', 'tempDir' => $tmp, 'default_font' => 'dejavusans', 'default_font_size' => 9,
+            'margin_left' => 25, 'margin_right' => 25, 'margin_top' => 38, 'margin_bottom' => 22, 'margin_header' => 8, 'margin_footer' => 8]);
+        $m->SetTitle($judul); $m->SetAuthor('LabMania');
+        $m->SetHTMLHeader($this->kop());
+        $m->WriteHTML($this->css(), \Mpdf\HTMLParserMode::HEADER_CSS);
+        return $m;
+    }
+
+    private function selesai(\Mpdf\Mpdf $m)
+    {
+        $out = $m->Output('', \Mpdf\Output\Destination::STRING_RETURN);
+        error_reporting($this->level);
+        return $out;
+    }
+
+    /**
+     * Export PDF batch Data Peserta (QTN-FR-29): halaman 1 Daftar Peserta, lalu surat konfirmasi yang diunggah tiap peserta berurutan
+     * (Public; B2B: surat company sekali per quotation). Gambar (JPG/PNG) dicetak satu halaman; berkas PDF digabungkan server-side (FPDI).
+     * Peserta Batal tidak ikut (usulan Q-QTN-19). Berkas yang tak dapat dibaca (mis. PDF terenkripsi) diganti halaman keterangan, bukan membatalkan seluruh export.
+     * $pj = baris Penjualan Program; $peserta = hasil Quotation_model::batch_peserta (sudah tanpa filter UI); $fcpath = akar aplikasi.
+     */
+    public function export_batch(array $pj, array $peserta, $fcpath)
+    {
+        $m = $this->mulai('Data Peserta ' . $pj['nomor']);
+        $aktif = array_values(array_filter($peserta, function ($p) { return $p['status'] !== 'batal'; }));
+        $stl = ['deal' => 'Deal', 'menunggu' => 'Menunggu', 'batal' => 'Batal'];
+
+        $rows = '';
+        foreach ($aktif as $i => $p) {
+            $rows .= '<tr><td>' . ($i + 1) . '</td><td>' . $this->e($p['nama']) . ($p['jabatan'] ? '<br><span class="mut">' . $this->e($p['jabatan']) . '</span>' : '') . '</td><td>' . $this->e($p['instansi'] ?: '—')
+                . '</td><td>' . $this->e($p['no_wa'] ?: ($p['no_hp'] ?: '—')) . ($p['email'] ? '<br><span class="mut">' . $this->e($p['email']) . '</span>' : '') . '</td><td>' . $this->e($p['nomor_quotation']) . '</td><td>' . $this->e($stl[$p['status']] ?? $p['status']) . '</td></tr>';
+        }
+        $kepala = '<div class="title">Daftar Peserta</div><div style="text-align:center;" class="small">' . $this->e($pj['nomor']) . ' · ' . $this->e($pj['nama_paket'] ?? '') . ' · ' . $this->e($this->rentang($pj['tgl_mulai'] ?? null, $pj['tgl_selesai'] ?? null)) . ' · ' . $this->e($pj['lokasi'] ?? '—') . '</div><br>';
+        $this->page($m, $kepala . '<table class="tbl"><thead><tr><th width="6%">No</th><th>Nama Lengkap</th><th>Instansi</th><th>Kontak</th><th>Quotation</th><th>Status</th></tr></thead><tbody>'
+            . ($rows ?: '<tr><td colspan="6" align="center" class="mut">Belum ada peserta</td></tr>') . '</tbody></table>', $this->foot('Data Peserta Batch', 'Halaman 1', date('d/m/Y')));
+
+        // Surat: B2B = satu per quotation (peserta pertama yang punya surat); Public = tiap peserta
+        $sudah = []; $n = 1;
+        foreach ($aktif as $p) {
+            if (empty($p['surat_konfirmasi'])) continue;
+            if ($p['sumber'] === 'company') { if (isset($sudah[$p['id_quotation']])) continue; $sudah[$p['id_quotation']] = true; }
+            $path = $fcpath . $p['surat_konfirmasi'];
+            $judul = ($p['sumber'] === 'company' ? 'Surat konfirmasi company — ' . $p['instansi'] : 'Surat konfirmasi — ' . $p['nama']) . ' · ' . $p['nomor_quotation'];
+            $n++;
+            if (!is_file($path) || strpos($p['surat_konfirmasi'], 'uploads/konfirmasi_kehadiran/') !== 0) {
+                $this->page($m, '<div class="title">' . $this->e($judul) . '</div><p class="mut">Berkas surat tidak ditemukan.</p>', $this->foot('Data Peserta Batch', 'Halaman ' . $n, date('d/m/Y')));
+                continue;
+            }
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            if (in_array($ext, ['jpg', 'jpeg', 'png'], true)) {
+                $data = base64_encode(file_get_contents($path));
+                $mime = $ext === 'png' ? 'image/png' : 'image/jpeg';
+                $this->page($m, '<div class="small mut">' . $this->e($judul) . '</div><div style="text-align:center;"><img src="data:' . $mime . ';base64,' . $data . '" style="max-width:170mm; max-height:230mm;"></div>', $this->foot('Data Peserta Batch', 'Halaman ' . $n, date('d/m/Y')));
+            } else {
+                try {
+                    $pages = $m->setSourceFile($path);
+                    for ($i = 1; $i <= $pages; $i++) {
+                        $tpl = $m->importPage($i);
+                        $m->AddPage();
+                        $m->useTemplate($tpl, 0, 0, 210, 297, true);
+                    }
+                } catch (\Throwable $e) {
+                    $this->page($m, '<div class="title">' . $this->e($judul) . '</div><p class="mut">Berkas PDF ini tidak dapat digabungkan (' . $this->e(get_class($e)) . '). Unduh berkas aslinya dari Data Peserta.</p>', $this->foot('Data Peserta Batch', 'Halaman ' . $n, date('d/m/Y')));
+                }
+            }
+        }
+        return $this->selesai($m);
     }
 }

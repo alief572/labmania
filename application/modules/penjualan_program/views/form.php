@@ -1,4 +1,5 @@
 <script src="<?= base_url('assets/labmania/js/lm-costing.js'); ?>"></script>
+<script src="<?= base_url('assets/labmania/js/lm-reschedule.js'); ?>"></script>
 
 <div id="pj-root"></div>
 
@@ -128,7 +129,10 @@
     var p = S.p, E = S.errors, lock = locked(), warns = C.warnings(p);
 
     var lockInfo = '';
-    if (p.status === 'final') lockInfo = 'Penjualan Program <b>Final</b> — terkunci. Buat <b>Quotation</b> dari menu Quotation (' + (isB2b() ? 'ke Company penjualan' : 'ke Company atau Personal') + ') — persiapan invoice dengan peserta yang sudah fix.';
+    if (p.status === 'final') {
+      lockInfo = 'Penjualan Program <b>Final</b> — terkunci. Buat <b>Quotation</b> dari menu Quotation (' + (isB2b() ? 'ke Company penjualan' : 'ke Company atau Personal') + ') — persiapan invoice dengan peserta yang sudah fix.' +
+        (INIT.resched.can ? ' Jadwal masih dapat diubah lewat <b>Reschedule</b> selama acara belum berjalan.' : (INIT.resched.block ? ' <b>Reschedule tidak tersedia:</b> ' + esc(INIT.resched.block) + '.' : ''));
+    }
     if (p.status === 'batal') lockInfo = 'Penjualan Program dibatalkan dan tidak dapat diubah.';
 
     var header = '<div class="csec"><p class="csec-h">Header</p><div class="grid3">' +
@@ -147,13 +151,13 @@
         (cc ? '<span class="hint">' + esc(cc.jenis || '') + ' · ' + esc(cc.kota || '—') + ' · PIC ' + esc(cc.pic || '—') + '</span>' : '<span class="hint">dari Master Company</span>'), E.company);
     }
 
-    // Trainer (opsional, satu per event): aktif + yang sedang terpilih (PJ-FR-23)
+    // Trainer (wajib, satu per event): aktif + yang sedang terpilih (PJ-FR-23)
     var tr = TRAINER[p.trainer];
     var topts = INIT.trainers.filter(function (t) { return t.aktif || t.id === p.trainer; }).map(function (t) {
       return '<option value="' + t.id + '" ' + (t.id === p.trainer ? 'selected' : '') + '>' + esc(t.kode) + ' — ' + esc(t.nama) + (t.aktif ? '' : ' (nonaktif)') + '</option>';
     }).join('');
-    var trainerField = field('Trainer', '<select class="input" data-pf="trainer" ' + (lock ? 'disabled' : '') + '><option value="">— Pilih Trainer (opsional) —</option>' + topts + '</select>' +
-      '<span class="hint">' + (tr ? esc(tr.keahlian.join(' · ') || 'Master Trainer') + (tr.aktif ? '' : ' · nonaktif') : 'Dari Master Trainer aktif; satu trainer per event') + '</span>', E.trainer);
+    var trainerField = field('Trainer' + REQ, '<select class="input" data-pf="trainer" ' + (lock ? 'disabled' : '') + '><option value="">— Pilih Trainer —</option>' + topts + '</select>' +
+      '<span class="hint">' + (tr ? esc(tr.keahlian.join(' · ') || 'Master Trainer') + (tr.aktif ? '' : ' · nonaktif') : 'Dari Master Trainer aktif; satu trainer per event, untuk Surat Kerja Trainer') + '</span>', E.trainer);
 
     var s1 = step(1, 'Informasi Penjualan', '',
       '<div class="grid3">' +
@@ -162,6 +166,7 @@
         field('Tanggal mulai' + REQ, '<input class="input" type="date" data-pf="tglMulai" value="' + esc(p.tglMulai) + '" ' + (lock ? 'disabled' : '') + '>', E.tglMulai) +
         field('Tanggal selesai' + REQ, '<input class="input" type="date" data-pf="tglSelesai" value="' + esc(p.tglSelesai) + '" ' + (lock ? 'disabled' : '') + '><span class="hint">durasi = selesai − mulai + 1 hari</span>', E.tglSelesai) +
         field('Waktu', '<input class="input" data-pf="waktu" value="' + esc(p.waktu) + '" maxlength="50" placeholder="mis. 09.00–15.15 WIB" ' + (lock ? 'disabled' : '') + '><span class="hint">Jam pelaksanaan; tercetak di Penawaran &amp; Formulir Konfirmasi</span>', E.waktu) +
+        field('Jam Pembelajaran' + REQ, '<div class="input-unit"><input class="input" id="pf-jp" data-pf="jamPembelajaran" aria-label="Jam Pembelajaran" type="number" min="1" step="1" inputmode="numeric" value="' + esc(p.jamPembelajaran) + '" placeholder="mis. 16" aria-describedby="pf-jp-unit" ' + (lock ? 'disabled' : '') + '><span class="unit" id="pf-jp-unit">JP</span></div><span class="hint">Tercetak di Penawaran quotation</span>', E.jamPembelajaran) +
         field('Lokasi acara', '<input class="input" data-pf="lokasi" value="' + esc(p.lokasi) + '" maxlength="150" placeholder="mis. Offline Bekasi" ' + (lock ? 'disabled' : '') + '>', E.lokasi) +
         trainerField +
       '</div>' + simInputs('terisi dari ' + esc(MP.nomor) + '; perubahan hanya berlaku di penjualan ini. Juga tampil di bagian 4.'));
@@ -179,14 +184,32 @@
         '<button type="button" class="btn btn-outline" id="btn-save" data-act="save">Simpan Draft</button>' +
         (isNew() ? '' : '<button type="button" class="btn btn-accent" id="btn-final" data-act="final">Finalkan → Quotation</button>');
     } else if (p.status === 'final') {
-      actions += '<button type="button" class="btn btn-accent" data-act="print">Cetak Surat Penawaran</button>';
+      actions += (INIT.resched.can ? '<button type="button" class="btn btn-outline" data-act="resched">Reschedule</button>' : '') +
+        '<button type="button" class="btn btn-accent" data-act="print">Cetak Surat Penawaran</button>';
     }
 
     var title = isNew() ? 'Buat Penjualan Program ' + (isB2b() ? 'B2B' : 'Public') : 'Penjualan Program ' + esc(p.nomor);
     return '<div class="pf-formbar"><button type="button" class="btn btn-ghost sm" data-act="back">← Kembali</button><h2>' + title + '</h2><span class="ref">PJ-FR-04 – PJ-FR-10</span></div>' +
       (lockInfo ? '<div class="alert">' + lockInfo + '</div>' : '') +
       '<div id="pf-warn" class="alert ' + (warns.length ? '' : 'hidden') + '">' + warns.map(esc).join('<br>') + '</div>' +
-      '<div class="pub-form">' + header + s1 + s2 + s3 + s4 + '</div><div class="form-actions">' + actions + '</div>';
+      '<div class="pub-form">' + header + s1 + reschedHistory() + s2 + s3 + s4 + '</div><div class="form-actions">' + actions + '</div>';
+  }
+
+  // Riwayat Reschedule (PJ-FR-28): terbaru di atas; evidence dibuka lewat aplikasi (folder berkas ditutup untuk akses langsung).
+  function reschedHistory() {
+    var r = INIT.resched.history || [];
+    if (!r.length) return '';
+    var tgl = function (a, b) { return esc(a) + (b && b !== a ? ' – ' + esc(b) : ''); };
+    return '<div class="csec"><p class="csec-h">Riwayat Reschedule <span class="muted">' + r.length + ' kali; jadwal lama dan alasannya</span></p><div class="step-body">' +
+      '<div class="table-wrap"><table class="table"><thead><tr><th>Waktu</th><th>Oleh</th><th>Jadwal lama</th><th>Jadwal baru</th><th>Alasan</th><th>Evidence</th></tr></thead><tbody>' +
+      r.map(function (x) {
+        return '<tr><td class="nowrap">' + esc((x.created_date || '').slice(0, 16)) + '</td><td>' + esc(x.oleh || '—') + '</td>' +
+          '<td>' + tgl(x.tgl_mulai_lama, x.tgl_selesai_lama) + '<br><span class="muted">Trainer: ' + esc(x.trainer_lama || '—') + '</span></td>' +
+          '<td>' + tgl(x.tgl_mulai_baru, x.tgl_selesai_baru) + '<br><span class="muted">Trainer: ' + esc(x.trainer_baru || '—') + '</span></td>' +
+          '<td>' + esc(x.alasan) + '</td><td>' + (x.evidence.length ? x.evidence.map(function (f) {
+            return '<a class="code" target="_blank" rel="noopener" href="' + URL_BASE + 'evidence/' + f.id + '">' + esc(f.nama_file) + '</a>';
+          }).join('<br>') : '<span class="muted">—</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div></div>';
   }
 
   function render() {
@@ -229,6 +252,8 @@
     if (!p.tglMulai) E.tglMulai = 'Tanggal mulai wajib diisi';
     if (!p.tglSelesai) E.tglSelesai = 'Tanggal selesai wajib diisi';
     else if (p.tglMulai && p.tglSelesai < p.tglMulai) E.tglSelesai = 'Tanggal selesai sebelum tanggal mulai';
+    if (!p.trainer) E.trainer = 'Pilih trainer';
+    if (!posInt(p.jamPembelajaran)) E.jamPembelajaran = 'Jam Pembelajaran bilangan bulat > 0';
     if (!posInt(p.targetPeserta)) E.targetPeserta = 'Target peserta bilangan bulat > 0';
     else if (isB2b() && Number(p.targetPeserta) < B2B_MIN) E.targetPeserta = 'Penjualan B2B minimal ' + B2B_MIN + ' peserta';
     if (p.hargaJual === '' || p.hargaJual < 0) E.hargaJual = 'Harga jual / peserta wajib diisi';
@@ -240,7 +265,7 @@
     return !Object.keys(E).length;
   }
 
-  var SERVER_KEY = { id_customer: 'company', id_trainer: 'trainer', tgl_mulai: 'tglMulai', tgl_selesai: 'tglSelesai', target_peserta: 'targetPeserta',
+  var SERVER_KEY = { id_customer: 'company', id_trainer: 'trainer', tgl_mulai: 'tglMulai', tgl_selesai: 'tglSelesai', jam_pembelajaran: 'jamPembelajaran', target_peserta: 'targetPeserta',
                      harga_jual_peserta: 'hargaJual', target_profit: 'targetProfit' };
 
   function busy(on) {
@@ -262,7 +287,7 @@
         url: URL_BASE + 'save', type: 'POST', dataType: 'json',
         data: {
           id: p.id || '', id_master_program: p.mp, jenis: p.jenis, id_customer: p.company || '', id_trainer: p.trainer || '',
-          tgl_mulai: p.tglMulai, tgl_selesai: p.tglSelesai, waktu: p.waktu, lokasi: p.lokasi, durasi_hari: p.durasi,
+          tgl_mulai: p.tglMulai, tgl_selesai: p.tglSelesai, waktu: p.waktu, lokasi: p.lokasi, jam_pembelajaran: p.jamPembelajaran, durasi_hari: p.durasi,
           target_peserta: p.targetPeserta, harga_jual_peserta: p.hargaJual, target_profit: p.targetProfit,
           biaya: p.biaya.map(function (b) { return { id_rate: b.rate || '', tipe: b.tipe, item: b.item, id_satuan: b.id_satuan, harga: b.harga, is_manual: b.manual ? 1 : 0 }; })
         }
@@ -312,7 +337,8 @@
       });
     },
     cancel: function () { LmCosting.confirmCancel(S.p.id, toView); },
-    print: function () { LmCosting.penawaran(S.p.id); }
+    print: function () { LmCosting.penawaran(S.p.id); },
+    resched: function () { window.LmReschedule.open(S.p.id, function () { location.reload(); }); }
   };
 
   root.addEventListener('click', function (e) {
@@ -335,7 +361,7 @@
     if (t.dataset.pf) {
       var name = t.dataset.pf, v = t.value;
       if (MONEY.indexOf(name) >= 0) v = digits(v) === '' ? '' : Number(digits(v));
-      else if (name === 'targetPeserta') v = v === '' ? '' : Number(v);
+      else if (name === 'targetPeserta' || name === 'jamPembelajaran') v = v === '' ? '' : Number(v);
       if (['paket', 'company', 'trainer'].indexOf(name) >= 0) return; // select: ditangani di 'change'
       S.p[name] = v;
       if (name === 'tglMulai' || name === 'tglSelesai') { S.p.durasi = hitungDurasi(); syncInputs('durasi', null); }

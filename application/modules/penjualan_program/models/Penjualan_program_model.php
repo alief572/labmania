@@ -20,13 +20,18 @@ class Penjualan_program_model extends CI_Model
         $search = trim($p['search']['value'] ?? '');
         $status = $p['status'] ?? 'all';
         $jenis  = $p['jenis'] ?? 'all';
-        $apply = function () use ($search, $status, $jenis) {
+        // Tahun & Bulan menurut tanggal MULAI acara (PJ-FR-01). Keduanya 'all' = semua, termasuk program tanpa tanggal.
+        $tahun  = preg_match('/^\d{4}$/', (string)($p['tahun'] ?? '')) ? (int)$p['tahun'] : null;
+        $bulan  = preg_match('/^(0?[1-9]|1[0-2])$/', (string)($p['bulan'] ?? '')) ? (int)$p['bulan'] : null;
+        $apply = function () use ($search, $status, $jenis, $tahun, $bulan) {
             $this->db->from('penjualan_program pj')
                 ->join('master_program mp', 'pj.id_master_program = mp.id', 'left')
-                ->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left')
+                ->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false)
                 ->join('master_customer c', 'pj.id_customer = c.id_customer', 'left');
             if (in_array($status, ['draft', 'final', 'batal'], true)) $this->db->where('pj.status', $status);
             if (in_array($jenis, ['public', 'b2b'], true)) $this->db->where('pj.jenis', $jenis);
+            if ($tahun) $this->db->where('YEAR(pj.tgl_mulai)', $tahun, false);
+            if ($bulan) $this->db->where('MONTH(pj.tgl_mulai)', $bulan, false);
             if ($search !== '') {
                 $this->db->group_start()->like('pj.nomor', $search)->or_like('mp.nomor', $search)->or_like('pp.judul', $search)
                     ->or_like('c.name_customer', $search)->or_like('pj.lokasi', $search)->group_end();
@@ -64,7 +69,7 @@ class Penjualan_program_model extends CI_Model
                            t.nama as nama_trainer');
         $this->db->from('penjualan_program pj');
         $this->db->join('master_program mp', 'pj.id_master_program = mp.id', 'left');
-        $this->db->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left');
+        $this->db->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false);
         $this->db->join('ms_jenis_produk jp', 'pp.id_jenis_produk = jp.id', 'left');
         $this->db->join('ms_jenis_sertifikasi js', 'pp.id_jenis_sertifikasi = js.id', 'left');
         $this->db->join('master_customer c', 'pj.id_customer = c.id_customer', 'left');
@@ -124,7 +129,7 @@ class Penjualan_program_model extends CI_Model
                    FROM master_program_biaya b LEFT JOIN ms_satuan s ON s.id = b.id_satuan WHERE b.id_master_program = mp.id) AS hpp";
         return $this->db->select("mp.*, pp.nomor as nomor_paket, pp.judul as nama_paket, js.nama as nama_sertifikasi, $hpp", false)
                         ->from('master_program mp')
-                        ->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left')
+                        ->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false)
                         ->join('ms_jenis_sertifikasi js', 'pp.id_jenis_sertifikasi = js.id', 'left')
                         ->where('mp.status', 'final')
                         ->order_by('mp.id', 'DESC')
@@ -227,13 +232,19 @@ class Penjualan_program_model extends CI_Model
             elseif (!$this->company_aktif($co) && (!$old || $old['id_customer'] !== $idCustomer)) $e['id_customer'] = 'Company harus berstatus Aktif';
         }
 
-        // Trainer (opsional; aktif atau yang sudah terpilih)
+        // Trainer wajib (PJ-FR-23 to be, untuk Surat Kerja Trainer); aktif atau yang sudah terpilih
         $idTrainer = !empty($post['id_trainer']) ? (int)$post['id_trainer'] : null;
-        if ($idTrainer) {
+        if (!$idTrainer) {
+            $e['id_trainer'] = 'Pilih trainer';
+        } else {
             $tr = $this->db->get_where('ms_trainer', ['id' => $idTrainer])->row_array();
             if (!$tr) $e['id_trainer'] = 'Trainer tidak ditemukan';
             elseif (!$tr['aktif'] && (!$old || (int)$old['id_trainer'] !== $idTrainer)) $e['id_trainer'] = 'Trainer harus berstatus Aktif';
         }
+
+        // Jam Pembelajaran (PJ-FR-29): bilangan bulat >= 1, wajib (Q-PJ-25: pecahan belum diputuskan, usulan bulat)
+        $jp = $mp->to_int($post['jam_pembelajaran'] ?? '');
+        if (!$jp) $e['jam_pembelajaran'] = 'Jam Pembelajaran bilangan bulat > 0';
 
         // Tanggal wajib; durasi dihitung dari tanggal (PJ-FR-06)
         $mulai = trim((string)($post['tgl_mulai'] ?? ''));
@@ -272,6 +283,7 @@ class Penjualan_program_model extends CI_Model
             'waktu'              => $waktu,
             'lokasi'             => $lokasi,
             'durasi_hari'        => (int)($durasi ?: 1),
+            'jam_pembelajaran'   => $jp ? (int)$jp : null,
             'target_peserta'     => (int)$target,
             'harga_jual_peserta' => (float)$harga,
             'target_profit'      => (float)$tp,
@@ -381,5 +393,136 @@ class Penjualan_program_model extends CI_Model
         ], 'penjualan_program', $id, $old['nomor']);
 
         return ['status' => 1, 'msg' => 'Penjualan Program ' . $old['nomor'] . ($newStatus === 'final' ? ' Final — siap Quotation' : ' dibatalkan')];
+    }
+
+    // =========================================================================
+    // RESCHEDULE (PJ-FR-26 - PJ-FR-28, PJ-NFR-10)
+    // =========================================================================
+
+    const EVID_MAX = 5242880; // 5 MB per file (usulan, Q-PJ-26)
+    /** Tipe evidence yang diterima: ekstensi => daftar MIME hasil deteksi isi berkas (bukan kiriman browser). */
+    const EVID_TIPE = [
+        'jpg'  => ['image/jpeg'],
+        'jpeg' => ['image/jpeg'],
+        'png'  => ['image/png'],
+        'pdf'  => ['application/pdf'],
+        'doc'  => ['application/msword', 'application/vnd.ms-office', 'application/x-ole-storage', 'application/octet-stream'],
+        'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/octet-stream'],
+    ];
+
+    /** Boleh reschedule: Final, belum Closed, tanggal mulai ada, hari ini masih sebelum tanggal mulai (PJ-FR-26). Kembalian: null bila boleh, selain itu alasan. */
+    public function reschedule_block(array $pj)
+    {
+        if ($pj['status'] !== 'final') return 'Reschedule hanya untuk Penjualan Program Final';
+        if (!empty($pj['closed_date'])) return 'Penjualan Program sudah Closed, jadwal tidak dapat diubah';
+        if (empty($pj['tgl_mulai'])) return 'Penjualan Program belum punya tanggal mulai';
+        if (date('Y-m-d') >= $pj['tgl_mulai']) return 'Acara sudah berjalan — reschedule hanya boleh sebelum tanggal mulai';
+        return null;
+    }
+
+    /** Riwayat reschedule satu penjualan beserta evidence, terbaru di atas (PJ-FR-28). */
+    public function reschedule_history($idPj)
+    {
+        $rows = $this->db->select('r.*, u.nm_lengkap AS oleh, tl.nama AS trainer_lama, tb.nama AS trainer_baru')
+            ->from('penjualan_program_reschedule r')
+            ->join('users u', 'u.id_user = r.created_by', 'left')
+            ->join('ms_trainer tl', 'tl.id = r.id_trainer_lama', 'left')
+            ->join('ms_trainer tb', 'tb.id = r.id_trainer_baru', 'left')
+            ->where('r.id_penjualan', (int)$idPj)->order_by('r.id', 'DESC')->get()->result_array();
+        foreach ($rows as &$r) {
+            $r['evidence'] = $this->db->select('id, nama_file, tipe_file, ukuran_byte')->order_by('id')->get_where('penjualan_program_reschedule_evidence', ['id_reschedule' => $r['id']])->result_array();
+        }
+        return $rows;
+    }
+
+    /** Info untuk modal Reschedule: jadwal sekarang, jumlah reschedule, Sales Order yang ikut berubah. */
+    public function reschedule_info($id)
+    {
+        $pj = $this->db->get_where('penjualan_program', ['id' => (int)$id])->row_array();
+        if (!$pj) return null;
+        $so = $this->db->table_exists('sales_order') ? $this->db->select('nomor, revisi')->get_where('sales_order', ['id_penjualan' => $pj['id']])->result_array() : [];
+        $qtn = $this->db->where(['id_penjualan' => $pj['id']])->where('status <>', 'batal')->count_all_results('quotation');
+        $tr = $pj['id_trainer'] ? $this->db->get_where('ms_trainer', ['id' => (int)$pj['id_trainer']])->row_array() : null;
+        return ['pj' => $pj, 'block' => $this->reschedule_block($pj), 'n_resched' => (int)$this->db->where('id_penjualan', $pj['id'])->count_all_results('penjualan_program_reschedule'),
+                'so' => $so, 'n_qtn' => $qtn, 'trainer' => $tr['nama'] ?? null];
+    }
+
+    /**
+     * Simpan reschedule. $files = daftar berkas hasil unggah [['orig','path','tipe','size'], ...] yang sudah divalidasi controller.
+     * Satu transaksi (PJ-NFR-10): jadwal penjualan, satu baris riwayat, baris evidence, revisi Sales Order bila tanggal berubah.
+     * Status Final, belum Closed, dan hari ini < tgl_mulai lama diperiksa ulang di dalam transaksi dengan kunci baris.
+     */
+    public function reschedule($id, $post, array $files)
+    {
+        $userId = $this->session->userdata('app_session')['id_user'] ?? 1;
+        $mulai = trim((string)($post['tgl_mulai'] ?? ''));
+        $alasan = trim((string)($post['alasan'] ?? ''));
+        $idTrainer = (int)($post['id_trainer'] ?? 0);
+
+        $e = [];
+        $dt = DateTime::createFromFormat('Y-m-d', $mulai);
+        if ($mulai === '') $e['tgl_mulai'] = 'Isi tanggal mulai baru';
+        elseif (!$dt || $dt->format('Y-m-d') !== $mulai) $e['tgl_mulai'] = 'Tanggal tidak valid';
+        elseif ($mulai < date('Y-m-d')) $e['tgl_mulai'] = 'Tanggal mulai tidak boleh sebelum hari ini';
+        if ($alasan === '') $e['alasan'] = 'Alasan reschedule wajib diisi';
+        elseif (mb_strlen($alasan) > 500) $e['alasan'] = 'Alasan maksimal 500 karakter';
+        if (!$files) $e['evidence'] = 'Unggah minimal satu file evidence';
+        $tr = $idTrainer ? $this->db->get_where('ms_trainer', ['id' => $idTrainer])->row_array() : null;
+        if (!$tr) $e['id_trainer'] = 'Pilih trainer';
+        if ($e) return ['status' => 0, 'msg' => 'Belum tersimpan — perbaiki isian yang ditandai', 'errors' => $e];
+
+        $this->db->trans_start();
+        $old = $this->db->query('SELECT * FROM penjualan_program WHERE id = ? FOR UPDATE', [(int)$id])->row_array();
+        if (!$old) { $this->db->trans_complete(); return ['status' => 0, 'msg' => 'Penjualan Program tidak ditemukan']; }
+        if ($why = $this->reschedule_block($old)) { $this->db->trans_complete(); return ['status' => 0, 'msg' => $why, 'code' => 422]; }
+        if (!$tr['aktif'] && (int)$old['id_trainer'] !== $idTrainer) { $this->db->trans_complete(); return ['status' => 0, 'msg' => 'Trainer harus berstatus Aktif', 'errors' => ['id_trainer' => 'Trainer harus berstatus Aktif']]; }
+
+        // Durasi tetap: selesai = mulai baru + durasi - 1, supaya costing Final tidak berubah (PJ-FR-26).
+        $durasi = max(1, (int)$old['durasi_hari']);
+        $selesai = (new DateTime($mulai))->modify('+' . ($durasi - 1) . ' day')->format('Y-m-d');
+        $tglBerubah = $mulai !== $old['tgl_mulai'];
+        $trainerBerubah = (int)$old['id_trainer'] !== $idTrainer;
+        if (!$tglBerubah && !$trainerBerubah) {
+            $this->db->trans_complete();
+            return ['status' => 0, 'msg' => 'Jadwal belum berubah: ganti tanggal atau trainer', 'errors' => ['tgl_mulai' => 'Jadwal belum berubah: ganti tanggal atau trainer']];
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $upd = ['tgl_mulai' => $mulai, 'tgl_selesai' => $selesai, 'id_trainer' => $idTrainer, 'updated_by' => $userId, 'updated_date' => $now];
+        $this->db->where('id', $old['id'])->update('penjualan_program', $upd);
+
+        // ponytail: penjualan lama bisa belum punya trainer (PJ-FR-23 baru wajib di to be) sedangkan id_trainer_lama NOT NULL; dicatat sama dengan trainer baru.
+        $this->db->insert('penjualan_program_reschedule', [
+            'id_penjualan' => $old['id'], 'tgl_mulai_lama' => $old['tgl_mulai'], 'tgl_selesai_lama' => $old['tgl_selesai'] ?: $old['tgl_mulai'],
+            'tgl_mulai_baru' => $mulai, 'tgl_selesai_baru' => $selesai,
+            'id_trainer_lama' => $old['id_trainer'] ? (int)$old['id_trainer'] : $idTrainer, 'id_trainer_baru' => $idTrainer,
+            'alasan' => $alasan, 'created_by' => $userId, 'created_date' => $now,
+        ]);
+        $rid = $this->db->insert_id();
+        foreach ($files as $f) {
+            $this->db->insert('penjualan_program_reschedule_evidence', ['id_reschedule' => $rid, 'nama_file' => mb_substr($f['orig'], 0, 255), 'path_file' => $f['path'], 'tipe_file' => $f['tipe'], 'ukuran_byte' => (int)$f['size']]);
+        }
+
+        // SO-FR-16: tanggal berubah = semua Sales Order program itu naik satu revisi; ganti trainer saja tidak.
+        $naik = [];
+        if ($tglBerubah && $this->db->table_exists('sales_order')) {
+            $naik = array_column($this->db->select('nomor')->get_where('sales_order', ['id_penjualan' => $old['id']])->result_array(), 'nomor');
+            if ($naik) $this->db->set('revisi', 'revisi + 1', false)->where('id_penjualan', $old['id'])->update('sales_order');
+        }
+        $this->db->trans_complete();
+        if ($this->db->trans_status() === false) return ['status' => 0, 'msg' => 'Gagal menyimpan reschedule, tidak ada data yang berubah'];
+
+        $trLama = $old['id_trainer'] ? ($this->db->get_where('ms_trainer', ['id' => (int)$old['id_trainer']])->row_array()['nama'] ?? '—') : '—';
+        write_log('Penjualan Program', 'Reschedule', 'Reschedule Penjualan Program ' . $old['nomor'] . ': ' . $alasan, [
+            'old' => array_merge($old, ['trainer' => $trLama]),
+            'new' => array_merge($old, $upd, ['trainer' => $tr['nama']]),
+            'detail_changes' => array_merge(
+                array_map(function ($f) { return ['old' => null, 'new' => $f['orig']]; }, array_combine(array_map(function ($f) { return 'Evidence - ' . $f['orig']; }, $files), $files)),
+                array_combine(array_map(function ($n) { return 'Sales Order ' . $n . ' - Revisi'; }, $naik), array_map(function ($n) { return ['old' => null, 'new' => '+1']; }, $naik)) ?: []
+            ),
+        ], 'penjualan_program', $old['id'], $old['nomor']);
+
+        return ['status' => 1, 'msg' => $old['nomor'] . ' di-reschedule ke ' . date('d-m-Y', strtotime($mulai)) . ' – ' . date('d-m-Y', strtotime($selesai)) . ($naik ? '; ' . count($naik) . ' Sales Order naik revisi' : ''),
+                'revisi_so' => count($naik)];
     }
 }

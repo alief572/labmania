@@ -49,7 +49,9 @@ def live_files():
     files = ["CLAUDE.md", "README.md"]
     for pattern in ("context/**/*.md", ".claude/agents/*.md", ".opencode/agent/*.md"):
         files += glob.glob(pattern, recursive=True)
-    return sorted(f for f in set(files) if "/examples/" not in f)
+    # Windows glob returns backslashes; normalise so EXAMPLES prefixes and "/examples/" match on every OS.
+    files = {f.replace("\\", "/") for f in files}
+    return sorted(f for f in files if "/examples/" not in f)
 
 
 FILES = live_files()

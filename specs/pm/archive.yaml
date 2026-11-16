@@ -26,4 +26,100 @@
 #
 #   git log --all --diff-filter=D -- '*{slug}*'
 
-issues: []
+issues:
+  - id: 7
+    title: Fase 6 operasional peserta dan pengajuan biaya Laravel
+    type: integration
+    slug: 7-fase6-operasional-biaya
+    status: done
+    source: Plan disetujui dan implementasi diminta pengguna 14-11-2026
+    depends_on: [5, 6]
+    closed: 2026-11-14
+    summary: >-
+      Manage Peserta Deal, Name Table/Daftar Hadir/XLSX, draft tanpa nomor/konfirmasi nama, BNSP dan monitoring;
+      survei dengan snapshot/rekap/XLSX tetapi publik tetap nonaktif; biaya/Overbudget/approval/Paid dan Close atomik.
+      Penerbitan resmi menunggu BA. Sepuluh tabel/143 kolom cocok ERD; role Admin bisnis/Direktur tanpa anggota/grant.
+      Cakupan dan lock program, self-approve ditolak, budget per kategori, pengajuan existing tetap bisa setelah Closed.
+      SQLite akhir 160 tes/1867 assertion; MySQL lengkap 68/947, fokus fase 6 18/155 dan regresi role terakhir 1/11 lulus.
+      Build, 12 cek frontend, 20 PHP syntax/Pint, routes, Composer validate, Composer/npm audit 0 advisori lulus.
+      Tiga PDF/26 halaman dan empat halaman ERD dirender; XLSX dan mutasi guard Closed diverifikasi.
+      Context lint 0 error/9 warning existing; 4762 berkas protected cocok; dependency tetap.
+      Laravel 11 existing berubah (8 kode/3 dokumentasi), 21 baru, 0 dihapus. Sisa BA/grant/font/data/UAT/volume
+      dan rehearsal/cutover di issue 2; tanpa browser, commit atau cutover. Bukti .artifacts/fase6_operasional_biaya/.
+  - id: 6
+    title: Laravel fase 5 Reschedule berantai dan Refund
+    type: feature
+    slug: 6-laravel-fase5-reschedule-refund
+    status: done
+    source: Plan fase 5 disetujui pengguna, 14-11-2026
+    depends_on: [5]
+    closed: 2026-11-14
+    summary: >-
+      Reschedule H-7 inklusif, evidence privat, revisi berantai/snapshot PDF/nama tim, token baru,
+      konfirmasi ulang Public/B2B sampai H-1 00.00 WIB dan proses Sales tanpa pembatalan saat GET.
+      Keluar, Invoice belum dibayar Batal dan tagih ulang setelah konfirmasi Deal tuntas; Invoice lunas tetap.
+      Refund dari dana lunas teralokasi, izin Finance terpisah, transfer/pembalikan jurnal manual, bukti privat,
+      penyelesaian sekali dan audit. Lima tabel baru/80 kolom pada salinan Laravel, ERD dirender dan cocok.
+      SQLite final 144 tes/1722 assertion; MySQL lengkap 52/752 dan ulang fase 5 final 11/185 lulus.
+      Build, 12 cek frontend angka, Pint/PHP syntax, routes, Composer validate, npm audit 0 advisori;
+      context lint 0 error/9 warning existing. Tujuh PDF/11 halaman diperiksa; 586 berkas protected cocok.
+      Laravel 27 berubah/16 baru/0 dihapus, dependency tetap. Audit Composer timeout eksternal, dicatat di issue 2
+      bersama grant Finance, konfigurasi, BA/data/UAT/lingkungan dan rehearsal volume/backup.
+      Tanpa browser, commit atau cutover. Bukti .artifacts/fase5_reschedule_refund/ di root repository.
+  - id: 5
+    title: Laravel fase 4 Sales Order dan Invoice
+    type: feature
+    slug: 5-laravel-fase4-sales-order-invoice
+    status: done
+    source: Plan fase 4 disetujui pengguna, 14-11-2026
+    depends_on: [4]
+    closed: 2026-11-14
+    summary: >-
+      SO daftar/detail/dokumen privat/Siap Invoice/PDF, Surat Tugas snapshot/PDF, Invoice satu aktif per SO,
+      Public satu Invoice dan B2B all-in, perhitungan Rupiah/jurnal snapshot, pelunasan penuh sekali tanpa jurnal kas,
+      bukti setor WAPU atomik/idempoten dan PDF/Excel. Migration hanya pada salinan labmania_laravel; FK fisik
+      Invoice-SO/child tetap, COA MyISAM memakai referensi logis berindeks + validasi server tanpa konversi engine.
+      SQLite 133 tes/1555 assertion dan MySQL lengkap 42 tes/627 assertion lulus; build, Pint/lint, 12 pemeriksaan frontend,
+      Composer/npm audit dan context lint (0 error/9 warning existing) selesai. Sembilan PDF (11 halaman) dan ERD
+      dirender/diperiksa. Hash 586 berkas protected baseline cocok; Laravel 22 berubah/24 baru/0 dihapus.
+      Konfigurasi sah, grant role, Company NULL, ST lama, BA/data/UAT/lingkungan tetap di issue 2.
+      Tanpa browser, commit atau cutover. Bukti final di .artifacts/fase4_sales_order_invoice/ pada root repository.
+  - id: 4
+    title: Fase 3 Penjualan Program dan Quotation Laravel
+    type: integration
+    slug: 4-fase3-penjualan-quotation
+    status: done
+    source: Rencana disetujui pengguna 13-11-2026
+    depends_on: [1, 3]
+    closed: 2026-11-14
+    summary: >-
+      Penjualan Public/B2B dari Master Program Final, JP/trainer/asisten/costing, Quotation empat langkah dan PDF,
+      link konfirmasi Public/PIC B2B sampai H-14, Data Peserta/Excel/surat privat/riwayat, dokumen customer, dan Deal
+      atomik/idempoten yang mencocokkan Master Peserta, membuat satu SO per quotation dan Surat Tugas pertama per program.
+      Audit publik created_by NULL dengan actor_type publik dari server; audit internal tetap wajib akun. Migration hanya
+      pada salinan labmania_laravel. SQLite lengkap 117 tes/1299 assertion; MySQL lengkap 29 tes/384 assertion, lalu tiga tes
+      MySQL terkait tampilan/Closed diulang sesudah koreksi akhir (96 assertion), semua lulus. Build TypeScript/Vite,
+      delapan pemeriksaan frontend rupiah, Pint/lint, Composer/npm audit lulus. Tujuh PDF dirender/diperiksa; tiga halaman
+      ERD direkonsiliasi, enam halaman lain identik. Hash 586 berkas protected CI3/assets/database cocok dengan baseline.
+      Tanpa browser, commit, atau cutover. Sisa BA/data/UAT/lingkungan masuk issue 2; modul lengkap SO/invoice dan fase 4–7
+      tetap di luar cakupan. Bukti di .artifacts/fase3_penjualan_quotation/ pada root repository.
+  - id: 1
+    title: Fondasi Laravel fase 1
+    type: integration
+    slug: 1-fondasi-laravel
+    status: done
+    source: Permintaan pengguna 13-11-2026, lanjut fase 1 sesudah checkpoint
+    depends_on: []
+    closed: 2026-11-13
+    summary: >-
+      Fondasi Laravel terisolasi di laravel/ (Laravel 13.42, PHP 8.5.12, Inertia 3/Vue 3/TypeScript): login username dengan hash legacy, TOTP wajib, enroll autentikator hanya lewat token admin sekali pakai, permission role + override dengan Approve terpisah dan delegasi dibatasi subset hak aktor, dua sumber dokumen privat, Activity Log dengan write_log tujuh argumen. Diverifikasi di SQLite in-memory: PHPUnit 34 tes/352 assertion, Pint, build vue-tsc+Vite, composer validate/audit, npm audit bersih; hash 586 file CI3/assets/database sama dengan baseline fase 0. Tidak diuji: MySQL nyata, browser/UAT. Data CI3 tidak diubah.
+  - id: 3
+    title: Fase 2 Master Data dan Master Program di Laravel
+    type: integration
+    slug: 3-fase2-master-data-program
+    status: done
+    source: Permintaan pengguna 13-11-2026, lanjut fase 2 sesudah penutupan issue 1
+    depends_on: []
+    closed: 2026-11-13
+    summary: >-
+      Master Data dan Master Program dimigrasikan ke laravel/: empat master atribut, Product (n baris jadi n Product, unik hanya aktif lewat kolom turunan kombinasi_aktif), Katalog + PDF (mpdf), Master Rate, dua Template, Peserta, Company (NPWP wajib), Trainer (lampiran privat, akun login), User, Role, dan Master Program (JP wajib tanpa backfill, multi-Product satu costing, Finalkan memakai hak Approve terpisah). Salinan db_labmania dibuat read-only ke labmania_laravel (34 tabel, 617 baris, jumlah cocok) dengan akun MySQL terbatas; migrasi to-be hanya jalan di salinan. Diverifikasi: PHPUnit SQLite 100 tes/998 assertion, suite MySQL asli 11 tes/123 assertion di DB *_test, Pint, build vue-tsc+Vite, composer/npm audit bersih; hash 586 file CI3/assets/database sama dengan baseline; ERD tiga halaman direkonsiliasi dan dirender. Tidak diuji: browser/UAT, data nyata (salinan hampir kosong, profil data semua 0 bukan bukti data bersih). Butir USULAN BA dibangun sesuai usulan dan dicatat di walkthrough.

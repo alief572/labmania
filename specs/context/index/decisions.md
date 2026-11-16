@@ -15,7 +15,7 @@ the body shape.
 
 | # | Decision | Body |
 |---|---|---|
-| — | _Empty._ | — |
+| 1 | **Laravel dibangun terpisah; CI3 tetap aktif sampai satu kali cutover.** | [1-laravel-terpisah.md](decisions/1-laravel-terpisah.md) |
 
 ## What belongs here, and what does not
 

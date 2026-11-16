@@ -17,7 +17,15 @@
 
   var isNew = function () { return !S.p.id; };
   var locked = function () { return S.p.status !== 'draft'; };
-  var paketOf = function () { return S.p.paket ? PAKET[S.p.paket] : null; };
+  // p.paket = daftar id Product (urutan 1 = utama). paketOf() menggabungkan judul/nomor dengan " + " untuk ringkasan langkah.
+  var paketIds = function () { return [].concat(S.p.paket || []).filter(Boolean); };
+  var paketList = function () { return paketIds().map(function (id) { return PAKET[id]; }).filter(Boolean); };
+  var paketOf = function () {
+    var l = paketList();
+    if (!l.length) return null;
+    if (l.length === 1) return l[0];
+    return Object.assign({}, l[0], { judul: l.map(function (x) { return x.judul; }).join(' + '), nomor: l.map(function (x) { return x.nomor; }).join(' + ') });
+  };
   var digits = function (s) { return String(s == null ? '' : s).replace(/\D/g, ''); };
   var fmtRibu = function (v) { return window.fmtRibu(v === '' || v == null ? '' : v); };
   var $q = function (sel) { return root.querySelector(sel); };
@@ -115,13 +123,20 @@
       field('Jenis', '<div class="static"><span class="muted">Umum — Public/B2B dipilih di Penjualan Program</span></div>') +
       field('Status', '<div class="static"><span class="badge st-' + p.status + '">' + STATUS_LBL[p.status] + '</span></div>') + '</div></div>';
 
-    var paketOpts = INIT.pakets.map(function (x) {
-      return '<option value="' + x.id + '" ' + (x.id === p.paket ? 'selected' : '') + '>' + esc(x.nomor) + ' — ' + esc(x.judul) + ' · ' + esc(x.sertifikat || '') + (x.aktif ? '' : ' (nonaktif)') + '</option>';
+    var ids = paketIds(), terpilih = paketList();
+    var paketOpts = INIT.pakets.filter(function (x) { return x.aktif && ids.indexOf(x.id) < 0; }).map(function (x) {
+      return '<option value="' + x.id + '">' + esc(x.nomor) + ' — ' + esc(x.judul) + (x.varian ? ' · ' + esc(x.varian) : '') + ' · ' + esc(x.sertifikat || '') + '</option>';
     }).join('');
-    var pk = paketOf();
+    var rows = terpilih.map(function (x, i) {
+      return '<li class="mp-prod"><span><span class="code">' + esc(x.nomor) + '</span> <b>' + esc(x.judul) + '</b>' +
+        '<span class="hint">Produk: ' + esc(x.produk) + ' · Bidang: ' + esc(x.bidang) + ' · Varian: ' + esc(x.varian || 'Belum diisi') + ' · Sertifikat: ' + esc(x.sertifikat) + (x.aktif ? '' : ' · nonaktif') + '</span></span>' +
+        (lock ? '' : '<button type="button" class="btn btn-ghost sm danger-t" data-act="prod-del" data-i="' + i + '" aria-label="Hapus ' + esc(x.judul) + ' dari Master Program">Hapus</button>') + '</li>';
+    }).join('');
     var s1 = step(1, 'Informasi Program', '',
-      field('Paket Produk (dari Product Combine)' + REQ, '<select class="input" data-pf="paket" ' + (lock ? 'disabled' : '') + '><option value="">— Pilih Paket Produk aktif —</option>' + paketOpts + '</select>' +
-        (pk ? '<span class="hint">Produk: ' + esc(pk.produk) + ' · Bidang: ' + esc(pk.bidang) + ' · Sertifikat: ' + esc(pk.sertifikat) + '</span>' : ''), E.paket) +
+      field('Product' + REQ + ' <span class="muted">(boleh lebih dari satu)</span>',
+        (terpilih.length ? '<ol class="mp-prods">' + rows + '</ol>' : '<p class="muted mp-prods-empty">Belum ada Product dipilih.</p>') +
+        (lock ? '' : '<select class="input" id="mp-prod-add" aria-label="Tambah Product"><option value="">+ Tambah Product aktif…</option>' + paketOpts + '</select>') +
+        '<span class="hint">Costing tetap satu untuk seluruh Master Program (bagian 2 – 4), berapa pun Product yang dipilih.</span>', E.paket) +
       simInputs('angka baseline; bisa disesuaikan per Penjualan Program tanpa mengubah master. Juga tampil di bagian 4.'));
 
     var s2 = step(2, 'Fixed Cost', 'semua item aktif Master Rate langsung tampil dengan Default Cost; klik × pada item yang tidak dipakai (dapat ditambah lagi lewat + Tambah); item bernilai 0 tidak disimpan. Qty: event = 1, day = durasi.',
@@ -182,7 +197,7 @@
   function validate() {
     var p = S.p, E = {};
     var posInt = function (v) { return v !== '' && Number.isInteger(Number(v)) && Number(v) > 0; };
-    if (!p.paket) E.paket = 'Pilih Paket Produk';
+    if (!paketIds().length) E.paket = 'Pilih minimal satu Product';
     if (!posInt(p.durasi)) E.durasi = 'Durasi bilangan bulat > 0';
     if (!posInt(p.targetPeserta)) E.targetPeserta = 'Target peserta bilangan bulat > 0';
     if (p.hargaJual === '' || p.hargaJual < 0) E.hargaJual = 'Harga jual / peserta wajib diisi';
@@ -214,7 +229,7 @@
       jQuery.ajax({
         url: URL_BASE + 'save', type: 'POST', dataType: 'json',
         data: {
-          id: p.id || '', id_paket_produk: p.paket, durasi_hari: p.durasi, target_peserta: p.targetPeserta, harga_jual_peserta: p.hargaJual, target_profit: p.targetProfit,
+          id: p.id || '', paket: paketIds(), durasi_hari: p.durasi, target_peserta: p.targetPeserta, harga_jual_peserta: p.hargaJual, target_profit: p.targetProfit,
           biaya: p.biaya.map(function (b) { return { id_rate: b.rate || '', tipe: b.tipe, item: b.item, id_satuan: b.id_satuan, harga: b.harga, is_manual: b.manual ? 1 : 0 }; })
         }
       }).done(function (res) {
@@ -242,6 +257,7 @@
       var sec = $q('.step[data-step="' + n + '"]'); sec.classList.toggle('collapsed', !!S.collapsed[n]); el.setAttribute('aria-expanded', !S.collapsed[n]);
     },
     del: function (el) { S.p.biaya.splice(+el.dataset.i, 1); S.errors = {}; render(); },
+    'prod-del': function (el) { var l = paketIds(); l.splice(+el.dataset.i, 1); S.p.paket = l; S.errors = {}; render(); },
     add: function (el) {
       var g = GROUPS[+el.dataset.g], sel = $q('#' + g.pick), r = sel && sel.value ? RATE[sel.value] : null;
       if (!r) return;
@@ -280,13 +296,13 @@
     if (t.dataset.pf) {
       var name = t.dataset.pf, v = t.value;
       if (MONEY.indexOf(name) >= 0) v = digits(v) === '' ? '' : Number(digits(v));
-      else if (name !== 'paket') v = v === '' ? '' : Number(v);
-      S.p[name] = name === 'paket' ? (v === '' ? '' : Number(v)) : v;
+      else v = v === '' ? '' : Number(v);
+      S.p[name] = v;
       // Input simulasi muncul dua kali (bagian 1 dan 4): samakan nilainya.
       if (MONEY.indexOf(name) >= 0 || name === 'durasi' || name === 'targetPeserta') {
         root.querySelectorAll('[data-pf="' + name + '"]').forEach(function (o) { if (o !== t) o.value = MONEY.indexOf(name) >= 0 ? fmtRibu(S.p[name]) : S.p[name]; });
       }
-      if (name !== 'paket') refreshCalc();
+      refreshCalc();
     } else if (t.dataset.bi !== undefined) {
       var b = S.p.biaya[+t.dataset.bi];
       if (t.dataset.bf === 'harga') b.harga = digits(t.value) === '' ? '' : Number(digits(t.value));
@@ -295,7 +311,7 @@
     }
   });
   root.addEventListener('change', function (e) {
-    if (e.target.dataset.pf === 'paket') { render(); } // hint atribut paket & ringkasan langkah 1 ikut berubah
+    if (e.target.id === 'mp-prod-add' && e.target.value) { S.p.paket = paketIds().concat(Number(e.target.value)); S.errors = {}; render(); } // daftar Product & ringkasan langkah 1 ikut berubah
   });
 
   // labmania.js (fmtRibu, toast, openModal) dimuat di kaki halaman, setelah isi view ini: render setelah halaman selesai dimuat.

@@ -122,7 +122,7 @@ class Master_program extends Labmania_Controller
                 return ['rate' => $b['id_rate'] ? (int)$b['id_rate'] : null, 'tipe' => $b['tipe'], 'item' => $b['item'],
                         'satuan' => $b['nama_satuan'], 'id_satuan' => (int)$b['id_satuan'], 'harga' => (int)round($b['harga']), 'manual' => (bool)$b['is_manual']];
             }, $program['biaya']);
-            $p = ['id' => (int)$program['id'], 'nomor' => $program['nomor'], 'status' => $program['status'], 'paket' => (int)$program['id_paket_produk'],
+            $p = ['id' => (int)$program['id'], 'nomor' => $program['nomor'], 'status' => $program['status'], 'paket' => array_map('intval', $program['paket_ids']),
                   'durasi' => (int)$program['durasi_hari'], 'targetPeserta' => (int)$program['target_peserta'],
                   'hargaJual' => (int)round($program['harga_jual_peserta']), 'targetProfit' => $program['target_profit'] > 0 ? (int)round($program['target_profit']) : '', 'biaya' => $biaya];
         } else {
@@ -131,7 +131,7 @@ class Master_program extends Labmania_Controller
                 return ['rate' => (int)$r['id'], 'tipe' => 'fixed', 'item' => $r['item'], 'satuan' => $r['nama_satuan'], 'id_satuan' => (int)$r['id_satuan'],
                         'harga' => (int)round($r['default_cost']), 'manual' => false];
             }, $this->mp_model->get_default_fixed_costs());
-            $p = ['id' => null, 'nomor' => null, 'status' => 'draft', 'paket' => '', 'durasi' => 1, 'targetPeserta' => 10, 'hargaJual' => '', 'targetProfit' => '', 'biaya' => $biaya];
+            $p = ['id' => null, 'nomor' => null, 'status' => 'draft', 'paket' => [], 'durasi' => 1, 'targetPeserta' => 10, 'hargaJual' => '', 'targetProfit' => '', 'biaya' => $biaya];
         }
 
         $satuan = [];
@@ -141,8 +141,8 @@ class Master_program extends Labmania_Controller
 
         $pakets = array_map(function ($pk) {
             return ['id' => (int)$pk['id'], 'nomor' => $pk['nomor'], 'judul' => $pk['judul'], 'aktif' => (int)$pk['aktif'],
-                    'produk' => $pk['nama_produk'], 'bidang' => $pk['nama_bidang'], 'sertifikat' => $pk['nama_sertifikasi']];
-        }, $this->mp_model->get_paket_options($program['id_paket_produk'] ?? null));
+                    'produk' => $pk['nama_produk'], 'bidang' => $pk['nama_bidang'], 'varian' => $pk['nama_varian'], 'sertifikat' => $pk['nama_sertifikasi']];
+        }, $this->mp_model->get_paket_options($program['paket_ids'] ?? []));
 
         return ['init' => ['program' => $p, 'pakets' => $pakets, 'rates' => $rates, 'satuan' => $satuan]];
     }

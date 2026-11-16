@@ -22,6 +22,7 @@
           <th class="num">#</th>
           <th>Produk</th>
           <th>Bidang</th>
+          <th>Varian</th>
           <th>Sertifikat</th>
           <th class="act">Action</th>
         </tr>
@@ -30,7 +31,7 @@
     </table>
   </div>
   <button type="button" class="btn btn-outline" onclick="addRow()">+ Tambah Baris</button>
-  <p class="hint">Antar paket minimal satu dari tiga atribut harus berbeda. Hanya data master berstatus Aktif yang dapat dipilih.</p>
+  <p class="hint">Antar paket minimal satu dari empat atribut harus berbeda. Hanya data master berstatus Aktif yang dapat dipilih.</p>
 </div>
 
 <div class="form-actions">
@@ -42,6 +43,7 @@
 var ATTRS = [
   { field: 'produk',      label: 'Produk',     options: <?= json_encode($jenis_produk); ?> },
   { field: 'bidang',      label: 'Bidang',     options: <?= json_encode($jenis_bidang); ?> },
+  { field: 'varian',      label: 'Varian',     options: <?= json_encode($varian); ?> },
   { field: 'sertifikasi', label: 'Sertifikat', options: <?= json_encode($jenis_sertifikasi); ?> }
 ];
 var esc = function (v) { return $('<div>').text(v == null ? '' : v).html(); };
@@ -87,7 +89,7 @@ function showErrors(errors) {
   $('#combine-rows tr.combine-row').each(function (i) {
     var msg = errors[i];
     $(this).toggleClass('row-err', !!msg);
-    if (msg) $('<tr class="row-msg"><td></td><td colspan="4"><i>!</i>' + esc(msg) + '</td></tr>').insertAfter(this);
+    if (msg) $('<tr class="row-msg"><td></td><td colspan="5"><i>!</i>' + esc(msg) + '</td></tr>').insertAfter(this);
   });
 }
 

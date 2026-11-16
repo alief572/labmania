@@ -14,6 +14,9 @@ class Master_data extends Labmania_Controller
         'jenis_bidang' => ['master_data.jenis_bidang', 'lihat'],
         'save_jenis_bidang' => ['master_data.jenis_bidang', 'simpan', true],
         'toggle_jenis_bidang' => ['master_data.jenis_bidang', 'aktif', true],
+        'varian_pelaksanaan' => ['master_data.varian_pelaksanaan', 'lihat'],
+        'save_varian_pelaksanaan' => ['master_data.varian_pelaksanaan', 'simpan', true],
+        'toggle_varian_pelaksanaan' => ['master_data.varian_pelaksanaan', 'aktif', true],
         'attr_data' => ['master_data.{seg3}', 'lihat', true],
         'attr_next_code' => ['master_data.{seg3}', 'tambah', true],
         'paket_produk' => ['master_data.paket_produk', 'lihat'],
@@ -24,6 +27,9 @@ class Master_data extends Labmania_Controller
         'paket_detail' => ['master_data.paket_produk', 'ubah', true],
         'toggle_paket' => ['master_data.paket_produk', 'aktif', true],
         'katalog' => ['master_data.katalog', 'lihat'],
+        'katalog_list' => ['master_data.katalog', 'lihat', true],
+        'save_lingkup' => ['master_data.katalog', 'ubah', true],
+        'katalog_pdf' => ['master_data.katalog', 'cetak'],
         'peserta' => ['master_data.peserta', 'lihat'],
         'peserta_data' => ['master_data.peserta', 'lihat', true],
         'peserta_next_code' => ['master_data.peserta', 'tambah', true],
@@ -89,7 +95,7 @@ class Master_data extends Labmania_Controller
     /** Data tabel atribut (server-side DataTables). $type = jenis_produk | jenis_sertifikasi | jenis_bidang. */
     public function attr_data($type)
     {
-        $map = ['jenis_produk' => 'Jenis Produk', 'jenis_sertifikasi' => 'Jenis Sertifikat', 'jenis_bidang' => 'Jenis Bidang'];
+        $map = ['jenis_produk' => 'Jenis Produk', 'jenis_sertifikasi' => 'Jenis Sertifikat', 'jenis_bidang' => 'Jenis Bidang', 'varian_pelaksanaan' => 'Varian Pelaksanaan'];
         if (!isset($map[$type])) show_404();
         $table = 'ms_' . $type;
         $kodeMenu = 'master_data.' . $type;
@@ -120,7 +126,7 @@ class Master_data extends Labmania_Controller
         ]));
     }
 
-    // ---- Helper server-side DataTables (Product Combine, Rate, Template, User) ----
+    // ---- Helper server-side DataTables (Product, Rate, Template, User) ----
     private function ssp_params() { return $this->input->post() ?: $this->input->get(); }
 
     private function ssp_out($total, $filtered, $data)
@@ -157,14 +163,14 @@ class Master_data extends Labmania_Controller
     private static $P_POWER = '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>';
     private static $P_EYE = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
 
-    /** Data tabel Product Combine (server-side). */
+    /** Data tabel Product (server-side). */
     public function paket_data()
     {
         list($t, $f, $rows) = $this->md_model->ssp_datatable('paket_produk', 'pp', $this->ssp_params(), [
-            'select' => 'pp.*, jp.nama as nama_produk, js.nama as nama_sertifikasi, jb.nama as nama_bidang',
-            'join'   => [['ms_jenis_produk jp', 'pp.id_jenis_produk = jp.id'], ['ms_jenis_sertifikasi js', 'pp.id_jenis_sertifikasi = js.id'], ['ms_jenis_bidang jb', 'pp.id_jenis_bidang = jb.id']],
-            'search' => ['pp.nomor', 'pp.judul', 'jp.nama', 'jb.nama', 'js.nama'],
-            'order'  => [1 => 'pp.nomor', 2 => 'pp.judul', 3 => 'jp.nama', 4 => 'jb.nama', 5 => 'js.nama', 6 => 'pp.aktif'],
+            'select' => 'pp.*, jp.nama as nama_produk, js.nama as nama_sertifikasi, jb.nama as nama_bidang, vp.nama as nama_varian',
+            'join'   => [['ms_jenis_produk jp', 'pp.id_jenis_produk = jp.id'], ['ms_jenis_sertifikasi js', 'pp.id_jenis_sertifikasi = js.id'], ['ms_jenis_bidang jb', 'pp.id_jenis_bidang = jb.id'], ['ms_varian_pelaksanaan vp', 'pp.id_varian_pelaksanaan = vp.id']],
+            'search' => ['pp.nomor', 'pp.judul', 'jp.nama', 'jb.nama', 'vp.nama', 'js.nama'],
+            'order'  => [1 => 'pp.nomor', 2 => 'pp.judul', 3 => 'jp.nama', 4 => 'jb.nama', 5 => 'vp.nama', 6 => 'js.nama', 7 => 'pp.aktif'],
             'default' => 'pp.id', 'kode' => 'nomor',
         ]);
         $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
@@ -177,6 +183,7 @@ class Master_data extends Labmania_Controller
                 '<b>' . $e($r['judul']) . '</b>',
                 '<span class="tag tag-public">' . $e($r['nama_produk'] ?? '—') . '</span>',
                 $e($r['nama_bidang'] ?? '—'),
+                $r['nama_varian'] !== null ? $e($r['nama_varian']) : '<span class="muted">Belum diisi</span>',
                 '<span class="tag tag-b2b">' . $e($r['nama_sertifikasi'] ?? '—') . '</span>',
                 $this->badge_aktif($r['aktif']),
                 hist_cell($r),
@@ -344,7 +351,7 @@ class Master_data extends Labmania_Controller
     /** Pratinjau kode berikutnya untuk modal Tambah (kode final dibuat saat simpan). */
     public function attr_next_code($type)
     {
-        $prefix = ['jenis_produk' => 'JP', 'jenis_sertifikasi' => 'JS', 'jenis_bidang' => 'JB'][$type] ?? show_404();
+        $prefix = ['jenis_produk' => 'JP', 'jenis_sertifikasi' => 'JS', 'jenis_bidang' => 'JB', 'varian_pelaksanaan' => 'VP'][$type] ?? show_404();
         return $this->output->set_content_type('application/json')
             ->set_output(json_encode(['kode' => $this->md_model->generate_code('ms_' . $type, $prefix)]));
     }
@@ -434,30 +441,66 @@ class Master_data extends Labmania_Controller
         return $this->output->set_content_type('application/json')->set_output(json_encode($res));
     }
 
+    // Varian Pelaksanaan (to be TB-1, FR-07): cara melaksanakan suatu jenis bidang.
+    public function varian_pelaksanaan()
+    {
+        $this->template->title('Varian Pelaksanaan');
+        $this->template->set('breadcrumbs', 'Master Data / <b>Varian Pelaksanaan</b>');
+        $this->template->render('attr_list', [
+            'type'        => 'varian_pelaksanaan',
+            'title'       => 'Varian Pelaksanaan',
+            'ref'         => 'FR-07',
+            'desc'        => 'Cara melaksanakan suatu jenis bidang, mis. In House Training atau Workshop.',
+            'save_url'    => site_url('master_data/save_varian_pelaksanaan'),
+            'toggle_url'  => site_url('master_data/toggle_varian_pelaksanaan'),
+            'code_label'  => 'Kode Varian',
+            'name_label'  => 'Jenis Varian'
+        ]);
+    }
+
+    public function save_varian_pelaksanaan()
+    {
+        $id = $this->input->post('id');
+        $nama = $this->input->post('nama');
+        if (empty(trim($nama))) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 0, 'msg' => 'Nama wajib diisi']));
+        }
+        $res = $this->md_model->save_master_attr('ms_varian_pelaksanaan', 'VP', 'Varian Pelaksanaan', $nama, $id);
+        return $this->output->set_content_type('application/json')->set_output(json_encode($res));
+    }
+
+    public function toggle_varian_pelaksanaan($id)
+    {
+        $res = $this->md_model->toggle_master_attr('ms_varian_pelaksanaan', 'Varian Pelaksanaan', $id);
+        return $this->output->set_content_type('application/json')->set_output(json_encode($res));
+    }
+
     // =========================================================================
     // 2. PRODUCT COMBINE (PAKET PRODUK) & KATALOG
     // =========================================================================
 
     public function paket_produk()
     {
-        $this->template->title('Product Combine');
-        $this->template->set('breadcrumbs', 'Master Data / <b>Product Combine</b>');
+        $this->template->title('Product');
+        $this->template->set('breadcrumbs', 'Master Data / <b>Product</b>');
 
         $this->template->render('paket_list', [ // daftar diisi paket_data (server-side)
             'jenis_produk'      => $this->md_model->get_master_attr('ms_jenis_produk'),
             'jenis_bidang'      => $this->md_model->get_master_attr('ms_jenis_bidang'),
+            'varian'            => $this->md_model->get_master_attr('ms_varian_pelaksanaan'),
             'jenis_sertifikasi' => $this->md_model->get_master_attr('ms_jenis_sertifikasi'),
         ]);
     }
 
     public function combine()
     {
-        $this->template->title('Tambah Product (Combine)');
-        $this->template->set('breadcrumbs', 'Master Data / Product Combine / <b>Tambah Product</b>');
+        $this->template->title('Tambah Product');
+        $this->template->set('breadcrumbs', 'Master Data / Product / <b>Tambah Product</b>');
 
         $data = [
             'jenis_produk'      => $this->md_model->get_master_attr('ms_jenis_produk'),
             'jenis_bidang'      => $this->md_model->get_master_attr('ms_jenis_bidang'),
+            'varian'            => $this->md_model->get_master_attr('ms_varian_pelaksanaan'),
             'jenis_sertifikasi' => $this->md_model->get_master_attr('ms_jenis_sertifikasi')
         ];
         $this->template->render('combine_form', $data);
@@ -487,7 +530,7 @@ class Master_data extends Labmania_Controller
             return $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 0, 'msg' => 'Judul wajib diisi']));
         }
         $res = $this->md_model->update_paket($id, $judul, [
-            'produk' => $this->input->post('produk'), 'bidang' => $this->input->post('bidang'), 'sertifikasi' => $this->input->post('sertifikasi'),
+            'produk' => $this->input->post('produk'), 'bidang' => $this->input->post('bidang'), 'varian' => $this->input->post('varian'), 'sertifikasi' => $this->input->post('sertifikasi'),
         ]);
         return $this->output->set_content_type('application/json')->set_output(json_encode($res));
     }
@@ -496,7 +539,7 @@ class Master_data extends Labmania_Controller
     public function paket_detail($id)
     {
         $r = $this->db->get_where('paket_produk', ['id' => (int)$id])->row_array();
-        if ($r) $r['dipakai'] = $this->db->where('id_paket_produk', (int)$id)->count_all_results('master_program');
+        if ($r) $r['dipakai'] = $this->db->where('id_paket_produk', (int)$id)->count_all_results('master_program_produk');
         return $this->output->set_content_type('application/json')->set_output(json_encode($r ? ['status' => 1, 'data' => $r] : ['status' => 0, 'msg' => 'Data tidak ditemukan']));
     }
 
@@ -511,8 +554,82 @@ class Master_data extends Labmania_Controller
         $this->template->title('Katalog Produk');
         $this->template->set('breadcrumbs', 'Master Data / <b>Katalog Produk</b>');
 
-        $data = ['jumlah_aktif' => $this->db->where('aktif', 1)->count_all_results('paket_produk')];
-        $this->template->render('katalog_view', $data);
+        $opt = $this->md_model->katalog_filter_options();
+        $this->template->render('katalog_view', [
+            'opt_bidang' => $opt['bidang'], 'opt_sert' => $opt['sert'],
+            'can_ubah'   => lm_can('master_data.katalog', 'ubah'), 'can_cetak' => lm_can('master_data.katalog', 'cetak'),
+            'list_html'  => $this->katalog_html($this->input->get('bidang') ?: 'all', $this->input->get('sert') ?: 'all', (string)$this->input->get('q')),
+        ]);
+    }
+
+    /** Kartu katalog per Bidang (HTML), dipakai halaman dan penyegaran lewat AJAX. */
+    private function katalog_html($bidang, $sert, $q)
+    {
+        $rows = $this->md_model->katalog_rows($bidang, $sert, $q);
+        $groups = $this->md_model->katalog_groups($rows);
+        $base = $this->db->where('aktif', 1)->count_all_results('paket_produk');
+        return $this->load->view('katalog_list', [
+            'rows' => $rows, 'groups' => $groups, 'ada_paket' => $base > 0,
+            'filter_text' => $this->katalog_filter_text($bidang, $sert, $q), 'can_ubah' => lm_can('master_data.katalog', 'ubah'),
+        ], true);
+    }
+
+    private function katalog_filter_text($bidang, $sert, $q)
+    {
+        $nm = function ($tbl, $id) {
+            if ($id === 'all' || $id === '') return 'Semua';
+            $r = $this->db->get_where($tbl, ['id' => (int)$id])->row_array();
+            return $r['nama'] ?? 'Semua';
+        };
+        return 'Bidang: ' . $nm('ms_jenis_bidang', $bidang) . ' · Sertifikat: ' . $nm('ms_jenis_sertifikasi', $sert)
+            . (trim($q) !== '' ? ' · Kata kunci: "' . trim($q) . '"' : '');
+    }
+
+    /** Penyegaran daftar kartu (filter/cari) tanpa memuat ulang halaman. */
+    public function katalog_list()
+    {
+        return $this->output->set_content_type('text/html')
+            ->set_output($this->katalog_html($this->input->get('bidang') ?: 'all', $this->input->get('sert') ?: 'all', (string)$this->input->get('q')));
+    }
+
+    public function save_lingkup()
+    {
+        $res = $this->md_model->save_lingkup($this->input->post('id'), $this->input->post('items'));
+        return $this->output->set_content_type('application/json')->set_output(json_encode($res));
+    }
+
+    /** PDF Katalog Produk dari hasil filter yang tampil (FR-62); ditolak bila kosong; tercatat di Activity Log (FR-63). */
+    public function katalog_pdf()
+    {
+        $bidang = $this->input->get('bidang') ?: 'all';
+        $sert = $this->input->get('sert') ?: 'all';
+        $q = (string)$this->input->get('q');
+        $rows = $this->md_model->katalog_rows($bidang, $sert, $q);
+        if (!$rows) show_error('Tidak ada paket produk untuk dicetak — ubah filter terlebih dahulu', 400);
+
+        $filter = $this->katalog_filter_text($bidang, $sert, $q);
+        $html = $this->load->view('katalog_pdf', [
+            'groups' => $this->md_model->katalog_groups($rows), 'rows' => $rows, 'filter_text' => $filter, 'tanggal' => date('d-m-Y'), 'tahun' => date('Y'),
+        ], true);
+
+        write_log('Master Produk', 'Cetak', 'Cetak Katalog Produk (' . count($rows) . ' paket) — ' . $filter, null, null, null, 'Katalog Produk');
+
+        // mPDF 8.3 di PHP 8.5 dapat memunculkan notice deprecated; notice di keluaran akan merusak berkas PDF.
+        $level = error_reporting();
+        error_reporting($level & ~E_DEPRECATED);
+        $tmp = sys_get_temp_dir() . '/labmania_mpdf';
+        if (!is_dir($tmp)) @mkdir($tmp, 0775, true);
+        $mpdf = new \Mpdf\Mpdf([
+            'format' => 'A4', 'orientation' => 'P', 'tempDir' => $tmp, 'default_font' => 'dejavusans', 'default_font_size' => 9,
+            'margin_left' => 0, 'margin_right' => 0, 'margin_top' => 0, 'margin_bottom' => 0,
+        ]);
+        $mpdf->SetTitle('Katalog Produk ' . date('Y'));
+        $mpdf->SetAuthor('Labmania');
+        $mpdf->WriteHTML($html);
+        while (ob_get_level()) ob_end_clean();
+        $mpdf->Output('Katalog-Produk-' . date('d-m-Y') . '.pdf', \Mpdf\Output\Destination::INLINE);
+        error_reporting($level);
+        exit;
     }
 
     // =========================================================================
@@ -538,18 +655,27 @@ class Master_data extends Labmania_Controller
         list($total, $filtered, $rows) = $this->md_model->peserta_datatable($this->input->post() ?: $this->input->get());
         $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
         $svg = function ($d) { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' . $d . '</svg>'; };
-        $fields = ['id', 'kode', 'nama', 'gender', 'instansi', 'id_jenis_bidang', 'id_prov', 'provinsi', 'id_kab', 'kabupaten', 'no_telp', 'email', 'npwp_instansi', 'id_customer'];
+        $fields = ['id', 'kode', 'nama', 'gender', 'instansi', 'id_jenis_bidang', 'id_prov', 'provinsi', 'id_kab', 'kabupaten', 'no_telp', 'email', 'npwp_instansi', 'nik', 'id_customer', 'asal_deal', 'kurang'];
+        $belum = '<span class="muted">Belum diisi</span>';
 
         $data = [];
         foreach ($rows as $i => $r) {
+            // Peserta dari Deal (QTN-FR-33) boleh belum lengkap; tandai dan beri tahu field yang kosong.
+            $kurang = $this->md_model->peserta_kurang($r);
+            $r['kurang'] = $kurang;
             $json = $e(json_encode(array_intersect_key($r, array_flip($fields))));
-            $bidang = $e($r['nama_bidang'] ?? '—') . (isset($r['bidang_aktif']) && !$r['bidang_aktif'] ? ' <span class="muted">(nonaktif)</span>' : '');
+            $bidang = $r['nama_bidang'] !== null && $r['nama_bidang'] !== ''
+                ? $e($r['nama_bidang']) . (isset($r['bidang_aktif']) && !$r['bidang_aktif'] ? ' <span class="muted">(nonaktif)</span>' : '')
+                : $belum;
             $data[] = [
                 $i + 1, // nomor dihitung ulang di sisi klien
                 '<span class="code">' . $e($r['kode']) . '</span>',
-                $e($r['nama']) . '<br><span class="muted">' . $e($r['instansi']) . '</span>',
+                $e($r['nama'])
+                    . ($kurang ? ' <span class="badge st-ps-menunggu" title="Belum diisi: ' . $e(implode(', ', $kurang)) . '">Belum lengkap</span>' : '')
+                    . '<br><span class="muted">' . $e($r['instansi'] ?: '—') . '</span>'
+                    . (!empty($r['asal_deal']) ? '<br><span class="muted">Dari Deal ' . $e($r['asal_deal']) . '</span>' : ''),
                 $bidang,
-                $e($r['kabupaten'] ?: '—') . '<br><span class="muted">' . $e($r['provinsi']) . '</span>',
+                $r['provinsi'] ? $e($r['kabupaten'] ?: '—') . '<br><span class="muted">' . $e($r['provinsi']) . '</span>' : $belum,
                 hist_cell($r),
                 '<button type="button" class="gear" data-gear aria-haspopup="menu" aria-label="Opsi"></button><span class="gear-src" hidden>'
                 . (lm_can('master_data.peserta', 'ubah') ? '<button class="icon-btn" data-json="' . $json . '" onclick="editPeserta(this)" title="Edit">' . $svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>') . '</button>' : '')

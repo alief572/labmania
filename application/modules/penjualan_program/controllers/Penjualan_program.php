@@ -17,6 +17,9 @@ class Penjualan_program extends Labmania_Controller
         'batalkan' => ['penjualan_program', 'aktif', true],
         'cetak_penawaran' => ['penjualan_program', 'lihat', true],
         'penawaran_pdf' => ['penjualan_program', 'lihat'],
+        'reschedule_info' => ['penjualan_program', 'ubah', true],
+        'reschedule_save' => ['penjualan_program', 'ubah', true],
+        'evidence' => ['penjualan_program', 'lihat'],
     ];
 
     public function __construct()
@@ -37,6 +40,9 @@ class Penjualan_program extends Labmania_Controller
         $this->template->render('index', [
             'status' => in_array($status, ['draft', 'final', 'batal'], true) ? $status : 'all',
             'jenis'  => in_array($jenis, ['public', 'b2b'], true) ? $jenis : 'all',
+            // Pilihan tahun diambil dari data (tanggal mulai acara), terbaru di atas (PJ-FR-01).
+            'tahun_opts' => array_map('intval', array_column(
+                $this->db->query('SELECT DISTINCT YEAR(tgl_mulai) AS t FROM penjualan_program WHERE tgl_mulai IS NOT NULL ORDER BY t DESC')->result_array(), 't')),
         ]);
     }
 
@@ -65,6 +71,9 @@ class Penjualan_program extends Labmania_Controller
                     // Public boleh banyak quotation; B2B satu quotation aktif (PJ-FR-16, QTN-FR-03).
                     $canAdd = !$b2b || (int)$p['n_qtn_aktif'] === 0;
                     if ($canAdd && lm_can('quotation_program', 'tambah')) $items .= '<a class="icon-btn" href="' . site_url('quotation_program/create_from_pj/' . $id) . '" title="+ Buat Quotation"></a>';
+                    if (lm_can('penjualan_program', 'ubah') && !$this->pj_model->reschedule_block($p)) {
+                        $items .= '<button type="button" class="icon-btn" onclick="pjResched(' . $id . ')" title="Reschedule"></button>';
+                    }
                     $items .= '<button type="button" class="icon-btn" onclick="pjPenawaran(' . $id . ')" title="Cetak Surat Penawaran"></button>';
                 }
             }
@@ -78,7 +87,7 @@ class Penjualan_program extends Labmania_Controller
                 '<span class="code">' . $e($p['nomor']) . '</span>',
                 '<span class="tag tag-' . $e($p['jenis']) . '">' . ($b2b ? 'B2B' : 'Public') . '</span>' . ($b2b && $p['nama_company'] ? '<br><span class="muted">' . $e($p['nama_company']) . '</span>' : ''),
                 $e($p['nama_paket'] ?? '—') . '<br><span class="muted">' . $e($p['nomor_mp'] ?? '') . '</span>',
-                $e($pel) . '<br><span class="muted">' . $e($p['lokasi'] ?: '—') . ($p['nama_trainer'] ? ' · Trainer: ' . $e($p['nama_trainer']) : '') . '</span>',
+                $e($pel) . ($p['jam_pembelajaran'] ? ' · ' . (int)$p['jam_pembelajaran'] . ' JP' : '') . '<br><span class="muted">' . $e($p['lokasi'] ?: '—') . ($p['nama_trainer'] ? ' · Trainer: ' . $e($p['nama_trainer']) : '') . '</span>',
                 (int)$p['target_peserta'] . ($p['status'] === 'final' ? '<br><span class="muted">deal ' . (int)$p['n_deal'] . '</span>' : ''),
                 $rp($p['harga_jual_peserta']),
                 '<span class="badge st-' . $e($p['status']) . '">' . $e($ST[$p['status']] ?? $p['status']) . '</span>' . ($p['status'] === 'final' ? '<br><span class="muted">→ Quotation</span>' : ''),
@@ -125,7 +134,7 @@ class Penjualan_program extends Labmania_Controller
         // Salinan dari Master Program (PJ-FR-04); target B2B di bawah 10 dinaikkan ke 10 (PJ-FR-25). Waktu/lokasi/tanggal kosong.
         $program = [
             'id' => null, 'nomor' => null, 'status' => 'draft', 'id_master_program' => (int)$mp['id'], 'jenis' => $jenis,
-            'id_customer' => '', 'id_trainer' => '', 'tgl_mulai' => '', 'tgl_selesai' => '', 'waktu' => '', 'lokasi' => '',
+            'id_customer' => '', 'id_trainer' => '', 'tgl_mulai' => '', 'tgl_selesai' => '', 'waktu' => '', 'lokasi' => '', 'jam_pembelajaran' => '',
             'durasi_hari' => (int)$mp['durasi_hari'],
             'target_peserta' => ($jenis === 'b2b' && $mp['target_peserta'] < Penjualan_program_model::B2B_MIN) ? Penjualan_program_model::B2B_MIN : (int)$mp['target_peserta'],
             'harga_jual_peserta' => $mp['harga_jual_peserta'], 'target_profit' => $mp['target_profit'],
@@ -177,7 +186,7 @@ class Penjualan_program extends Labmania_Controller
             'id' => $pj['id'] ? (int)$pj['id'] : null, 'nomor' => $pj['nomor'], 'status' => $pj['status'], 'jenis' => $pj['jenis'],
             'mp' => (int)$pj['id_master_program'], 'company' => $pj['id_customer'] ?: '', 'trainer' => $pj['id_trainer'] ? (int)$pj['id_trainer'] : '',
             'tglMulai' => $pj['tgl_mulai'] ?: '', 'tglSelesai' => $pj['tgl_selesai'] ?: '', 'waktu' => $pj['waktu'] ?: '', 'lokasi' => $pj['lokasi'] ?: '',
-            'durasi' => (int)$pj['durasi_hari'], 'targetPeserta' => (int)$pj['target_peserta'],
+            'durasi' => (int)$pj['durasi_hari'], 'jamPembelajaran' => !empty($pj['jam_pembelajaran']) ? (int)$pj['jam_pembelajaran'] : '', 'targetPeserta' => (int)$pj['target_peserta'],
             'hargaJual' => (int)round($pj['harga_jual_peserta']), 'targetProfit' => $pj['target_profit'] > 0 ? (int)round($pj['target_profit']) : '',
             'biaya' => $biaya,
         ];
@@ -197,8 +206,11 @@ class Penjualan_program extends Labmania_Controller
             return ['id' => (int)$t['id'], 'kode' => $t['kode'], 'nama' => $t['nama'], 'aktif' => (int)$t['aktif'], 'keahlian' => array_slice($k, 0, 2)];
         }, $this->trainer_model->get_trainers());
 
+        $resched = $pj['id'] ? $this->pj_model->reschedule_history($pj['id']) : [];
+        $block = $pj['id'] ? $this->pj_model->reschedule_block($pj) : 'Belum disimpan';
         return ['init' => [
             'program' => $p,
+            'resched' => ['history' => $resched, 'block' => $block, 'can' => $pj['id'] && $block === null && lm_can('penjualan_program', 'ubah'), 'closed' => !empty($pj['closed_date'])],
             'mpInfo'  => ['nomor' => $mp['nomor'] ?? '', 'judul' => $mp['nama_paket'] ?? '', 'sertifikat' => $mp['nama_sertifikasi'] ?? '',
                           'durasi' => (int)($mp['durasi_hari'] ?? 0), 'target' => (int)($mp['target_peserta'] ?? 0), 'harga' => (int)round($mp['harga_jual_peserta'] ?? 0)],
             'companies' => $companies, 'trainers' => $trainers, 'rates' => $this->mp_model->get_rates_lookup(), 'satuan' => $satuan,
@@ -234,6 +246,102 @@ class Penjualan_program extends Labmania_Controller
     {
         $res = $this->pj_model->set_status($id, 'batal');
         return $this->output->set_content_type('application/json')->set_output(json_encode($res));
+    }
+
+
+    // ---------- Reschedule (PJ-FR-26 - PJ-FR-28, PJ-NFR-10) ----------
+
+    /** Isi modal Reschedule: jadwal sekarang, jumlah reschedule, Sales Order yang ikut naik revisi, pilihan trainer. */
+    public function reschedule_info($id)
+    {
+        $i = $this->pj_model->reschedule_info($id);
+        if (!$i) return $this->output->set_status_header(404)->set_content_type('application/json')->set_output(json_encode(['status' => 0, 'msg' => 'Penjualan Program tidak ditemukan']));
+        if ($i['block']) return $this->output->set_status_header(422)->set_content_type('application/json')->set_output(json_encode(['status' => 0, 'msg' => $i['block']]));
+        $pj = $i['pj'];
+        $trainers = array_map(function ($t) {
+            return ['id' => (int)$t['id'], 'kode' => $t['kode'], 'nama' => $t['nama'], 'aktif' => (int)$t['aktif']];
+        }, $this->trainer_model->get_trainers());
+        $trainers = array_values(array_filter($trainers, function ($t) use ($pj) { return $t['aktif'] || $t['id'] === (int)$pj['id_trainer']; }));
+        return $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 1, 'data' => [
+            'id' => (int)$pj['id'], 'nomor' => $pj['nomor'], 'tgl_mulai' => $pj['tgl_mulai'], 'tgl_selesai' => $pj['tgl_selesai'], 'durasi' => (int)$pj['durasi_hari'],
+            'waktu' => $pj['waktu'], 'lokasi' => $pj['lokasi'], 'id_trainer' => $pj['id_trainer'] ? (int)$pj['id_trainer'] : null, 'trainer' => $i['trainer'],
+            'n_resched' => $i['n_resched'], 'so' => $i['so'], 'n_qtn' => $i['n_qtn'], 'trainers' => $trainers, 'today' => date('Y-m-d'),
+        ]]));
+    }
+
+    /** Simpan reschedule. Berkas evidence divalidasi di sini (tipe dari ISI berkas, ukuran, jumlah); jadwal disimpan model dalam satu transaksi. */
+    public function reschedule_save($id)
+    {
+        $json = function ($res, $code = 200) { return $this->output->set_status_header($code)->set_content_type('application/json')->set_output(json_encode($res)); };
+        $files = [];
+        $fail = $this->collect_evidence($files);
+        if ($fail) { foreach ($files as $f) @unlink(FCPATH . $f['path']); return $json(['status' => 0, 'msg' => 'Belum tersimpan — perbaiki isian yang ditandai', 'errors' => ['evidence' => $fail]]); }
+
+        $res = $this->pj_model->reschedule($id, $this->input->post(), $files);
+        if (empty($res['status'])) {
+            foreach ($files as $f) @unlink(FCPATH . $f['path']); // simpan gagal: berkas yang baru diunggah dibuang
+            return $json($res, $res['code'] ?? 200);
+        }
+        return $json($res);
+    }
+
+    /**
+     * Pindahkan $_FILES['evidence'][] ke uploads/penjualan_program_reschedule/ (di luar akses web langsung lewat .htaccess).
+     * Tipe ditentukan dari ISI berkas (finfo), bukan ekstensi atau tipe kiriman browser: .exe berganti nama .pdf ditolak (PJ-NFR-10).
+     * Kembalian: pesan galat atau null; $out berisi berkas yang sudah dipindah (dibuang pemanggil bila gagal).
+     */
+    private function collect_evidence(array &$out)
+    {
+        if (empty($_FILES['evidence']['name']) || !is_array($_FILES['evidence']['name'])) return null;
+        $dir = FCPATH . 'uploads/penjualan_program_reschedule/';
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+        if (!is_file($dir . '.htaccess')) @file_put_contents($dir . '.htaccess', "Require all denied\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n");
+
+        foreach ($_FILES['evidence']['name'] as $i => $name) {
+            $err = $_FILES['evidence']['error'][$i];
+            if ($err === UPLOAD_ERR_NO_FILE) continue;
+            if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) return $name . ' lebih dari 5 MB';
+            if ($err !== UPLOAD_ERR_OK) return $name . ': gagal diunggah';
+            $tmp = $_FILES['evidence']['tmp_name'][$i];
+            $size = (int)$_FILES['evidence']['size'][$i];
+            if ($size > Penjualan_program_model::EVID_MAX) return $name . ' lebih dari 5 MB';
+            if (!is_uploaded_file($tmp)) return $name . ': berkas tidak valid';
+
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            if (!isset(Penjualan_program_model::EVID_TIPE[$ext])) return $name . ': hanya JPG, PNG, DOC/DOCX, atau PDF';
+            $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
+            if (!in_array($mime, Penjualan_program_model::EVID_TIPE[$ext], true)) return $name . ': isi berkas tidak sesuai ekstensi .' . $ext;
+            // .docx/.doc terdeteksi sebagai zip/ole: pastikan benar-benar paket Office, bukan zip biasa.
+            if ($ext === 'docx' && $mime !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                $zip = new ZipArchive();
+                $ok = $zip->open($tmp) === true && $zip->locateName('word/document.xml') !== false;
+                if ($zip->numFiles) $zip->close();
+                if (!$ok) return $name . ': isi berkas tidak sesuai ekstensi .docx';
+            }
+
+            $tipe = $ext === 'jpeg' ? 'jpg' : $ext;
+            $rand = bin2hex(random_bytes(16)) . '.' . $tipe;
+            if (!move_uploaded_file($tmp, $dir . $rand)) return $name . ': gagal disimpan';
+            $out[] = ['orig' => basename($name), 'path' => 'uploads/penjualan_program_reschedule/' . $rand, 'tipe' => $tipe, 'size' => $size];
+        }
+        return null;
+    }
+
+    /** Unduh/buka satu evidence reschedule (PJ-FR-28). Berkas disajikan lewat aplikasi karena foldernya ditutup untuk akses langsung. */
+    public function evidence($idEvidence)
+    {
+        $ev = $this->db->get_where('penjualan_program_reschedule_evidence', ['id' => (int)$idEvidence])->row_array();
+        $path = $ev ? FCPATH . $ev['path_file'] : null;
+        if (!$ev || strpos($ev['path_file'], 'uploads/penjualan_program_reschedule/') !== 0 || !is_file($path)) show_404();
+        $mime = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'pdf' => 'application/pdf', 'doc' => 'application/msword',
+                 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'][$ev['tipe_file']] ?? 'application/octet-stream';
+        while (ob_get_level()) ob_end_clean();
+        header('Content-Type: ' . $mime);
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Disposition: ' . (in_array($ev['tipe_file'], ['jpg', 'png', 'pdf'], true) ? 'inline' : 'attachment') . '; filename="' . str_replace(['"', "\r", "\n"], '', $ev['nama_file']) . '"');
+        header('Content-Length: ' . filesize($path));
+        readfile($path);
+        exit;
     }
 
     // ---------- Surat Penawaran (PJ-FR-20): hanya Penjualan Program Final ----------

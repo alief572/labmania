@@ -9,7 +9,7 @@
   </div>
 </div>
 
-<div class="notice"><span>Data master <b>tidak dapat dihapus</b> — gunakan <b>Nonaktifkan</b>. Data nonaktif tidak muncul sebagai pilihan di form Product Combine dan Peserta.</span><span class="ref">FR-08 · FR-21</span></div>
+<div class="notice"><span>Data master <b>tidak dapat dihapus</b> — gunakan <b>Nonaktifkan</b>. Data nonaktif tidak muncul sebagai pilihan di form Product dan Peserta.</span><span class="ref">FR-08 · FR-21</span></div>
 
 <div class="card">
   <div class="toolbar">

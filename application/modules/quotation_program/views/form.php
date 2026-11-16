@@ -14,14 +14,6 @@ $isPpn = !empty($q['is_ppn']);
 $ppnPersen = (float)($q['ppn_persen'] ?? 11);
 $status = $q['status'] ?? 'draft';
 
-// Selected peserta IDs
-$selectedPeserta = [];
-if (!empty($q['peserta'])) {
-    foreach ($q['peserta'] as $ps) {
-        $selectedPeserta[] = is_array($ps) ? (int)$ps['id_peserta'] : (int)$ps;
-    }
-}
-
 // Konfirmasi isian
 $kfIsian = [];
 if (!empty($q['konfirmasi_isian'])) {
@@ -31,8 +23,8 @@ if (!empty($q['konfirmasi_isian'])) {
 ?>
 <div class="page-head">
   <div>
-    <h1><?= $isEdit ? 'Edit Quotation (' . htmlspecialchars($q['nomor']) . ')' : 'Buat Quotation Baru'; ?> <span class="ref">QTN-FR-04 – QTN-FR-13</span></h1>
-    <p>Penyiapan surat penawaran resmi, penetapan skema harga, pemilihan peserta, dan perumusan klausul syarat ketentuan.</p>
+    <h1><?= $isEdit ? 'Edit Quotation (' . htmlspecialchars($q['nomor']) . ')' : 'Buat Quotation Baru'; ?> <span class="ref">QTN-FR-04 – QTN-FR-08 · QTN-FR-20 – QTN-FR-22</span></h1>
+    <p>Penyiapan surat penawaran resmi, penetapan kuota dan skema harga, dan perumusan klausul syarat ketentuan. Peserta tidak dipilih di sini: calon peserta mengisi sendiri lewat link Konfirmasi Kehadiran yang dibuat saat quotation disimpan.</p>
   </div>
   <div class="page-actions">
     <a href="<?= site_url('quotation_program'); ?>" class="btn btn-muted">&larr; Kembali ke Daftar</a>
@@ -43,7 +35,7 @@ if (!empty($q['konfirmasi_isian'])) {
 <ol class="stepper" id="stepper-nav">
   <li class="on"><button type="button" class="step-btn" data-step="1" onclick="goToStep(1)"><span>1</span>Data Quotation</button></li>
   <li><button type="button" class="step-btn" data-step="2" onclick="goToStep(2)"><span>2</span>Keterangan</button></li>
-  <li id="step3-btn"><button type="button" class="step-btn" data-step="3" onclick="goToStep(3)"><span>3</span>Formulir Konfirmasi</button></li>
+  <li id="step3-btn"><button type="button" class="step-btn" data-step="3" onclick="goToStep(3)"><span>3</span><b id="step3-label" style="font-weight:inherit">Formulir Konfirmasi</b></button></li>
   <li><button type="button" class="step-btn" data-step="4" onclick="goToStep(4)"><span id="pv-no">4</span>Preview</button></li>
 </ol>
 
@@ -83,7 +75,8 @@ if (!empty($q['konfirmasi_isian'])) {
 
       <div class="field">
         <label>Nomor Quotation</label>
-        <input type="text" class="input" id="nomor" value="<?= htmlspecialchars($q['nomor'] ?? ''); ?>" readonly>
+        <input type="text" class="input" id="nomor" value="<?= htmlspecialchars($q['nomor'] ?? ''); ?>" placeholder="otomatis saat disimpan" readonly>
+        <span class="hint">Format LMI/PW/MM/yy-zzz dari tanggal quotation</span>
       </div>
 
       <div class="field">
@@ -93,7 +86,8 @@ if (!empty($q['konfirmasi_isian'])) {
 
       <div class="field">
         <label>Berlaku sampai</label>
-        <input type="date" class="input" id="berlaku_sampai" value="<?= htmlspecialchars($q['berlaku_sampai'] ?? date('Y-m-d', strtotime('+30 days'))); ?>">
+        <input type="date" class="input" id="berlaku_sampai" value="<?= htmlspecialchars($q['berlaku_sampai'] ?? date('Y') . '-12-31'); ?>" onchange="beTouched = true">
+        <span class="hint">Default 31 Desember tahun quotation; link konfirmasi tertutup setelah tanggal ini</span>
       </div>
 
       <div class="field">
@@ -133,7 +127,7 @@ if (!empty($q['konfirmasi_isian'])) {
             <label><input type="radio" name="tujuan" value="company" id="tujuan_company" <?= ($tujuan === 'company') ? 'checked' : ''; ?> onchange="onTujuanChange()"> Company</label>
             <label><input type="radio" name="tujuan" value="personal" id="tujuan_personal" <?= ($tujuan === 'personal') ? 'checked' : ''; ?> onchange="onTujuanChange()"> Personal</label>
           </div>
-          <span class="hint" id="tujuan-hint">Company = peserta dari satu company · Personal = satu atau lebih peserta.</span>
+          <span class="hint" id="tujuan-hint">Company = surat ke satu company · Personal = surat ke satu orang (isi Kepada).</span>
         </div>
 
         <div class="field" id="wrap-company" style="display: <?= ($tujuan === 'company') ? 'block' : 'none'; ?>;">
@@ -152,9 +146,15 @@ if (!empty($q['konfirmasi_isian'])) {
           <span class="hint">Dari Master Company aktif</span>
         </div>
 
-        <div class="field">
+        <div class="field" id="wrap-kepada" style="display: <?= ($tujuan === 'company') ? 'none' : 'block'; ?>;">
+          <label>Kepada <span class="req">*</span></label>
+          <input type="text" class="input" id="kepada_nama" maxlength="100" value="<?= htmlspecialchars($q['kepada_nama'] ?? ''); ?>" placeholder="Nama orang yang dituju">
+          <span class="hint">Peserta belum ada saat quotation dibuat, jadi nama yang dituju diisi di sini.</span>
+        </div>
+
+        <div class="field" id="wrap-up" style="display: <?= ($tujuan === 'company') ? 'block' : 'none'; ?>;">
           <label>u.p.</label>
-          <input type="text" class="input" id="up_nama" maxlength="100" value="<?= htmlspecialchars($q['up_nama'] ?? ''); ?>" placeholder="Nama yang dituju">
+          <input type="text" class="input" id="up_nama" maxlength="100" value="<?= htmlspecialchars($q['up_nama'] ?? ''); ?>" placeholder="Nama yang dituju (default PIC company)">
         </div>
 
         <div class="field">
@@ -164,15 +164,16 @@ if (!empty($q['konfirmasi_isian'])) {
         </div>
       </div>
 
-      <!-- KANAN: PESERTA -->
+      <!-- KANAN: KUOTA PESERTA (QTN-FR-22) -->
       <div>
-        <p class="qtn-h">Peserta <span class="muted">(<span id="count-peserta">0</span>)</span></p>
-        <div id="peserta-container" class="ps-pick"></div>
-        <div id="peserta-add"></div>
-        <div class="ps-tools">
-          <button type="button" class="btn btn-ghost sm" id="btn-select-all" onclick="selectAllCompanyPeserta()">Pilih semua</button>
-          <span class="muted" id="peserta-hint"></span>
+        <p class="qtn-h">Kuota peserta</p>
+        <div class="field">
+          <label for="kuota_peserta">Kuota peserta <span class="req">*</span></label>
+          <input type="number" class="input" id="kuota_peserta" min="1" step="1" inputmode="numeric" value="<?= (int)($q['kuota_peserta'] ?? 0) ?: ''; ?>" oninput="calcQtnValue(); updateKuotaInfo()">
+          <span class="hint" id="kuota-min-hint"></span>
         </div>
+        <div class="static kuota-box" id="kuota-info"></div>
+        <p class="hint">Peserta tidak dipilih di form ini. Calon peserta mengisi sendiri lewat link Konfirmasi Kehadiran yang dibuat otomatis saat quotation disimpan. <span id="kuota-b2b-note"></span></p>
       </div>
     </div>
 
@@ -181,17 +182,15 @@ if (!empty($q['konfirmasi_isian'])) {
     <div class="qtn-grid">
       <div>
         <div class="field" id="wrap-skema" style="display:none;">
-          <label>Skema harga <span class="req">*</span></label>
-          <div class="static seg">
-            <label><input type="radio" name="skema_harga" value="peserta" <?= ($skema === 'peserta') ? 'checked' : ''; ?> onchange="calcQtnValue()"> Per peserta</label>
-            <label><input type="radio" name="skema_harga" value="allin" <?= ($skema === 'allin') ? 'checked' : ''; ?> onchange="calcQtnValue()"> All-in 1 company</label>
-          </div>
+          <label>Skema harga</label>
+          <div class="static"><b>All-in 1 company</b></div>
+          <span class="hint">B2B hanya all-in: harga paket untuk s.d. <?= (int)Quotation_model::B2B_PAKET_MAKS; ?> peserta, peserta ke-<?= (int)Quotation_model::B2B_PAKET_MAKS + 1; ?> dst + Rp<?= number_format(Quotation_model::B2B_TAMBAHAN, 0, ',', '.'); ?>/orang.</span>
         </div>
 
         <div class="field" id="wrap-harga-allin" style="display:none;">
           <label>Harga all-in (Rp) <span class="req">*</span></label>
           <input type="text" class="input money-in" id="harga_allin" value="<?= number_format((float)($q['harga_allin'] ?? 0), 0, ',', '.'); ?>" oninput="calcQtnValue()">
-          <span class="hint">Terisi awal harga / peserta × jumlah peserta; ubah sesuai kesepakatan.</span>
+          <span class="hint">Harga paket s.d. <?= (int)($q['paket_maks_peserta'] ?: Quotation_model::B2B_PAKET_MAKS); ?> peserta. Terisi awal harga / peserta × kuota (maks. <?= (int)Quotation_model::B2B_PAKET_MAKS; ?>); ubah sesuai kesepakatan.</span>
         </div>
 
         <div class="field" id="wrap-harga-peserta">
@@ -215,6 +214,8 @@ if (!empty($q['konfirmasi_isian'])) {
       </div>
 
       <div class="totals">
+        <div class="tr" id="row-allin" style="display:none;"><span>Harga all-in (paket)</span><span id="tot-allin">Rp 0</span></div>
+        <div class="tr" id="row-tambahan" style="display:none;"><span id="lbl-tambahan">Tambahan peserta</span><span id="tot-tambahan">Rp 0</span></div>
         <div class="tr"><span>Subtotal</span><span id="tot-subtotal">Rp 0</span></div>
         <div class="tr"><span>Diskon</span><span id="tot-diskon">- Rp 0</span></div>
         <div class="tr"><span>Setelah diskon</span><span id="tot-dpp">Rp 0</span></div>
@@ -241,8 +242,29 @@ if (!empty($q['konfirmasi_isian'])) {
 
   <!-- ==================== STEP 3: FORMULIR KONFIRMASI ==================== -->
   <div class="step-panel" id="panel-step-3" style="display:none;">
-    <div class="card qtn-form">
-      <div class="ket-tools"><span><b class="qtn-title">Formulir Konfirmasi Keikutsertaan</b><br><span class="muted">Dicetak 1 lembar per peserta untuk diisi dan ditandatangani saat mendaftar (hanya kegiatan Public). Template default dari Jenis Produk paket.</span></span><button type="button" class="btn btn-ghost sm" onclick="kfDefault()">Kembalikan ke default</button></div>
+    <!-- B2B: Konfirmasi Company (link) — QTN-FR-31 -->
+    <div class="card qtn-form" id="step3-b2b" style="display:none;">
+      <div class="ket-tools"><span><b class="qtn-title">Konfirmasi Company (link)</b><br><span class="muted">Link B2B diisi satu kali oleh PIC company: data perusahaan dan PIC (terisi awal dari Master Company), daftar peserta, lalu surat konfirmasi company bertanda tangan dan cap. Tidak ada isian per orang.</span></span></div>
+      <div class="field">
+        <label>Isian tetap yang diisi PIC</label>
+        <div class="kf-chips"><?php foreach (['Nama Perusahaan', 'Alamat Perusahaan', 'Nama PIC', 'Jabatan PIC', 'Nomor HP / WhatsApp PIC', 'Email PIC'] as $t): ?><span class="kf-chip on"><?= htmlspecialchars($t); ?></span><?php endforeach; ?></div>
+      </div>
+      <div class="field">
+        <label>Kolom daftar peserta</label>
+        <div class="kf-chips" id="wrap-kolom-b2b">
+          <span class="kf-chip on" title="Selalu ada dan wajib">Nama Lengkap (wajib)</span>
+          <?php $kolomCur = json_decode((string)($q['kolom_peserta_b2b'] ?? ''), true) ?: [];
+          foreach (['jabatan' => 'Jabatan', 'email' => 'Email', 'wa' => 'Nomor WhatsApp', 'nik' => 'NIK'] as $k => $l): $on = in_array($k, $kolomCur, true); ?>
+            <label class="kf-chip <?= $on ? 'on' : ''; ?>"><input type="checkbox" class="kolom-b2b" value="<?= $k; ?>" <?= $on ? 'checked' : ''; ?> onchange="this.parentElement.classList.toggle('on', this.checked)"> <?= $l; ?></label>
+          <?php endforeach; ?>
+        </div>
+        <span class="hint">Default hanya Nama, karena company biasanya hanya mengirim nama. Centang kolom tambahan yang perlu diisi PIC.</span>
+      </div>
+      <p class="hint">Contoh surat konfirmasi company kosong dapat dicetak oleh PIC dari link. Format surat adalah usulan analis (kode dokumen menyusul, Q-QTN-22).</p>
+    </div>
+
+    <div class="card qtn-form" id="step3-public">
+      <div class="ket-tools"><span><b class="qtn-title">Formulir Konfirmasi Keikutsertaan</b><br><span class="muted">Mengatur isian yang diminta di link Konfirmasi Kehadiran dan kalimat pernyataannya. Formulir tidak dicetak kosong: calon peserta mengisi lewat link, mencetak surat terisi, menandatangani, lalu mengunggahnya. Template default dari Jenis Produk paket.</span></span><button type="button" class="btn btn-ghost sm" onclick="kfDefault()">Kembalikan ke default</button></div>
 
       <div class="grid2">
         <div class="field">
@@ -316,21 +338,21 @@ if (!empty($q['konfirmasi_isian'])) {
 
 <script>
 // Data Master Referensi
-const ALL_PESERTA = <?= json_encode($pesertas); ?>;
-const INITIAL_PESERTA = <?= json_encode($selectedPeserta); ?>;
-const DIPAKAI = <?= json_encode($dipakai); ?>;      // {id_penjualan: {id_peserta: nomor quotation lain}}
+const KUOTA_LAIN = <?= json_encode($kuotaLain); ?>;   // {id_penjualan: jumlah kuota quotation lain (selain Batal)}
+const N_TERISI = <?= (int)($nTerisi ?? 0); ?>;       // peserta yang sudah mengisi lewat link (batas bawah kuota saat edit)
+const B2B_MAKS = <?= (int)($q['paket_maks_peserta'] ?: Quotation_model::B2B_PAKET_MAKS); ?>, B2B_TARIF = <?= (float)($q['tambahan_per_peserta'] ?: Quotation_model::B2B_TAMBAHAN); ?>;
+let beTouched = <?= $isEdit ? 'true' : 'false'; ?>;
 const BEP_HARGA = <?= json_encode($bepHarga); ?>;   // {id_penjualan: harga BEP / peserta}
 const KET_MASTER = <?= json_encode($ketMaster); ?>;
 const KET_SAVED = <?= json_encode($isEdit ? ($q['keterangan'] ?? []) : null); ?>;
-const BIDANG = <?= json_encode($bidang); ?>;
 const B2B_MIN = 10;
-const SEL = new Set(INITIAL_PESERTA.map(Number));
 const INITIAL_KETERANGAN = <?= json_encode($q['keterangan'] ?? []); ?>;
 
 let currentStep = 1;
 
 document.addEventListener('DOMContentLoaded', function() {
   onPenjualanChange(true);
+  updateKuotaInfo();
   ketInit();
   kfPreview();
   calcQtnValue();
@@ -341,8 +363,8 @@ function isB2bPj() {
   return !!o && o.dataset.jenis === 'b2b';
 }
 
-// Urutan langkah yang tampil: B2B tanpa Formulir Konfirmasi (QTN-FR-18).
-function stepOrder() { return isB2bPj() ? [1, 2, 4] : [1, 2, 3, 4]; }
+// Empat langkah untuk Public dan B2B; langkah 3 B2B = Konfirmasi Company (QTN-FR-18, QTN-FR-31).
+function stepOrder() { return [1, 2, 3, 4]; }
 
 function goToStep(step) {
   // Langkah 2-4 hanya terbuka bila langkah 1 valid.
@@ -387,10 +409,12 @@ function validateStep1() {
   if (!document.getElementById('id_sales').value) return 'Sales / marketing wajib dipilih';
   const company = document.getElementById('tujuan_company').checked;
   if (company && !document.getElementById('id_customer').value) return 'Company wajib dipilih';
-  const n = document.querySelectorAll('.chk-peserta:checked').length;
-  if (n < 1) return 'Pilih minimal 1 peserta';
-  if (isB2bPj() && n < B2B_MIN) return `Penjualan B2B minimal ${B2B_MIN} peserta`;
-  const allin = document.querySelector('input[name="skema_harga"]:checked')?.value === 'allin' && isB2bPj();
+  if (!company && !document.getElementById('kepada_nama').value.trim()) return 'Kepada wajib diisi';
+  const n = kuota();
+  if (n < 1) return 'Kuota peserta minimal 1';
+  if (isB2bPj() && n < B2B_MIN) return `Penjualan B2B: Kuota peserta minimal ${B2B_MIN}`;
+  if (N_TERISI && n < N_TERISI) return `Kuota tidak boleh kurang dari ${N_TERISI} peserta yang sudah mengisi`;
+  const allin = isB2bPj();
   const diskon = parseMoney(document.getElementById('diskon').value);
   if (allin) {
     const h = parseMoney(document.getElementById('harga_allin').value);
@@ -435,12 +459,16 @@ function onPenjualanChange(isInit = false) {
   const isB2b = opt.dataset.jenis === 'b2b';
   infoBox.textContent = `${isB2b ? 'B2B (In-House)' : 'Public'} · Lokasi: ${opt.dataset.lokasi} · Jadwal: ${opt.dataset.tgl} · Target: ${opt.dataset.target} pax`;
 
-  // B2B behavior
+  // B2B: tujuan Company terkunci, hanya all-in (QTN-FR-05, QTN-FR-20)
   if (isB2b) {
     document.getElementById('tujuan_company').checked = true;
     document.getElementById('tujuan_personal').disabled = true;
     wrapSkema.style.display = 'block';
-    step3Btn.style.display = 'none'; // B2B tanpa formulir konfirmasi per peserta
+    onTujuanChange();
+    document.getElementById('step3-label').textContent = 'Konfirmasi Company (link)';
+    document.getElementById('step3-b2b').style.display = 'block'; document.getElementById('step3-public').style.display = 'none';
+    document.getElementById('kuota_peserta').min = B2B_MIN;
+    if (!document.getElementById('kuota_peserta').value) document.getElementById('kuota_peserta').value = B2B_MIN; // terisi awal 10 (QTN-FR-22)
 
     if (opt.dataset.customer) {
       document.getElementById('id_customer').value = opt.dataset.customer;
@@ -449,26 +477,28 @@ function onPenjualanChange(isInit = false) {
     }
   } else {
     document.getElementById('tujuan_personal').disabled = false;
+    document.getElementById('step3-label').textContent = 'Formulir Konfirmasi';
+    document.getElementById('step3-b2b').style.display = 'none'; document.getElementById('step3-public').style.display = 'block';
     wrapSkema.style.display = 'none';
-    step3Btn.style.display = '';
     document.getElementById('id_customer').disabled = false;
+    document.getElementById('kuota_peserta').min = 1;
   }
 
   if (!isInit) {
-    SEL.clear(); // peserta terpilih tidak berlaku untuk Penjualan Program lain
     if (!ketTouched) { ketState = ketBuild(null); ketRender(); }
     if (!kfTouched) kfDefault(); else kfPreview();
     document.getElementById('harga_peserta').value = formatMoney(parseFloat(opt.dataset.harga) || 0);
   }
 
-  renderPesertaList();
+  updateKuotaInfo();
   calcQtnValue();
 }
 
 function onTujuanChange() {
   const isCompany = document.getElementById('tujuan_company').checked;
   document.getElementById('wrap-company').style.display = isCompany ? 'block' : 'none';
-  renderPesertaList();
+  document.getElementById('wrap-up').style.display = isCompany ? 'block' : 'none';
+  document.getElementById('wrap-kepada').style.display = isCompany ? 'none' : 'block';
 }
 
 function onCompanyChange() {
@@ -478,7 +508,6 @@ function onCompanyChange() {
     const alamat = (opt.dataset.alamat || '') + (opt.dataset.kota ? ', ' + opt.dataset.kota : '');
     document.getElementById('alamat').value = alamat;
   }
-  renderPesertaList();
 }
 
 function pjOpt() {
@@ -486,136 +515,22 @@ function pjOpt() {
   return sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].value ? sel.options[sel.selectedIndex] : null;
 }
 
-function pesertaRow(p, { checked, disabled, note, removable }) {
-  const label = document.createElement('label');
-  label.className = 'ps-row' + (disabled ? ' is-dis' : '');
-  label.innerHTML = `
-    <input type="checkbox" class="chk-peserta" value="${p.id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
-    <span class="grow"><b>${escapeHtml(p.nama)}</b> <span class="code">${escapeHtml(p.kode)}</span><br>
-      <span class="muted">${escapeHtml(p.instansi || 'Personal')} · ${escapeHtml(p.no_telp || '')}${note ? ' · ' + escapeHtml(note) : ''}</span></span>
-    ${removable ? '<button type="button" class="btn btn-ghost sm" aria-label="Hapus peserta">&times;</button>' : ''}`;
-  label.querySelector('input').addEventListener('change', e => {
-    e.target.checked ? SEL.add(Number(p.id)) : SEL.delete(Number(p.id));
-    updatePesertaCount();
-  });
-  const rm = label.querySelector('button');
-  if (rm) rm.addEventListener('click', e => { e.preventDefault(); SEL.delete(Number(p.id)); renderPesertaList(); });
-  return label;
-}
+const kuota = () => parseInt(document.getElementById('kuota_peserta').value, 10) || 0;
 
-function renderPesertaList() {
-  const isCompany = document.getElementById('tujuan_company').checked;
-  const companyId = document.getElementById('id_customer').value;
-  const container = document.getElementById('peserta-container');
-  const addBox = document.getElementById('peserta-add');
-  const opt = pjOpt();
-  const dipakai = (opt && DIPAKAI[opt.value]) || {};
-  container.innerHTML = '';
-  addBox.innerHTML = '';
-  document.getElementById('btn-select-all').style.display = isCompany ? 'inline-flex' : 'none';
-
-  if (isCompany) {
-    if (!companyId) {
-      container.innerHTML = '<p class="dash-empty">Pilih Company dahulu — peserta yang tampil hanya dari company tersebut.</p>';
-    } else {
-      const list = ALL_PESERTA.filter(p => p.id_customer === companyId);
-      if (!list.length) container.innerHTML = '<p class="dash-empty">Belum ada peserta di company ini. Tambahkan lewat <b>Master Peserta</b> (pilih Company).</p>';
-      list.forEach(p => {
-        const lain = dipakai[p.id];
-        if (lain) SEL.delete(Number(p.id));
-        container.appendChild(pesertaRow(p, { checked: SEL.has(Number(p.id)), disabled: !!lain, note: lain ? 'sudah di ' + lain : '' }));
-      });
-    }
-  } else {
-    const chosen = ALL_PESERTA.filter(p => SEL.has(Number(p.id)));
-    if (!chosen.length) container.innerHTML = '<p class="dash-empty">Belum ada peserta. Pilih dari Master Peserta atau isi peserta baru.</p>';
-    chosen.forEach(p => container.appendChild(pesertaRow(p, { checked: true, removable: true })));
-
-    const options = ALL_PESERTA.filter(p => !SEL.has(Number(p.id))).sort((a, b) => a.nama.localeCompare(b.nama))
-      .map(p => `<option value="${p.id}" ${dipakai[p.id] ? 'disabled' : ''}>${escapeHtml(p.nama)} — ${escapeHtml(p.nama_company || p.instansi || 'Personal')}${dipakai[p.id] ? ' (sudah di ' + escapeHtml(dipakai[p.id]) + ')' : ''}</option>`).join('');
-    addBox.innerHTML = `<div class="ps-add"><select class="input" id="ps-add-sel" aria-label="Tambah peserta dari Master Peserta"><option value="">+ Tambah peserta dari Master Peserta…</option>${options}</select>
-      <button type="button" class="btn btn-ghost sm" id="btn-np-open">+ Peserta baru</button></div><div id="np-box"></div>`;
-    document.getElementById('ps-add-sel').addEventListener('change', e => { if (e.target.value) { SEL.add(Number(e.target.value)); renderPesertaList(); } });
-    document.getElementById('btn-np-open').addEventListener('click', openNewPeserta);
-    if (window.lmSelect2) lmSelect2(addBox);
-  }
-  updatePesertaCount();
-}
-
-function selectAllCompanyPeserta() {
-  const chks = Array.from(document.querySelectorAll('.chk-peserta:not(:disabled)'));
-  const allChecked = chks.every(c => c.checked);
-  chks.forEach(c => { c.checked = !allChecked; allChecked ? SEL.delete(Number(c.value)) : SEL.add(Number(c.value)); });
-  updatePesertaCount();
-}
-
-function updatePesertaCount() {
-  const count = document.querySelectorAll('.chk-peserta:checked').length;
-  document.getElementById('count-peserta').textContent = count;
-  const opt = pjOpt();
-  const b2b = opt && opt.dataset.jenis === 'b2b';
-  const terpakai = opt ? Object.keys(DIPAKAI[opt.value] || {}).length : 0;
-  document.getElementById('peserta-hint').textContent = opt
-    ? (b2b ? `B2B minimal ${B2B_MIN} peserta · ` : '') + `Target ${opt.dataset.target} peserta · di quotation lain ${terpakai} · quotation ini ${count}. Selisih dengan target tidak menghalangi.`
-    : 'Pilih Penjualan Program dahulu.';
-  calcQtnValue();
-}
-
-// ----- Peserta baru (QTN-FR-07): tersimpan langsung ke Master Peserta -----
-function openNewPeserta() {
-  const box = document.getElementById('np-box');
-  if (box.innerHTML) return;
-  const co = Array.from(document.getElementById('id_customer').options).filter(o => o.value).map(o => `<option value="${o.value}" data-nama="${escapeHtml(o.textContent.split(' — ')[1] || '')}">${escapeHtml(o.textContent.trim())}</option>`).join('');
-  const bid = BIDANG.filter(b => b.aktif == 1).map(b => `<option value="${b.id}">${escapeHtml(b.nama)}</option>`).join('');
-  const f = (l, c, cls = '') => `<div class="field ${cls}"><label>${l}</label>${c}</div>`;
-  box.innerHTML = `<div class="np-box"><p class="np-h">Peserta baru <span class="muted">— otomatis tersimpan di Master Peserta</span></p><div class="grid2">
-    ${f('Nama Peserta <span class="req">*</span>', '<input class="input" id="np-nama" maxlength="100">')}
-    ${f('Gender <span class="req">*</span>', '<select class="input" id="np-gender"><option value="">— Pilih —</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>')}
-    ${f('Company', `<select class="input" id="np-company"><option value="">— Tanpa company —</option>${co}</select>`)}
-    ${f('Instansi/Perusahaan <span class="req">*</span>', '<input class="input" id="np-instansi" maxlength="150">')}
-    ${f('NPWP Instansi', '<input class="input" id="np-npwp" placeholder="Opsional">', 'span2')}
-    ${f('Bidang <span class="req">*</span>', `<select class="input" id="np-bidang"><option value="">— Pilih Jenis Bidang —</option>${bid}</select>`)}
-    ${f('Provinsi <span class="req">*</span>', '<select class="input" id="np-prov"></select>')}
-    ${f('Kota/Kabupaten <span class="req">*</span>', '<select class="input" id="np-kab"></select>')}
-    ${f('No Telp/WhatsApp <span class="req">*</span>', '<input class="input" id="np-telp" inputmode="tel" placeholder="08xxxxxxxxxx">')}
-    ${f('Email <span class="req">*</span>', '<input class="input" id="np-email" type="email" placeholder="nama@domain.com">', 'span2')}
-    </div><div class="err" id="np-err" style="display:none;"></div>
-    <div class="ps-tools"><button type="button" class="btn btn-primary sm" id="np-save">Tambahkan ke Master &amp; quotation</button><button type="button" class="btn btn-ghost sm" id="np-cancel">Batal</button></div></div>`;
-  initWilayahSelect(document.getElementById('np-prov'), document.getElementById('np-kab'));
-  if (window.lmSelect2) lmSelect2(box);
-  document.getElementById('np-company').addEventListener('change', e => {
-    const o = e.target.options[e.target.selectedIndex];
-    const inst = document.getElementById('np-instansi');
-    if (o.value) { inst.value = o.dataset.nama; inst.readOnly = true; } else { inst.readOnly = false; }
-  });
-  document.getElementById('np-cancel').addEventListener('click', () => { box.innerHTML = ''; });
-  document.getElementById('np-save').addEventListener('click', saveNewPeserta);
-}
-
-function saveNewPeserta() {
-  const v = id => document.getElementById(id).value.trim();
-  const sel = id => { const e = document.getElementById(id); const o = e.options[e.selectedIndex]; return o ? o.getAttribute('data-name') || '' : ''; };
-  const err = document.getElementById('np-err');
-  const payload = {
-    nama: v('np-nama'), gender: v('np-gender'), id_customer: v('np-company'), instansi: v('np-instansi'), npwp_instansi: v('np-npwp'),
-    bidang: v('np-bidang'), id_prov: v('np-prov'), provinsi: sel('np-prov'), id_kab: v('np-kab'), kabupaten: sel('np-kab'), no_telp: v('np-telp'), email: v('np-email')
-  };
-  document.getElementById('np-save').disabled = true;
-  fetch('<?= site_url("quotation_program/add_peserta"); ?>', { method: 'POST', body: new URLSearchParams(payload) })
-    .then(r => r.json())
-    .then(res => {
-      if (res.status !== 1) { err.textContent = res.msg; err.style.display = 'block'; document.getElementById('np-save').disabled = false; return; }
-      ALL_PESERTA.push({ id: String(res.id), kode: res.kode, nama: payload.nama, instansi: payload.instansi, no_telp: payload.no_telp, id_customer: payload.id_customer || null, nama_company: null });
-      SEL.add(Number(res.id));
-      toast(res.msg, 'success');
-      renderPesertaList();
-    })
-    .catch(() => { err.textContent = 'Terjadi kesalahan jaringan'; err.style.display = 'block'; document.getElementById('np-save').disabled = false; });
+// Info kuota (QTN-FR-22): target program, kuota di quotation lain, sisa target. Kuota boleh melebihi sisa target (tidak dicegah).
+function updateKuotaInfo() {
+  const opt = pjOpt(), box = document.getElementById('kuota-info');
+  document.getElementById('kuota-min-hint').textContent = (isB2bPj() ? `B2B minimal ${B2B_MIN}` : 'Minimal 1') + (N_TERISI ? ` · ${N_TERISI} peserta sudah mengisi` : '');
+  document.getElementById('kuota-b2b-note').textContent = isB2bPj() ? 'B2B: kuota adalah perkiraan untuk harga penawaran dan tidak menutup link; jumlah sebenarnya = daftar yang dikirim PIC company.' : '';
+  if (!opt) { box.innerHTML = '<span class="muted">Pilih Penjualan Program dahulu.</span>'; return; }
+  const target = parseInt(opt.dataset.target, 10) || 0, lain = KUOTA_LAIN[opt.value] || 0, sisa = target - lain;
+  box.innerHTML = `<div class="sum-row"><span>Target program</span><b>${target} peserta</b></div><div class="sum-row"><span>Di quotation lain</span><b>${lain}</b></div>` +
+    `<div class="sum-row"><span>Sisa target</span><b>${sisa}</b></div>`;
 }
 
 function calcQtnValue() {
-  const count = parseInt(document.getElementById('count-peserta').textContent) || 0;
-  const isAllin = document.querySelector('input[name="skema_harga"]:checked')?.value === 'allin';
+  const count = kuota();
+  const isAllin = isB2bPj(); // B2B hanya all-in; Public per peserta
 
   document.getElementById('wrap-harga-allin').style.display = isAllin ? 'block' : 'none';
   document.getElementById('wrap-harga-peserta').style.display = isAllin ? 'none' : 'block';
@@ -630,13 +545,16 @@ function calcQtnValue() {
 
   let subtotal = 0;
   let totalDiskon = 0;
+  let tambahan = 0, nTambahan = 0;
 
   if (isAllin) {
     if (hargaAllin === 0 && hargaPeserta > 0 && count > 0) {
-      hargaAllin = hargaPeserta * count;
+      hargaAllin = hargaPeserta * Math.min(count, B2B_MAKS); // terisi awal harga/peserta x kuota (maks. 25)
       document.getElementById('harga_allin').value = formatMoney(hargaAllin);
     }
-    subtotal = hargaAllin;
+    nTambahan = Math.max(count - B2B_MAKS, 0);
+    tambahan = nTambahan * B2B_TARIF; // ikut DPP dan PPN; diskon hanya dari harga paket
+    subtotal = hargaAllin + tambahan;
     totalDiskon = diskon;
   } else {
     subtotal = hargaPeserta * count;
@@ -648,6 +566,11 @@ function calcQtnValue() {
   const grandTotal = dpp + ppnNominal + biayaLain;
   const netPerPax = count > 0 ? Math.round(dpp / count) : 0;
 
+  document.getElementById('row-allin').style.display = isAllin ? 'flex' : 'none';
+  document.getElementById('row-tambahan').style.display = isAllin ? 'flex' : 'none';
+  document.getElementById('tot-allin').textContent = 'Rp ' + formatMoney(hargaAllin);
+  document.getElementById('lbl-tambahan').textContent = nTambahan ? `Tambahan peserta (${nTambahan} peserta di atas ${B2B_MAKS} × Rp ${formatMoney(B2B_TARIF)})` : 'Tambahan peserta (tidak ada)';
+  document.getElementById('tot-tambahan').textContent = 'Rp ' + formatMoney(tambahan);
   document.getElementById('tot-subtotal').textContent = 'Rp ' + formatMoney(subtotal);
   document.getElementById('tot-diskon').textContent = '- Rp ' + formatMoney(totalDiskon);
   document.getElementById('tot-dpp').textContent = 'Rp ' + formatMoney(dpp);
@@ -805,14 +728,12 @@ function kfPreview() {
 function onTanggalChange() {
   const t = document.getElementById('tanggal').value, b = document.getElementById('berlaku_sampai');
   if (!t) return;
-  if (!b.value || b.value < t) { const d = new Date(t + 'T00:00:00'); d.setDate(d.getDate() + 30); b.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  // Default 31 Desember tahun tanggal quotation; ikut pindah tahun selama belum diubah manual (QTN-FR-04).
+  if (!beTouched || !b.value || b.value < t) { b.value = t.slice(0, 4) + '-12-31'; beTouched = false; }
 }
 
 // ----------------- SUBMIT QUOTATION -----------------
 function collectPayload(statusAction) {
-  const peserta = [];
-  document.querySelectorAll('.chk-peserta:checked').forEach(c => peserta.push(parseInt(c.value)));
-
   const keterangan = [];
   Object.keys(ketState || {}).forEach(k => ketState[k].forEach(x => {
     if (x.on && x.teks.trim()) keterangan.push({ kategori: k, teks: x.teks.trim(), id_template_keterangan: x.id || '' });
@@ -832,8 +753,10 @@ function collectPayload(statusAction) {
     tujuan: document.querySelector('input[name="tujuan"]:checked')?.value || 'personal',
     id_customer: document.getElementById('id_customer').value || '',
     up_nama: document.getElementById('up_nama').value,
+    kepada_nama: document.getElementById('kepada_nama').value,
+    kuota_peserta: document.getElementById('kuota_peserta').value,
     alamat: document.getElementById('alamat').value,
-    skema_harga: document.querySelector('input[name="skema_harga"]:checked')?.value || 'peserta',
+    skema_harga: isB2bPj() ? 'allin' : 'peserta',
     harga_peserta: document.getElementById('harga_peserta').value,
     harga_allin: document.getElementById('harga_allin').value,
     diskon: document.getElementById('diskon').value,
@@ -842,20 +765,20 @@ function collectPayload(statusAction) {
     biaya_lain: document.getElementById('biaya_lain').value,
     id_template_konfirmasi: document.getElementById('id_template_konfirmasi')?.value || '',
     konfirmasi_isian: kfIsian,
+    kolom_b2b: Array.from(document.querySelectorAll('.kolom-b2b:checked')).map(c => c.value),
     konfirmasi_pernyataan: document.getElementById('konfirmasi_pernyataan')?.value || '',
     status: statusAction,
-    peserta: peserta,
     keterangan: keterangan
   };
 }
 
 function toBody(p) {
   const o = Object.assign({}, p, {
-    peserta_json: JSON.stringify(p.peserta),
     keterangan_json: JSON.stringify(p.keterangan),
-    konfirmasi_isian_json: JSON.stringify(p.konfirmasi_isian)
+    konfirmasi_isian_json: JSON.stringify(p.konfirmasi_isian),
+    kolom_b2b_json: JSON.stringify(p.kolom_b2b)
   });
-  delete o.peserta; delete o.keterangan; delete o.konfirmasi_isian;
+  delete o.keterangan; delete o.konfirmasi_isian; delete o.kolom_b2b;
   return new URLSearchParams(o);
 }
 
@@ -873,7 +796,7 @@ function submitQtn(statusAction) {
     if (res.status === 1) {
       toast(res.msg, 'success');
       setTimeout(() => {
-        window.location.href = '<?= site_url("quotation_program"); ?>';
+        window.location.href = '<?= site_url("quotation_program/view"); ?>/' + res.id; // detail: link dapat langsung disalin
       }, 800);
     } else {
       toast(res.msg, 'error');

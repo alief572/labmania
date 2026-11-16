@@ -4,6 +4,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+$currentCompose = Join-Path $root 'docker-compose.yml'
+if ((Test-Path -LiteralPath $currentCompose) -and (Get-Content -Raw -LiteralPath $currentCompose) -match '(?m)^name:\s*labmania-realdata-') {
+    throw 'Snapshot data asli lokal sedang dipakai. Setup/Switch/Rollback UAT ditolak; gunakan Docker Compose dan runbook README.realdata-8080.md agar data tidak terganti.'
+}
 $statePath = Join-Path $root 'laravel/local/.state.json'
 $template = Join-Path $root 'laravel/local/compose.yaml'
 $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -12,7 +16,17 @@ $nativeDocker = Get-Command docker -ErrorAction SilentlyContinue
 function Invoke-Docker {
     param([string[]]$DockerArgs)
     if ($nativeDocker) { & $nativeDocker.Source @DockerArgs }
-    else { & wsl.exe -d Ubuntu-24.04 --exec docker @DockerArgs }
+    else {
+        $fontValue = $env:UAT_FONT_DIR
+        $localEnv = Join-Path $root '.env'
+        if (-not $fontValue -and (Test-Path -LiteralPath $localEnv)) {
+            $fontLine = Get-Content -LiteralPath $localEnv | Where-Object { $_ -match '^UAT_FONT_DIR=' } | Select-Object -Last 1
+            if ($fontLine) { $fontValue = $fontLine.Substring('UAT_FONT_DIR='.Length).Trim().Trim([char]34, [char]39) }
+        }
+        if ($fontValue -match '^[A-Za-z]:[/\\]') { $fontValue = Docker-Path $fontValue }
+        if ($fontValue) { & wsl.exe -d Ubuntu-24.04 --exec env "UAT_FONT_DIR=$fontValue" docker @DockerArgs }
+        else { & wsl.exe -d Ubuntu-24.04 --exec docker @DockerArgs }
+    }
     if ($LASTEXITCODE -ne 0) { throw "Docker gagal (exit $LASTEXITCODE): $($DockerArgs[0])" }
 }
 

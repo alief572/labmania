@@ -1,0 +1,10 @@
+# Akses Navicat dari Windows; gabungkan dengan compose rehearsal yang sedang aktif.
+services:
+  rehearsal-db:
+    ports:
+      - '127.0.0.1:3308:3306'
+    networks: [rehearsal, navicat]
+
+networks:
+  navicat:
+    driver: bridge

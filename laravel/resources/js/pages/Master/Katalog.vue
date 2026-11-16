@@ -30,13 +30,11 @@ const nameOf = (list: Opt[], id: string | number) => list.find(o => String(o.id)
 const filterText = computed(() => `Bidang: ${filter.value.bidang === '' ? 'Semua' : nameOf(props.options.bidang, filter.value.bidang)} · Sertifikat: ${filter.value.sert === '' ? 'Semua' : nameOf(props.options.sert, filter.value.sert)}${filter.value.q ? ` · Kata kunci: "${filter.value.q}"` : ''}`);
 
 // Lingkup: satu baris per item, Enter menambah baris (mockup ktLingkup).
-const editing = ref<Item | null>(null);
-const editingBidang = ref('');
+const editing = ref<{ item: Item; bidang: string } | null>(null);
 const form = useForm({ items: [''] as string[] });
 const max = computed(() => props.lingkupMax.max_items);
 function open(item: Item, group: Group) {
-    editing.value = item;
-    editingBidang.value = group.nama;
+    editing.value = { item, bidang: group.nama };
     form.clearErrors();
     form.items = item.lingkup.length ? [...item.lingkup] : [''];
 }
@@ -51,8 +49,8 @@ function delRow(i: number) {
     if (!form.items.length) form.items.push('');
     focusRow(Math.min(i, form.items.length - 1));
 }
-const save = () => confirmation.visit('put', `/master/product/${editing.value!.id}/lingkup`, { items: form.items }, {
-    title: `Simpan lingkup ${editing.value!.judul} (${editing.value!.nomor})?`,
+const save = () => confirmation.visit('put', `/master/product/${editing.value!.item.id}/lingkup`, { items: form.items }, {
+    title: `Simpan lingkup ${editing.value!.item.judul} (${editing.value!.item.nomor})?`,
 }, { preserveScroll: true, onSuccess: () => { editing.value = null; }, onError: (e) => form.setError('items', e.lingkup) });
 </script>
 
@@ -100,8 +98,8 @@ const save = () => confirmation.visit('put', `/master/product/${editing.value!.i
             </template>
         </div>
 
-        <ConfirmDialog v-if="editing" :title="`Lingkup: ${editing.judul}`" confirm-label="Simpan lingkup" :busy="form.processing || confirming" @confirm="save" @cancel="editing = null">
-            <p class="kt-hint"><span class="kt-code">{{ editing.nomor }}</span> · {{ [editing.nama_produk, editingBidang, editing.nama_varian, editing.nama_sertifikasi].filter(Boolean).join(' · ') }}. Lingkup tampil di kartu Katalog Produk dan di PDF katalog. Satu baris untuk satu item; tekan Enter untuk menambah baris.</p>
+        <ConfirmDialog v-if="editing" :title="`Lingkup: ${editing.item.judul}`" confirm-label="Simpan lingkup" :busy="form.processing || confirming" @confirm="save" @cancel="editing = null">
+            <p class="kt-hint"><span class="kt-code">{{ editing.item.nomor }}</span> · {{ [editing.item.nama_produk, editing.bidang, editing.item.nama_varian, editing.item.nama_sertifikasi].filter(Boolean).join(' · ') }}. Lingkup tampil di kartu Katalog Produk dan di PDF katalog. Satu baris untuk satu item; tekan Enter untuk menambah baris.</p>
             <ol class="ling-list">
                 <li v-for="(_, i) in form.items" :key="i" class="ling-row">
                     <label class="sr-only" :for="`lk-${i}`">Item lingkup {{ i + 1 }}</label>

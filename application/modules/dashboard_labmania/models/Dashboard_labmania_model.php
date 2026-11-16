@@ -18,7 +18,7 @@ class Dashboard_labmania_model extends CI_Model
         $rows = $this->db->select('pj.*, pp.judul as nama_paket, c.name_customer as nama_company')
             ->from('penjualan_program pj')
             ->join('master_program mp', 'pj.id_master_program = mp.id', 'left')
-            ->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left')
+            ->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false)
             ->join('master_customer c', 'pj.id_customer = c.id_customer', 'left')
             ->where_in('pj.status', $statuses)
             ->order_by('pj.tgl_mulai', 'ASC')
@@ -39,7 +39,7 @@ class Dashboard_labmania_model extends CI_Model
     {
         return $this->db->select('mp.*, pp.judul as nama_paket')
             ->from('master_program mp')
-            ->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left')
+            ->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false)
             ->where('mp.status', 'draft')->get()->result_array();
     }
 
@@ -74,7 +74,7 @@ class Dashboard_labmania_model extends CI_Model
         $this->db->select('pj.*, pp.judul as nama_paket, c.name_customer as nama_company');
         $this->db->from('penjualan_program pj');
         $this->db->join('master_program mp', 'pj.id_master_program = mp.id', 'left');
-        $this->db->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left');
+        $this->db->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false);
         $this->db->join('master_customer c', 'pj.id_customer = c.id_customer', 'left');
         $this->db->where('pj.status', 'final');
         $this->db->where('pj.tgl_selesai >=', date('Y-m-d'));

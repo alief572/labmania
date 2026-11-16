@@ -1,10 +1,10 @@
 <div class="page-head">
   <div>
-    <h1>Product Combine <span class="ref">FR-07 – FR-13</span></h1>
-    <p>Daftar seluruh paket produk hasil kombinasi 3 atribut master. Satu paket produk dibentuk dari kombinasi unik.</p>
+    <h1>Product <span class="ref">FR-07 – FR-13</span></h1>
+    <p>Daftar seluruh paket produk hasil kombinasi 4 atribut master (Produk, Bidang, Varian, Sertifikat). Satu paket produk dibentuk dari kombinasi unik.</p>
   </div>
   <div class="page-actions">
-    <?php if (lm_can('master_data.paket_produk', 'tambah')): ?><a href="<?= site_url('master_data/combine'); ?>" class="btn btn-accent">+ Tambah Product (Combine)</a><?php endif; ?>
+    <?php if (lm_can('master_data.paket_produk', 'tambah')): ?><a href="<?= site_url('master_data/combine'); ?>" class="btn btn-accent">+ Tambah Product</a><?php endif; ?>
   </div>
 </div>
 
@@ -25,6 +25,7 @@
           <th>Judul Paket</th>
           <th>Produk</th>
           <th>Bidang</th>
+          <th>Varian</th>
           <th>Sertifikat</th>
           <th style="width: 110px;">Status</th>
           <th style="width: 160px;" class="hist">Dibuat / Diubah</th>
@@ -40,6 +41,7 @@
 var ATTRS = [
   { field: 'produk',      id: 'id_jenis_produk',      label: 'Produk',     options: <?= json_encode($jenis_produk); ?> },
   { field: 'bidang',      id: 'id_jenis_bidang',      label: 'Bidang',     options: <?= json_encode($jenis_bidang); ?> },
+  { field: 'varian',      id: 'id_varian_pelaksanaan', label: 'Varian',    options: <?= json_encode($varian); ?> },
   { field: 'sertifikasi', id: 'id_jenis_sertifikasi', label: 'Sertifikat', options: <?= json_encode($jenis_sertifikasi); ?> }
 ];
 var esc = function (v) { return $('<div>').text(v == null ? '' : v).html(); };
@@ -65,7 +67,7 @@ function openEditPaketModal(id) {
         '</div>' +
         '<div class="modal-body">' +
           '<div class="grid2">' +
-            '<div class="field"><label>Nomor Product Combine</label><input type="text" class="input" value="' + esc(d.nomor) + '" readonly></div>' +
+            '<div class="field"><label>Nomor Product</label><input type="text" class="input" value="' + esc(d.nomor) + '" readonly></div>' +
             '<div class="field"><label>Judul <span class="req">*</span></label><input type="text" class="input" id="paket-judul" maxlength="150" value="' + esc(d.judul) + '"></div>' +
             ATTRS.map(function (a) { return '<div class="field"><label>' + a.label + ' <span class="req">*</span></label>' + attrSelect(a, d[a.id]) + '</div>'; }).join('') +
           '</div>' +
@@ -85,14 +87,14 @@ function openEditPaketModal(id) {
 
 function savePaketTitle(id) {
   var errEl = document.getElementById('paket-err');
-  if (!lmRequired([['paket-judul', 'Judul'], ['paket-produk', 'Produk'], ['paket-bidang', 'Bidang'], ['paket-sertifikasi', 'Sertifikat']])) return;
+  if (!lmRequired([['paket-judul', 'Judul'], ['paket-produk', 'Produk'], ['paket-bidang', 'Bidang'], ['paket-varian', 'Varian'], ['paket-sertifikasi', 'Sertifikat']])) return;
   document.getElementById('btn-save-paket').disabled = true;
 
   $.ajax({
     url: '<?= site_url("master_data/update_paket"); ?>',
     type: 'POST',
     data: { id: id, judul: document.getElementById('paket-judul').value.trim(),
-            produk: $('#paket-produk').val(), bidang: $('#paket-bidang').val(), sertifikasi: $('#paket-sertifikasi').val() },
+            produk: $('#paket-produk').val(), bidang: $('#paket-bidang').val(), varian: $('#paket-varian').val(), sertifikasi: $('#paket-sertifikasi').val() },
     dataType: 'json',
     success: function(res) {
       if (res.status) {

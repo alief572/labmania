@@ -3,6 +3,7 @@ $ST = ['draft' => 'Draft', 'final' => 'Final', 'batal' => 'Batal'];
 $JN = ['public' => 'Public', 'b2b' => 'B2B'];
 ?>
 <script src="<?= base_url('assets/labmania/js/lm-costing.js'); ?>"></script>
+<script src="<?= base_url('assets/labmania/js/lm-reschedule.js'); ?>"></script>
 
 <div class="page-head">
   <div>
@@ -24,6 +25,14 @@ $JN = ['public' => 'Public', 'b2b' => 'B2B'];
       <option value="all">Semua jenis</option>
       <?php foreach ($JN as $k => $l): ?><option value="<?= $k; ?>" <?= $jenis === $k ? 'selected' : ''; ?>><?= $l; ?></option><?php endforeach; ?>
     </select>
+    <select class="input sm" id="tahun-filter" aria-label="Filter tahun mulai acara">
+      <option value="all">Semua tahun</option>
+      <?php foreach ($tahun_opts as $t): ?><option value="<?= (int)$t; ?>"><?= (int)$t; ?></option><?php endforeach; ?>
+    </select>
+    <select class="input sm" id="bulan-filter" aria-label="Filter bulan mulai acara">
+      <option value="all">Semua bulan</option>
+      <?php foreach (['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'] as $i => $b): ?><option value="<?= $i + 1; ?>"><?= $b; ?></option><?php endforeach; ?>
+    </select>
     <select class="input sm" id="status-filter" aria-label="Filter status">
       <option value="all">Semua status</option>
       <?php foreach ($ST as $k => $l): ?><option value="<?= $k; ?>" <?= $status === $k ? 'selected' : ''; ?>><?= $l; ?></option><?php endforeach; ?>
@@ -31,7 +40,7 @@ $JN = ['public' => 'Public', 'b2b' => 'B2B'];
   </div>
 
   <div class="table-wrap">
-    <table class="table" id="data-table" data-dt data-filter="#status-filter,#jenis-filter" data-filter-name="status,jenis" data-ajax="<?= site_url('penjualan_program/penjualan_data'); ?>">
+    <table class="table" id="data-table" data-dt data-filter="#status-filter,#jenis-filter,#tahun-filter,#bulan-filter" data-filter-name="status,jenis,tahun,bulan" data-ajax="<?= site_url('penjualan_program/penjualan_data'); ?>">
       <thead>
         <tr>
           <th style="width: 50px;">No</th>
@@ -64,4 +73,7 @@ function pjCancel(id) { LmCosting.confirmCancel(id, afterStatus); }
 
 // Surat Penawaran (PJ-FR-20): pratinjau dimuat dari server, lalu Cetak PDF.
 function pjPenawaran(id) { LmCosting.penawaran(id); }
+
+// Reschedule (PJ-FR-26): modal dengan jadwal sekarang, tanggal mulai baru, trainer, alasan, dan evidence.
+function pjResched(id) { LmReschedule.open(id, afterStatus); }
 </script>

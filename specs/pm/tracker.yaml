@@ -72,4 +72,120 @@
 #       One line that stays true as the row moves. Not a plan — the plan is the
 #       capsule.
 
-issues: []
+issues:
+  - id: 8
+    title: Laravel fase 7 - rehearsal migrasi dan kesiapan cutover lokal
+    type: integration
+    slug: 8-fase7-kesiapan-cutover
+    status: blocked
+    source: Rencana disetujui pengguna 14-11-2026 melalui Implement the plan
+    depends_on: [7]
+    summary: >-
+      Penyelarasan UI 15-11-2026: audit 45 halaman Laravel; peserta detail Quotation server-side
+      scoped program/quotation, konfirmasi dan hasil SweetAlert2 seluruh mutasi bisnis,
+      separator Rate/Refund 13/18 digit, sidebar/header/tab/kartu/badge sesuai acuan.
+      SQLite 246/3015, MySQL fokus 3/324, sembilan tes frontend (48+37 alur konfirmasi),
+      typecheck/build/Pint lulus. Tanpa browser/deployment; source dan build workspace siap review.
+      Bukti .artifacts/penyelarasan_ui_modul_laravel/; cutover tetap blocked.
+      Lebar indeks 15-11-2026: sebelas indeks non-Master Data memakai full-width existing,
+      termasuk seluruh tab; form/detail tetap. Build/typecheck dan 77 hash source/aset Docker
+      cocok; layout/CSS/GL/environment/Compose tetap sama. Tidak ada operasi DB/production.
+      COA level 5 15-11-2026: 243 dari 361 akun GL boleh dipilih/dipakai; filter server juga
+      menolak ID non-level-5 dan bypass nomor Rate lama. SQLite 242/2681, MySQL fokus 3/36,
+      frontend/build/Pint lulus; 14 endpoint dan hash 62 tabel aplikasi sama. Histori tetap snapshot.
+      COA 15-11-2026: koneksi GL SELECT-only aktif; Invoice/Rate membaca 361 akun gl_labmania,
+      empat default memakai nomor GL, histori tidak dipetakan ulang. WAPU/cetak tetap tertunda.
+      SQLite 239/2671, MySQL histori 1/6, frontend/build/Pint lulus; 62 tabel aplikasi tidak berubah.
+      Snapshot dan penerimaan GL eksternal menjadi dependensi cutover, production tetap blocked.
+      Konfirmasi Master Data 15-11-2026: SweetAlert2 sebelum seluruh mutasi pada 12 halaman;
+      target/payload dibekukan, cancel tanpa request, pending sampai selesai. Tes 48 alur dan regresi
+      frontend/build/audit lulus; Docker lokal 14 endpoint, 15 hash source cocok dan hash 62 tabel sama.
+      Fix gear DataTables 15-11-2026: ID popover ActionMenu unik lintas root Vue, sehingga aksi
+      mengenai baris yang dipilih. Tes reproduksi gagal sebelum fix lalu lulus sesudah fix; app lokal
+      diperbarui, 14 endpoint berhasil dan hash 62 tabel tetap sama. Status data tidak dibalik otomatis.
+      Pembaruan DataTables 15-11-2026: seluruh indeks Master Data lebar penuh; 14 daftar server-side aktif
+      pada localhost:8080, Katalog kartu dan permission matriks dipertahankan. SQLite 235/2644, MySQL fokus
+      7/332, helper/lifecycle/navigation frontend, build/Pint/audit lulus. Runtime 14 endpoint berhasil,
+      hash 62 tabel tetap sama; tidak ada perubahan schema/data aplikasi, stage/commit/push atau production.
+      Pembaruan sidebar 15-11-2026: Master Data tiga level sesuai mockup aktif pada localhost:8080,
+      empat submenu/15 menu, Master Role terpisah dengan hak awal setara. SQLite 227/2321, MySQL fokus
+      sidebar 4/42, frontend navigation/build/Pint lulus; hash 57 tabel di luar menu/hak tetap sama.
+      Backup terenkripsi dan snapshot sebelum/sesudah tersimpan; penyesuaian menu adalah perubahan
+      target yang disengaja sesudah snapshot, bukan pengecualian baru verifier. Status production tetap blocked.
+      Pembaruan 15-11-2026: atas keputusan pengguna, tujuh konfigurasi Finance ditunda dengan opsi eksplisit;
+      blokir COA WAPU/cetak Invoice tetap berlaku. Laravel snapshot asli sudah menggantikan UAT pada localhost:8080,
+      project labmania-realdata-c dengan DB rehearsal-db/labmania_laravel, 43 tabel terpetakan/2064 baris/19 akun.
+      Verifikasi bisnis/relasi lulus; hanya ip/login_terakhir satu akun berubah karena login dan dipertahankan.
+      Toleransi kedua kolom ini hanya pada verifikasi baca-saja eksplisit; password/hak/status tetap diperiksa.
+      Gladi rollback ke UAT 8080 dan preview 8081 lulus; kondisi akhir snapshot asli 8080, UAT disimpan berhenti.
+      Backup terenkripsi sebelum pengalihan, restart Compose root tanpa profil, dan proteksi Setup/Switch/Rollback UAT
+      terbukti. Penamaan COMPOSE_PROJECT_NAME diselaraskan agar tidak membuat app duplikat; DB/volume sumber tetap.
+      runtime_ready=true dengan Finance ditunda, finance_ready=false, cutover_ready=false. SQLite 219/2266,
+      Python 13 tes, MySQL fokus 3/111, build/Pint dan probe HTTP Windows/WSL lulus. Production tetap menunggu bukti capture/upload,
+      penerimaan BA/data/UAT serta konfigurasi server. Koreksi trainer S3 belum diterapkan; manifestnya masih draft.
+      Rincian sebelumnya di bawah adalah riwayat, bukan status alamat terbaru.
+      Verifikasi akhir eksekusi lokal: MySQL lengkap 75/1025 lulus; SQLite 217/2249 lulus.
+      Readiness actual 51 pemeriksaan dengan tujuh Finance gagal; promosi/rollback live tool baru belum dilakukan.
+      Pembaruan eksekusi lokal 14-11-2026: login normal password-only, endpoint/UI 2FA dipensiunkan,
+      sidebar dari ms_menu dengan pemetaan route dan permission; kompatibilitas GET konfirmasi CI3 tersedia.
+      Docker lokal diperbarui: 8080 UAT sintetis, 8081 preview data asli; DB/volume sumber dipertahankan.
+      Verifikasi ulang manifest rehearsal lulus, 14 relasi tanpa orphan. Source backup hash tetap sama.
+      Jalur promosi lokal tanpa seed beserta acceptance gate tersedia; preflight menolak tujuh konfigurasi
+      Finance kosong, tidak ada pengalihan. Promosi live tool baru belum digladi; empat tesnya memakai mock.
+      SQLite akhir 217/2249, frontend navigation + 12 pemeriksaan fase 3/4, 10 tes Python dan clean-source
+      Docker production install/build lulus. Paket L2 terbaru 266 berkas Laravel, tanpa stage/commit/push.
+      Koreksi trainer S3 tersedia sebagai JSONL/draft manifest, belum diterapkan pada preview.
+      Tertahan: konfigurasi Finance, bukti konsistensi/zona waktu snapshot, arsip upload, penerimaan
+      cakupan legacy dan pengecualian bisnis, hak akses/UAT/pengesahan BA, serta validasi server produksi.
+      Bukti .artifacts/penyelesaian_migrasi_laravel/ dan .artifacts/paket_push_l2/penyelesaian_14-11-2026/.
+      Rincian historis di bawah tidak menggantikan status terbaru ini.
+      Perangkat rehearsal terisolasi, manifest/profil/import/verifikasi, operasi sumber/backup/restore,
+      arsip AES-256, schema-only 62 tabel, konfigurasi Apache dan runbook tersedia. SQLite final 187/1940;
+      MySQL lengkap 72/991 dan fokus akhir 1/26; build/Pint/13 PHP syntax/12 cek frontend/2 tes Python lulus,
+      audit Composer/npm 0 advisori, context lint 0 error/9 warning existing. 5331 protected cocok.
+      Pembaruan 14-11-2026 (rehearsal di runtime nyata, DATA UJI): Docker/Apache ternyata tersedia, jadi bukan lagi
+      penghalang. Dua rehearsal (project a dan b) identik, 62 tabel/624 baris dihitung ulang di MySQL; backup AES-256 dan
+      restore ke instance baru terverifikasi, kunci APP_KEY salah ditolak; uji negatif arsip lulus. Tiga bug alat ditemukan
+      dan diperbaiki dengan tes (.dockerignore membocorkan .env.rehearsal ke image, TLS self-signed, LOCK TABLES pada dump).
+      SQLite 191/1949, MySQL lengkap 72/995. Pemeriksaan kesiapan menolak: 10 dari 49 gagal, cutover_ready=false.
+      Tertahan HANYA oleh: snapshot produksi (db dev hanya 11 tabel berisi), pengesahan BA/pemilik data, konfigurasi
+      produksi (akun WAPU, rekening, penanda tangan, font berlisensi), role Admin/Direktur dan grant menu operasional.
+      Hasil data uji tidak dipakai sebagai bukti kesiapan produksi. UAT browser belum dilakukan. Tidak ada go-live.
+      Tambahan Docker UAT lokal 14-11-2026: localhost:8080 menjalankan Laravel dengan DB/container/volume sintetis
+      terpisah di uat-db/labmania_laravel; CI3 standby. Enam akun UAT dengan TOTP, bootstrap idempoten, HTTP/CSRF,
+      persistensi key/DB/dokumen, setup ulang dan rollback CI3 lalu kembali Laravel terverifikasi.
+      SQLite 213/2201 dan MySQL fokus 3/30 lulus; ini bukan penerimaan data production atau penutupan paritas fitur.
+  - id: 2
+    title: Sisa Laravel fase 1-6 - lingkungan target, data nyata, dan keputusan BA
+    type: integration
+    slug: 2-fase1-lanjutan-mysql
+    status: open
+    source: Sisa terbuka penutupan issue 1 dan fase 2, 13-11-2026
+    depends_on: []
+    summary: >-
+      Pembaruan 14-11-2026: profil/rehearsal data nyata, Docker/Apache lokal dan preview sudah terbukti;
+      login normal kini password-only sesuai keputusan pengguna, sehingga reset/enrollment 2FA bukan TODO.
+      Sidebar mengikuti DB, guard bootstrap UAT tidak diperluas. Bukti runtime yang lebih baru mengoreksi
+      pernyataan historis bahwa Docker/Apache belum tersedia. Tetap terbuka: penerimaan BA/data/dokumen,
+      konfigurasi Finance dan target produksi, cache lock multi-instance, serta UAT manusia.
+      Selesai sejak dibuka: salinan MySQL + suite integrasi, role Activity Log (role 3 Manajemen), pemetaan hak menu baru,
+      reset 2FA oleh admin, dan empat referensi context lint (bug separator Windows di lint.py). Belum ada: cache lock multi-instance
+      (butuh lingkungan target), UAT browser, profil data pada salinan berisi data nyata, keputusan BA butir USULAN fase 2
+      (prefix kode Q-01, batas Lingkup Q-38, reaktivasi Product, pilihan Master User Q-25, Jenis Instansi Q-20), reset 2FA mandiri
+      (sengaja ditunda), dan verifikasi penerapan pengerasan Apache dev: konfigurasi docker/apache.conf sudah
+      diperkeras pada issue 8 sesuai persetujuan pengguna; syntax/runtime serta penutupan akses HTTP ke
+      .git, .artifacts, specs dan database belum diverifikasi karena runtime Docker/Apache belum tersedia.
+      Tambahan penutupan fase 3 (14-11-2026): butir USULAN BA Quotation tetap sementara, rehearsal quotation historis
+      dan berkas nyata belum dilakukan; migration menolak data lama tanpa rekonsiliasi dan rollback destruktif.
+      Tambahan penutupan fase 4 (14-11-2026): konfigurasi akun WAPU, rekening/identitas cetak dan grant role SO/Invoice
+      wajib dilengkapi; Company lama dengan Perlakuan PPN NULL dan ST tanpa snapshot perlu rekonsiliasi.
+      Usulan BA Invoice/identitas cetak/nomor ST serta rehearsal data nyata dan UAT masih terbuka.
+      MyISAM COA tidak dikonversi; jangan mengubah master melalui aplikasi lain secara konkuren pada salinan.
+      Tambahan penutupan fase 5 (14-11-2026): grant sales_order_refund Finance belum diberikan otomatis;
+      audit Composer sempat timeout; pengulangan pada fase 6 lulus tanpa advisori, dependency tidak berubah.
+      Profil performa/ukuran backup snapshot PDF dengan volume nyata dan restore DB+berkas menunggu rehearsal.
+      Tambahan fase 6 (14-11-2026): format/nomor/penandatangan/aturan penerbitan sertifikat dan pertanyaan/aturan survei
+      menunggu BA; penerbitan resmi serta survei publik tetap nonaktif, tidak ada pertanyaan contoh operasional.
+      Anggota/grant Admin bisnis dan Direktur ditentukan Superadmin; role 1 admin legacy tetap Superadmin.
+      Sediakan Times New Roman berlisensi pada server target. Profil query daftar program/budget, rekap survei,
+      PDF/XLSX, backup/restore dan volume nyata perlu rehearsal fase 7; UAT/browser dan cutover belum dilakukan.

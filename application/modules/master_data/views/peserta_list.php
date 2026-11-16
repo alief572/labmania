@@ -5,7 +5,7 @@
 <div class="page-head">
   <div>
     <h1>Master Peserta <span class="ref">FR-15 · FR-16 · FR-17</span></h1>
-    <p>Data peserta pelatihan/sertifikasi, dikelompokkan menurut Jenis Bidang. Peserta dapat terdaftar di satu Company; di Quotation ke Company hanya peserta company itu yang dapat dipilih.</p>
+    <p>Data peserta pelatihan/sertifikasi, dikelompokkan menurut Jenis Bidang. Peserta yang Deal di quotation masuk otomatis saat Deal; yang bertanda Belum lengkap dilengkapi lewat Edit.</p>
   </div>
   <div class="page-actions">
     <?php if (lm_can('master_data.peserta', 'tambah')): ?><button class="btn btn-accent" onclick="openPesertaModal()">+ Tambah Peserta</button><?php endif; ?>
@@ -16,12 +16,17 @@
   <div class="toolbar">
     <div class="search">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input type="search" class="input" id="table-search" placeholder="Cari kode, nama, instansi, atau bidang…" aria-label="Cari">
+      <input type="search" class="input" id="table-search" placeholder="Cari kode, nama, instansi, NIK, atau bidang…" aria-label="Cari">
     </div>
+    <select class="input sm" id="kelengkapan-filter" aria-label="Filter kelengkapan data">
+      <option value="all">Semua kelengkapan</option>
+      <option value="lengkap">Lengkap</option>
+      <option value="belum">Belum lengkap</option>
+    </select>
   </div>
 
   <div class="table-wrap">
-    <table class="table" id="data-table" data-dt data-ajax="<?= site_url('master_data/peserta_data'); ?>">
+    <table class="table" id="data-table" data-dt data-filter="#kelengkapan-filter" data-filter-name="kelengkapan" data-ajax="<?= site_url('master_data/peserta_data'); ?>">
       <thead>
         <tr>
           <th style="width: 50px;">No</th>
@@ -44,7 +49,7 @@ var companiesList = <?= json_encode($companies); ?>;
 
 // Server -> id field di modal
 var ERR_FIELD = { nama: 'p-nama', gender: 'p-gender', id_customer: 'p-company', instansi: 'p-instansi', npwp_instansi: 'p-npwp',
-                  bidang: 'p-bidang', id_prov: 'p-prov', id_kab: 'p-kab', no_telp: 'p-telp', email: 'p-email' };
+                  bidang: 'p-bidang', id_prov: 'p-prov', id_kab: 'p-kab', no_telp: 'p-telp', email: 'p-email', nik: 'p-nik' };
 var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function esc(v) { return $('<div>').text(v == null ? '' : v).html().replace(/"/g, '&quot;'); }
@@ -83,7 +88,9 @@ function openPesertaModal(data) {
       '<div class="modal-head"><h3>' + (isEdit ? 'Edit Peserta ' + esc(d.kode) : 'Tambah Master Peserta') + '</h3>' +
         '<button class="close-btn" onclick="closeModal()">&times;</button></div>' +
       '<div class="modal-body">' +
-        '<p class="hint top">Semua field wajib diisi, kecuali Company dan NPWP Instansi.</p>' +
+        '<p class="hint top">Semua field wajib diisi, kecuali Company, NPWP Instansi, dan NIK.</p>' +
+        ((d.kurang && d.kurang.length) ? '<div class="notice"><span>Peserta ini masuk dari Deal ' + esc(d.asal_deal || 'quotation') +
+          ' dan <b>belum lengkap</b>. Lengkapi: ' + esc(d.kurang.join(', ')) + '.</span></div>' : '') +
         '<div class="grid2">' +
           '<div class="field span2"><label>Kode Peserta</label>' +
             '<input class="input" id="p-kode" value="' + (isEdit ? esc(d.kode) : '') + '" placeholder="Memuat kode…" readonly>' +
@@ -102,7 +109,9 @@ function openPesertaModal(data) {
           fieldHtml('Lokasi (Provinsi) <span class="req">*</span>', '<select class="input" id="p-prov"><option value="">Memuat...</option></select>') +
           fieldHtml('Kota/Kabupaten <span class="req">*</span>', '<select class="input" id="p-kab"><option value="">Pilih provinsi dahulu</option></select><span class="hint">Tersaring menurut provinsi</span>') +
           fieldHtml('No Telp/WhatsApp <span class="req">*</span>', '<input class="input" id="p-telp" inputmode="tel" placeholder="08xxxxxxxxxx" value="' + esc(d.no_telp) + '">') +
-          fieldHtml('Email <span class="req">*</span>', '<input class="input" id="p-email" type="email" placeholder="nama@domain.com" value="' + esc(d.email) + '">', 'span2') +
+          fieldHtml('Email <span class="req">*</span>', '<input class="input" id="p-email" type="email" placeholder="nama@domain.com" value="' + esc(d.email) + '">') +
+          fieldHtml('NIK <span class="muted">(opsional)</span>', '<input class="input" id="p-nik" inputmode="numeric" maxlength="20" value="' + esc(d.nik) + '">' +
+            '<span class="hint">Terisi dari isian link bila peserta mengisinya</span>') +
         '</div>' +
       '</div>' +
       '<div class="modal-foot">' +
@@ -169,7 +178,7 @@ function submitPeserta(id) {
       id_customer: v('p-company'),
       id_prov: provEl.value, provinsi: opt(provEl) ? opt(provEl).getAttribute('data-name') : '',
       id_kab: kabEl.value, kabupaten: opt(kabEl) ? opt(kabEl).getAttribute('data-name') : '',
-      no_telp: v('p-telp'), email: v('p-email'), npwp_instansi: v('p-npwp')
+      no_telp: v('p-telp'), email: v('p-email'), npwp_instansi: v('p-npwp'), nik: v('p-nik')
     },
     success: function (res) {
       if (res.status) { toast(res.msg, 'ok'); closeModal(); pesertaReload(); return; }

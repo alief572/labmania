@@ -15,7 +15,7 @@ class Master_program_model extends CI_Model
                            jp.nama as nama_produk, js.nama as nama_sertifikasi, jb.nama as nama_bidang,
                            uc.username as user_confirm');
         $this->db->from('master_program mp');
-        $this->db->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left');
+        $this->db->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false);
         $this->db->join('ms_jenis_produk jp', 'pp.id_jenis_produk = jp.id', 'left');
         $this->db->join('ms_jenis_sertifikasi js', 'pp.id_jenis_sertifikasi = js.id', 'left');
         $this->db->join('ms_jenis_bidang jb', 'pp.id_jenis_bidang = jb.id', 'left');
@@ -58,7 +58,7 @@ class Master_program_model extends CI_Model
         $search = trim($p['search']['value'] ?? '');
         $status = $p['status'] ?? 'all';
         $apply = function () use ($search, $status) {
-            $this->db->from('master_program mp')->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left');
+            $this->db->from('master_program mp')->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false);
             if (in_array($status, ['draft', 'final', 'batal'], true)) $this->db->where('mp.status', $status);
             if ($search !== '') {
                 $this->db->group_start()->like('mp.nomor', $search)->or_like('pp.judul', $search)->or_like('pp.nomor', $search)->group_end();
@@ -92,7 +92,7 @@ class Master_program_model extends CI_Model
         $this->db->select('mp.*, pp.nomor as nomor_paket, pp.judul as nama_paket,
                            jp.nama as nama_produk, js.nama as nama_sertifikasi, jb.nama as nama_bidang');
         $this->db->from('master_program mp');
-        $this->db->join('paket_produk pp', 'mp.id_paket_produk = pp.id', 'left');
+        $this->db->join(lm_paket_derived(), 'pp.id_master_program = mp.id', 'left', false);
         $this->db->join('ms_jenis_produk jp', 'pp.id_jenis_produk = jp.id', 'left');
         $this->db->join('ms_jenis_sertifikasi js', 'pp.id_jenis_sertifikasi = js.id', 'left');
         $this->db->join('ms_jenis_bidang jb', 'pp.id_jenis_bidang = jb.id', 'left');
@@ -100,6 +100,7 @@ class Master_program_model extends CI_Model
         $program = $this->db->get()->row_array();
 
         if ($program) {
+            $program['paket_ids'] = $this->paket_ids($id);
             $program['biaya'] = $this->biaya_rows($id);
 
             $program['calc'] = $this->calculate_costing(
@@ -111,6 +112,22 @@ class Master_program_model extends CI_Model
         }
 
         return $program;
+    }
+
+    /** Id Product satu Master Program menurut urutan (urutan 1 = Product utama), dari master_program_produk. */
+    public function paket_ids($idMp)
+    {
+        return array_map('intval', array_column(
+            $this->db->select('id_paket_produk')->order_by('urutan')->get_where('master_program_produk', ['id_master_program' => (int)$idMp])->result_array(),
+            'id_paket_produk'));
+    }
+
+    /** Label nomor Product digabung " + " untuk log (urutan mengikuti $ids). */
+    private function paket_label(array $ids)
+    {
+        if (!$ids) return '';
+        $map = array_column($this->db->select('id, nomor')->where_in('id', $ids)->get('paket_produk')->result_array(), 'nomor', 'id');
+        return implode(' + ', array_map(function ($i) use ($map) { return $map[$i] ?? ('#' . $i); }, $ids));
     }
 
     public function biaya_rows($idMp)
@@ -165,12 +182,13 @@ class Master_program_model extends CI_Model
                         ->get()->result_array();
     }
 
-    /** Paket Produk untuk pilihan: yang aktif, ditambah paket yang sedang dipakai program ini. */
-    public function get_paket_options($withId = null)
+    /** Product untuk pilihan: yang aktif, ditambah Product yang sedang dipakai program ini ($withIds). */
+    public function get_paket_options($withIds = [])
     {
+        $withIds = array_map('intval', (array)$withIds);
         $rows = $this->md_model->get_paket_produk();
-        return array_values(array_filter($rows, function ($p) use ($withId) {
-            return $p['aktif'] == 1 || ($withId && (int)$p['id'] === (int)$withId);
+        return array_values(array_filter($rows, function ($p) use ($withIds) {
+            return $p['aktif'] == 1 || in_array((int)$p['id'], $withIds, true);
         }));
     }
 
@@ -313,17 +331,27 @@ class Master_program_model extends CI_Model
     }
 
     /**
-     * Validasi isian Master Program (MP-FR-02, MP-NFR-05). Kembalian: [header, biaya bersih, errors, jumlah item 0 dibuang].
+     * Validasi isian Master Program (MP-FR-02, MP-NFR-05). Kembalian: [header, biaya bersih, errors, jumlah item 0 dibuang, id Product].
      * errors: kolom header => pesan; 'b{i}' => pesan untuk baris biaya ke-i (indeks dari form).
      */
     private function validate_program($post, $old)
     {
         $e = [];
 
-        $paketId = (int)($post['id_paket_produk'] ?? 0);
-        $paket = $paketId ? $this->db->get_where('paket_produk', ['id' => $paketId])->row_array() : null;
-        if (!$paket) $e['id_paket_produk'] = 'Paket Produk wajib dipilih';
-        elseif (!$paket['aktif'] && (!$old || (int)$old['id_paket_produk'] !== $paketId)) $e['id_paket_produk'] = 'Paket Produk harus berstatus Aktif';
+        // Satu atau lebih Product (MP-FR-02); costing tetap satu. Product yang sama tidak boleh dua kali.
+        $raw = array_map('intval', (array)($post['paket'] ?? []));
+        $paketIds = array_values(array_unique(array_filter($raw)));
+        if (!$paketIds) {
+            $e['id_paket_produk'] = 'Pilih minimal satu Product';
+        } else {
+            $oldIds = $old ? $this->paket_ids($old['id']) : [];
+            $found = array_column($this->db->where_in('id', $paketIds)->get('paket_produk')->result_array(), null, 'id');
+            foreach ($paketIds as $pid) {
+                if (!isset($found[$pid])) { $e['id_paket_produk'] = 'Product tidak ditemukan'; break; }
+                if (!$found[$pid]['aktif'] && !in_array($pid, $oldIds, true)) { $e['id_paket_produk'] = 'Product ' . $found[$pid]['nomor'] . ' harus berstatus Aktif'; break; }
+            }
+            if (count($raw) !== count($paketIds) && !isset($e['id_paket_produk'])) $e['id_paket_produk'] = 'Product yang sama tidak dapat dipilih dua kali';
+        }
 
         $durasi = $this->to_int($post['durasi_hari'] ?? '');
         if (!$durasi) $e['durasi_hari'] = 'Durasi bilangan bulat > 0';
@@ -339,13 +367,12 @@ class Master_program_model extends CI_Model
         $e += $eb;
 
         $header = [
-            'id_paket_produk'    => $paketId,
             'durasi_hari'        => (int)$durasi,
             'target_peserta'     => (int)$target,
             'harga_jual_peserta' => (float)$harga,
             'target_profit'      => (float)$tp,
         ];
-        return [$header, $biaya, $e, $dropped];
+        return [$header, $biaya, $e, $dropped, $paketIds];
     }
 
     /** Selisih baris biaya lama vs baru untuk log (AGENTS.md §2): ['Item [Nama] - Harga' => ['old' => .., 'new' => ..]]. */
@@ -376,12 +403,13 @@ class Master_program_model extends CI_Model
         $old = $id ? $this->db->get_where('master_program', ['id' => $id])->row_array() : null;
         if ($id && !$old) return ['status' => 0, 'msg' => 'Master Program tidak ditemukan'];
 
-        list($header, $biaya, $errors, $dropped) = $this->validate_program($post, $old);
+        list($header, $biaya, $errors, $dropped, $paketIds) = $this->validate_program($post, $old);
         if ($errors) return ['status' => 0, 'msg' => 'Belum tersimpan — perbaiki isian yang ditandai', 'errors' => $errors];
 
         $this->db->trans_start();
 
         $oldBiaya = [];
+        $oldPaket = [];
         if ($id) {
             // Status dibaca ulang di dalam transaksi dengan kunci baris: Final/Batal tidak dapat ditimpa.
             $locked = $this->db->query('SELECT status FROM master_program WHERE id = ? FOR UPDATE', [$id])->row_array();
@@ -390,6 +418,7 @@ class Master_program_model extends CI_Model
                 return ['status' => 0, 'msg' => 'Hanya Master Program berstatus Draft yang dapat diubah'];
             }
             $oldBiaya = $this->biaya_rows($id);
+            $oldPaket = $this->paket_ids($id);
             $header['updated_by']   = $userId;
             $header['updated_date'] = date('Y-m-d H:i:s');
             $this->db->where('id', $id)->update('master_program', $header);
@@ -410,6 +439,13 @@ class Master_program_model extends CI_Model
             $this->db->insert('master_program_biaya', ['id_master_program' => $mpId] + $b);
         }
 
+        // Product: ganti seluruh daftar; urutan 1 = Product utama (pertama dipilih).
+        $this->db->delete('master_program_produk', ['id_master_program' => $mpId]);
+        foreach ($paketIds as $n => $pid) {
+            $this->db->insert('master_program_produk', ['id_master_program' => $mpId, 'id_paket_produk' => $pid, 'urutan' => $n + 1,
+                                                        'created_by' => $userId, 'created_date' => date('Y-m-d H:i:s')]);
+        }
+
         $this->db->trans_complete();
 
         if ($this->db->trans_status() === FALSE) {
@@ -418,12 +454,12 @@ class Master_program_model extends CI_Model
 
         if ($old) {
             write_log('Master Program', 'Edit', 'Update Master Program ' . $nomor, [
-                'old'            => $old,
-                'new'            => array_merge($old, $header),
+                'old'            => array_merge($old, ['product' => $this->paket_label($oldPaket)]),
+                'new'            => array_merge($old, $header, ['product' => $this->paket_label($paketIds)]),
                 'detail_changes' => $this->biaya_changes($oldBiaya, $biaya)
             ], 'master_program', $mpId, $nomor);
         } else {
-            write_log('Master Program', 'Tambah', 'Tambah Master Program ' . $nomor, $header + ['jumlah_biaya' => count($biaya)], 'master_program', $mpId, $nomor);
+            write_log('Master Program', 'Tambah', 'Tambah Master Program ' . $nomor, $header + ['product' => $this->paket_label($paketIds), 'jumlah_biaya' => count($biaya)], 'master_program', $mpId, $nomor);
         }
 
         return ['status' => 1, 'msg' => 'Master Program ' . $nomor . ' tersimpan sebagai Draft' . ($dropped ? ' · ' . $dropped . ' item bernilai 0 dibuang' : ''), 'id' => $mpId, 'nomor' => $nomor];

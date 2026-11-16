@@ -1,4 +1,5 @@
 <?php
+$lm = get_instance()->qtn_model; // status link per quotation (QTN-FR-23)
 $e   = function ($v) { return htmlspecialchars((string)$v); };
 $rp  = function ($v) { return 'Rp ' . number_format((float)$v, 0, ',', '.'); };
 $tgl = function ($d) { return $d ? date('d-m-Y', strtotime($d)) : '—'; };
@@ -35,7 +36,7 @@ $go = function ($path) { return "location.href='" . site_url($path) . "'"; };
   <?php
     $info = $jenisTag($pj['jenis']) . ' <b>' . $e($pj['nama_paket']) . '</b> · ' . $rng($pj['tgl_mulai'], $pj['tgl_selesai']) . ' · ' . $e($pj['lokasi'] ?: '—')
           . ' · ' . $rp($pj['harga_jual_peserta']) . ' / peserta' . ($pj['jenis'] === 'b2b' ? ' · ' . $e($pj['nama_company'] ?: '—') : '')
-          . '<br>Peserta deal <b>' . (int)$deal . '</b> / ' . (int)$pj['target_peserta'] . ($pend ? ' · +' . (int)$pend . ' menunggu' : '') . ' · ' . $bepTxt($pj['bep'], $deal);
+          . '<br>Peserta deal <b>' . (int)$deal . '</b> / ' . (int)$pj['target_peserta'] . ($pend ? ' · +' . (int)$pend . ' kuota menunggu' : '') . ' · ' . $bepTxt($pj['bep'], $deal);
   ?>
   <div class="page-head">
     <div>
@@ -92,9 +93,10 @@ $go = function ($path) { return "location.href='" . site_url($path) . "'"; };
               if ($q['status'] === 'draft') $items[] = ['Edit', $go('quotation_program/edit/' . $q['id'])];
               else $items[] = ['Deal', "openDeal({$q['id']})"];
               $items[] = ['Kirim dan Cetak Quotation', "sendPrint({$q['id']})"];
+              $items[] = ['Data Peserta', $go('quotation_program/view/' . $q['id'] . '#data-peserta')];
               $items[] = ['Batalkan', "updateQtnStatus({$q['id']}, 'batal', '" . addslashes($q['nomor']) . "')"];
           } elseif ($q['status'] === 'deal') {
-              if (!$isB2b) $items[] = ['Confirmation Letter', "window.open('" . site_url('quotation_program/confirmation/' . $q['id']) . "')"];
+              $items[] = ['Data Peserta', $go('quotation_program/view/' . $q['id'] . '#data-peserta')];
               $items[] = ['Cetak Quotation', "sendPrint({$q['id']})"];
           } else {
               $items[] = ['Lihat', "sendPrint({$q['id']})"];
@@ -108,21 +110,24 @@ $go = function ($path) { return "location.href='" . site_url($path) . "'"; };
             </td>
             <td>
               <span class="tag tag-<?= $q['tujuan'] === 'company' ? 'b2b' : 'public'; ?>"><?= $q['tujuan'] === 'company' ? 'Company' : 'Personal'; ?></span>
-              <?= $e($q['tujuan'] === 'company' ? ($q['nama_company'] ?: '—') : ($q['peserta'][0]['nama_peserta'] ?? '—')); ?>
+              <?= $e($q['tujuan'] === 'company' ? ($q['nama_company'] ?: '—') : ($q['kepada_nama'] ?: '—')); ?>
               <?= $q['up_nama'] ? '<br><span class="muted">u.p. ' . $e($q['up_nama']) . '</span>' : ''; ?>
             </td>
             <td>
-              <b><?= count($q['peserta']); ?></b> <span class="muted">peserta</span><br>
-              <?php foreach ($q['peserta'] as $ps):
+              <?php if ($q['status'] === 'deal'): ?><b><?= $nDeal; ?></b> <span class="muted">peserta deal</span>
+              <?php else: ?><b><?= count(array_filter($q['peserta'], function ($p) { return $p['status'] !== 'batal'; })); ?></b> <span class="muted">dari kuota <?= (int)$q['kuota_peserta']; ?> terisi</span><?php endif; ?><br>
+              <?php foreach (array_slice($q['peserta'], 0, 2) as $ps):
                 $st = $q['status'] === 'deal' ? $ps['status'] : ($q['status'] === 'batal' ? 'batal' : ($q['status'] === 'terkirim' ? 'menunggu' : 'draft')); ?>
                 <span class="ps-chip ps-<?= $st; ?>" title="<?= $e($ps['instansi'] ?? ''); ?>"><?= $e($ps['nama_peserta'] ?? '—'); ?> <span class="muted">· <?= $e($ps['instansi'] ?: '—'); ?></span></span>
               <?php endforeach; ?>
+              <?php if (count($q['peserta']) > 2): ?><span class="muted">+<?= count($q['peserta']) - 2; ?> lainnya</span><?php endif; ?>
+              <br><a href="<?= site_url('quotation_program/view/' . $q['id'] . '#data-peserta'); ?>" class="btn btn-ghost sm">Data Peserta</a>
             </td>
             <td class="money">
               <?= $rp($c['grand_total']); ?><br>
-              <span class="muted">
+              <span class="muted wrap">
                 <?= $c['skema'] === 'allin'
-                    ? 'All-in ' . $rp($c['harga_allin']) . ($c['total_diskon'] ? ' − diskon ' . $rp($c['total_diskon']) : '') . ' (≈ ' . $rp($c['net_per_pax']) . ' / peserta)'
+                    ? 'All-in ' . $rp($c['harga_allin']) . ($c['n_tambahan'] ? ' + ' . (int)$c['n_tambahan'] . ' peserta tambahan ' . $rp($c['tambahan']) : '') . ($c['total_diskon'] ? ' − diskon ' . $rp($c['total_diskon']) : '') . ' (≈ ' . $rp($c['net_per_pax']) . ' / peserta)'
                     : $rp($c['net_per_pax']) . ' / peserta' . ($c['diskon'] ? ' (diskon ' . $rp($c['diskon']) . ')' : ''); ?>
                 <?= $c['is_ppn'] ? ' + PPN ' . (float)$c['ppn_persen'] . '%' : ''; ?>
               </span>
@@ -130,6 +135,7 @@ $go = function ($path) { return "location.href='" . site_url($path) . "'"; };
             <td class="nowrap">
               <span class="badge st-<?= $q['status']; ?>"><?= $stLabel[$q['status']]; ?></span>
               <?= $q['status'] === 'deal' ? '<br><span class="muted">' . $nDeal . ' dari ' . count($q['peserta']) . ' peserta deal</span>' : ''; ?>
+              <?php if (in_array($q['status'], ['draft', 'terkirim'], true)): $ls = $lm->link_state($q + ['jenis' => $pj['jenis']]); ?><br><span class="muted"><?= $ls['buka'] ? 'Link terbuka' : 'Link tertutup'; ?></span><?php endif; ?>
             </td>
             <td class="act"><?= $gear($items); ?></td>
           </tr>
@@ -152,29 +158,40 @@ $go = function ($path) { return "location.href='" . site_url($path) . "'"; };
 
   <?php
     $conv = ($pipe['deal']['n'] + $pipe['batal']['n']) ? round($pipe['deal']['n'] / ($pipe['deal']['n'] + $pipe['batal']['n']) * 100) : null;
-    $card = function ($s, $cls, $sub) use ($pipe, $status, $base, $stLabel) {
-        $href = $base . ($status === $s ? '' : '?status=' . $s);
+    $card = function ($s, $cls, $sub) use ($pipe, $status, $base, $stLabel, $tahun, $bulan) {
+        $qs = array_filter(['status' => $status === $s ? null : $s, 'tahun' => $tahun, 'bulan' => $bulan]);
+        $href = $base . ($qs ? '?' . http_build_query($qs) : '');
         return '<a class="kpi dash-link ' . $cls . ' ' . ($status === $s ? 'on' : '') . '" href="' . $href . '" title="Saring menurut status" style="text-decoration:none;color:inherit;">'
              . '<div class="kpi-l">' . $stLabel[$s] . '</div><div class="kpi-v">' . $pipe[$s]['n'] . ' <small>quotation</small></div><div class="kpi-s">' . $sub . '</div></a>';
     };
   ?>
+  <?php $ymQs = ($tahun || $bulan) ? '?' . http_build_query(array_filter(['tahun' => $tahun, 'bulan' => $bulan])) : ''; ?>
   <div class="qtn-flow">
-    <?= $card('draft', '', $pipe['draft']['p'] . ' peserta, belum dikirim'); ?><span class="qf-arrow">›</span>
-    <?= $card('terkirim', 'kwarn', $pipe['terkirim']['p'] . ' peserta, menunggu deal'); ?><span class="qf-arrow">›</span>
+    <?= $card('draft', '', $pipe['draft']['p'] . ' kuota, belum dikirim'); ?><span class="qf-arrow">›</span>
+    <?= $card('terkirim', 'kwarn', $pipe['terkirim']['p'] . ' kuota, menunggu deal'); ?><span class="qf-arrow">›</span>
     <?= $card('deal', 'good', $pipe['deal']['dealPs'] . ' peserta deal · ' . $rp($pipe['deal']['nilai']) . ($conv !== null ? '<br>tingkat deal ' . $conv . '%' : '')); ?><span class="qf-gap"></span>
-    <?= $card('batal', 'lost', $pipe['batal']['p'] . ' peserta'); ?>
+    <?= $card('batal', 'lost', $pipe['batal']['p'] . ' kuota'); ?>
   </div>
 
   <div class="card">
     <div class="tabs">
-      <a class="tab <?= $tab === 'ongoing' ? 'active' : ''; ?>" href="<?= site_url('quotation_program/index/ongoing'); ?>">On going<span class="nav-count"><?= (int)$tabCount['ongoing']; ?></span></a>
-      <a class="tab <?= $tab === 'done' ? 'active' : ''; ?>" href="<?= site_url('quotation_program/index/done'); ?>">Selesai<span class="nav-count"><?= (int)$tabCount['done']; ?></span></a>
+      <a class="tab <?= $tab === 'ongoing' ? 'active' : ''; ?>" href="<?= site_url('quotation_program/index/ongoing') . $ymQs; ?>">On going<span class="nav-count"><?= (int)$tabCount['ongoing']; ?></span></a>
+      <a class="tab <?= $tab === 'done' ? 'active' : ''; ?>" href="<?= site_url('quotation_program/index/done') . $ymQs; ?>">Selesai<span class="nav-count"><?= (int)$tabCount['done']; ?></span></a>
+      <a class="tab" href="<?= site_url('quotation_program/data_peserta') . $ymQs; ?>">Data Peserta</a>
     </div>
     <div class="toolbar">
       <div class="search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input type="search" class="input" id="table-search" placeholder="Cari program, nomor quotation, kepada, atau peserta…" aria-label="Cari">
       </div>
+      <select class="input sm" id="f-tahun" aria-label="Filter tahun mulai acara" onchange="applyYm()">
+        <option value="">Semua tahun</option>
+        <?php foreach ($tahunOpts as $t): ?><option value="<?= (int)$t; ?>" <?= (int)$tahun === (int)$t ? 'selected' : ''; ?>><?= (int)$t; ?></option><?php endforeach; ?>
+      </select>
+      <select class="input sm" id="f-bulan" aria-label="Filter bulan mulai acara" onchange="applyYm()">
+        <option value="">Semua bulan</option>
+        <?php foreach (['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'] as $i => $b): ?><option value="<?= $i + 1; ?>" <?= (int)$bulan === $i + 1 ? 'selected' : ''; ?>><?= $b; ?></option><?php endforeach; ?>
+      </select>
     </div>
     <div class="table-wrap">
       <table class="table" id="data-table" data-dt>
@@ -208,7 +225,7 @@ $go = function ($path) { return "location.href='" . site_url($path) . "'"; };
               <span class="muted"><?= $rng($r['tgl_mulai'], $r['tgl_selesai']); ?> · <?= $e($r['lokasi'] ?: '—'); ?></span>
               <span hidden><?= $e($search); ?></span>
             </td>
-            <td class="money"><b><?= (int)$r['deal']; ?></b> / <?= (int)$r['target_peserta']; ?><?= $r['pend'] ? '<br><span class="muted">+' . (int)$r['pend'] . ' menunggu</span>' : ''; ?></td>
+            <td class="money"><b><?= (int)$r['deal']; ?></b> / <?= (int)$r['target_peserta']; ?><?= $r['pend'] ? '<br><span class="muted">+' . (int)$r['pend'] . ' kuota menunggu</span>' : ''; ?></td>
             <td>
               <div class="qbar"><div class="qb-fill"><span class="qb-deal" style="width:<?= $pct($r['deal']); ?>%"></span><span class="qb-pend" style="width:<?= $pct($r['pend']); ?>%"></span></div>
                 <?php if ($r['bep'] !== null): ?><i class="qb-bep" style="left:<?= $pct($r['bep']); ?>%" title="BEP <?= (int)$r['bep']; ?>"></i><?php endif; ?></div>
@@ -230,10 +247,11 @@ $go = function ($path) { return "location.href='" . site_url($path) . "'"; };
 <?php if ($pj): ?>
 <?php $tplNama = array_column(get_instance()->db->get('ms_template_konfirmasi')->result_array(), 'nama', 'id'); ?>
 var QTN = <?= json_encode(array_column(array_map(function ($q) use ($pj, $tplNama) {
-    $n = $q['status'] === 'deal' ? count(array_filter($q['peserta'], function ($p) { return $p['status'] === 'deal'; })) : count($q['peserta']);
-    $note = 'Penawaran (1 hlm) + Syarat & Ketentuan (2 hlm)' . ($pj['jenis'] === 'b2b' ? ' — B2B / in-house tanpa Formulir Konfirmasi' : ' + Formulir Konfirmasi ' . ($tplNama[$q['id_template_konfirmasi']] ?? '') . ' (' . $n . ' peserta)');
+    // PDF quotation = Penawaran + S&K; formulir tidak dicetak kosong, calon peserta mengisi lewat link (QTN-FR-10)
+    $note = 'Penawaran (1 hlm) + Syarat & Ketentuan (2 hlm)';
     return ['id' => (int)$q['id'], 'nomor' => $q['nomor'], 'b2b' => $pj['jenis'] === 'b2b', 'status' => $q['status'], 'note' => $note,
-            'peserta' => array_map(function ($p) { return ['id' => (int)$p['id_peserta'], 'nama' => $p['nama_peserta'], 'instansi' => $p['instansi']]; }, $q['peserta'])];
+            'peserta' => array_values(array_map(function ($p) { return ['id' => (int)$p['id'], 'nama' => $p['nama_peserta'], 'instansi' => $p['instansi'], 'via' => $p['sumber']]; },
+                array_filter($q['peserta'], function ($p) { return $p['status'] !== 'batal'; })))];
 }, $qs), null, 'id')); ?>;
 <?php endif; ?>
 var B2B_MIN = 10;
@@ -241,27 +259,74 @@ var B2B_MIN = 10;
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
 // Deal: pilih peserta yang deal (QTN-FR-11); yang tidak dicentang menjadi Batal.
+// Deal (QTN-FR-11): peserta dari Data Peserta (default semua), DOKUMEN customer wajib (PO/SPK dll., boleh lebih dari satu), keterangan opsional.
+// Deal juga membentuk Sales Order dan menyimpan peserta Deal ke Master Peserta (QTN-FR-33).
+var DEAL_FILES = [], DEAL_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx'], DEAL_MAX = 5 * 1024 * 1024;
+function fmtSize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+
+function dealFilesDraw() {
+  var el = document.getElementById('deal-files');
+  el.innerHTML = DEAL_FILES.length ? DEAL_FILES.map(function (f, i) {
+    return '<li><span>' + esc(f.name) + ' <span class="muted">· ' + fmtSize(f.size) + '</span></span> <button type="button" class="btn btn-ghost sm" data-del="' + i + '" aria-label="Hapus ' + esc(f.name) + '">Hapus</button></li>';
+  }).join('') : '<li class="muted">Belum ada dokumen</li>';
+}
+
 function openDeal(id) {
   var k = QTN[id]; if (!k) return;
+  DEAL_FILES = [];
+  if (!k.peserta.length) { toast('Belum ada peserta di Data Peserta. Bagikan link Konfirmasi Kehadiran dulu.', 'error'); return; }
   var rows = k.peserta.map(function (p) {
-    return '<label class="ps-row"><input type="checkbox" name="peserta[]" value="' + p.id + '" checked> <span><b>' + esc(p.nama) + '</b><br><span class="muted">' + esc(p.instansi || '—') + '</span></span></label>';
+    return '<label class="ps-row"><input type="checkbox" name="peserta[]" value="' + p.id + '" checked> <span><b>' + esc(p.nama) + '</b> <span class="muted">· ' + (p.via === 'company' ? 'Daftar PIC' : 'Link') + '</span><br><span class="muted">' + esc(p.instansi || '—') + '</span></span></label>';
   }).join('');
-  openModal('<div class="overlay" onclick="if(event.target===this)closeModal()"><form class="modal" id="deal-form" onsubmit="return submitDeal(event,' + id + ')">' +
+  openModal('<div class="overlay" onclick="if(event.target===this)closeModal()"><form class="modal wide" id="deal-form" onsubmit="return submitDeal(event,' + id + ')">' +
     '<header><h2>Deal — ' + esc(k.nomor) + '</h2><button type="button" class="x" onclick="closeModal()" aria-label="Tutup">×</button></header>' +
-    '<div class="modal-body"><p class="muted">Centang peserta yang deal. Peserta yang tidak dicentang menjadi Batal dan dapat dipakai di quotation lain.' + (k.b2b ? ' <b>B2B: minimal ' + B2B_MIN + ' peserta.</b>' : '') + '</p>' +
-    '<div class="ps-pick">' + rows + '</div></div>' +
-    '<footer><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button type="submit" class="btn btn-primary">Simpan Deal</button></footer></form></div>');
+    '<div class="modal-body"><p class="muted">Centang peserta yang deal. Yang tidak dicentang menjadi Batal.' + (k.b2b ? ' <b>B2B: minimal ' + B2B_MIN + ' peserta.</b>' : '') + ' Setelah Deal, link ditutup, Sales Order dibentuk, dan peserta Deal disimpan ke Master Peserta.</p>' +
+    '<div class="ps-pick">' + rows + '</div>' +
+    '<div class="field gap-t"><label>Dokumen dari customer <span class="req">*</span></label><label class="pb-drop"><input type="file" id="deal-file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" hidden><b>Pilih dokumen</b>' +
+    '<span class="hint">PO, SPK, surat penunjukan, atau dokumen lain · PDF, JPG, PNG, DOC/DOCX, XLS/XLSX · maks. 5 MB per file · minimal satu</span></label>' +
+    '<ul class="deal-files" id="deal-files"></ul><div class="err" id="deal-err" style="display:none"></div></div>' +
+    '<div class="field"><label for="deal-ket">Keterangan dokumen <span class="muted">(opsional)</span></label><input class="input" id="deal-ket" name="keterangan_dokumen" maxlength="200" placeholder="mis. nomor PO"></div></div>' +
+    '<footer><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button type="submit" class="btn btn-primary" id="deal-save">Simpan Deal</button></footer></form></div>');
+  dealFilesDraw();
+  document.getElementById('deal-file').addEventListener('change', function () {
+    var err = document.getElementById('deal-err'); err.style.display = 'none';
+    Array.prototype.forEach.call(this.files, function (f) {
+      var ext = f.name.split('.').pop().toLowerCase();
+      if (DEAL_EXT.indexOf(ext) < 0) { err.textContent = f.name + ': hanya PDF, JPG, PNG, DOC/DOCX, XLS/XLSX'; err.style.display = 'block'; return; }
+      if (f.size > DEAL_MAX) { err.textContent = f.name + ' lebih dari 5 MB'; err.style.display = 'block'; return; }
+      DEAL_FILES.push(f); // bertambah setiap memilih, tidak mengganti pilihan sebelumnya
+    });
+    this.value = ''; dealFilesDraw();
+  });
+  document.getElementById('deal-files').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-del]'); if (b) { DEAL_FILES.splice(+b.dataset.del, 1); dealFilesDraw(); }
+  });
 }
 
 function submitDeal(e, id) {
   e.preventDefault();
-  fetch('<?= site_url("quotation_program/deal/"); ?>' + id, { method: 'POST', body: new FormData(e.target) })
+  var err = document.getElementById('deal-err');
+  if (!DEAL_FILES.length) { err.textContent = 'Unggah minimal satu dokumen dari customer'; err.style.display = 'block'; return false; }
+  var fd = new FormData(e.target);
+  DEAL_FILES.forEach(function (f) { fd.append('dokumen[]', f); });
+  var btn = document.getElementById('deal-save'); btn.disabled = true; btn.classList.add('is-busy');
+  fetch('<?= site_url("quotation_program/deal/"); ?>' + id, { method: 'POST', body: fd })
     .then(function (r) { return r.json(); })
     .then(function (res) {
       toast(res.msg, res.status === 1 ? 'success' : 'error');
-      if (res.status === 1) { closeModal(); setTimeout(function () { location.reload(); }, 800); }
-    });
+      if (res.status === 1) { closeModal(); setTimeout(function () { location.reload(); }, 1200); } else { btn.disabled = false; btn.classList.remove('is-busy'); }
+    })
+    .catch(function () { toast('Terjadi kesalahan jaringan', 'error'); btn.disabled = false; btn.classList.remove('is-busy'); });
   return false;
+}
+
+// Filter Tahun & Bulan: muat ulang dengan parameter, mempertahankan status
+function applyYm() {
+  var p = [], y = document.getElementById('f-tahun').value, m = document.getElementById('f-bulan').value;
+  <?php if ($status !== 'all'): ?>p.push('status=<?= $e($status); ?>');<?php endif; ?>
+  if (y) p.push('tahun=' + encodeURIComponent(y));
+  if (m) p.push('bulan=' + encodeURIComponent(m));
+  location.href = '<?= $base; ?>' + (p.length ? '?' + p.join('&') : '');
 }
 
 function applyFilters() {
@@ -281,7 +346,7 @@ function setQtnStatus(id, st) {
 function updateQtnStatus(id, newStatus, nomor) {
   lmConfirm({
     title: 'Batalkan Quotation',
-    text: 'Batalkan ' + nomor + ' karena tidak jadi deal? Quotation Batal tidak dapat diubah; pesertanya dapat dibuatkan quotation baru.',
+    text: 'Batalkan ' + nomor + ' karena tidak jadi deal? Quotation Batal tidak dapat diubah dan link Konfirmasi Kehadirannya ditutup.',
     confirmText: 'Batalkan',
     danger: true
   }).then(function (ok) {
@@ -306,7 +371,7 @@ function sendPrint(id) {
     '<div class="modal-body"><div class="pdf-tools"><span>' + (draft ? '<span class="badge st-draft">Preview — belum dikirim</span> ' : '') + 'PDF ' + esc(k.nomor) + ': ' + esc(k.note) + '</span></div>' +
     '<div class="lm-loading" id="send-load"><span class="lm-spin"></span> Memuat PDF…</div>' +
     '<iframe id="send-frame" class="pv-frame" style="display:none" src="<?= site_url("quotation_program/pdf/"); ?>' + id + '?pv=1" title="Preview quotation" onload="sendLoaded(this)"></iframe>' +
-    (draft ? '<p class="hint">Setelah dikirim, quotation tidak dapat diedit dan berstatus <b>Terkirim</b> — menunggu peserta deal. Lalu tandai <b>Deal</b>, atau <b>Batalkan</b> bila tidak jadi.</p>' : '') + '</div>' +
+    (draft ? '<p class="hint">Setelah dikirim, quotation tidak dapat diedit dan berstatus <b>Terkirim</b> — menunggu calon peserta mengisi lewat link. Lalu tandai <b>Deal</b>, atau <b>Batalkan</b> bila tidak jadi.</p>' : '') + '</div>' +
     '<footer><button type="button" class="btn btn-ghost" onclick="closeModal()">Tutup</button>' + save + '</footer></div></div>');
 }
 
