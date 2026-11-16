@@ -11,10 +11,9 @@ return [
     ['label' => 'Product', 'url' => '/master/product', 'menu' => 'master_data.paket_produk', 'group' => 'Master Data'],
     ['label' => 'Katalog Produk', 'url' => '/master/katalog', 'menu' => 'master_data.katalog', 'group' => 'Master Data'],
 
-    ['label' => 'Fixed Cost', 'url' => '/master/rate/fixed', 'menu' => 'master_data.rate', 'group' => 'Master Data'],
-    ['label' => 'Variable Cost', 'url' => '/master/rate/variable', 'menu' => 'master_data.rate', 'group' => 'Master Data'],
-    ['label' => 'Template Keterangan', 'url' => '/master/template-keterangan', 'menu' => 'master_data.template_keterangan', 'group' => 'Master Data'],
-    ['label' => 'Template Konfirmasi', 'url' => '/master/template-konfirmasi', 'menu' => 'master_data.template_konfirmasi', 'group' => 'Master Data'],
+    ['label' => 'Master Rate', 'url' => '/master/rate/fixed', 'menu' => 'master_data.rate', 'group' => 'Master Data'],
+    ['label' => 'Template Keterangan Quotation', 'url' => '/master/template-keterangan', 'menu' => 'master_data.template_keterangan', 'group' => 'Master Data'],
+    ['label' => 'Template Formulir Konfirmasi', 'url' => '/master/template-konfirmasi', 'menu' => 'master_data.template_konfirmasi', 'group' => 'Master Data'],
 
     ['label' => 'Master Trainer', 'url' => '/master/trainer', 'menu' => 'master_trainer', 'group' => 'Master Data'],
     ['label' => 'Master Peserta', 'url' => '/master/peserta', 'menu' => 'master_data.peserta', 'group' => 'Master Data'],
@@ -34,7 +33,7 @@ return [
     ['label' => 'Pengajuan Biaya', 'url' => '/pengajuan-biaya', 'menu' => 'pengajuan_biaya', 'group' => 'Pengajuan Biaya'],
     ['label' => 'Approval Pengajuan', 'url' => '/pengajuan-biaya/approval', 'menu' => 'approval_pengajuan_biaya', 'group' => 'Pengajuan Biaya'],
 
-    ['label' => 'Role & Permission', 'url' => '/permissions', 'menu' => 'permission_group', 'group' => 'Pengaturan'],
+    ['label' => 'Role & Permission', 'url' => '/permissions', 'menu' => 'permission_group', 'group' => 'Master Data'],
     ['label' => 'Menu Sidebar', 'url' => '/pengaturan/menu', 'menu' => 'menu_labmania', 'group' => 'Pengaturan'],
     ['label' => 'Activity Log', 'url' => '/activity-log', 'menu' => 'activity_log', 'group' => 'Pengaturan'],
 ];
