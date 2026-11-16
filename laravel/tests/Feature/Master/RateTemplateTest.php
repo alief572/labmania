@@ -32,6 +32,14 @@ class RateTemplateTest extends MasterTestCase
         $this->assertSame('Sewa Ruang', $log['item']);
     }
 
+    public function test_halaman_rate_memuat_jumlah_per_tab(): void
+    {
+        $this->post('/master/rate/fixed', $this->rate())->assertSessionHasNoErrors();
+        $this->post('/master/rate/fixed', $this->rate(['item' => 'Konsumsi']))->assertSessionHasNoErrors();
+        $this->get('/master/rate/variable')->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Master/Rate')->where('counts.fixed', 2)->where('counts.variable', 0)->where('tipe', 'variable'));
+    }
+
     public function test_satuan_lintas_tab_dan_di_luar_daftar_ditolak_server(): void
     {
         $this->post('/master/rate/fixed', $this->rate(['id_satuan' => $this->sat['peserta_event']]))->assertSessionHasErrors('id_satuan');

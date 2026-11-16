@@ -48,6 +48,7 @@ class RateController extends Controller
 
         return Inertia::render('Master/Rate', [
             'tipe' => $tipe, 'title' => self::TITLE[$tipe], 'filters' => ['q' => $f['q'] ?? '', 'status' => $f['status'] ?? 'all'],
+            'counts' => DB::table('ms_rate')->selectRaw('tipe, COUNT(*) as n')->groupBy('tipe')->pluck('n', 'tipe')->map(fn ($n) => (int) $n)->all() + ['fixed' => 0, 'variable' => 0],
             'satuans' => self::satuans($tipe),
             'coa' => Coa::query()->selectRaw('no_perkiraan, MAX(nama) as nama')->groupBy('no_perkiraan')->orderBy('no_perkiraan')->get(),
             'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage'])],
