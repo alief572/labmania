@@ -197,6 +197,7 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
 
         Route::get('/product/data', [ProductController::class, 'index'])->defaults('datatable', true);
         Route::get('/product', [ProductController::class, 'index']);
+        Route::get('/product/create', [ProductController::class, 'create']);
         Route::post('/product', [ProductController::class, 'store']);
         Route::get('/product/{id}', [ProductController::class, 'detail'])->whereNumber('id');
         Route::put('/product/{id}', [ProductController::class, 'update'])->whereNumber('id');

@@ -229,8 +229,8 @@ try {
         if (['Peserta', 'Company', 'Role'].includes(name)) scenarios.push([name, 'row', 'remove', 'delete', `${base}/${id}`]);
     }
     scenarios.push(['User', 'reset', 'doReset', 'post', '/master/user/77/reset-password']);
-    scenarios.push(['Product', 'add', 'saveAdd', 'post', '/master/product'], ['Product', 'edit', 'saveEdit', 'put', '/master/product/77'],
-        ['Product', 'edit', 'saveLingkup', 'put', '/master/product/77/lingkup'], ['Product', 'row', 'toggle', 'post', '/master/product/77/toggle'],
+    scenarios.push(['ProductForm', 'add', 'save', 'post', '/master/product'], ['Product', 'edit', 'saveEdit', 'put', '/master/product/77'],
+        ['Product', 'row', 'toggle', 'post', '/master/product/77/toggle'],
         ['Katalog', 'edit', 'save', 'put', '/master/product/77/lingkup'], ['Permissions', 'role', 'save', 'put', '/permissions/roles/2'],
         ['PermissionOverride', 'user', 'save', 'put', '/permissions/users/77']);
     for (const slug of ['jenis-sertifikat', 'jenis-bidang', 'varian-pelaksanaan']) {
@@ -254,7 +254,8 @@ try {
         }
         if (name === 'Permissions') { state.editing = { id_group: 2, nm_group: 'Staf', sistem: false }; state.detail = { menus: [], selected: [], editable: true, n_user: 0 }; }
         if (mode === 'reset') { state.resetting = row; state.resetForm.password = 'JanganTampil'; state.resetForm.password_confirmation = 'JanganTampil'; }
-        if (name === 'Product') { state.current = row; state.editForm.judul = row.judul; state.addForm.judul = row.judul; }
+        if (name === 'Product') { state.current = row; state.editForm.judul = row.judul; }
+        if (name === 'ProductForm') { state.form.judul = row.judul; }
         const count = requests.length;
         let pending = state[fn](row);
         const title = dialogs.at(-1).options;

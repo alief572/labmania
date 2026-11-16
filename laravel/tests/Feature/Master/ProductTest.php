@@ -42,6 +42,21 @@ class ProductTest extends MasterTestCase
         $this->post('/master/jenis-produk/1/toggle')->assertForbidden();
     }
 
+    public function test_halaman_tambah_product_memuat_pilihan_aktif_saja_dan_hak_add(): void
+    {
+        $ids = $this->seedAttributes();
+        DB::table('ms_jenis_bidang')->insert(['id' => 99, 'kode' => 'BD-099', 'nama' => 'Bidang Nonaktif', 'aktif' => 0]);
+        $this->login($this->admin())->get('/master/product/create')->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Master/ProductForm')->has('options.bidang', 1)->where('options.bidang.0.id', $ids['ms_jenis_bidang']));
+        $this->login($this->account('tanpa'))->get('/master/product/create')->assertForbidden();
+    }
+
+    public function test_simpan_dari_halaman_tambah_kembali_ke_daftar(): void
+    {
+        $ids = $this->seedAttributes();
+        $this->login($this->admin())->post('/master/product', ['judul' => 'Paket A', 'rows' => [$this->row($ids)]])->assertRedirect('/master/product');
+    }
+
     public function test_n_baris_menjadi_n_product_atau_gagal_semua(): void
     {
         $ids = $this->seedAttributes();
