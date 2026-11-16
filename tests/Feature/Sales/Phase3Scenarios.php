@@ -163,7 +163,7 @@ trait Phase3Scenarios
         $this->post('/konfirmasi/'.$q->link_token, ['nama' => 'Peserta Sintetis', 'email' => 'sintetis@example.test', 'setuju' => true, 'surat' => UploadedFile::fake()->createWithContent('signed.pdf', $confirmationPdf->getContent())])->assertSessionHasNoErrors();
         $batch = $this->get('/quotation/batch/'.$p.'/pdf')->assertOk()->assertHeader('Content-Type', 'application/pdf');
         if ($dir = getenv('PHASE3_PDF_DIR')) {
-            $root = realpath(base_path('../.artifacts/fase3_penjualan_quotation'));
+            $root = realpath(base_path('.artifacts/fase3_penjualan_quotation'));
             if (! $root || ! str_starts_with($dir, $root.DIRECTORY_SEPARATOR) || is_dir($dir)) {
                 throw new \RuntimeException('Bukti PDF harus direktori baru di artifact fase3.');
             }

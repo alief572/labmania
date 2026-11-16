@@ -11,6 +11,14 @@ import promote
 
 
 class PromotionGateTest(unittest.TestCase):
+    def test_repository_root_keeps_entrypoints_archive_and_private_build_exclusions(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertEqual(root, promote.ROOT)
+        for name in ('artisan', 'composer.json', 'public/index.php', 'ci3/index.php'):
+            self.assertTrue((root / name).is_file(), name)
+        exclusions = set((root / '.dockerignore').read_text(encoding='utf-8').splitlines())
+        self.assertTrue({'ci3', '.artifacts', 'specs', '**/.env*', 'docker-compose.yml'} <= exclusions)
+
     def accepted(self):
         return {'manifest_sha256': 'a' * 64, 'accepted_by': 'Pemilik fixture',
                 'accepted_at': '2026-01-01T12:00:00+07:00', 'source_capture_evidence': 'Fixture, bukan pengesahan data asli',
@@ -44,7 +52,7 @@ class PromotionGateTest(unittest.TestCase):
     def test_failed_runtime_or_missing_acceptance_never_stops_or_seeds_any_container(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            env = root / 'laravel/rehearsal/.env.rehearsal-realdata-c'
+            env = root / 'rehearsal/.env.rehearsal-realdata-c'
             env.parent.mkdir(parents=True)
             env.write_text('fixture only', encoding='utf-8')
             argv = ['promote.py', 'promote', '--project', 'labmania-realdata-c', '--env-file', str(env), '--manifest', 'fixture.json']
@@ -72,7 +80,7 @@ class PromotionGateTest(unittest.TestCase):
     def promotion(self, action):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            env = root / 'laravel/rehearsal/.env.rehearsal-realdata-c'
+            env = root / 'rehearsal/.env.rehearsal-realdata-c'
             env.parent.mkdir(parents=True)
             env.write_text('fixture only', encoding='utf-8')
             previous = root / 'docker-compose.yml'

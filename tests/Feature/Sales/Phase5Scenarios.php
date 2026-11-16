@@ -321,7 +321,7 @@ trait Phase5Scenarios
             $response->assertOk()->assertHeader('Content-Type', 'application/pdf');
             $this->assertStringStartsWith('%PDF-', $response->getContent());
             if ($folder = getenv('VERIFY_PHASE5_PDF_DIR')) {
-                $base = realpath(base_path('../.artifacts/fase5_reschedule_refund'));
+                $base = realpath(base_path('.artifacts/fase5_reschedule_refund'));
                 $target = realpath($folder);
                 $this->assertNotFalse($target);
                 $this->assertStringStartsWith($base.DIRECTORY_SEPARATOR, $target);

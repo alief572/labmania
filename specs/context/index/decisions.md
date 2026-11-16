@@ -16,6 +16,7 @@ the body shape.
 | # | Decision | Body |
 |---|---|---|
 | 1 | **Laravel dibangun terpisah; CI3 tetap aktif sampai satu kali cutover.** | [1-laravel-terpisah.md](decisions/1-laravel-terpisah.md) |
+| 2 | **Laravel berada di root; CI3 diarsipkan di `ci3/`, runtime dan database lokal dipertahankan.** | [2-laravel-root-ci3-arsip.md](decisions/2-laravel-root-ci3-arsip.md) |
 
 ## What belongs here, and what does not
 

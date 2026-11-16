@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 HERE = Path(__file__).resolve().parent
 CONFIRMATIONS = ('source_capture_confirmed', 'legacy_scope_confirmed', 'documents_confirmed',
                  'business_exceptions_confirmed', 'finance_confirmed', 'roles_permissions_confirmed',
@@ -63,9 +63,9 @@ def main():
     require(re.fullmatch(r'labmania-realdata-[a-z0-9]+', args.project), 'Project harus rehearsal data asli lokal.')
     require(re.fullmatch(r'[a-zA-Z0-9_-]+\.json', args.manifest), 'Nama manifest tidak valid.')
     env = args.env_file.resolve(strict=True)
-    require(env.parent == (ROOT / 'laravel/rehearsal').resolve() and env.name.startswith('.env.rehearsal-realdata-'), 'Environment harus khusus rehearsal data asli.')
+    require(env.parent == (ROOT / 'rehearsal').resolve() and env.name.startswith('.env.rehearsal-realdata-'), 'Environment harus khusus rehearsal data asli.')
     compose = ['docker', 'compose', '--env-file', str(env), '-p', args.project,
-               '-f', str(ROOT / 'laravel/rehearsal/compose.yaml'), '-f', str(ROOT / 'laravel/rehearsal/compose.realdata.yaml')]
+               '-f', str(ROOT / 'rehearsal/compose.yaml'), '-f', str(ROOT / 'rehearsal/compose.realdata.yaml')]
     cli = compose + ['exec', '-T', '--user', 'www-data', 'app', 'php', 'artisan']
     container = run(compose + ['ps', '-q', 'app']).strip()
     require(bool(container) and '\n' not in container, 'Preview app tunggal harus berjalan terlebih dahulu.')

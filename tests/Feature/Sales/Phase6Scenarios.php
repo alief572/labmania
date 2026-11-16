@@ -329,7 +329,7 @@ trait Phase6Scenarios
             $response->assertOk()->assertHeader('Content-Type', 'application/pdf');
             $this->assertTrue(str_starts_with($response->getContent(), '%PDF-'), 'PDF harus dimulai header tanpa output sebelum PDF.');
             if ($folder = getenv('VERIFY_PHASE6_PDF_DIR')) {
-                $base = realpath(base_path('../.artifacts/fase6_operasional_biaya'));
+                $base = realpath(base_path('.artifacts/fase6_operasional_biaya'));
                 $target = realpath($folder);
                 $this->assertStringStartsWith($base.DIRECTORY_SEPARATOR, $target);
                 $file = fopen($target.DIRECTORY_SEPARATOR.$kind.'.pdf', 'xb');

@@ -88,7 +88,7 @@ def main():
             raise ValueError("Snapshot atau font berlisensi belum tersedia.")
         context = Path(__file__).resolve().parents[1]
         if any(path.is_relative_to(context) for path in [snapshot, fonts, args.backups.resolve()]):
-            raise ValueError("Snapshot, font dan backup wajib di luar folder laravel agar tidak masuk build context image.")
+            raise ValueError("Snapshot, font dan backup baru wajib di luar root repository agar tidak masuk build context image.")
         args.backups.mkdir(parents=True, exist_ok=True)
         destination = Path(__file__).parent / args.output
         template = (Path(__file__).parent / ".env.rehearsal.example").read_text(encoding="utf-8")

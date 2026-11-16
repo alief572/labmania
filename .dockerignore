@@ -16,3 +16,14 @@ rehearsal/recovery
 tests
 **/__pycache__
 local/.state.json
+ci3
+specs
+specs_internal
+.artifacts
+graphify-out
+.kiro
+.vscode
+docker
+docker-compose.yml
+AGENTS.md
+CLAUDE.md

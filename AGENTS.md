@@ -1,10 +1,10 @@
 # Laravel Labmania
 
-Laravel 13 / PHP 8.5, Inertia 3 / Vue 3 / TypeScript / Vite. Root CI3 tetap terpisah; jalankan dependency manager dari folder `laravel/`.
+Laravel 13 / PHP 8.5, Inertia 3 / Vue 3 / TypeScript / Vite berada di root repository. Jalankan dependency manager dan Artisan dari root. CI3 di `ci3/` adalah arsip; jangan mengaktifkan kembali runtime atau memakai dependency CI3 untuk Laravel.
 
-Sumber skema: `../specs/docs-to-be/fondasi-laravel.md` dan ERD to-be. Fase 1–3 tersedia; salinan development sudah diimpor ke `labmania_laravel`. Tidak ada migrasi default users atau seed akun contoh. Rehearsal data produksi dan cutover belum dijalankan.
+Sumber skema: `specs/docs-to-be/fondasi-laravel.md` dan ERD to-be. Tidak ada migrasi default users atau seed akun contoh. Runtime localhost:8080 adalah preview snapshot lokal, bukan pengesahan production; lihat `local/README.realdata-8080.md`.
 
-Pemeriksaan dari folder `laravel/` dengan PHP 8.5 di PATH:
+Pemeriksaan dari root repository dengan PHP 8.5 di PATH:
 
 ```powershell
 php vendor/phpunit/phpunit/phpunit
@@ -14,6 +14,12 @@ node tests/frontend/phase4.mjs
 npm.cmd run build
 php artisan route:list --except-vendor
 ```
+
+Komunikasi dan dokumentasi memakai Bahasa Indonesia. `specs/` tetap sumber acuan BA: requirement, field, rumus, status dan skema tidak boleh dikarang. Cocokkan perubahan database dengan ERD dan requirement; nama fisik harus sama. UI mengacu `specs/ui-mockup/produk-to-be/`. `specs/input/` bersifat append-only/read-only.
+
+Artifact berada di `.artifacts/<fitur>/`, diabaikan Git. Buat file baru `plan_<fitur>_<DD-MM-YYYY>.md`, `task_<fitur>_<DD-MM-YYYY>.md`, dan `walkthrough_<fitur>_<DD-MM-YYYY>.md`; jangan menimpa atau mengganti nama artifact lama. Laporkan perubahan file, alasan, hasil pemeriksaan, dan sisa risiko. Pengujian browser tidak wajib.
+
+Konfigurasi Docker hasil render dan environment privat tidak masuk Git. Database runtime 8080 berbeda dari koneksi PHP lokal dalam `.env`. Pertahankan volume dan APP_KEY. `docker/mysql/` masih menjadi bind mount database GL aktif; jangan dipindahkan, dihentikan, atau dihapus bersama arsip CI3. Recreate aplikasi lokal memakai `--no-deps`; jangan menjalankan `compose down -v` atau bootstrap UAT pada data asli.
 
 PHPUnit default memaksa APP_ENV=testing, DB_CONNECTION=sqlite, DB_DATABASE=:memory:, DB_URL kosong. Konfigurasi `phpunit.mysql.xml` memaksa `labmania_laravel_test`; guard menolak database tanpa akhiran `_test`. Suite MySQL membangun ulang tabel fixture: jangan jalankan dua proses pada DB test yang sama. Jangan memakai database aplikasi/CI3 untuk test, mengganti guard test agar lolos, atau menjalankan migrate/fresh/seed pada database lama.
 

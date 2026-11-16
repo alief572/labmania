@@ -250,7 +250,7 @@ try {
         assert.doesNotMatch(original, /\b(?:router|form|\w+Form)\.(?:post|put|patch|delete|submit)\(/, target);
         if (state.form) Object.assign(state.form, Object.fromEntries(Object.entries({ nama: 'Test', item: 'Item Test', teks: 'Keterangan Test' }).filter(([key]) => key in state.form)));
         if (mode === 'edit') {
-            if ('editing' in state) state.editing = row;
+            if ('editing' in state) state.editing = name === 'Katalog' ? { item: row, bidang: 'Bidang Test' } : row;
             if ('mode' in state) state.mode = 'edit';
             if ('current' in state) state.current = row;
             if ('currentId' in state) { state.currentId = 77; state.currentCode = row.kode; }

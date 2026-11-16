@@ -5,11 +5,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $currentCompose = Join-Path $root 'docker-compose.yml'
-if ((Test-Path -LiteralPath $currentCompose) -and (Get-Content -Raw -LiteralPath $currentCompose) -match '(?m)^name:\s*labmania-realdata-') {
-    throw 'Snapshot data asli lokal sedang dipakai. Setup/Switch/Rollback UAT ditolak; gunakan Docker Compose dan runbook README.realdata-8080.md agar data tidak terganti.'
+if (Test-Path -LiteralPath $currentCompose) {
+    $composeText = Get-Content -Raw -LiteralPath $currentCompose
+    if ($composeText -match '(?m)^name:\s*labmania-realdata-' -or $composeText -match '"name"\s*:\s*"labmania-realdata-') {
+        throw 'Snapshot data asli lokal sedang dipakai. Setup/Switch/Rollback UAT ditolak; gunakan Docker Compose dan runbook local/README.realdata-8080.md agar data tidak terganti.'
+    }
 }
-$statePath = Join-Path $root 'laravel/local/.state.json'
-$template = Join-Path $root 'laravel/local/compose.yaml'
+$statePath = Join-Path $root 'local/.state.json'
+$template = Join-Path $root 'local/compose.yaml'
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $nativeDocker = Get-Command docker -ErrorAction SilentlyContinue
 

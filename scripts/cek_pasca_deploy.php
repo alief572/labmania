@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Pemeriksa pasca-deploy (hanya baca). Jalankan dari folder laravel/ di server setelah build:
+ * Pemeriksa pasca-deploy (hanya baca). Jalankan dari root repository di server setelah build:
  *   php scripts/cek_pasca_deploy.php [--url=https://host] [--lock-sha256=<hash composer.lock yang diuji>]
  * Tidak membuka database dan tidak mengubah apa pun. Exit 0 = semua lulus, 1 = ada yang gagal.
  */

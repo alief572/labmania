@@ -14,7 +14,7 @@ class CostingParityTest extends TestCase
 {
     private function legacy(): object
     {
-        $source = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../../../../application/modules/master_program/models/Master_program_model.php'));
+        $source = str_replace("\r\n", "\n", file_get_contents(dirname(__DIR__, 3).'/ci3/application/modules/master_program/models/Master_program_model.php'));
         preg_match('/public function calculate_costing\(.*?\n    \}\n/s', $source, $m);
         $this->assertNotEmpty($m, 'Fungsi CI3 tidak ditemukan');
 

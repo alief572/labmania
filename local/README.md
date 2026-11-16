@@ -43,7 +43,7 @@ DB UAT tidak membuka port ke Windows. APP_KEY dan password DB acak tersimpan
 di `.env` root yang diabaikan Git; ini berbeda dari `.env` Laravel development.
 Jangan menghapus `.env` root setelah inisialisasi volume. Backup file ini bersama
 backup DB dan dokumen: APP_KEY diperlukan untuk membaca secret autentikator.
-File `laravel/local/.state.json` menyimpan lokasi backup, bukan kredensial.
+File `local/.state.json` menyimpan lokasi backup, bukan kredensial.
 
 ## Login dan akun uji
 
@@ -73,7 +73,7 @@ docker compose up -d web
 ```
 
 Tidak ada bind mount source; dependency dan aset frontend ada dalam image.
-Pemeriksaan HTTP tanpa browser tersedia dengan `python laravel/local/check-http.py`
+Pemeriksaan HTTP tanpa browser tersedia dengan `python local/check-http.py`
 dari root repository, memakai Python stdlib. Script tidak mengaktifkan 2FA akun.
 Setup ulang mempertahankan password, autentikator, dan data UAT yang sudah diubah.
 Jangan memakai `down -v` atau `--remove-orphans`: layanan CI3 existing tetap disimpan.
@@ -118,7 +118,7 @@ Identitas/rekening cetak dan COA dalam UAT bersifat sintetis. Survei publik dan
 penerbitan sertifikat resmi tetap ditahan oleh gate BA existing.
 UAT lokal tidak menyelesaikan migrasi histori production atau audit paritas semua fitur.
 
-Untuk paket L2, commit template `laravel/local/compose.yaml` dan skrip setup.
+Untuk paket L2, commit template `local/compose.yaml` dan skrip setup.
 `docker-compose.yml` root tetap file lokal yang diabaikan Git karena bisa berganti
 ke Compose CI3 lama yang memuat kredensial. Jangan ikutkan `.env`, state, backup,
 dump, dokumen, vendor, node_modules atau build output dalam commit.

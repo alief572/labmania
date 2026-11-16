@@ -300,7 +300,7 @@ trait Phase4Scenarios
             $this->assertStringStartsWith('%PDF-', $response->getContent());
             $folder = getenv('VERIFY_PHASE4_PDF_DIR');
             if ($folder) {
-                $base = realpath(base_path('../.artifacts/fase4_sales_order_invoice'));
+                $base = realpath(base_path('.artifacts/fase4_sales_order_invoice'));
                 $target = realpath($folder);
                 $this->assertNotFalse($target);
                 $this->assertStringStartsWith($base.DIRECTORY_SEPARATOR, $target);

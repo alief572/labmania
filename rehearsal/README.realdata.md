@@ -22,14 +22,14 @@ Dump yang diterima loader tidak mengandung CREATE/DROP DATABASE, USE, DEFINER at
 Jalankan dari WSL Ubuntu-24.04 agar bind mount memakai `/mnt/c/...`, bukan `C:/...` yang tidak dikenali Compose Linux. Dari PowerShell:
 
 ```powershell
-wsl.exe -d Ubuntu-24.04 --cd /mnt/c/web_dev/labmania/laravel/rehearsal
+wsl.exe -d Ubuntu-24.04 --cd /mnt/c/web_dev/labmania/rehearsal
 ```
 
-Contoh di shell WSL, dari direktori `laravel/rehearsal`. Lewati perintah `init-env` bila file tersebut sudah disiapkan; file existing sengaja ditolak:
+Contoh environment baru di shell WSL, dari direktori `rehearsal`. Folder privat baru harus di luar root repository. Lewati perintah `init-env` bila file tersebut sudah disiapkan; file existing sengaja ditolak. Mount existing dalam `.artifacts/` tetap dipertahankan dan tidak perlu dipindahkan:
 
 ```bash
 set -euo pipefail
-root=/mnt/c/web_dev/labmania/.artifacts/migrasi_data_asli_lokal
+root=/mnt/c/web_dev/labmania_private/migrasi_data_asli_lokal
 mkdir -p "$root/snapshot/files" "$root/backups" "$root/reports"
 
 # Hanya bila environment belum ada. Semua output memakai create-new; jangan hapus key existing.

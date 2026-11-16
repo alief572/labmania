@@ -1,5 +1,33 @@
 # Labmania Laravel
 
+## Struktur repository — 16-11-2026
+
+Laravel berada langsung di root: `app/`, `public/`, `resources/`, `routes/`,
+`storage/`, `tests/`, dan `artisan`. Jalankan Composer, npm, Artisan dan tes dari
+root. CI3 beserta aset, upload, SQL dan dependency lamanya diarsipkan di `ci3/`;
+container `labmania_uji` dihentikan. Spesifikasi BA tetap di `specs/` dan artifact
+privat tetap di `.artifacts/`. Riwayat implementasi fase di bawah tetap disimpan.
+
+Runtime Laravel tetap http://localhost:8080, project `labmania-realdata-c`, dengan
+database `labmania_laravel` pada service `rehearsal-db`. Navicat memakai
+`127.0.0.1:3308`. Koneksi PHP lokal dalam `.env` terpisah dari environment runtime
+Docker di `rehearsal/.env.rehearsal-realdata-c`; jangan menukar keduanya.
+`docker/mysql/` tetap di root karena database GL aktif masih memakai bind mount
+tersebut. Path aplikasi **dalam container** tetap `/var/www/laravel`.
+
+Compose root adalah hasil render privat, diabaikan Git. Sumbernya ada pada
+`rehearsal/compose.yaml`, `rehearsal/compose.realdata.yaml`,
+`local/compose.realdata-8080.yaml`, dan `local/compose.navicat.yaml`. Untuk restart
+aplikasi existing tanpa mengubah database, jalankan dari root lewat Docker/WSL:
+
+```bash
+docker compose -p labmania-realdata-c -f docker-compose.yml up -d --no-deps --no-build app
+```
+
+Sebelum build/deploy berikutnya, ikuti runbook data asli di
+`local/README.realdata-8080.md`. Jangan menjalankan setup UAT sintetis, migrasi,
+seed atau menghapus volume untuk memperbarui aplikasi ini.
+
 ## UI indeks dan DataTables — 15-11-2026
 
 Indeks Master Program, Penjualan Program, Quotation, Sales Order/Surat Kerja,
@@ -14,7 +42,7 @@ Ukuran halaman 10/25/50/100, default 25; pencarian ditunda 300 ms. Kolom turunan
 yang belum memiliki urutan SQL ditandai tidak bisa diurutkan. Matriks hak akses,
 baris input costing, rincian dokumen dan jurnal bukan indeks DataTables.
 
-Acuan UI adalah berkas langsung `../specs/ui-mockup/produk-to-be/` yang dimuat
+Acuan UI adalah berkas langsung `specs/ui-mockup/produk-to-be/` yang dimuat
 `Labmania.html`. Form costing memakai empat kelompok satuan, ringkasan biaya,
 input simulasi yang terikat pada header, BEP, skala peserta dan rincian hitung.
 Menu Sidebar mengikuti komponen bersama karena tidak ada mockup khususnya.
@@ -41,7 +69,7 @@ rehearsal dan restore terverifikasi; tes sintetis bukan bukti migrasi histori ny
 
 Migrasi fase 1–6, diperbarui 14-11-2026. Laravel 13 / PHP 8.5, MySQL 8, Inertia 3 / Vue 3 / TypeScript / Vite. Versi pasti dikunci di composer.lock dan package-lock.json.
 
-Aplikasi CI3 tetap di root. Salinan development sudah diimpor ke `labmania_laravel`; perubahan skema fase 2–6 diterapkan hanya pada salinan tersebut. Tes MySQL memakai `labmania_laravel_test`. Tidak ada migration default users, seed akun, atau cutover pada fase ini. Salinan development hampir kosong, sehingga belum membuktikan kesiapan data produksi. Kontrak field: ../specs/docs-to-be/fondasi-laravel.md dan ERD to-be.
+Aplikasi CI3 diarsipkan di `ci3/`. Salinan development sudah diimpor ke `labmania_laravel`; perubahan skema fase 2–6 diterapkan hanya pada salinan tersebut. Tes MySQL memakai `labmania_laravel_test`. Tidak ada migration default users, seed akun, atau cutover pada fase ini. Salinan development hampir kosong, sehingga belum membuktikan kesiapan data produksi. Kontrak field: specs/docs-to-be/fondasi-laravel.md dan ERD to-be.
 
 Fase 3 mencakup Penjualan Public/B2B dari Master Program Final, Quotation empat langkah, link konfirmasi peserta/PIC, PDF, Data Peserta dan Deal atomik. Deal mencocokkan Master Peserta (NIK, email, WA; konflik ditolak), membuat satu SO per quotation dan Surat Tugas pertama per program. Fase 4 melanjutkan SO/Surat Tugas, Invoice dan pencatatan lunas penuh. Reschedule, refund, jurnal kas dan cutover tetap pada fase berikutnya.
 
@@ -51,7 +79,6 @@ Jalankan dari PowerShell di root repository. Runtime portabel lokal tersedia di 
 
 ```powershell
 $env:PATH = (Join-Path (Get-Location) '.artifacts/runtime_fase1/php85') + ';' + $env:PATH
-Set-Location laravel
 composer install --no-interaction
 npm.cmd ci --ignore-scripts
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
@@ -94,7 +121,7 @@ Sebelum deployment: HTTPS, APP_DEBUG=false, SESSION_SECURE_COOKIE=true, document
 
 ## Pemeriksaan aman
 
-Dari folder laravel/ dengan PHP 8.5 di PATH:
+Dari root repository dengan PHP 8.5 di PATH:
 
 ```powershell
 php vendor/phpunit/phpunit/phpunit

@@ -1,6 +1,6 @@
 # Rehearsal fase 7 dan persiapan cutover
 
-Target satu instance lokal. CI3 tetap layanan aktif. Alat migrasi tersedia tidak
+Target satu instance lokal. CI3 kini arsip di `ci3/`; runtime 8080 memakai preview snapshot lokal. Alat migrasi tersedia tidak
 berarti histori operasional, UAT atau kesiapan produksi sudah terbukti.
 
 ## Input wajib
@@ -16,8 +16,9 @@ berarti histori operasional, UAT atau kesiapan produksi sudah terbukti.
 - Font Times New Roman berlisensi: `times.ttf` dan `timesbd.ttf`.
 - Folder konfigurasi/snapshot/backup privat; pastikan ACL pemilik pada Windows.
 
-Letakkan snapshot, font dan backup di luar folder `laravel/`, misalnya snapshot
-dan backup dalam `.artifacts/` pada root proyek. `init-env` menolak input di dalam
+Untuk environment baru, letakkan snapshot, font dan backup di luar root
+repository. Mount privat existing dalam `.artifacts/` tetap dipertahankan dan
+dikecualikan oleh `.dockerignore`; jangan meregenerasi environment existing. `init-env` menolak input di dalam
 build context agar data privat/font tidak ikut tersalin oleh Docker COPY.
 
 Environment, network, database dan volume berbeda dari layanan existing. Web
@@ -26,7 +27,7 @@ hanya pengecualian loopback lokal; produksi wajib HTTPS/secure cookie.
 
 ## 1. Snapshot dan environment
 
-Dari `laravel/rehearsal`, siapkan folder berisi `snapshot.sql` dan `files/`:
+Dari `rehearsal`, siapkan folder berisi `snapshot.sql` dan `files/`:
 
 ```powershell
 python snapshot.py manifest --root <folder-snapshot> --id <id-snapshot> --captured-at <waktu-ISO-8601-dengan-zona> --consistent

@@ -58,9 +58,9 @@ identitas/rekening tetap ditolak server. Tanpa opsi, pemeriksaan tetap ketat.
 Untuk mengganti UAT 8080 dengan **preview snapshot lokal** yang terverifikasi:
 
 ```bash
-python3 laravel/local/promote.py preview-local \
+python3 local/promote.py preview-local \
   --project labmania-realdata-c \
-  --env-file laravel/rehearsal/.env.rehearsal-realdata-c \
+  --env-file rehearsal/.env.rehearsal-realdata-c \
   --manifest manifest-rehearsal-mockup-extra-approved.json \
   --defer-finance
 ```
@@ -107,9 +107,9 @@ Contoh perintah dari root repo dalam WSL (ganti nama manifest dengan file yang
 benar-benar disahkan, jangan memakai pengesahan rehearsal sebagai production):
 
 ```bash
-python3 laravel/local/promote.py check \
+python3 local/promote.py check \
   --project labmania-realdata-c \
-  --env-file laravel/rehearsal/.env.rehearsal-realdata-c \
+  --env-file rehearsal/.env.rehearsal-realdata-c \
   --manifest manifest-approved.json \
   --acceptance .artifacts/penerimaan_data_asli/acceptance-approved.json
 ```
@@ -191,7 +191,7 @@ Seluruh indeks Master Data memakai lebar penuh. Empat belas daftar memakai DataT
 
 Pencarian, pengurutan dan pagination diproses endpoint GET `/master/.../data`; pilihan halaman 10/25/50/100, default 25. Filter khusus diterapkan lewat tombol Terapkan. Setelah simpan, tabel dimuat ulang dengan posisi halaman dipertahankan; halaman kosong setelah penghapusan disesuaikan. Index Inertia tidak lagi membawa props `rows`. Regex dan pencarian per kolom tidak didukung; kolom SQL dan field respons ditentukan server.
 
-Dependency dikunci melalui `package-lock.json`. Rebuild/recreate app saja dengan `docker compose build app` lalu `docker compose up -d --no-deps --no-build app`; tidak perlu migration, seed, import atau reset volume. Pemeriksaan frontend tanpa browser: `node tests/frontend/serverTable.mjs` dan `node tests/frontend/serverTableLifecycle.mjs` dari folder `laravel/`, ditambah `npm run build`.
+Dependency dikunci melalui `package-lock.json`. Rebuild/recreate app saja dengan `docker compose build app` lalu `docker compose up -d --no-deps --no-build app`; tidak perlu migration, seed, import atau reset volume. Pemeriksaan frontend tanpa browser: `node tests/frontend/serverTable.mjs` dan `node tests/frontend/serverTableLifecycle.mjs` dari root repository, ditambah `npm run build`.
 
 Bukti penerapan dan rollback image ada di `.artifacts/master_data_datatables/`. Tag lokal sebelum perubahan: `labmania-realdata:before-master-datatables-15-11-2026`. Pemulihan image tidak memerlukan pemulihan database.
 

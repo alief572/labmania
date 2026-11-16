@@ -4,7 +4,7 @@ services:
   web:
     image: labmania-laravel-local:latest
     build:
-      context: ./laravel
+      context: .
       dockerfile: rehearsal/Dockerfile
     container_name: labmania_web
     restart: unless-stopped
@@ -71,7 +71,7 @@ services:
       TZ: Asia/Jakarta
     volumes:
       - uat_mysql:/var/lib/mysql
-      - ./laravel/database/schema/rehearsal.mysql.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+      - ./database/schema/rehearsal.mysql.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '--silent']
       interval: 5s
