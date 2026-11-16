@@ -9,7 +9,6 @@ import { rupiah } from '../../composables/costing';
 
 
 type Pj = { id: number; nomor: string; judul: string; jenis: string; lokasi: string | null; company: string | null; tgl_mulai: string | null; tgl_selesai: string | null; target: number; status: string };
-type Finals = Pj & { harga: number; pendapatan: number; fixed: number; variable: number; hpp: number; profit: number; margin: number };
 type Todo = { type: 'mp' | 'pj'; id: number; nomor: string; judul: string; msg: string; warn: boolean };
 const props = defineProps<{
     kpi: { final: number; public: number; b2b: number; pendapatan: number; peserta: number; profit: number; margin: number; draft: number };
@@ -81,18 +80,18 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
             </template>
             <template v-else>
                 <p class="muted"><b>Sumber data:</b> {{ FINAL_SRC }}</p>
-                <p v-if="key === 'pend'">Pendapatan = harga jual / peserta ? target peserta.</p>
-                <p v-if="key === 'prof'">Profit = pendapatan ? Fixed Cost ? Variable Cost.</p>
+                <p v-if="key === 'pend'">Pendapatan = harga jual / peserta × target peserta.</p>
+                <p v-if="key === 'prof'">Profit = pendapatan − Fixed Cost − Variable Cost.</p>
                 <ServerTable :key="key" :url="`/dashboard/kpi/${key}/data`" :label="titles[key]" :columns="columns()" @loaded="loaded">
                     <template #cell-0="{ number }">{{ number }}</template>
-                    <template #cell-1="{ row }"><Link v-if="can.sales" :href="`/sales/${row.id}`">{{ row.nomor }}</Link><span v-else>{{ row.nomor }}</span><small>{{ row.judul }} ? {{ where(row) }}</small></template>
+                    <template #cell-1="{ row }"><Link v-if="can.sales" :href="`/sales/${row.id}`">{{ row.nomor }}</Link><span v-else>{{ row.nomor }}</span><small>{{ row.judul }} · {{ where(row) }}</small></template>
                     <template #cell-2="{ row }">{{ key === 'final' ? row.target : rupiah(row.harga) }}</template>
                     <template #cell-3="{ row }">{{ row.target }}</template>
                     <template #cell-4="{ row }">{{ rupiah(row.pendapatan) }}</template>
                     <template #cell-5="{ row }">{{ rupiah(row.fixed) }}</template>
                     <template #cell-6="{ row }">{{ rupiah(row.variable) }}</template>
                     <template #cell-7="{ row }"><span :class="{ error: row.profit < 0 }">{{ rupiah(row.profit) }}</span></template>
-                    <template #cell-8="{ row }">{{ row.pendapatan ? pct(row.margin) : '?' }}</template>
+                    <template #cell-8="{ row }">{{ row.pendapatan ? pct(row.margin) : '—' }}</template>
                 </ServerTable>
                 <div class="status-summary" role="status"><b>Total {{ totals.count ?? 0 }} penjualan</b><span>Target {{ totals.target ?? 0 }} peserta</span><span v-if="key !== 'final'">Pendapatan {{ rupiah(totals.pendapatan ?? 0) }}</span><template v-if="key === 'prof'"><span>Fixed {{ rupiah(totals.fixed ?? 0) }}</span><span>Variable {{ rupiah(totals.variable ?? 0) }}</span><span>Profit {{ rupiah(totals.profit ?? 0) }}</span></template></div>
             </template>

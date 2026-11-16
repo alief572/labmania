@@ -19,17 +19,24 @@ class RefundController extends Controller
         $f = $r->validate(['q' => 'nullable|string|max:100', 'status' => 'nullable|in:menunggu,selesai']);
         ServerDataTable::scope($r, DB::table('sales_order_refund'));
         $query = DB::table('sales_order_refund')->when($f['status'] ?? null, fn ($q, $v) => $q->where('status', $v))->when(($f['q'] ?? '') !== '', fn ($q) => $q->where(fn ($w) => $w->where('nomor', 'like', '%'.$f['q'].'%')->orWhere('snapshot', 'like', '%'.$f['q'].'%')));
-        $rows = $query->orderByRaw("CASE WHEN status='menunggu' THEN 0 ELSE 1 END")->orderByDesc('id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'nomor', null, null, null, 'nominal_tagihan', 'status', null], 'id'))->through(function ($row) {
+        $rows = $query->orderByRaw("CASE WHEN status='menunggu' THEN 0 ELSE 1 END")->orderByDesc('id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'nomor', null, null, null, 'nominal_tagihan', 'status', null], 'id'));
+        $actors = DB::table('users')->whereIn('id_user', $rows->pluck('selesai_by')->filter()->unique())->pluck('nm_lengkap', 'id_user');
+        $rows->through(function ($row) use ($actors) {
             $s = json_decode($row->snapshot, true);
             $row->siapa = $s['peserta'] ?: $s['company'];
             $row->invoice = $s['invoice'];
             $row->so = $s['nomor_so'];
+            $row->nomor_quotation = $s['nomor_quotation'] ?? null;
+            $row->selesai_oleh = $actors[$row->selesai_by] ?? null;
             unset($row->snapshot,$row->no_rekening,$row->bukti_transfer);
 
             return $row;
         });
 
-        $props = ['rows' => $rows, 'filters' => $f, 'pending' => DB::table('sales_order_refund')->where('status', 'menunggu')->count()];
+        $props = ['rows' => $rows, 'filters' => $f, 'pending' => DB::table('sales_order_refund')->where('status', 'menunggu')->count(),
+            'canManage' => Gate::allows('menu', ['sales_order_refund', 'Manage']),
+            'canSalesOrder' => Gate::allows('menu', ['sales_order', 'View']),
+            'counts' => Gate::allows('menu', ['sales_order', 'View']) ? ['so' => DB::table('sales_order')->count(), 'surat' => DB::table('surat_kerja_trainer')->count()] : []];
         if ($r->route('datatable')) {
             return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
         }
@@ -37,7 +44,7 @@ class RefundController extends Controller
         return Inertia::render('Refund/Index', $props);
     }
 
-    public function show(int $id)
+    public function show(Request $request, int $id)
     {
         Gate::authorize('menu', ['sales_order_refund', 'View']);
         $row = DB::table('sales_order_refund')->where('id', $id)->first() ?? abort(404);
@@ -45,7 +52,8 @@ class RefundController extends Controller
         unset($row->snapshot,$row->bukti_transfer);
         $p = DB::table('sales_order as s')->join('penjualan_program as p', 'p.id', '=', 's.id_penjualan')->where('s.id', $row->id_sales_order)->first(['p.closed_date']);
 
-        return Inertia::render('Refund/Show', ['refund' => $row, 'snapshot' => $s, 'canManage' => Gate::allows('menu', ['sales_order_refund', 'Manage']) && ! $p->closed_date, 'closed' => $p->closed_date !== null]);
+        $props = ['refund' => $row, 'snapshot' => $s, 'canManage' => Gate::allows('menu', ['sales_order_refund', 'Manage']) && ! $p->closed_date, 'closed' => $p->closed_date !== null];
+        return $request->boolean('modal') ? response()->json($props) : Inertia::render('Refund/Show', $props);
     }
 
     public function process(Request $r, int $id)
@@ -64,6 +72,6 @@ class RefundController extends Controller
             QuotationFiles::discard([$file]);
         }
 
-        return redirect('/sales-order/refund/'.$id)->with('success', 'Penyelesaian Refund tercatat.');
+        return redirect($r->boolean('modal') ? '/sales-order/refund' : '/sales-order/refund/'.$id)->with('success', 'Penyelesaian Refund tercatat.');
     }
 }

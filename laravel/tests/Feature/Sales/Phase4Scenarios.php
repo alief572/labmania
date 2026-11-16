@@ -205,6 +205,7 @@ trait Phase4Scenarios
             $this->get('/sales-order')->assertForbidden();
             $this->post('/sales-order/'.$this->so.'/siap-invoice')->assertForbidden();
             $this->get('/invoicing')->assertForbidden();
+            $this->getJson('/invoicing/1?modal=1')->assertForbidden();
             foreach (['sales_order', 'invoicing'] as $menu) {
                 DB::table('ms_user_akses')->insert(['id_user' => $user->id_user, 'id_menu' => DB::table('ms_menu')->where('kode', $menu)->value('id'), 'aksi' => 'lihat']);
             }
@@ -233,12 +234,15 @@ trait Phase4Scenarios
         $this->get('/sales-order?tahun=2025')->assertInertia(fn ($p) => $p->where('rows.total', 0));
         $this->get('/sales-order/program/'.SalesOrder::row($this->so)->id_penjualan)->assertOk();
         SalesOrder::ready($this->so);
-        $this->get('/invoicing')->assertInertia(fn ($p) => $p->where('rows.total', 1));
+        $this->get('/invoicing')->assertInertia(fn ($p) => $p->where('rows.total', 1)->where('years.0', 2026)->where('programs.0.nomor', 'PJ-4'));
+        $this->getJson('/invoicing/data?order[0][column]=1&order[0][dir]=asc')->assertOk()->assertJsonPath('data.0.tujuan', 'personal')->assertJsonPath('data.0.tgl_mulai', '2026-12-20');
         $this->get('/invoicing/create?id_sales_order='.$this->so)->assertInertia(fn ($p) => $p->has('journal', 3)->where('configurationErrors', []));
         $id = Invoice::save($this->so, $this->invoiceInput());
         $this->get('/invoicing')->assertInertia(fn ($p) => $p->where('rows.total', 0));
         $this->get('/invoicing?tab=invoiced&jenis=public&tahun=2026&q=Fase')->assertInertia(fn ($p) => $p->where('rows.total', 1));
         $this->get('/invoicing/'.$id)->assertOk();
+        $this->getJson('/invoicing/'.$id.'?modal=1')->assertOk()->assertJsonPath('invoice.id', $id)->assertJsonPath('canManage', true)->assertJsonStructure(['snapshot', 'journal', 'today']);
+        $this->getJson('/invoicing/data?tab=invoiced')->assertOk()->assertJsonPath('data.0.canManage', true)->assertJsonPath('data.0.tujuan', 'personal')->assertJsonMissingPath('data.0.snapshot');
         $this->get('/invoicing/'.$id.'/pdf')->assertSessionHasErrors('pdf');
         $snapshot = json_decode(Invoice::row($id)->snapshot, true, 512, JSON_THROW_ON_ERROR);
         $snapshot['quotation']['kepada_nama'] = '=HYPERLINK("https://example.invalid")';

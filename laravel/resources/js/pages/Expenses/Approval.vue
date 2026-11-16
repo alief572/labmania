@@ -18,7 +18,7 @@ onBeforeUnmount(() => clearTimeout(timer));
         <p v-if="!canApprove" class="notice">Anda dapat melihat daftar, tetapi tidak memiliki hak Approve atau peran yang diperlukan untuk menyetujui pengajuan.</p>
         <div class="batch-card">
             <nav class="tabs" aria-label="Jenis approval"><Link href="/pengajuan-biaya/approval" :aria-current="kind === 'pengajuan' ? 'page' : undefined">Pengajuan<span class="nav-count">{{ counts.pengajuan }}</span></Link><Link href="/pengajuan-biaya/approval?tab=overbudget" :aria-current="kind === 'overbudget' ? 'page' : undefined">Overbudget<span class="nav-count">{{ counts.overbudget }}</span></Link></nav>
-            <div class="filters"><label class="grow">Cari<input v-model="f.q" type="search" maxlength="100" placeholder="Cari nomor pengajuan, program, pengaju?" /></label></div>
+            <div class="filters"><label class="grow">Cari<input v-model="f.q" type="search" maxlength="100" placeholder="Cari nomor pengajuan, program, pengaju…" /></label></div>
             <ServerTable url="/pengajuan-biaya/approval/data" label="Approval Pengajuan" :keyword="filters.q || ''" :filters="{ ...filters, tab: kind }" :columns="[{title:'No',orderable:false},{title:kind==='overbudget'?'No. Overbudget':'No. Pengajuan',orderable:true},{title:'No. Program',orderable:true},{title:'Kategori / Jenis',orderable:true},{title:'Deskripsi / Item',orderable:true},{title:'Total',orderable:true,className:'dt-body-right'},{title:'Request By',orderable:true},{title:'Action',orderable:false}]" refresh-on-visit>
                 <template #cell-0="{ number }">{{ number }}</template>
                 <template #cell-1="{ row }"><span class="code">{{ row.nomor }}</span><small>{{ row.tanggal }}</small></template>

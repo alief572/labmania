@@ -75,7 +75,7 @@ async function page(name, props = {}) {
         history: [], reason: null, minimum: '', canManage: true, canAdd: true, canApprove: true, canCancel: true, canPay: true,
         salesOrder: null, sales: [], companyConfirmation: null, link: null, linkClosed: null, calc: null,
         tanggal: '2026-11-15', today: '2026-11-15', configurationErrors: {}, journal: [], snapshot: {}, setor: null,
-        category: 'fixed', headers: {}, budget: { items: [] }, notTeam: false, lastAccount: null, requestBy: 'Test',
+        category: 'fixed', headers: {}, budgets: {}, budget: { items: [] }, notTeam: false, lastAccount: null, requestBy: 'Test',
         details: [], files: [], rows: [], counts: {}, canCertificates: true, canQuotation: true, survey: {},
         icons: [], aksi: {}, unmapped: [], closed: false, fieldLabels: {}, company: null, program: {},
         nomor: 'PJP-077', judul: 'Test', oldDate: null, newDate: '', endDate: '', deadline: '', canRegister: false,
@@ -299,13 +299,14 @@ try {
         ['Quotation/Form', quoteProps, 'saveDocuments', [], '/quotation/77/deal'],
         ['components/ReadyInvoice', { so: row, kepada: 'Test', count: 1, total: '100000' }, 'save', [], '/sales-order/77/siap-invoice'],
         ['Invoice/Form', { source: { so: row, amounts: { total_tagihan: '100000' } }, accounts: [], coa: 7 }, 'save', [], '/invoicing'],
-        ['Invoice/Show', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/pembayaran', 'post', s => { s.action = 'pembayaran'; }],
-        ['Invoice/Show', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/bukti-setor', 'post', s => { s.action = 'bukti-setor'; }],
-        ['Refund/Show', { refund: { id: 77, nomor: 'RF-077', nominal_tagihan: '987654321012345678.00' } }, 'save', [], '/sales-order/refund/77'],
+        ['components/InvoiceDetail', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/pembayaran', 'post', s => { s.action = 'pembayaran'; }],
+        ['components/InvoiceDetail', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/bukti-setor', 'post', s => { s.action = 'bukti-setor'; }],
+        ['components/RefundDetail', { refund: { id: 77, nomor: 'RF-077', nominal_tagihan: '987654321012345678.00' } }, 'save', [], '/sales-order/refund/77'],
         ...['pengajuan', 'overbudget'].map(creating => ['Expenses/Program', { ...base, creating, budget: { items: [] } }, 'submit', [], `/pengajuan-biaya/program/77/${creating}`]),
         ...['setujui', 'tolak', 'batal', 'paid'].map(kind => ['Expenses/Show', { header: { id: 77, nomor: 'PB-077', total: '100000' }, kind: 'pengajuan' }, 'send', [kind], `/pengajuan-biaya/pengajuan/77/${kind}`]),
         ['Participants/Show', { program, filters: {}, warnings: [], blockers: [] }, 'save', [], '/manage-peserta/peserta/77/nama', 'post', s => { s.editing = row; }],
         ['Participants/Show', { program, filters: {}, warnings: [], blockers: [] }, 'closeProgram', [], '/manage-peserta/77/close'],
+        ['Participants/Index', {}, 'closeProgram', [{...program,warnings:['Sertifikat belum dikirim'],blockers:[]}], '/manage-peserta/77/close'],
         ...['buka', 'tutup'].map(kind => ['Participants/Show', { program, filters: {}, warnings: [], blockers: [] }, 'surveyStatus', [kind], `/manage-peserta/77/survey/${kind}`]),
         ['Participants/Monitoring', {}, 'save', [], '/manage-peserta/peserta/77/catatan', 'post', s => { s.editing = row; }],
         ['components/QuotationParticipants', { rows: [], manage: true }, 'save', [], '/quotation/peserta/77/surat', 'post', s => { s.replacing = row; }],
@@ -348,7 +349,7 @@ try {
         request.options.onError({ field: 'Validasi gagal.' });
         finish(request);
         if (form && 'surat' in form) assert.equal(form.surat, file, 'Error mempertahankan lampiran.');
-        if (name === 'Refund/Show') assert.equal(request.options.data.nominal_refund, '987654321012345678');
+        if (name === 'components/RefundDetail') assert.equal(request.options.data.nominal_refund, '987654321012345678');
         app.unmount();
     }
     const pdfPage = await page('Quotation/Form', quoteProps);

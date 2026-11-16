@@ -296,6 +296,7 @@ trait Phase5Scenarios
         $this->post($url, ['revisi' => 1, 'keputusan' => 'refund', 'alasan' => 'Bentrok jadwal'])->assertSessionHasNoErrors();
         $rf = DB::table('sales_order_refund')->first();
         $this->assertSame('1059501', (string) $rf->nominal_tagihan);
+        $this->getJson('/sales-order/refund/'.$rf->id.'?modal=1')->assertOk()->assertJsonPath('refund.id', $rf->id)->assertJsonMissingPath('refund.bukti_transfer');
         $this->assertSame('invoiced', Invoice::row($invoice->id)->status);
         $this->post($url, ['revisi' => 1, 'keputusan' => 'refund', 'alasan' => 'Bentrok jadwal'])->assertSessionHasNoErrors();
         $this->assertSame(1, DB::table('sales_order_refund')->count());
@@ -304,6 +305,7 @@ trait Phase5Scenarios
         $this->post('/sales-order/refund/'.$rf->id, $input)->assertSessionHasNoErrors();
         $this->post('/sales-order/refund/'.$rf->id, $input)->assertSessionHasNoErrors();
         $this->assertSame('selesai', DB::table('sales_order_refund')->value('status'));
+        $this->getJson('/sales-order/refund/data')->assertOk()->assertJsonPath('data.0.status', 'selesai')->assertJsonPath('data.0.nominal_refund', fn ($value) => (int) $value === 1000000)->assertJsonStructure(['data' => [['selesai_oleh']]])->assertJsonMissingPath('data.0.bukti_transfer')->assertJsonMissingPath('data.0.no_rekening');
         $this->get('/documents/refund/'.$rf->id)->assertOk();
         $this->assertSame(3, DB::table('invoice_jurnal')->count());
         $log = DB::table('logs')->where('action', 'Proses Refund')->value('data');

@@ -26,8 +26,8 @@ class InvoiceController extends Controller
     private function query(array $f)
     {
         $done = ($f['tab'] ?? 'uninvoiced') === 'invoiced';
-        $query = $done ? DB::table('invoice as i')->join('sales_order as s', 's.id', '=', 'i.id_sales_order')
-            : DB::table('sales_order as s')->where('s.status', 'siap')->whereNotExists(fn ($q) => $q->selectRaw('1')->from('invoice as i')->whereColumn('i.id_sales_order', 's.id')->where('i.status', 'invoiced'))->whereExists(fn ($q) => $q->selectRaw('1')->from('quotation_peserta as x')->whereColumn('x.id_quotation', 's.id_quotation')->where('x.status', 'deal'));
+        $query = $done ? DB::table('invoice as i')->join('sales_order as s', 's.id', '=', 'i.id_sales_order')->leftJoin('invoice_bukti_setor as b', 'b.id_invoice', '=', 'i.id')
+            : Invoice::uninvoiced();
         $query->join('quotation as q', 'q.id', '=', 's.id_quotation')->join('penjualan_program as p', 'p.id', '=', 's.id_penjualan')->leftJoin('ms_user_karyawan as u', 'u.id', '=', 'q.id_sales');
         $query->when($f['jenis'] ?? null, fn ($q, $v) => $q->where('p.jenis', $v))->when($f['program'] ?? null, fn ($q, $v) => $q->where('p.id', $v))
             ->when($f['tahun'] ?? null, fn ($q, $v) => $q->whereYear($done ? 'i.tanggal' : 'q.tanggal', $v));
@@ -50,7 +50,7 @@ class InvoiceController extends Controller
             }
         }
 
-        return $query->select($done ? ['i.*'] : ['s.*', 'q.kepada_nama', 'q.nomor as nomor_quotation', 'q.tanggal as tanggal_quotation', 'p.nomor as nomor_program', 'p.revisi as revisi_program', 'q.revisi as revisi_quotation', 'p.jenis', 'p.closed_date', 'p.id_master_program', 'p.lokasi', 'u.nama as sales_nama'])->orderByDesc($done ? 'i.id' : 's.id');
+        return $query->select($done ? ['i.*', 'p.closed_date', 'b.id as setor_id', 'b.tanggal as setor_tanggal'] : ['s.*', 'q.kepada_nama', 'q.nomor as nomor_quotation', 'q.tanggal as tanggal_quotation', 'p.nomor as nomor_program', 'p.revisi as revisi_program', 'q.revisi as revisi_quotation', 'p.jenis', 'p.closed_date', 'p.id_master_program', 'p.lokasi', 'p.tgl_mulai', 'p.tgl_selesai', 'u.nama as sales_nama'])->orderByDesc($done ? 'i.id' : 's.id');
     }
 
     private function listing(object $r, bool $done): object
@@ -66,6 +66,10 @@ class InvoiceController extends Controller
             $r->sales_nama = $s['sales'];
             $r->jumlah_peserta = count($s['peserta']);
             $r->skema_harga = $s['quotation']['skema_harga'];
+            $r->tujuan = $s['quotation']['tujuan'];
+            $r->tgl_mulai = $s['program']['tgl_mulai'];
+            $r->tgl_selesai = $s['program']['tgl_selesai'];
+            $r->canManage = $r->status === 'invoiced' && ! $r->closed_date && Gate::allows('menu', ['invoicing', 'Manage']);
             unset($r->snapshot);
         } else {
             $r->nomor_so = Sales::display($r);
@@ -74,6 +78,7 @@ class InvoiceController extends Controller
             $r->judul = Sales::title($r->id_master_program);
             $q = Quotation::row($r->id_quotation);
             $r->skema_harga = $q->skema_harga;
+            $r->tujuan = $q->tujuan;
             $r->jumlah_peserta = Quotation::count($q);
             $r->pending = Reconfirmation::pending($q);
             $r->total_tagihan = Quotation::calculate($q, $r->jumlah_peserta)['grand_total'];
@@ -89,11 +94,15 @@ class InvoiceController extends Controller
         $f = $this->filters($r);
         $done = ($f['tab'] ?? 'uninvoiced') === 'invoiced';
         ServerDataTable::scope($r, $this->query(['tab' => $done ? 'invoiced' : 'uninvoiced']));
-        $rows = $this->query($f)->pipe(fn ($builder) => ServerDataTable::page($r, $builder, ($done ? [null, 'i.nomor', null, 'i.perlakuan_ppn', 'i.total_tagihan', 'i.status', null] : [null, 's.nomor', 'q.nomor', 'q.kepada_nama', 'p.nomor', 'u.nama', null, null, 's.status', null]), $done ? 'i.id' : 's.id'))->through(fn ($r) => $this->listing($r, $done));
+        $rows = $this->query($f)->pipe(fn ($builder) => ServerDataTable::page($r, $builder, ($done ? [null, 'p.nomor', 'i.nomor', null, 'i.perlakuan_ppn', 'i.total_tagihan', 'i.status', null] : [null, 'p.nomor', 's.nomor', 'q.nomor', 'q.kepada_nama', 'p.nomor', 'u.nama', null, null, 's.status', null]), $done ? 'i.id' : 's.id'))->through(fn ($r) => $this->listing($r, $done));
 
+        $choices = ['tab' => $done ? 'invoiced' : 'uninvoiced', 'jenis' => $f['jenis'] ?? null];
+        $programs = $this->query($choices)->reorder()->select('p.id', 'p.nomor')->distinct()->orderBy('p.nomor')->get();
+        $dateField = $done ? 'i.tanggal' : 'q.tanggal';
+        $years = $this->query($choices)->reorder()->select($dateField)->distinct()->pluck($dateField)->filter()->map(fn ($date) => (int) substr($date, 0, 4))->unique()->sortDesc()->values();
         $props = ['rows' => $rows, 'filters' => $f, 'tab' => $done ? 'invoiced' : 'uninvoiced',
             'counts' => ['uninvoiced' => $this->query([])->count(), 'invoiced' => DB::table('invoice')->count()],
-            'programs' => DB::table('penjualan_program')->whereExists(fn ($q) => $q->selectRaw('1')->from('sales_order')->whereColumn('id_penjualan', 'penjualan_program.id'))->get(['id', 'nomor']),
+            'programs' => $programs, 'years' => $years,
             'canAdd' => Gate::allows('menu', ['invoicing', 'Add'])];
         if ($r->route('datatable')) {
             return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
@@ -134,17 +143,18 @@ class InvoiceController extends Controller
         return redirect('/invoicing?tab=invoiced')->with('success', 'Invoice '.Invoice::row($id)->nomor.' tersimpan.');
     }
 
-    public function show(int $id)
+    public function show(Request $request, int $id)
     {
         Gate::authorize('menu', ['invoicing', 'View']);
         $i = Invoice::row($id);
         $s = json_decode($i->snapshot, true, 512, JSON_THROW_ON_ERROR);
         unset($i->snapshot);
 
-        return Inertia::render('Invoice/Show', ['invoice' => $i, 'snapshot' => $s,
+        $props = ['invoice' => $i, 'snapshot' => $s,
             'journal' => DB::table('invoice_jurnal')->where('id_invoice', $id)->orderBy('jenis')->orderBy('urutan')->get(),
             'setor' => DB::table('invoice_bukti_setor')->where('id_invoice', $id)->first(),
-            'canManage' => $i->status === 'invoiced' && ! Sales::program($i->id_penjualan)->closed_date && Gate::allows('menu', ['invoicing', 'Manage']), 'today' => today()->toDateString()]);
+            'canManage' => $i->status === 'invoiced' && ! Sales::program($i->id_penjualan)->closed_date && Gate::allows('menu', ['invoicing', 'Manage']), 'today' => today()->toDateString()];
+        return $request->boolean('modal') ? response()->json($props) : Inertia::render('Invoice/Show', $props);
     }
 
     public function payment(Request $r, int $id)

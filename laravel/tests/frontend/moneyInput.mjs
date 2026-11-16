@@ -87,14 +87,14 @@ await input('9.876.543.210.123.456.789');
 assert.equal(model.value, '987654321012345678');
 await set('987654321012345678.00');
 assert.equal(el.value, '987.654.321.012.345.678');
-for (const [page, count] of [['Master/Program/Form', 5], ['Sales/Form', 5], ['Quotation/Form', 3], ['Expenses/Program', 1], ['Master/Rate', 1], ['Refund/Show', 1]]) {
+for (const [page, count] of [['Master/Program/Form', 5], ['Sales/Form', 5], ['Quotation/Form', 3], ['Expenses/Program', 1], ['Master/Rate', 1]]) {
     const text = readFileSync(new URL(`../../resources/js/pages/${page}.vue`, import.meta.url), 'utf8');
     assert.equal((text.match(/<MoneyInput\b/g) ?? []).length, count, page);
 }
 const expense = readFileSync(new URL('../../resources/js/pages/Expenses/Program.vue', import.meta.url), 'utf8');
 assert.match(expense, /<input v-model="i.qty"[^>]*step="0.01"/);
 assert.match(expense, /<input v-model="form.no_rekening"/);
-const refund = readFileSync(new URL('../../resources/js/pages/Refund/Show.vue', import.meta.url), 'utf8');
+const refund = readFileSync(new URL('../../resources/js/components/RefundDetail.vue', import.meta.url), 'utf8');
 assert.match(refund, /<MoneyInput v-model="form.nominal_refund" :max-digits="18"/);
 assert.match(refund, /<input v-model="form.no_rekening"/);
 console.log('MoneyInput: format/model mentah, nol/kosong, DECIMAL, paste, batas 13/18 digit, caret, penghapusan, atribut, 16 binding dan qty/rekening lulus.');
