@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Support\Costing;
 use App\Support\Sales;
+use App\Support\ServerDataTable;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -20,10 +22,10 @@ class DashboardController extends Controller
     private const KPI = ['final', 'pend', 'prof', 'draft'];
 
     /** Penjualan Program pada status tertentu beserta hasil costing, urut tanggal mulai. */
-    private function penjualan(array $statuses): array
+    private function penjualan(array $statuses, ?array $ids = null): array
     {
         $rows = DB::table('penjualan_program as pj')->leftJoin('master_customer as c', 'c.id_customer', '=', 'pj.id_customer')
-            ->whereIn('pj.status', $statuses)->orderBy('pj.tgl_mulai')->orderBy('pj.id')->get(['pj.*', 'c.name_customer']);
+            ->whereIn('pj.status', $statuses)->when($ids !== null, fn ($q) => $q->whereIn('pj.id', $ids))->orderBy('pj.tgl_mulai')->orderBy('pj.id')->get(['pj.*', 'c.name_customer']);
         $costs = $this->costsFor($rows->pluck('id')->all());
 
         return $rows->map(function ($r) use ($costs) {
@@ -116,6 +118,42 @@ class DashboardController extends Controller
             'todo' => array_slice($todo, 0, 8), 'todoTotal' => count($todo),
             'can' => ['master' => Gate::allows('menu', ['master_program', 'View']), 'sales' => Gate::allows('menu', ['penjualan_program', 'View'])],
         ]);
+    }
+
+    public function data(Request $request, string $kpi)
+    {
+        Gate::authorize('menu', [self::MENU, 'View']);
+        abort_unless(in_array($kpi, self::KPI, true), 404);
+        ServerDataTable::prepare($request);
+        $input = $request->validate(['q' => 'nullable|string|max:100', 'source' => 'nullable|in:master,penjualan']);
+        $master = $kpi === 'draft' && ($input['source'] ?? 'master') === 'master';
+        $query = DB::table($master ? 'master_program as p' : 'penjualan_program as p')->where('p.status', $kpi === 'draft' ? 'draft' : 'final');
+        ServerDataTable::scope($request, $query);
+        if (($input['q'] ?? '') !== '') {
+            $term = '%'.$input['q'].'%';
+            $query->where(fn ($q) => $q->where('p.nomor', 'like', $term)->orWhereExists(fn ($sub) => $sub->selectRaw('1')
+                ->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')
+                ->whereColumn('m.id_master_program', $master ? 'p.id' : 'p.id_master_program')->where('k.judul', 'like', $term)));
+        }
+        $filtered = clone $query;
+        $columns = array_fill(0, $kpi === 'draft' ? 2 : ($kpi === 'final' ? 3 : ($kpi === 'pend' ? 5 : 9)), null);
+        $columns[1] = 'p.nomor';
+        $page = ServerDataTable::page($request, $query->select('p.*')->orderBy('p.id'), $columns, 'p.id');
+        if ($master) {
+            $page->through(fn ($r) => ['id' => $r->id, 'nomor' => $r->nomor, 'judul' => $this->title((int) $r->id)]);
+            return ServerDataTable::result($request, $page);
+        }
+        $rows = collect($this->penjualan([$kpi === 'draft' ? 'draft' : 'final'], $page->pluck('id')->all()))->keyBy('id');
+        $page->through(fn ($r) => $this->pj($rows[$r->id]) + ['harga' => (float) $r->harga_jual_peserta,
+            'pendapatan' => $rows[$r->id]->c['pendapatan'], 'fixed' => $rows[$r->id]->c['total_fixed'],
+            'variable' => $rows[$r->id]->c['total_var'], 'profit' => $rows[$r->id]->c['profit'], 'margin' => $rows[$r->id]->c['margin']]);
+        // ponytail: totals use the existing costing engine across matching rows; SQL aggregation needs parity checks first.
+        $all = $this->penjualan([$kpi === 'draft' ? 'draft' : 'final'], $filtered->pluck('p.id')->all());
+        $totals = ['count' => count($all), 'target' => array_sum(array_column($all, 'target_peserta'))];
+        foreach (['pendapatan' => 'pendapatan', 'fixed' => 'total_fixed', 'variable' => 'total_var', 'profit' => 'profit'] as $key => $field) {
+            $totals[$key] = array_sum(array_map(fn ($r) => $r->c[$field], $all));
+        }
+        return ServerDataTable::result($request, $page, ['totals' => $totals]);
     }
 
     /** Rincian satu kartu KPI (FR-41): sumber data, rumus, dan baris penyusun angka. */

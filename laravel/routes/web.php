@@ -99,6 +99,7 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
         Route::post('/{kind}/{id}/{action}', [ExpenseController::class, 'process'])->whereNumber('id')->where('kind', 'pengajuan|overbudget')->where('action', 'setujui|tolak|batal|paid');
     });
     Route::get('/', [DashboardController::class, 'index'])->name('home');
+    Route::get('/dashboard/kpi/{kpi}/data', [DashboardController::class, 'data'])->where('kpi', 'final|pend|prof|draft')->defaults('datatable', true);
     Route::get('/dashboard/kpi/{kpi}', [DashboardController::class, 'detail'])->where('kpi', 'final|pend|prof|draft');
     Route::get('/activity-log/data', ActivityLogController::class)->defaults('datatable', true);
     Route::get('/activity-log', ActivityLogController::class)->name('activity-log');
