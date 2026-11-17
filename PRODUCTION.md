@@ -114,7 +114,7 @@ ini tidak menggantikan rehearsal/cutover di `rehearsal/README.md`.
 5. Buat environment baru hanya jika belum ada, tanpa menimpa `.env` lokal/server:
 
    ```bash
-   test -f .env.production || (umask 077; cp .env.example .env.production)
+   test -f .env.production || (umask 077; cp .env.production.example .env.production)
    chmod 600 .env.production
    nano .env.production
    ```
@@ -199,6 +199,23 @@ Container/backend yang berhasil boot belum membuktikan hasil pemindahan data.
 Jika sumber dibuka lagi dan ada transaksi baru setelah snapshot, lakukan
 capture final/rekonsiliasi sebelum pengalihan; jangan menjalankan dua aplikasi
 penulis tanpa rencana sinkronisasi yang sah.
+
+## Preflight server
+
+Sebelum `build`/`up`, jalankan dari root repository di server. Script hanya
+membaca, tidak mengubah apa pun, dan tidak mencetak secret:
+
+```bash
+bash scripts/preflight-production.sh            # env, direktori, Docker, port, listener MySQL
+bash scripts/preflight-production.sh --db       # + uji koneksi DB/COA dari container (image sudah dibuild)
+bash scripts/preflight-production.sh --offline  # hanya env dan direktori
+```
+
+FAIL (exit 1) harus dibereskan; WARN dibaca operator (mis. finance/cetak kosong,
+dokumen historis belum dipulihkan). Script tidak memeriksa grant akun MySQL dari
+subnet Docker dan aturan firewall; itu tetap cek manual, kecuali `--db` yang
+membuktikan koneksi sebenarnya. Tes logika env/direktori:
+`python tests/preflight_production.py`.
 
 ## Validasi dan jalankan backend
 
