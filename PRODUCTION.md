@@ -101,6 +101,25 @@ ini tidak menggantikan rehearsal/cutover di `rehearsal/README.md`.
    aplikasi existing. Periksa ulang grant/firewall jika jaringan dibuat ulang
    dan subnet berubah. Listener, grant dan firewall adalah tiga pemeriksaan
    terpisah; alias `host.docker.internal` saja tidak memberinya akses.
+
+   `scripts/provision-db.sh` menghasilkan SQL database + akun ini. Script
+   hanya mencetak SQL, tidak menjalankannya; `CREATE` tanpa `IF NOT EXISTS`
+   sehingga database/akun yang sudah ada membuat eksekusi gagal, bukan tertimpa.
+   Host akun berupa `jaringan/netmask` dari subnet project (bukan `%`), hak
+   hanya `SELECT, INSERT, UPDATE, DELETE`; skema dimuat dan migration rilis
+   dijalankan akun admin. Password lewat environment, bukan argumen:
+
+   ```bash
+   docker compose -p labmania-production --env-file .env.production -f compose.production.yaml up --no-start app
+   export LARAVEL_DB_PASSWORD="$(openssl rand -hex 24)"   # isi DB_PASSWORD di .env.production
+   bash scripts/provision-db.sh --subnet auto --dry-run   # tinjau SQL, password disamarkan
+   bash scripts/provision-db.sh --subnet auto | sudo mysql
+   ```
+
+   Tambah `--gl-db NAMA --gl-user NAMA` (password `GL_READER_PASSWORD`) bila GL
+   di MySQL host yang sama; akun itu hanya `SELECT` pada `coa_master`. Subnet
+   network berubah bila network dibuat ulang: jalankan ulang untuk subnet baru
+   dan cabut akun lama. Jangan simpan SQL hasilnya ke berkas (memuat password).
 3. Pindahkan snapshot Laravel lokal mengikuti bagian pemindahan di bawah.
    Siapkan direktori storage khusus production di luar repository, misalnya
    `/srv/labmania/storage`. Pulihkan storage existing ke direktori ini,
@@ -242,10 +261,36 @@ Compose memakai `--quiet` agar environment tidak tercetak. `db:show` memeriksa
 koneksi baca ke MySQL host sesudah listener/grant/firewall disiapkan; bukan
 verifikasi kelengkapan snapshot atau izin tulis bisnis.
 
+## Backup
+
+`scripts/backup-production.sh` membuat folder baru `labmania-DD-MM-YYYY_HH-MM-SS`
+berisi dump DB Laravel (`--single-transaction`, tanpa `CREATE/DROP DATABASE` dan
+`USE`, jadi restore selalu ke database kosong pilihan operator), arsip
+`storage/app` tanpa `mpdf`, manifest jumlah baris per tabel, dan `SHA256SUMS`.
+Tidak menghentikan aplikasi dan tidak menimpa backup lama. Jalankan dengan
+akun admin MySQL (bukan akun aplikasi, yang hanya diizinkan dari subnet Docker):
+
+```bash
+sudo bash scripts/backup-production.sh --out /srv/labmania/backups
+sudo bash scripts/backup-production.sh --out /srv/labmania/backups --defaults-extra-file /root/.my-admin.cnf
+bash scripts/backup-production.sh --verify /srv/labmania/backups/labmania-DD-MM-YYYY_HH-MM-SS
+```
+
+- Folder `--out` wajib absolut, di luar repository, dibuat `0700`.
+- Tabel MyISAM membuat `--single-transaction` tidak konsisten: script menolak
+  kecuali `--writers-stopped` (semua penulis sudah dihentikan).
+- `APP_KEY` tidak ikut kecuali `--include-env`, karena file env memuat password;
+  simpan terpisah. Tanpa APP_KEY, data terenkripsi dan sesi tidak terbaca.
+- GL/COA tidak ikut (sumber terpisah). Backup bukan bukti pemulihan sebelum
+  restore diuji ke database kosong, lalu cocokkan jumlah baris dengan manifest.
+- `--verify` memeriksa hash, integritas gzip/tar, dan dump terpotong (baris
+  `-- Dump completed`). Tes: `python tests/db_scripts_integration.py` (Docker,
+  image `mysql:8.4`; membuat dan menghapus container/network sementara).
+
 ## Pembaruan berikutnya
 
 Sesudah dukungan `/labmania/` selesai, cutover disahkan dan writer diamankan,
-backup data/berkas terlebih dahulu. Build image baru sebelum menghentikan
+jalankan backup di atas terlebih dahulu. Build image baru sebelum menghentikan
 writer. Tahan trafik pada proxy selama penggantian aplikasi dan verifikasi;
 setiap proses penulis lain juga harus dihentikan sementara. Jalankan:
 
