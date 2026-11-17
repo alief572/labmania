@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -70,7 +71,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode, nama, kota, atau PIC…" /></label>
             <label>Jenis Instansi<select v-model="filter.jenis"><option value="">Semua jenis instansi</option><option v-for="j in jenis" :key="j" :value="j">{{ j }}</option></select></label>
         </div>
-        <ServerTable ref="table" url="/master/company/data" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'Company'">
+        <ServerTable ref="table" :url="appUrl('/master/company/data')" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'Company'">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><span class="code">{{ row.id_customer }}</span></template>
             <template #cell-2="{ row }">{{ row.name_customer }}<small>PIC: {{ row.pic_name ?? '—' }}</small><small v-if="!row.npwp"><span class="badge warn">NPWP kosong</span> Lengkapi lewat Edit</small></template>

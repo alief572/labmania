@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -42,7 +43,7 @@ const toggle = (row: Row) => confirmation.visit('post', `/master/template-konfir
     title: `${row.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${row.nama} (${row.kode})?`,
     confirmLabel: row.aktif ? 'Ya, nonaktifkan' : 'Ya, aktifkan', danger: !!row.aktif,
 }, { preserveScroll: true, onSuccess: reload });
-async function contoh(row: Row) { sample.value = await (await fetch(`/master/template-konfirmasi/${row.id}/contoh`, { headers: { Accept: 'application/json' } })).json(); }
+async function contoh(row: Row) { sample.value = await (await fetch(appUrl(`/master/template-konfirmasi/${row.id}/contoh`), { headers: { Accept: 'application/json' } })).json(); }
 
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
@@ -58,7 +59,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode atau nama template…" /></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua status</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
         </div>
-        <ServerTable ref="table" url="/master/template-konfirmasi/data" :columns="columns" :filters="appliedFilters" :keyword="filter.q" label="Template Formulir Konfirmasi">
+        <ServerTable ref="table" :url="appUrl('/master/template-konfirmasi/data')" :columns="columns" :filters="appliedFilters" :keyword="filter.q" label="Template Formulir Konfirmasi">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><span class="code">{{ row.kode }}</span></template>
             <template #cell-2="{ row }"><b>{{ row.nama }}</b><small>subject: kegiatan {{ row.label_kegiatan }}</small></template>

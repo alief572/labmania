@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -56,7 +57,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: pres
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode atau nama…" /></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua status</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
         </div>
-        <ServerTable ref="table" :url="`/master/${props.slug}/data`" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="label">
+        <ServerTable ref="table" :url="appUrl(`/master/${props.slug}/data`)" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="label">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><span class="code">{{ row.kode }}</span></template>
             <template #cell-2="{ row }">{{ row.nama }}</template>

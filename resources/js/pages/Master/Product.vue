@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -30,12 +31,12 @@ const mode = ref<'edit' | null>(null);
 const current = ref<Row | null>(null);
 const editForm = useForm({ judul: '', produk: '' as string | number, bidang: '' as string | number, varian: '' as string | number, sertifikasi: '' as string | number });
 
-const openAdd = () => router.get('/master/product/create');
+const openAdd = () => router.get(appUrl('/master/product/create'));
 const attrOptions = (key: 'produk' | 'bidang' | 'varian' | 'sertifikasi', value: unknown) => props.options[key].filter((o) => o.aktif !== 0 || String(o.id) === String(value));
 const usedBy = ref(0);
 function openEdit(row: Row) {
     editForm.clearErrors(); current.value = row; mode.value = 'edit'; usedBy.value = 0;
-    fetch(`/master/product/${row.id}`, { headers: { Accept: 'application/json' } }).then((r) => r.json()).then((d) => { if (current.value?.id === row.id) usedBy.value = d.dipakai ?? 0; }).catch(() => undefined);
+    fetch(appUrl(`/master/product/${row.id}`), { headers: { Accept: 'application/json' } }).then((r) => r.json()).then((d) => { if (current.value?.id === row.id) usedBy.value = d.dipakai ?? 0; }).catch(() => undefined);
     Object.assign(editForm, { judul: row.judul, produk: row.id_jenis_produk, bidang: row.id_jenis_bidang, varian: row.id_varian_pelaksanaan ?? '', sertifikasi: row.id_jenis_sertifikasi });
 }
 const close = () => { mode.value = null; current.value = null; };
@@ -65,7 +66,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Pro
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari nomor, judul, atau atribut…" /></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua status</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
         </div>
-        <ServerTable ref="table" url="/master/product/data" :columns="columns" :filters="appliedFilters" :keyword="filter.q" label="Product">
+        <ServerTable ref="table" :url="appUrl('/master/product/data')" :columns="columns" :filters="appliedFilters" :keyword="filter.q" label="Product">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><span class="code">{{ row.nomor }}</span><br>{{ row.judul }}</template>
             <template #cell-2="{ row }"><template v-if="row.aktif_produk === 0 || row.aktif_produk === '0'"><span class="attr-off" title="Atribut ini sudah dinonaktifkan">{{ row.nama_produk }}</span><small>(nonaktif)</small></template><template v-else>{{ row.nama_produk || '—' }}</template></template>

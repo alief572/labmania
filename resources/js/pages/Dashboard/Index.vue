@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { ref } from 'vue';
 import PageHead from '../../components/PageHead.vue';
 import ServerTable from '../../components/ServerTable.vue';
@@ -31,7 +32,7 @@ const loaded = (result: { meta?: Record<string, unknown> }) => { totals.value = 
 const range = (a: string | null, b: string | null) => (a && b && a !== b ? `${a} s/d ${b}` : a || b || '—');
 const where = (p: Pj) => (p.jenis === 'b2b' && p.company ? p.company : p.lokasi || '—');
 
-const link = (t: Todo) => (t.type === 'mp' ? `/program/${t.id}` : `/sales/${t.id}`);
+const link = (t: Todo) => appUrl(t.type === 'mp' ? `/program/${t.id}` : `/sales/${t.id}`);
 const pct = (v: number) => String(v).replace('.', ',') + '%';
 </script>
 
@@ -53,7 +54,7 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
                     <thead><tr><th scope="col">Tanggal</th><th scope="col">Program</th><th scope="col">Jenis</th><th scope="col">Peserta</th></tr></thead>
                     <tbody><tr v-for="p in jadwal" :key="p.id">
                         <td>{{ range(p.tgl_mulai, p.tgl_selesai) }}</td>
-                        <td><Link v-if="can.sales" :href="`/sales/${p.id}`">{{ p.judul }}</Link><template v-else>{{ p.judul }}</template><small>{{ p.nomor }} · {{ where(p) }}</small></td>
+                        <td><Link v-if="can.sales" :href="appUrl(`/sales/${p.id}`)">{{ p.judul }}</Link><template v-else>{{ p.judul }}</template><small>{{ p.nomor }} · {{ where(p) }}</small></td>
                         <td>{{ p.jenis === 'b2b' ? 'B2B' : 'Public' }}</td><td>{{ p.target }}</td>
                     </tr></tbody>
                 </table></div>
@@ -72,9 +73,9 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
             <template v-if="key === 'draft'">
                 <section v-for="source in ['master', 'penjualan']" :key="source">
                     <h3>{{ source === 'master' ? 'Master Program Draft' : 'Penjualan Program Draft' }}</h3>
-                    <ServerTable url="/dashboard/kpi/draft/data" :label="source + ' Draft'" :filters="{ source }" :columns="[{ title: 'No', orderable: false }, { title: 'Program', orderable: true }]">
+                    <ServerTable :url="appUrl('/dashboard/kpi/draft/data')" :label="source + ' Draft'" :filters="{ source }" :columns="[{ title: 'No', orderable: false }, { title: 'Program', orderable: true }]">
                         <template #cell-0="{ number }">{{ number }}</template>
-                        <template #cell-1="{ row }"><Link v-if="source === 'master' ? can.master : can.sales" :href="source === 'master' ? `/program/${row.id}` : `/sales/${row.id}`">{{ row.nomor }}</Link><span v-else>{{ row.nomor }}</span><small>{{ row.judul }}</small></template>
+                        <template #cell-1="{ row }"><Link v-if="source === 'master' ? can.master : can.sales" :href="appUrl(source === 'master' ? `/program/${row.id}` : `/sales/${row.id}`)">{{ row.nomor }}</Link><span v-else>{{ row.nomor }}</span><small>{{ row.judul }}</small></template>
                     </ServerTable>
                 </section>
             </template>
@@ -82,9 +83,9 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
                 <p class="muted"><b>Sumber data:</b> {{ FINAL_SRC }}</p>
                 <p v-if="key === 'pend'">Pendapatan = harga jual / peserta × target peserta.</p>
                 <p v-if="key === 'prof'">Profit = pendapatan − Fixed Cost − Variable Cost.</p>
-                <ServerTable :key="key" :url="`/dashboard/kpi/${key}/data`" :label="titles[key]" :columns="columns()" @loaded="loaded">
+                <ServerTable :key="key" :url="appUrl(`/dashboard/kpi/${key}/data`)" :label="titles[key]" :columns="columns()" @loaded="loaded">
                     <template #cell-0="{ number }">{{ number }}</template>
-                    <template #cell-1="{ row }"><Link v-if="can.sales" :href="`/sales/${row.id}`">{{ row.nomor }}</Link><span v-else>{{ row.nomor }}</span><small>{{ row.judul }} · {{ where(row) }}</small></template>
+                    <template #cell-1="{ row }"><Link v-if="can.sales" :href="appUrl(`/sales/${row.id}`)">{{ row.nomor }}</Link><span v-else>{{ row.nomor }}</span><small>{{ row.judul }} · {{ where(row) }}</small></template>
                     <template #cell-2="{ row }">{{ key === 'final' ? row.target : rupiah(row.harga) }}</template>
                     <template #cell-3="{ row }">{{ row.target }}</template>
                     <template #cell-4="{ row }">{{ rupiah(row.pendapatan) }}</template>

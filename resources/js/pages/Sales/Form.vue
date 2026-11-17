@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import CostingSimulation from "../../components/CostingSimulation.vue";
 import MoneyInput from "../../components/MoneyInput.vue";
 import { computed, ref } from 'vue';
@@ -48,7 +49,7 @@ function status(kind: string) { return confirmation.form(transition, 'post', `/p
 </script>
 <template>
     <Head :title="program.nomor || 'Buat Penjualan Program'" /><AppLayout title="Penjualan Program">
-        <div class="pf-formbar"><Link class="kt-btn" href="/penjualan-program">← Kembali</Link><h1>{{ program.nomor ? `Penjualan Program ${program.nomor}` : `Buat Penjualan Program ${b2bProgram ? 'B2B' : 'Public'}` }}</h1><span v-if="!isNew" class="badge" :class="`st-${program.status}`">{{ STATUS_LABEL[program.status] ?? program.status }}{{ program.closed_date ? ' · Closed' : '' }}</span></div>
+        <div class="pf-formbar"><Link class="kt-btn" :href="appUrl('/penjualan-program')">← Kembali</Link><h1>{{ program.nomor ? `Penjualan Program ${program.nomor}` : `Buat Penjualan Program ${b2bProgram ? 'B2B' : 'Public'}` }}</h1><span v-if="!isNew" class="badge" :class="`st-${program.status}`">{{ STATUS_LABEL[program.status] ?? program.status }}{{ program.closed_date ? ' · Closed' : '' }}</span></div>
         <p v-if="lockText" class="notice">{{ lockText }}</p>
         <ul v-if="errors.length" class="error" role="alert"><li v-for="e in errors" :key="e">{{ e }}</li></ul>
         <section class="panel" aria-labelledby="sales-header"><h2 id="sales-header">Header</h2><div class="form-grid">
@@ -56,7 +57,7 @@ function status(kind: string) { return confirmation.form(transition, 'post', `/p
             <div><strong>Jenis penjualan</strong><p>{{ form.jenis === 'b2b' ? 'B2B' : 'Public' }}</p></div>
             <div><strong>Status</strong><p><span class="badge" :class="`st-${program.status}`">{{ STATUS_LABEL[program.status] ?? program.status }}{{ program.closed_date ? ' · Closed' : '' }}</span><span v-if="program.status === 'final'" class="muted"> → Quotation</span></p></div>
         </div></section>
-        <p v-if="program.id && program.status === 'final'"><Link :href="`/penjualan-program/${program.id}/reschedule`">Reschedule / Riwayat</Link></p><form class="stack" @submit.prevent="save"><fieldset :disabled="!editable || form.processing" class="panel"><legend><span class="section-number">1</span> Informasi Penjualan</legend><label v-if="editable">Cari pilihan program, Company, trainer, atau asisten<input v-model="choiceSearch" type="search" maxlength="100" /></label><div class="form-grid">
+        <p v-if="program.id && program.status === 'final'"><Link :href="appUrl(`/penjualan-program/${program.id}/reschedule`)">Reschedule / Riwayat</Link></p><form class="stack" @submit.prevent="save"><fieldset :disabled="!editable || form.processing" class="panel"><legend><span class="section-number">1</span> Informasi Penjualan</legend><label v-if="editable">Cari pilihan program, Company, trainer, atau asisten<input v-model="choiceSearch" type="search" maxlength="100" /></label><div class="form-grid">
             <label>Jenis<select v-model="form.jenis" :disabled="!!program.id"><option value="public">Public</option><option value="b2b">B2B</option></select></label>
             <label>Master Program<select v-model="form.id_master_program" required :disabled="!!program.id" @change="source"><option value="">— Pilih Master Program Final —</option><option v-for="m in masters.filter((m) => m.id === Number(form.id_master_program) || matches(m.nomor + ' ' + m.judul))" :key="m.id" :value="m.id">{{ m.nomor }} · {{ m.judul }}</option></select></label>
             <label v-if="form.jenis === 'b2b'">Company<select v-model="form.id_customer" required><option value="">— Pilih Company aktif —</option><option v-for="c in companies.filter((c) => c.id_customer === form.id_customer || matches(c.name_customer))" :key="c.id_customer" :value="c.id_customer">{{ c.name_customer }}</option></select></label>
@@ -72,13 +73,13 @@ function status(kind: string) { return confirmation.form(transition, 'post', `/p
         <section class="panel"><h2><span class="section-number">4</span> Simulasi Hasil</h2><div class="form-grid"><label>Target peserta<input v-model="form.target_peserta" type="number" :min="form.jenis==='b2b'?10:1" :disabled="!editable" required/></label><label>Harga jual / peserta (Rp)<MoneyInput v-model="form.harga_jual_peserta" :disabled="!editable" required/></label><label>Target profit (Rp)<MoneyInput v-model="form.target_profit" :disabled="!editable"/></label></div><CostingSimulation :result="result" :participants="form.target_peserta" :price="form.harga_jual_peserta" :target-profit="form.target_profit" /><p v-if="result.profit < 0 || (result.bep ?? Infinity) > Number(form.target_peserta)" class="notice">Target belum mencapai titik impas.</p></section>
         <p v-for="e in transition.errors" :key="e" class="error" role="alert">{{ e }}</p>
         <div class="form-actions page-actions">
-            <Link href="/penjualan-program">{{ isNew ? 'Batal' : 'Kembali' }}</Link>
+            <Link :href="appUrl('/penjualan-program')">{{ isNew ? 'Batal' : 'Kembali' }}</Link>
             <button v-if="program.id && program.status === 'draft' && can.cancel" type="button" :disabled="confirming" @click="status('batalkan')">Batalkan</button>
             <button v-if="editable" class="primary" :disabled="form.processing || confirming">{{ form.processing ? 'Menyimpan…' : 'Simpan Draft' }}</button>
             <button v-if="program.id && program.status === 'draft' && can.approve" type="button" class="primary" :disabled="confirming" @click="status('finalkan')">Finalkan → Quotation</button>
-            <Link v-if="program.status === 'final' && !program.closed_date" :href="`/penjualan-program/${program.id}/reschedule`">Reschedule</Link>
-            <Link v-if="program.status === 'final'" :href="`/quotation/batch/${program.id}`">Quotation</Link>
-            <a v-if="program.status === 'final'" class="primary" :href="`/penjualan-program/${program.id}/pdf`" target="_blank" rel="noopener">Cetak Surat Penawaran</a>
+            <Link v-if="program.status === 'final' && !program.closed_date" :href="appUrl(`/penjualan-program/${program.id}/reschedule`)">Reschedule</Link>
+            <Link v-if="program.status === 'final'" :href="appUrl(`/quotation/batch/${program.id}`)">Quotation</Link>
+            <a v-if="program.status === 'final'" class="primary" :href="appUrl(`/penjualan-program/${program.id}/pdf`)" target="_blank" rel="noopener">Cetak Surat Penawaran</a>
         </div>
         </form>
         <section v-if="actual" class="panel"><h2>Rencana vs Aktual</h2><p>Aktual berdasarkan {{ actual.peserta }} peserta Deal dan harga Penjualan Program.</p><div class="table-wrap"><table><thead><tr><th>Perhitungan</th><th>Rencana</th><th>Aktual</th><th>Selisih</th></tr></thead><tbody><tr><th>Peserta</th><td class="money">{{ program.target_peserta }}</td><td class="money">{{ actual.peserta }}</td><td class="money">{{ actual.peserta - program.target_peserta }}</td></tr><tr v-for="[field, label] in ([['total_hpp', 'HPP'], ['pendapatan', 'Pendapatan'], ['profit', 'Profit']] as const)" :key="field"><th>{{ label }}</th><td class="money">{{ rupiah(actual.rencana[field]) }}</td><td class="money">{{ rupiah(actual.aktual[field]) }}</td><td class="money">{{ rupiah(actual.aktual[field] - actual.rencana[field]) }}</td></tr></tbody></table></div></section>

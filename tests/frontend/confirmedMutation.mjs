@@ -16,7 +16,7 @@ function moduleUrl(source) {
     return `data:text/javascript;base64,${Buffer.from(output).toString('base64')}`;
 }
 function externalImports(source) {
-    return source.replace(/from (['"])([^'"]+)\1/g, (_, quote, name) => `from '${import.meta.resolve(name)}'`);
+    return source.replace(/from (['"])([^'"]+)\1/g, (_, quote, name) => `from '${name.endsWith('/appUrl') ? new URL('../../resources/js/composables/appUrl.ts', import.meta.url).href : import.meta.resolve(name)}'`);
 }
 let source = readFileSync(new URL('../../resources/js/composables/confirmedMutation.ts', import.meta.url), 'utf8');
 source = source.replace(/import Swal from '[^']+';/, 'const Swal = globalThis.__confirmationTestSwal;').replace(/import '[^']+\.css';/g, '');
@@ -43,7 +43,7 @@ const pdfRequests = [];
 globalThis.__confirmationTestPdf = async url => { pdfRequests.push(url); };
 const pdfUrl = moduleUrl('export const postPdf = (...args) => globalThis.__confirmationTestPdf(...args);');
 const programTransitionUrl = moduleUrl(ts.transpileModule(readFileSync(new URL('../../resources/js/composables/programTransition.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ES2022 } }).outputText
-    .replace(/from 'vue'/g, `from '${import.meta.resolve('vue')}'`).replace(/from '\.\/confirmedMutation'/g, `from '${helperUrl}'`).replace(/from '\.\/costing'/g, `from '${new URL('../../resources/js/composables/costing.ts', import.meta.url).href}'`));
+    .replace(/from 'vue'/g, `from '${import.meta.resolve('vue')}'`).replace(/from '\.\/appUrl'/g, `from '${new URL('../../resources/js/composables/appUrl.ts', import.meta.url).href}'`).replace(/from '\.\/confirmedMutation'/g, `from '${helperUrl}'`).replace(/from '\.\/costing'/g, `from '${new URL('../../resources/js/composables/costing.ts', import.meta.url).href}'`));
 globalThis.window = { location: { search: '' } };
 globalThis.fetch = async () => ({ ok: true, json: async () => ({
     id: 77, nomor: 'MP-077', judul: 'Test', durasi: 2, jp: 16, target: 10,

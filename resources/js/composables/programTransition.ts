@@ -1,3 +1,4 @@
+import { appUrl } from './appUrl';
 import { ref } from 'vue';
 import { rupiah } from './costing';
 import { useConfirmedMutation } from './confirmedMutation';
@@ -16,7 +17,7 @@ export function useProgramTransition(confirmation: ReturnType<typeof useConfirme
         busy.value = true;
         error.value = '';
         try {
-            const res = await fetch(`/program/${id}/ringkasan`, { headers: { Accept: 'application/json' } });
+            const res = await fetch(appUrl(`/program/${id}/ringkasan`), { headers: { Accept: 'application/json' } });
             if (!res.ok) throw new Error('Ringkasan program gagal dimuat. Muat ulang data dan coba lagi.');
             const summary: Summary = await res.json();
             await confirmation.visit('post', `/program/${id}/${action}`, {}, {

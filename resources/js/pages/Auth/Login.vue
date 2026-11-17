@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { Head, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 const visible = ref(false);
 const form = useForm({ username: '', password: '' });
-const submit = () => form.post('/login', { onFinish: () => form.reset('password') });
+const submit = () => form.post(appUrl('/login'), { onFinish: () => form.reset('password') });
 </script>
 
 <template>

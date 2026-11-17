@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../../composables/appUrl';
 import PageHead from '../../../components/PageHead.vue';
 import ServerTable from '../../../components/ServerTable.vue';
 import ActionMenu from "../../../components/ActionMenu.vue";
@@ -18,7 +19,7 @@ const props = defineProps<{
     can: { add: boolean; manage: boolean; approve: boolean };
 }>();
 const filter = ref({ ...props.filters });
-const apply = () => router.get('/program', Object.fromEntries(Object.entries(filter.value).filter(([, v]) => v !== '' && v !== 'all')), { preserveScroll: true, preserveState: true, replace: true });
+const apply = () => router.get(appUrl('/program'), Object.fromEntries(Object.entries(filter.value).filter(([, v]) => v !== '' && v !== 'all')), { preserveScroll: true, preserveState: true, replace: true });
 let timer: ReturnType<typeof setTimeout> | undefined;
 watch(() => filter.value.status, () => { clearTimeout(timer); apply(); });
 watch(() => filter.value.q, () => { clearTimeout(timer); timer = setTimeout(apply, 300); });
@@ -31,15 +32,15 @@ const ask = (row: Row, action: 'finalkan' | 'batalkan') => askTransition(row.id,
 <template>
     <Head title="Daftar Master Program" />
     <AppLayout title="Daftar Master Program" full-width>
-        <PageHead title="Daftar Master Program" description="Program siap jual: Paket Produk + costing baseline. Tidak ada Public/B2B, customer, tanggal, atau lokasi acara — semuanya diisi di Penjualan Program."><Link v-if="can.add" class="primary" href="/program/create">+ Buat Master Program</Link></PageHead>
+        <PageHead title="Daftar Master Program" description="Program siap jual: Paket Produk + costing baseline. Tidak ada Public/B2B, customer, tanggal, atau lokasi acara — semuanya diisi di Penjualan Program."><Link v-if="can.add" class="primary" :href="appUrl('/program/create')">+ Buat Master Program</Link></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).program" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).program }}</p>
         <p v-if="summaryError" class="error" role="alert">{{ summaryError }}</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari nomor atau judul…" /></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua status</option><option value="draft">Draft</option><option value="final">Final</option><option value="batal">Batal</option></select></label>
         </div>
-        <div class="table-wrap"><ServerTable url="/program/data" label="Daftar Master Program" :columns='[{"title":"No","orderable":false},{"title":"Nomor","orderable":true},{"title":"Judul","orderable":false},{"title":"Durasi","orderable":true},{"title":"Target peserta","orderable":true,"className":"dt-body-right"},{"title":"Harga jual standar","orderable":true,"className":"dt-body-right"},{"title":"HPP","orderable":false,"className":"dt-body-right"},{"title":"Status","orderable":true},{"title":"Action","orderable":false}]' :filters="{ ...filters }" refresh-on-visit><template #cell-0="{ row: row, number }">{{ number }}</template><template #cell-1="{ row: row, number }"><span class="code">{{ row.nomor }}</span></template><template #cell-2="{ row: row, number }">{{ row.judul || '—' }}<small>{{ [row.nomor_product, row.nama_varian, row.nama_sertifikasi].filter(Boolean).join(' · ') }}</small></template><template #cell-3="{ row: row, number }">{{ row.durasi_hari }} hari</template><template #cell-4="{ row: row, number }">{{ row.target_peserta }}</template><template #cell-5="{ row: row, number }">{{ rupiah(row.harga_jual_peserta) }}</template><template #cell-6="{ row: row, number }">{{ rupiah(row.hpp) }}</template><template #cell-7="{ row: row, number }"><span class="badge" :class="`st-${row.status}`">{{ label[row.status as keyof typeof label] }}</span></template><template #cell-8="{ row: row, number }"><ActionMenu >
-                        <Link :href="`/program/${row.id}`">{{ row.status === 'draft' && can.manage ? 'Edit' : 'Lihat' }}</Link>
+        <div class="table-wrap"><ServerTable :url="appUrl('/program/data')" label="Daftar Master Program" :columns='[{"title":"No","orderable":false},{"title":"Nomor","orderable":true},{"title":"Judul","orderable":false},{"title":"Durasi","orderable":true},{"title":"Target peserta","orderable":true,"className":"dt-body-right"},{"title":"Harga jual standar","orderable":true,"className":"dt-body-right"},{"title":"HPP","orderable":false,"className":"dt-body-right"},{"title":"Status","orderable":true},{"title":"Action","orderable":false}]' :filters="{ ...filters }" refresh-on-visit><template #cell-0="{ row: row, number }">{{ number }}</template><template #cell-1="{ row: row, number }"><span class="code">{{ row.nomor }}</span></template><template #cell-2="{ row: row, number }">{{ row.judul || '—' }}<small>{{ [row.nomor_product, row.nama_varian, row.nama_sertifikasi].filter(Boolean).join(' · ') }}</small></template><template #cell-3="{ row: row, number }">{{ row.durasi_hari }} hari</template><template #cell-4="{ row: row, number }">{{ row.target_peserta }}</template><template #cell-5="{ row: row, number }">{{ rupiah(row.harga_jual_peserta) }}</template><template #cell-6="{ row: row, number }">{{ rupiah(row.hpp) }}</template><template #cell-7="{ row: row, number }"><span class="badge" :class="`st-${row.status}`">{{ label[row.status as keyof typeof label] }}</span></template><template #cell-8="{ row: row, number }"><ActionMenu >
+                        <Link :href="appUrl(`/program/${row.id}`)">{{ row.status === 'draft' && can.manage ? 'Edit' : 'Lihat' }}</Link>
                         <template v-if="row.status === 'draft'">
                             <button v-if="can.approve" type="button" :disabled="busy || confirming" @click="ask(row, 'finalkan')">Finalkan</button>
                             <button v-if="can.manage" type="button" class="danger" :disabled="busy || confirming" @click="ask(row, 'batalkan')">Batalkan</button>

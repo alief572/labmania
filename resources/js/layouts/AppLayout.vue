@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../composables/appUrl';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import type { SharedProps } from '../types';
@@ -68,7 +69,7 @@ function searchKey(event: KeyboardEvent) {
     if (event.key === 'Enter') {
         applySearch();
         const first = menus.value[0]?.groups[0]?.items[0];
-        if (first) { event.preventDefault(); open.value = false; router.visit(first.url); }
+        if (first) { event.preventDefault(); open.value = false; router.visit(appUrl(first.url)); }
     }
 }
 function resized() { mobile.value = window.innerWidth <= 760; if (!mobile.value) open.value = false; }
@@ -80,14 +81,14 @@ onBeforeUnmount(() => window.removeEventListener('resize', resized));
     <a class="skip" href="#main">Lewati ke konten</a>
     <div class="app-shell" :class="{ 'nav-hidden': collapsed }">
         <aside id="sidebar" ref="sidebar" class="sidebar" :class="{ 'is-open': open }" :inert="collapsed && !open" @keydown="trapFocus">
-            <Link class="brand" href="/"><span class="brand-mark">L</span><span><strong>Labmania</strong><small>ERP · Modul Program</small></span></Link>
+            <Link class="brand" :href="appUrl('/')"><span class="brand-mark">L</span><span><strong>Labmania</strong><small>ERP · Modul Program</small></span></Link>
             <button ref="closeButton" class="mobile-close" type="button" @click="closeMenu">Tutup menu</button>
             <button class="nav-hide" type="button" aria-controls="sidebar" @click="collapsed = true; nextTick(() => toggleButton?.focus())">Sembunyikan menu</button>
             <label class="nav-search"><span class="sr-only">Cari menu</span><input v-model="search" type="search" placeholder="Cari menu…" @keydown="searchKey" /></label>
             <nav aria-label="Menu utama">
                 <template v-for="section in menus" :key="section.key">
                     <template v-if="!section.label">
-                        <Link v-for="item in section.groups[0].items" :key="item.url" class="nav-home" :href="item.url" :aria-current="item.active ? 'page' : undefined" @click="open = false">
+                        <Link v-for="item in section.groups[0].items" :key="item.url" class="nav-home" :href="appUrl(item.url)" :aria-current="item.active ? 'page' : undefined" @click="open = false">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7" /></svg><span>{{ item.label }}</span>
                         </Link>
                     </template>
@@ -97,16 +98,16 @@ onBeforeUnmount(() => window.removeEventListener('resize', resized));
                             <template v-for="group in section.groups" :key="group.key">
                                 <details v-if="group.label" :key="`${group.key}-${page.url.split('?')[0]}-${searchQuery.trim()}`" class="nav-subgroup" :open="!!searchQuery.trim() || group.items.some(item => item.active)">
                                     <summary>{{ group.label }}<i class="caret" aria-hidden="true"></i></summary>
-                                    <Link v-for="item in group.items" :key="item.url" :href="item.url" :aria-current="item.active ? 'page' : undefined" @click="open = false">{{ item.label }}<span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span></Link>
+                                    <Link v-for="item in group.items" :key="item.url" :href="appUrl(item.url)" :aria-current="item.active ? 'page' : undefined" @click="open = false">{{ item.label }}<span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span></Link>
                                 </details>
-                                <template v-else><Link v-for="item in group.items" :key="item.url" :href="item.url" :aria-current="item.active ? 'page' : undefined" @click="open = false">{{ item.label }}<span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span></Link></template>
+                                <template v-else><Link v-for="item in group.items" :key="item.url" :href="appUrl(item.url)" :aria-current="item.active ? 'page' : undefined" @click="open = false">{{ item.label }}<span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span></Link></template>
                             </template>
                         </div>
                     </details>
                 </template>
                 <p v-if="!menus.length" class="nav-empty">Menu tidak ditemukan.</p>
             </nav>
-            <div class="sidebar-foot"><div class="me-box"><span class="avatar" aria-hidden="true">{{ name.slice(0, 1).toUpperCase() }}</span><div class="info"><strong>{{ name }}</strong><small>{{ page.props.auth?.username }}</small></div><Link href="/logout" method="post" as="button" aria-label="Keluar" title="Keluar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H4V3h5M9 12h12m-5-5 5 5-5 5" /></svg></Link></div><p class="sidebar-meta">Labmania ERP</p></div>
+            <div class="sidebar-foot"><div class="me-box"><span class="avatar" aria-hidden="true">{{ name.slice(0, 1).toUpperCase() }}</span><div class="info"><strong>{{ name }}</strong><small>{{ page.props.auth?.username }}</small></div><Link :href="appUrl('/logout')" method="post" as="button" aria-label="Keluar" title="Keluar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H4V3h5M9 12h12m-5-5 5 5-5 5" /></svg></Link></div><p class="sidebar-meta">Labmania ERP</p></div>
         </aside>
         <button v-if="open" type="button" tabindex="-1" class="scrim" aria-label="Tutup menu" @click="closeMenu"></button>
         <div class="main-panel" :inert="open">

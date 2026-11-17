@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { ref, watch, computed, effectScope } from 'vue';
 import { navigationSections } from '../../resources/js/composables/navigation.ts';
+import { appUrl } from '../../resources/js/composables/appUrl.ts';
 
 // Execute the layout's actual search logic with a deterministic clock.
 const source = readFileSync(new URL('../../resources/js/layouts/AppLayout.vue', import.meta.url), 'utf8');
@@ -23,10 +24,10 @@ const page = { url: '/', props: { navigation: [
 ] } };
 const visits = [];
 const scope = effectScope();
-const state = scope.run(() => new Function('ref', 'watch', 'computed', 'onBeforeUnmount', 'setTimeout', 'clearTimeout', 'navigationSections', 'page', 'router', 'open',
+const state = scope.run(() => new Function('ref', 'watch', 'computed', 'onBeforeUnmount', 'setTimeout', 'clearTimeout', 'navigationSections', 'page', 'router', 'open', 'appUrl',
     js + '\nreturn { search, searchQuery, menus, searchKey };')(
     ref, watch, computed, fn => { cleanup = fn; }, setTimer, clearTimer, navigationSections, page,
-    { visit: url => visits.push(url) }, ref(true)));
+    { visit: url => visits.push(url) }, ref(true), appUrl));
 try {
     state.search.value = 'tr'; tick(200);
     assert.equal(state.searchQuery.value, '');

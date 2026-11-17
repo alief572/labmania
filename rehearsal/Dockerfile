@@ -3,7 +3,8 @@ WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
-RUN npm run build
+ARG VITE_BASE=
+RUN VITE_BASE="$VITE_BASE" npm run build
 
 FROM php:8.5-apache
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
@@ -20,7 +21,7 @@ const endDate=computed(()=>{const d=new Date(form.tgl_mulai+'T00:00:00Z');if(Num
 function save(){return confirmation.form(form,'post',`/penjualan-program/${props.program.id}/reschedule`,{title:`Reschedule ${props.program.nomor}?`,text:`Jadwal ${props.program.tgl_mulai} menjadi ${form.tgl_mulai} s.d. ${endDate.value}. Terdampak: ${props.impact.quotation} Quotation, ${props.impact.peserta} peserta dan ${props.impact.so} Sales Order. Perubahan mengikuti proses konfirmasi ulang.`,confirmLabel:'Ya, reschedule',danger:true},{forceFormData:true,preserveState:'errors'});}
 </script>
 <template>
-<Head title="Reschedule dan Riwayat"/><AppLayout title="Reschedule"><div class="pf-formbar"><Link class="kt-btn" :href="`/penjualan-program/${program.id}`">← Kembali</Link><h1>Reschedule <span class="code">{{program.nomor}}<template v-if="program.revisi">-rev{{program.revisi}}</template></span></h1></div>
+<Head title="Reschedule dan Riwayat"/><AppLayout title="Reschedule"><div class="pf-formbar"><Link class="kt-btn" :href="appUrl(`/penjualan-program/${program.id}`)">← Kembali</Link><h1>Reschedule <span class="code">{{program.nomor}}<template v-if="program.revisi">-rev{{program.revisi}}</template></span></h1></div>
 <p v-if="reason" class="notice" role="status">{{reason}}</p>
 <form v-if="canManage && !reason" class="panel stack" @submit.prevent="save">
 <p class="hint-line top">Yang dapat diganti hanya <b>tanggal</b>, <b>trainer</b>, dan <b>asisten trainer</b>. Biaya, waktu, dan lokasi tetap. Durasi tetap {{program.durasi_hari}} hari, jadi tanggal selesai mengikuti tanggal mulai.</p>
@@ -35,15 +36,15 @@ function save(){return confirmation.form(form,'post',`/penjualan-program/${props
 </div>
 <section class="notice" aria-live="polite"><b>Yang ikut berubah bila disimpan:</b><ul class="rs-dampak"><template v-if="dateChanged"><li>Nomor program menjadi {{program.nomor}}-rev{{program.revisi+1}}</li><li>{{impact.quotation}} quotation naik revisi dan mendapat link konfirmasi baru</li><li>{{impact.peserta}} peserta harus konfirmasi ulang dengan surat bertanggal baru</li><li>{{impact.so}} Sales Order naik revisi</li><li v-if="impact.lunas">{{impact.lunas}} peserta Deal sudah membayar: boleh memilih Refund</li></template><li v-if="dateChanged||teamChanged">{{impact.surat}} Surat Tugas diganti surat baru dengan nomor baru</li><li v-if="!dateChanged&&!teamChanged" class="muted">Belum ada perubahan.</li></ul><span class="muted">Invoice tidak diubah karena biaya tetap.</span></section>
 <p v-for="e in form.errors" :key="e" class="error" role="alert">{{e}}</p><progress v-if="form.progress" :value="form.progress.percentage" max="100" aria-label="Progres evidence"/>
-<div class="form-actions page-actions"><Link :href="`/penjualan-program/${program.id}`">Batal</Link><button class="primary" :disabled="form.processing||confirming">Simpan jadwal baru</button></div></form>
+<div class="form-actions page-actions"><Link :href="appUrl(`/penjualan-program/${program.id}`)">Batal</Link><button class="primary" :disabled="form.processing||confirming">Simpan jadwal baru</button></div></form>
 <section class="panel"><h2>Riwayat Reschedule <span class="muted">{{history.length}} kali; jadwal lama, alasan, dan dampaknya</span></h2><p v-if="!history.length" class="muted">Belum ada Reschedule.</p>
 <div v-else class="table-wrap"><table class="tr-table"><caption class="sr-only">Riwayat Reschedule</caption><thead><tr><th>Waktu</th><th>Oleh</th><th>Jadwal lama</th><th>Jadwal baru</th><th>Alasan</th><th>Evidence</th><th>Dampak</th></tr></thead><tbody>
 <tr v-for="h in history" :key="h.id"><td>{{h.created_date}}</td><td>{{h.nm_lengkap}}</td>
 <td>{{fmt(h.tgl_mulai_lama)}} – {{fmt(h.tgl_selesai_lama)}}<small>{{h.team?.trainer_lama||`Trainer ID ${h.id_trainer_lama}`}} · {{h.team?.asisten_lama||`Asisten ID ${h.id_asisten_lama}`}}</small></td>
 <td>{{fmt(h.tgl_mulai_baru)}} – {{fmt(h.tgl_selesai_baru)}}<small>{{h.team?.trainer_baru||`Trainer ID ${h.id_trainer_baru}`}} · {{h.team?.asisten_baru||`Asisten ID ${h.id_asisten_baru}`}}</small></td>
 <td>{{h.alasan}}</td>
-<td><template v-if="h.evidence.length"><a v-for="f in h.evidence" :key="f.id" class="code" :href="`/documents/reschedule/${f.id}`">{{f.nama_file}}</a></template><span v-else class="muted">—</span></td>
-<td><small v-for="q in h.revisions" :key="q.id">Quotation #{{q.id_quotation}} versi {{q.revisi}} tersimpan</small><small v-if="h.surat_baru">Surat Tugas #{{h.surat_lama}} diganti #{{h.surat_baru}}</small><a :href="`/penjualan-program/${program.id}/reschedule/${h.id}/pdf`" target="_blank" rel="noopener">PDF program sebelum perubahan</a></td></tr>
+<td><template v-if="h.evidence.length"><a v-for="f in h.evidence" :key="f.id" class="code" :href="appUrl(`/documents/reschedule/${f.id}`)">{{f.nama_file}}</a></template><span v-else class="muted">—</span></td>
+<td><small v-for="q in h.revisions" :key="q.id">Quotation #{{q.id_quotation}} versi {{q.revisi}} tersimpan</small><small v-if="h.surat_baru">Surat Tugas #{{h.surat_lama}} diganti #{{h.surat_baru}}</small><a :href="appUrl(`/penjualan-program/${program.id}/reschedule/${h.id}/pdf`)" target="_blank" rel="noopener">PDF program sebelum perubahan</a></td></tr>
 </tbody></table></div></section>
 </AppLayout>
 </template>

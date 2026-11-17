@@ -9,7 +9,7 @@ const source = readFileSync(new URL('../../resources/js/components/ServerTable.v
 const { descriptor } = parse(source);
 let script = compileScript(descriptor, { id: 'server-table-test' }).content;
 script = script.replace(/import '.*\.css';/g, '').replace(/from '([^']+)'/g, (_, name) => {
-    const url = name.startsWith('.') ? new URL('../../resources/js/composables/serverTable.ts', import.meta.url).href : import.meta.resolve(name);
+    const url = name.endsWith('/appUrl') ? new URL('../../resources/js/composables/appUrl.ts', import.meta.url).href : name.startsWith('.') ? new URL('../../resources/js/composables/serverTable.ts', import.meta.url).href : import.meta.resolve(name);
     return `from '${url}'`;
 });
 const compiled = ts.transpileModule(script, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;

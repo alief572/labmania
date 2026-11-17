@@ -1,9 +1,10 @@
+import { appUrl } from './appUrl';
 export async function postPdf(url: string, data: object = {}): Promise<void> {
     const tab = window.open('about:blank', '_blank');
     if (tab) tab.opener = null;
     try {
         const csrf = document.cookie.split('; ').find((v) => v.startsWith('XSRF-TOKEN='))?.slice(11);
-        const response = await fetch(url, {
+        const response = await fetch(appUrl(url), {
             method: 'POST', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(csrf ?? '') },
             body: JSON.stringify(data),

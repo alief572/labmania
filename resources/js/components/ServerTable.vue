@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../composables/appUrl';
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import DataTable from 'datatables.net-vue3';
@@ -24,7 +25,7 @@ const load: AjaxFunction = async (data, callback) => {
     pending = controller;
     error.value = '';
     try {
-        const response = await fetch(`${props.url}?${tableQuery(data, props.filters)}`, {
+        const response = await fetch(`${appUrl(props.url)}?${tableQuery(data, props.filters)}`, {
             signal: controller.signal, credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         });
         if (!response.ok) throw new Error(tableError(response.status));

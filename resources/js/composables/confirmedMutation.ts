@@ -1,3 +1,4 @@
+import { appUrl } from './appUrl';
 import { onScopeDispose, ref } from 'vue';
 import { router, type InertiaForm } from '@inertiajs/vue3';
 import type { Method, RequestPayload, UseFormSubmitOptions } from '@inertiajs/core';
@@ -86,14 +87,14 @@ export function useConfirmedMutation() {
         const data = snapshot(target.data());
         return run(confirmation, finish => {
             target.transform(() => data);
-            try { target.submit(method, url, callbacks(confirmation, options, finish)); }
+            try { target.submit(method, appUrl(url), callbacks(confirmation, options, finish)); }
             finally { target.transform(value => value); }
         });
     }
 
     function visit(method: WriteMethod, url: string, data: RequestPayload, confirmation: Confirmation, options: UseFormSubmitOptions = {}) {
         const payload = snapshot(data);
-        return run(confirmation, finish => router.visit(url, { ...callbacks(confirmation, options, finish), method, data: payload }));
+        return run(confirmation, finish => router.visit(appUrl(url), { ...callbacks(confirmation, options, finish), method, data: payload }));
     }
 
     function request<T>(data: T, confirmation: Confirmation, send: (payload: T) => Promise<void>, options: { onSuccess?: () => void; onError?: (message: string) => void } = {}) {

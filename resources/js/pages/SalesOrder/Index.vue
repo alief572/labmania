@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import PageHead from '../../components/PageHead.vue';
 import ServerTable from '../../components/ServerTable.vue';
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -10,7 +11,7 @@ type Row = Program & { judul: string; jumlah_so: number; peserta_deal: number; n
 const props = defineProps<{ rows: PageRows<Row>; filters: Record<string, string>; tab: string; canRefund: boolean; refundPending: number; counts: { so: number; surat: number }; years?: number[] }>();
 const f = reactive({ q: '', jenis: '', tahun: '', bulan: '', ...props.filters, tab: props.tab });
 // Filter langsung berlaku (mockup tanpa tombol Terapkan); kata kunci ditunda 300 ms.
-const search = () => router.get('/sales-order', Object.fromEntries(Object.entries(f).filter(([k, v]) => v !== '' && v !== null && !(k === 'tab' && v === 'so'))), { preserveState: true, preserveScroll: true, replace: true });
+const search = () => router.get(appUrl('/sales-order'), Object.fromEntries(Object.entries(f).filter(([k, v]) => v !== '' && v !== null && !(k === 'tab' && v === 'so'))), { preserveState: true, preserveScroll: true, replace: true });
 let timer: ReturnType<typeof setTimeout> | undefined;
 watch(() => [f.jenis, f.tahun, f.bulan], () => { clearTimeout(timer); search(); });
 watch(() => f.q, () => { clearTimeout(timer); timer = setTimeout(search, 300); });
@@ -30,9 +31,9 @@ const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => 
         <p v-for="e in $page.props.errors" :key="String(e)" class="error" role="alert">{{ e }}</p>
         <div class="batch-card">
             <nav class="tabs" aria-label="Jenis dokumen">
-                <Link href="/sales-order" :aria-current="tab === 'so' ? 'page' : undefined">Sales Order<span class="nav-count">{{ counts.so }}</span></Link>
-                <Link href="/sales-order?tab=surat" :aria-current="tab === 'surat' ? 'page' : undefined">Surat Kerja Trainer<span class="nav-count">{{ counts.surat }}</span></Link>
-                <Link v-if="canRefund" href="/sales-order/refund">Refund<span class="nav-count">{{ refundPending }}</span></Link>
+                <Link :href="appUrl('/sales-order')" :aria-current="tab === 'so' ? 'page' : undefined">Sales Order<span class="nav-count">{{ counts.so }}</span></Link>
+                <Link :href="appUrl('/sales-order?tab=surat')" :aria-current="tab === 'surat' ? 'page' : undefined">Surat Kerja Trainer<span class="nav-count">{{ counts.surat }}</span></Link>
+                <Link v-if="canRefund" :href="appUrl('/sales-order/refund')">Refund<span class="nav-count">{{ refundPending }}</span></Link>
             </nav>
             <div class="filters">
                 <label class="grow">Cari<input v-model="f.q" type="search" maxlength="100" :placeholder="surat() ? 'Cari nomor surat, program, judul, trainer…' : 'Cari nomor program, judul, nomor SO, quotation, customer…'" /></label>
@@ -40,22 +41,22 @@ const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => 
                 <label>Tahun<select v-model="f.tahun"><option value="">Semua tahun</option><option v-for="y in years ?? []" :key="y" :value="y">{{ y }}</option></select></label>
                 <label>Bulan<select v-model="f.bulan"><option value="">Semua bulan</option><option v-for="n in 12" :key="n" :value="n">{{ bulan(n) }}</option></select></label>
             </div>
-            <ServerTable v-if="tab === 'so'" url="/sales-order/data" label="Sales Order" :columns='[{"title":"No","orderable":false},{"title":"Penjualan Program","orderable":true},{"title":"Sales Order","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Nilai SO","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
+            <ServerTable v-if="tab === 'so'" :url="appUrl('/sales-order/data')" label="Sales Order" :columns='[{"title":"No","orderable":false},{"title":"Penjualan Program","orderable":true},{"title":"Sales Order","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Nilai SO","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
                 <template #cell-0="{ number }">{{ number }}</template>
                 <template #cell-1="{ row: p }"><span class="code">{{ p.nomor }}</span> <span class="tag" :class="p.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ p.jenis === 'b2b' ? 'B2B' : 'Public' }}</span><br>{{ p.judul }}<small>{{ range(p.tgl_mulai, p.tgl_selesai) }} · {{ p.lokasi || '—' }}</small></template>
                 <template #cell-2="{ row: p }"><b>{{ p.jumlah_so }}</b> SO<small>{{ statusText(p) }}</small></template>
                 <template #cell-3="{ row: p }">{{ p.peserta_deal }}</template>
                 <template #cell-4="{ row: p }">{{ money(p.nilai_so) }}</template>
-                <template #cell-5="{ row: p }"><ActionMenu><Link :href="`/sales-order/program/${p.id}`">Lihat SO</Link></ActionMenu></template>
+                <template #cell-5="{ row: p }"><ActionMenu><Link :href="appUrl(`/sales-order/program/${p.id}`)">Lihat SO</Link></ActionMenu></template>
             </ServerTable>
-            <ServerTable v-else url="/sales-order/data" label="Surat Kerja Trainer" :columns='[{"title":"No","orderable":false},{"title":"Nomor Surat","orderable":true},{"title":"Status","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Trainer & Asisten","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
+            <ServerTable v-else :url="appUrl('/sales-order/data')" label="Surat Kerja Trainer" :columns='[{"title":"No","orderable":false},{"title":"Nomor Surat","orderable":true},{"title":"Status","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Trainer & Asisten","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
                 <template #cell-0="{ number }">{{ number }}</template>
-                <template #cell-1="{ row: s }"><Link class="code" :href="`/surat-kerja-trainer/${s.id}`">{{ s.nomor }}</Link><small>{{ fmt(s.tanggal) }}</small></template>
+                <template #cell-1="{ row: s }"><Link class="code" :href="appUrl(`/surat-kerja-trainer/${s.id}`)">{{ s.nomor }}</Link><small>{{ fmt(s.tanggal) }}</small></template>
                 <template #cell-2="{ row: s }"><span v-if="s.status === 'diganti'" class="badge st-draft">Diganti</span><span v-else class="badge st-terkirim">Berlaku</span></template>
                 <template #cell-3="{ row: s }"><span class="code">{{ s.facts?.program.nomor || s.program_nomor }}</span><br>{{ s.facts?.judul || 'Snapshot belum tersedia — perlu rekonsiliasi' }}<small>{{ range(s.facts?.program.tgl_mulai, s.facts?.program.tgl_selesai) }} · {{ s.facts?.program.lokasi }}</small></template>
                 <template #cell-4="{ row: s }"><b v-if="s.facts?.trainer.nama">{{ s.facts?.trainer.nama }}</b><span v-else class="muted">Trainer belum dipilih</span><small>{{ s.facts?.trainer.bidang_keahlian }}</small><small>Asisten: {{ s.facts?.asisten.nama || '—' }}</small></template>
                 <template #cell-5="{ row: s }">{{ s.peserta_deal }}</template>
-                <template #cell-6="{ row: s }"><ActionMenu><Link :href="`/surat-kerja-trainer/${s.id}`">View</Link><a :href="`/surat-kerja-trainer/${s.id}/pdf`" target="_blank" rel="noopener">Print Out Surat Kerja</a></ActionMenu></template>
+                <template #cell-6="{ row: s }"><ActionMenu><Link :href="appUrl(`/surat-kerja-trainer/${s.id}`)">View</Link><a :href="appUrl(`/surat-kerja-trainer/${s.id}/pdf`)" target="_blank" rel="noopener">Print Out Surat Kerja</a></ActionMenu></template>
             </ServerTable>
         </div>
     </AppLayout>

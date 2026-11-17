@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
@@ -48,7 +49,7 @@ const save = () => confirmation.form(form, 'post', '/master/product', { title: `
             </table></div>
             <button type="button" class="kt-btn" :disabled="confirming || n >= 50" @click="addRow">+ Tambah Baris</button>
             <p class="hint-line">Antar paket minimal satu dari empat atribut harus berbeda. Hanya data master berstatus Aktif yang dapat dipilih.</p>
-            <div class="form-actions page-actions"><Link href="/master/product">Batal</Link><button class="primary" :disabled="form.processing || confirming">Simpan {{ n }} Paket</button></div>
+            <div class="form-actions page-actions"><Link :href="appUrl('/master/product')">Batal</Link><button class="primary" :disabled="form.processing || confirming">Simpan {{ n }} Paket</button></div>
         </form>
     </AppLayout>
 </template>

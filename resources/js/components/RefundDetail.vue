@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../composables/appUrl';
 import { watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { money } from '../types/salesOrder';
@@ -14,7 +15,7 @@ const save=()=>confirmation.form(form,'post',`/sales-order/refund/${props.refund
 </script>
 <template><div class="refund-detail">
         <section class="panel"><h2>{{snapshot.peserta || snapshot.company}}</h2><p>{{snapshot.nomor_so}} · {{snapshot.nomor_quotation}} · Invoice {{snapshot.invoice}}</p><p>{{refund.alasan}}</p><p>Batas dana lunas teralokasi: {{money(refund.nominal_tagihan)}}.</p><p>Status {{refund.status==='menunggu'?'Menunggu Finance':'Selesai'}} {{refund.selesai_date}}</p>
-            <template v-if="refund.status==='selesai'"><p>Transfer {{money(refund.nominal_refund || '0')}} melalui {{refund.bank}}, {{refund.no_rekening}}, a.n. {{refund.atas_nama}}.</p><p>{{refund.catatan}}</p><a :href="`/documents/refund/${refund.id}`">Unduh {{refund.bukti_transfer_nama}}</a></template>
+            <template v-if="refund.status==='selesai'"><p>Transfer {{money(refund.nominal_refund || '0')}} melalui {{refund.bank}}, {{refund.no_rekening}}, a.n. {{refund.atas_nama}}.</p><p>{{refund.catatan}}</p><a :href="appUrl(`/documents/refund/${refund.id}`)">Unduh {{refund.bukti_transfer_nama}}</a></template>
         </section>
         <p v-if="closed" class="notice">Program Closed; perubahan terkunci.</p>
         <form v-if="process !== false && refund.status==='menunggu' && canManage && !closed" class="panel stack" @submit.prevent="save">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -34,7 +35,7 @@ const form = useForm(blank());
 const cv = ref<Detail | null>(null);
 const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
 function openAdd() { form.reset(); form.clearErrors(); Object.assign(form, blank()); tab.value = 'identitas'; currentId.value = null; mode.value = 'add'; }
-async function fetchDetail(id: number): Promise<Detail> { return (await fetch(`/master/trainer/${id}`, { headers: { Accept: 'application/json' } })).json(); }
+async function fetchDetail(id: number): Promise<Detail> { return (await fetch(appUrl(`/master/trainer/${id}`), { headers: { Accept: 'application/json' } })).json(); }
 async function openEdit(row: Row) {
     const d = await fetchDetail(row.id); form.clearErrors(); tab.value = 'identitas'; currentId.value = row.id; currentCode.value = row.kode;
     const t = d.trainer;
@@ -82,7 +83,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari ID, nama, atau bidang keahlian…" /></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua status</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
         </div>
-        <ServerTable ref="table" url="/master/trainer/data" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'Trainer'">
+        <ServerTable ref="table" :url="appUrl('/master/trainer/data')" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'Trainer'">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><span class="code">{{ row.kode }}</span></template>
             <template #cell-2="{ row }">{{ row.nama }}<small>{{ row.no_telp || '—' }}</small></template>
@@ -146,7 +147,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
                             <td class="num">{{ Number(i) + 1 }}</td>
                             <td class="wide"><input v-model="row.dokumen" maxlength="255" :aria-label="`Dokumen lampiran ${Number(i) + 1}`" /></td>
                             <td class="yr"><input v-model="row.tahun" maxlength="20" placeholder="mis. 2025" :aria-label="`Tahun lampiran ${Number(i) + 1}`" /></td>
-                            <td class="file"><a v-if="row.ada_file && row.file_id && !row.file" :href="`/documents/trainer/${row.file_id}`" target="_blank" rel="noopener">Berkas saat ini</a> <span v-if="row.file" class="code">{{ row.file.name }}</span>
+                            <td class="file"><a v-if="row.ada_file && row.file_id && !row.file" :href="appUrl(`/documents/trainer/${row.file_id}`)" target="_blank" rel="noopener">Berkas saat ini</a> <span v-if="row.file" class="code">{{ row.file.name }}</span>
                                 <label class="file-btn">{{ row.ada_file || row.file ? 'Ganti' : 'Unggah' }}<input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden :aria-label="`Berkas lampiran ${Number(i) + 1}`" @change="row.file = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>
                                 <small v-if="err(`lampiran.${i}.file`)" class="error" role="alert">{{ err(`lampiran.${i}.file`) }}</small></td>
                             <td><button type="button" :aria-label="`Hapus lampiran ${Number(i) + 1}`" @click="form.lampiran.splice(i, 1)" :disabled="confirming">Hapus</button></td>
@@ -184,10 +185,10 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
                 <p class="qtn-h">Lampiran Dokumen</p>
                 <div v-if="cv.lampiran.length" class="table-wrap"><table class="tr-table">
                     <thead><tr><th class="num">No.</th><th>Dokumen / Sertifikat Lampiran</th><th class="yr">Tahun</th><th>File</th></tr></thead>
-                    <tbody><tr v-for="(l, i) in cv.lampiran" :key="l.id"><td class="num">{{ Number(i) + 1 }}</td><td>{{ l.dokumen }}</td><td class="yr">{{ l.tahun || '—' }}</td><td><a v-if="l.ada_file" :href="`/documents/trainer/${l.id}`" target="_blank" rel="noopener">Unduh</a><span v-else>—</span></td></tr></tbody>
+                    <tbody><tr v-for="(l, i) in cv.lampiran" :key="l.id"><td class="num">{{ Number(i) + 1 }}</td><td>{{ l.dokumen }}</td><td class="yr">{{ l.tahun || '—' }}</td><td><a v-if="l.ada_file" :href="appUrl(`/documents/trainer/${l.id}`)" target="_blank" rel="noopener">Unduh</a><span v-else>—</span></td></tr></tbody>
                 </table></div>
                 <p v-else class="muted">Belum ada data.</p>
-                <p class="cv-pdf"><a class="primary" :href="`/master/trainer/${cv.trainer.id}/cv.pdf`" target="_blank" rel="noopener">Cetak CV (PDF)</a></p>
+                <p class="cv-pdf"><a class="primary" :href="appUrl(`/master/trainer/${cv.trainer.id}/cv.pdf`)" target="_blank" rel="noopener">Cetak CV (PDF)</a></p>
             </div>
         </ConfirmDialog>
     </AppLayout>

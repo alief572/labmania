@@ -1,9 +1,10 @@
+import { stripBase } from './appUrl.ts';
 type Item = { label: string; url: string; group: string | null; sectionKey: string; subgroupKey: string; subgroupLabel?: string; icon?: string | null; count?: number };
 type Entry = Item & { active: boolean };
 type Section = { key: string; label: string; icon: string | null; groups: { key: string; label: string; items: Entry[] }[] };
 
 export function navigationSections(items: Item[], url: string, search = ''): Section[] {
-    const path = url.split('?')[0];
+    const path = stripBase(url.split('?')[0]);
     const matches = items.filter(item => item.url === path || (item.url !== '/' && path.startsWith(item.url + '/')) || (item.url === '/master/rate/fixed' && path === '/master/rate/variable'));
     const active = matches.sort((a, b) => b.url.length - a.url.length)[0]?.url;
     const sections: Section[] = [];

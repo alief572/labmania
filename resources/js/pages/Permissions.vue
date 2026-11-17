@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../composables/appUrl';
 import { useConfirmedMutation } from "../composables/confirmedMutation";
 import { computed, ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
@@ -32,7 +33,7 @@ const code = (m: Menu, a: string) => `${m.kode}.${a.toLowerCase()}`;
 async function open(row: Row) {
     loadError.value = ''; detail.value = null; search.value = ''; editing.value = row; form.clearErrors();
     try {
-        const response = await fetch(`/permissions/roles/${row.id_group}`, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+        const response = await fetch(appUrl(`/permissions/roles/${row.id_group}`), { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
         if (!response.ok) throw new Error('Data hak akses gagal dimuat.');
         const json = await response.json();
         detail.value = { menus: json.menus, selected: json.selected, editable: json.editable, n_user: json.n_user };
@@ -88,7 +89,7 @@ const save = () => confirmation.form(form, 'put', `/permissions/roles/${editing.
             <div class="kpi"><div class="kpi-l">Menu diatur</div><div class="kpi-v">{{ kpi.menus }}</div><div class="kpi-s">{{ kpi.hak }} hak (menu × aksi)</div></div>
         </div>
         <div class="filters"><label class="grow">Cari<input v-model="keyword" type="search" maxlength="100" placeholder="Cari nama role…" /></label></div>
-        <ServerTable ref="table" url="/permissions/data" :columns="columns" :keyword="keyword" label="Role & Permission">
+        <ServerTable ref="table" :url="appUrl('/permissions/data')" :columns="columns" :keyword="keyword" label="Role & Permission">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }">
                 <template v-if="row.sistem"><b>{{ row.nm_group }}</b> <span class="tag">Full Access</span><small>Role bawaan sistem (akun developer), dibuat dari awal, tidak dapat ditambah lagi</small></template>
@@ -107,7 +108,7 @@ const save = () => confirmation.form(form, 'put', `/permissions/roles/${editing.
             </template>
             <template #cell-5="{ row }"><ActionMenu><button type="button" :disabled="confirming" @click="open(row)">{{ row.sistem || !can.manage ? 'Lihat' : 'Atur Akses' }}</button></ActionMenu></template>
         </ServerTable>
-        <p class="hint-line">Tambah, ubah nama, dan hapus role dilakukan di <a href="/master/role">Master Role</a>; role baru belum punya hak sampai diatur di sini. <b>Superadmin</b> dibuat dari awal (bawaan sistem) dan tidak dapat ditambah lagi.</p>
+        <p class="hint-line">Tambah, ubah nama, dan hapus role dilakukan di <a :href="appUrl('/master/role')">Master Role</a>; role baru belum punya hak sampai diatur di sini. <b>Superadmin</b> dibuat dari awal (bawaan sistem) dan tidak dapat ditambah lagi.</p>
 
         <ConfirmDialog v-if="editing" :title="locked ? `Role ${editing.nm_group}` : `Atur Akses Role ${editing.nm_group}`" confirm-label="Simpan Role" :busy="form.processing || confirming" @confirm="save" @cancel="close">
             <p v-if="loadError" class="error" role="alert">{{ loadError }}</p>

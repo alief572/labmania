@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -71,7 +72,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode, nama, instansi, NIK, atau bidang…" /></label>
             <label>Kelengkapan<select v-model="filter.kelengkapan"><option value="all">Semua kelengkapan</option><option value="lengkap">Lengkap</option><option value="belum">Belum lengkap</option></select></label>
         </div>
-        <ServerTable ref="table" url="/master/peserta/data" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'Peserta'">
+        <ServerTable ref="table" :url="appUrl('/master/peserta/data')" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'Peserta'">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><span class="code">{{ row.kode }}</span></template>
             <template #cell-2="{ row }">{{ row.nama }}<span v-if="row.kurang.length" class="badge warn" :title="`Belum diisi: ${row.kurang.join(', ')}`">Belum lengkap</span><small>{{ row.instansi || '—' }}</small><small v-if="row.asal_deal">Dari Deal {{ row.asal_deal }}</small></template>

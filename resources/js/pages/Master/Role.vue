@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -41,14 +42,14 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Nam
         <PageHead title="Master Role" description="Daftar role yang dipakai di Master User dan diatur haknya di Role & Permission. Role diinput manual. Role yang masih dipakai user tidak dapat dihapus."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Role</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <div class="filters"><label class="grow">Cari<input v-model="keyword" type="search" maxlength="100" placeholder="Cari nama role…" /></label></div>
-        <ServerTable ref="table" url="/master/role/data" :columns="columns" :keyword="keyword" :label="'Role'">
+        <ServerTable ref="table" :url="appUrl('/master/role/data')" :columns="columns" :keyword="keyword" :label="'Role'">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><b>{{ row.nm_group }}</b><template v-if="row.id_group === admin"> <span class="tag">Bawaan sistem</span><small>Akun developer, semua hak. Tidak dapat diubah atau dipilih untuk user lain.</small></template><small v-else-if="row.ket">{{ row.ket }}</small></template>
             <template #cell-2="{ row }">{{ row.n_user }} user</template>
             <template #cell-3="{ row }"><span v-if="row.id_group === admin" class="badge on">Semua hak aktif</span><span v-else-if="row.n_hak" class="badge on">{{ row.n_hak }} hak diberikan</span><span v-else class="badge off">Belum diatur</span></template>
             <template #cell-4="{ row }"><span v-if="row.id_group === admin" class="muted">Terkunci</span><ActionMenu v-else>
                         <button v-if="can.manage" type="button" @click="open(row)" :disabled="confirming">Edit</button>
-                        <Link v-if="can.permissions" href="/permissions">Atur Akses</Link>
+                        <Link v-if="can.permissions" :href="appUrl('/permissions')">Atur Akses</Link>
                         <button v-if="can.delete && !system(row) && !row.n_user" type="button" class="danger" @click="remove(row)" :disabled="confirming">Hapus</button>
                     </ActionMenu></template>
         </ServerTable>

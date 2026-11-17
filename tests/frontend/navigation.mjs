@@ -43,3 +43,14 @@ assert.equal(navigationSections(grouped.filter(i => i.subgroupKey !== '2'), '/ma
 assert.deepEqual(navigationBreadcrumb([{ ...grouped[1], label: 'Rate', url: '/master/rate/fixed' }], '/master/rate/variable'), ['Master Data DB', 'Product']);
 assert.deepEqual(navigationBreadcrumb([{ ...grouped[1], group: 'Nama modul baru', subgroupLabel: '' }], '/master/jenis-produk'), ['Nama modul baru']);
 console.log('LULUS: submenu tiga level, breadcrumb, pencarian submenu, kelompok kosong, dan Variable Cost.');
+
+// Deployment subpath: page.url berprefix tetap mencocokkan item navigasi tanpa prefix.
+globalThis.document = { querySelector: () => ({ getAttribute: () => '/labmania' }) };
+try {
+    const prefixed = entries(navigationSections(items, '/labmania/manage-peserta/monitoring?status=belum'));
+    assert.deepEqual(prefixed.filter(item => item.active).map(item => item.url), ['/manage-peserta/monitoring']);
+    assert.equal(entries(navigationSections(items, '/labmania/master/user/20')).find(item => item.active).url, '/master/user');
+    assert.deepEqual(entries(navigationSections(items, '/labmania')).filter(item => item.active).map(item => item.url), ['/']);
+    assert.deepEqual(navigationBreadcrumb(items, '/labmania/master/user'), ['Master Data DB']);
+} finally { delete globalThis.document; }
+console.log('LULUS: navigasi dengan prefix /labmania.');

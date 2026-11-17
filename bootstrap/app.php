@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Percayai proxy hanya bila TRUSTED_PROXIES diisi (production: Apache host di balik loopback).
+        if ($proxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+        }
         $middleware->web(append: [HandleInertiaRequests::class]);
         $middleware->alias(['verified.account' => VerifiedAccount::class]);
     })

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
@@ -16,13 +17,13 @@ const props = defineProps<{ groups: Group[]; filters: { bidang: string | number;
 // Filter langsung berlaku (mockup tanpa tombol Terapkan): pilihan segera, kata kunci ditunda 300 ms.
 const filter = ref({ ...props.filters });
 const query = () => Object.fromEntries(Object.entries(filter.value).filter(([, v]) => v !== '' && v !== null));
-const apply = () => router.get('/master/katalog', query(), { preserveScroll: true, preserveState: true, replace: true });
+const apply = () => router.get(appUrl('/master/katalog'), query(), { preserveScroll: true, preserveState: true, replace: true });
 let timer: ReturnType<typeof setTimeout> | undefined;
 const flush = () => { clearTimeout(timer); apply(); };
 watch(() => [filter.value.bidang, filter.value.sert], flush);
 watch(() => filter.value.q, () => { clearTimeout(timer); timer = setTimeout(apply, 300); });
 onBeforeUnmount(() => clearTimeout(timer));
-const pdfUrl = () => `/master/katalog/pdf?${new URLSearchParams(query() as Record<string, string>).toString()}`;
+const pdfUrl = () => appUrl(`/master/katalog/pdf?${new URLSearchParams(query() as Record<string, string>).toString()}`);
 
 const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0));
 const base = computed(() => props.options.bidang.reduce((n, o) => n + o.n, 0));

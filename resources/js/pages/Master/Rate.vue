@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import MoneyInput from '../../components/MoneyInput.vue';
 import ServerTable from "../../components/ServerTable.vue";
@@ -54,13 +55,13 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: `Kod
         <PageHead title="Master Rate" description="Item biaya beserta Default Cost yang dipakai costing Master Program dan Penjualan Program."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah {{ title }}</button></PageHead>
         <p class="notice">Satuan <strong>Fixed Cost</strong>: Event, Day (biaya per jam dicatat sebagai Event). Satuan <strong>Variable Cost</strong>: Peserta/Event, Peserta/Day. Satu item satu Default Cost, yang dapat disesuaikan di Master Program dan Penjualan Program tanpa mengubah master. Item tidak dapat dihapus — gunakan Nonaktifkan.</p>
         <nav class="tabs" aria-label="Kategori rate">
-            <Link v-for="[key, label] in tabs" :key="key" :href="`/master/rate/${key}`" :aria-current="tipe === key ? 'page' : undefined">{{ label }}<span class="nav-count">{{ counts[key] }}</span></Link>
+            <Link v-for="[key, label] in tabs" :key="key" :href="appUrl(`/master/rate/${key}`)" :aria-current="tipe === key ? 'page' : undefined">{{ label }}<span class="nav-count">{{ counts[key] }}</span></Link>
         </nav>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode atau item…" /></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua status</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
         </div>
-        <ServerTable ref="table" :url="`/master/rate/${props.tipe}/data`" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="title">
+        <ServerTable ref="table" :url="appUrl(`/master/rate/${props.tipe}/data`)" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="title">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><span class="code">{{ row.kode }}</span></template>
             <template #cell-2="{ row }">{{ row.item }}<small v-if="row.keterangan">{{ row.keterangan }}</small></template>

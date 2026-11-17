@@ -1,0 +1,81 @@
+name: labmania-production
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: rehearsal/Dockerfile
+      args:
+        VITE_BASE: /labmania/build/
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      APP_ENV: production
+      APP_DEBUG: 'false'
+      APP_KEY: '${APP_KEY:?Isi APP_KEY existing di .env.production}'
+      APP_URL: '${APP_URL:?Isi URL HTTPS aplikasi di .env.production}'
+      DB_CONNECTION: mysql
+      DB_URL: ''
+      DB_SOCKET: ''
+      DB_HOST: host.docker.internal
+      DB_PORT: '${DB_PORT:-3306}'
+      DB_DATABASE: '${DB_DATABASE:?Isi nama database Laravel terpisah dari CI3}'
+      DB_USERNAME: '${DB_USERNAME:?Isi akun database Laravel}'
+      DB_PASSWORD: '${DB_PASSWORD:?Isi password database Laravel}'
+      SESSION_COOKIE: labmania_production_session
+      SESSION_PATH: /labmania
+      SESSION_DRIVER: file
+      SESSION_ENCRYPT: 'true'
+      SESSION_SECURE_COOKIE: 'true'
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      LOCAL_UAT_ENABLED: 'false'
+      AUDIT_RETENTION_ENABLED: 'false'
+      LEGACY_DOCUMENT_ROOT: ''
+      PARTICIPANT_FONT_DIR: /fonts
+      # Aman: port hanya terikat ke 127.0.0.1, jadi hanya proxy Apache host yang sampai ke container.
+      TRUSTED_PROXIES: '*'
+    ports:
+      - '127.0.0.1:${PRODUCTION_HTTP_PORT:-8081}:80'
+    volumes:
+      - type: bind
+        source: '${PRODUCTION_STORAGE_DIR:?Isi path absolut storage production yang sudah dipulihkan}'
+        target: /var/www/laravel/storage
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./rehearsal/apache.production.conf
+        target: /etc/apache2/sites-available/000-default.conf
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: '${PRODUCTION_FONT_DIR:?Isi path absolut font Times New Roman berlisensi}'
+        target: /fonts
+        read_only: true
+        bind:
+          create_host_path: false
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    command:
+      - sh
+      - -ec
+      - |
+        test "$$DB_DATABASE" != db_labmania
+        test "$$DB_USERNAME" != root
+        mkdir -p storage/app/private/documents storage/app/mpdf storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+        chown www-data:www-data storage storage/app storage/app/private storage/app/private/documents storage/app/mpdf storage/framework storage/framework/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+        su -s /bin/sh www-data -c 'php artisan config:cache && php artisan route:cache && php artisan view:cache'
+        exec apache2-foreground
+    healthcheck:
+      test: ['CMD', 'php', '-d', 'default_socket_timeout=5', '-r', 'exit(@file_get_contents("http://127.0.0.1/up") === false ? 1 : 0);']
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'

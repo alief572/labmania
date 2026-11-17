@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../composables/appUrl';
 import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
@@ -68,7 +69,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Emp
             <label>Role<select v-model="filter.role"><option value="">Semua role</option><option v-for="r in roles" :key="r.id_group" :value="r.id_group">{{ r.nm_group }}</option></select></label>
             <label>Status<select v-model="filter.status"><option value="all">Semua status</option><option value="on">Aktif</option><option value="off">Nonaktif</option></select></label>
         </div>
-        <ServerTable ref="table" url="/master/user/data" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'User'">
+        <ServerTable ref="table" :url="appUrl('/master/user/data')" :columns="columns" :filters="appliedFilters" :keyword="filter.q" :label="'User'">
             <template #cell-0="{ number }">{{ number }}</template>
             <template #cell-1="{ row }"><span class="code">{{ row.kode }}</span></template>
             <template #cell-2="{ row }">{{ row.nama }}<small v-if="row.email || row.telp">{{ row.email || row.telp }}</small></template>
@@ -80,7 +81,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Emp
                         <button v-if="row.id_user && row.id_user !== me" type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button>
                         <button v-else-if="!row.id_user" type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button>
                         <button v-if="row.id_user" type="button" @click="resetting = row" :disabled="confirming">Reset Password</button>
-                        <Link v-if="row.id_user && row.id_group !== superadmin && row.id_user !== me" :href="`/permissions/users/${row.id_user}`">Override</Link>
+                        <Link v-if="row.id_user && row.id_group !== superadmin && row.id_user !== me" :href="appUrl(`/permissions/users/${row.id_user}`)">Override</Link>
                     </ActionMenu></template>
         </ServerTable>
 

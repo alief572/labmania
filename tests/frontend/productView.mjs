@@ -5,7 +5,7 @@ const list = readFileSync(new URL('../../resources/js/pages/Master/Product.vue',
 const form = readFileSync(new URL('../../resources/js/pages/Master/ProductForm.vue', import.meta.url), 'utf8');
 
 // "Tambah Product" = halaman penuh (mockup viewCombine), bukan modal di daftar.
-assert.match(list, /router\.get\('\/master\/product\/create'\)/);
+assert.match(list, /router\.get\(appUrl\('\/master\/product\/create'\)\)/);
 assert.doesNotMatch(list, /addForm|saveAdd|openLingkup|saveLingkup/);
 
 // Daftar: nomor di atas judul, atribut nonaktif ditandai, filter langsung berlaku.

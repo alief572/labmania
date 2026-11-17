@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../composables/appUrl';
 import { useConfirmedMutation } from "../composables/confirmedMutation";
 import { computed } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
@@ -20,7 +21,7 @@ function toggle(menu: Menu, action: string, checked: boolean) {
 }
 function choose(event: Event, kind: string) {
     const id = (event.target as HTMLSelectElement).value;
-    if (id) router.get(kind === 'role' ? '/permissions' : `/permissions/users/${id}`, {}, { preserveState: false });
+    if (id) router.get(appUrl(kind === 'role' ? '/permissions' : `/permissions/users/${id}`), {}, { preserveState: false });
 }
 function save() {
     if (!props.editable || !props.targetId) return;

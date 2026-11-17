@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appUrl } from '../../../composables/appUrl';
 import CostingSimulation from "../../../components/CostingSimulation.vue";
 import MoneyInput from "../../../components/MoneyInput.vue";
 import { computed, ref } from 'vue';
@@ -61,7 +62,7 @@ const warnings = computed(() => {
 const statusLabel = { draft: 'Draft', final: 'Final', batal: 'Batal' } as const;
 const { ask, busy, error: transitionError } = useProgramTransition(confirmation);
 const isNew = !props.program.id;
-const back = () => router.get('/program');
+const back = () => router.get(appUrl('/program'));
 // Product terpilih sebagai daftar bernomor + satu pilihan "+ Tambah Product aktif…" (mockup bagian 1).
 const chosen = computed(() => form.paket.map((id) => props.products.find((p) => p.id === id)).filter((p): p is Product => !!p));
 const addable = computed(() => props.products.filter((p) => p.aktif && !form.paket.includes(p.id)));
@@ -135,11 +136,11 @@ const lockText = computed(() => props.program.status === 'final'
             </section>
 
             <div class="form-actions page-actions">
-                <Link href="/program">{{ isNew ? 'Batal' : 'Kembali' }}</Link>
+                <Link :href="appUrl('/program')">{{ isNew ? 'Batal' : 'Kembali' }}</Link>
                 <button v-if="draft && !isNew && can.cancel" type="button" :disabled="busy || confirming" @click="ask(program.id!, 'batalkan')">Batalkan Program</button>
                 <button v-if="editable" class="primary" :disabled="form.processing || confirming">{{ form.processing ? 'Menyimpan…' : 'Simpan Draft' }}</button>
                 <button v-if="draft && !isNew && can.approve" type="button" class="primary" :disabled="busy || confirming" @click="ask(program.id!, 'finalkan')">Finalkan program</button>
-                <Link v-if="program.status === 'final'" class="primary" :href="`/penjualan-program/create?master=${program.id}`">Buat Penjualan Program</Link>
+                <Link v-if="program.status === 'final'" class="primary" :href="appUrl(`/penjualan-program/create?master=${program.id}`)">Buat Penjualan Program</Link>
             </div>
         </form>
     </AppLayout>
