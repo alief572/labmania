@@ -125,6 +125,22 @@ try:
     assert admin_sql("select hex(nama) from a where id=1", "labmania_restore").stdout.strip() == "C39C6EC3AF636F646520E29C93"
     assert admin_sql("select nm from coa", "labmania_restore").stdout.strip() == "kas"
 
+    # Snippet pembanding manifest vs database di VERIFICATION.md (A3) harus jalan apa adanya.
+    compare = (
+        "DB=labmania_restore; M=$(ls -d /srv/out/labmania-*)/manifest.txt; "
+        "awk -F'\\t' '/^  [^ \\t]+\\t[0-9]+$/ {sub(/^  /,\"\"); print}' $M > /tmp/expected.tsv; "
+        "mysql --defaults-extra-file=/work/admin.cnf --batch --skip-column-names -e \"select table_name from information_schema.tables "
+        "where table_schema='$DB' and table_type='BASE TABLE' order by 1\" "
+        "| while read -r t; do printf '%s\\t%s\\n' \"$t\" \"$(mysql --defaults-extra-file=/work/admin.cnf --batch --skip-column-names "
+        "-e \"select count(*) from \\`$DB\\`.\\`$t\\`\")\"; done > /tmp/actual.tsv; diff /tmp/expected.tsv /tmp/actual.tsv && echo SAMA"
+    )
+    # Image mysql tidak punya diff; comm -3 (kosong = sama) setara untuk dua daftar terurut. Di Ubuntu dokumen memakai diff.
+    compare = compare.replace("diff /tmp/expected.tsv /tmp/actual.tsv && echo SAMA",
+                              "test -z \"$(comm -3 /tmp/expected.tsv /tmp/actual.tsv)\" && echo SAMA")
+    assert inside(compare).stdout.strip() == "SAMA"
+    admin_sql("insert into a values (3,'baru',NULL)", "labmania_restore")
+    assert inside(compare, check=False).returncode != 0, "selisih baris harus terdeteksi"
+
     # --verify mendeteksi kerusakan.
     assert inside(f"/work/scripts/backup-production.sh --verify {dest}", check=False).returncode == 0
     inside(f"printf 'x' >> {dest}/storage-app.tar.gz")

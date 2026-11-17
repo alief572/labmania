@@ -4,7 +4,8 @@ Konfigurasi backend Docker server tersedia di `compose.production.yaml` dengan
 panduan [PRODUCTION.md](PRODUCTION.md). Environment privat tetap di server.
 Target `/labmania/` didukung di sisi aplikasi (helper `appUrl`, Vite base,
 trusted proxy); reverse proxy Apache host tetap dipasang operator mengikuti
-PRODUCTION.md. Compose ini belum merupakan cutover production siap pakai.
+PRODUCTION.md. Checklist verifikasi: [VERIFICATION.md](VERIFICATION.md).
+Compose ini belum merupakan cutover production siap pakai.
 
 ## Struktur repository — 16-11-2026
 

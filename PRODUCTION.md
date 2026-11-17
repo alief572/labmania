@@ -302,7 +302,8 @@ docker compose -p labmania-production --env-file .env.production -f compose.prod
 
 Periksa health, koneksi database dan fungsi yang berubah sebelum membuka
 trafik. Compose tidak menunggu health menjadi sehat dan tidak melakukan
-rollback otomatis. Pertahankan image versi sebelumnya dan backup konsisten
+rollback otomatis. Daftar periksa lengkap sebelum dan sesudah membuka trafik
+ada di [VERIFICATION.md](VERIFICATION.md). Pertahankan image versi sebelumnya dan backup konsisten
 untuk pemulihan; jangan menimpa database terbaru dengan backup lama jika sudah
 ada transaksi baru. Migration, jika suatu rilis membutuhkannya, harus mengikuti
 runbook rilis dan guard data, bukan ditambahkan ke command startup ini.
