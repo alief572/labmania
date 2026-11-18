@@ -61,6 +61,7 @@ trait TopReconfirmationScenarios
         // Peserta yang tetap ikut: termin 2 kembali menjadi termin berikutnya, dan nilainya = sisa nilai Deal peserta yang tersisa
         // dikurangi termin 1 yang sudah dibayar, tanpa menghitung bagian peserta yang sudah keluar.
         $this->post('/quotation/peserta/'.$b.'/konfirmasi-ulang', ['revisi' => 1, 'keputusan' => 'pindah_jadwal'])->assertSessionHasNoErrors();
+        $this->redeal5([$b]); // Deal ulang menerbitkan SO -rev yang berlaku; invoice termin 1 yang dibayar ikut dipindahkan ke SO itu.
         $source = Invoice::source($this->ids5['so']);
         $this->assertSame(2, $source['termin']['ke'], 'Termin 2 kembali menjadi termin berikutnya.');
         $this->assertSame(1, $source['peserta']->count(), 'Hanya peserta yang masih Deal yang ditagih.');

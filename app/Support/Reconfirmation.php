@@ -111,7 +111,7 @@ class Reconfirmation
     }
 
     /** TOP: batalkan semua invoice termin aktif yang belum dibayar; invoice yang sudah dibayar tetap dan menjadi dasar refund. */
-    private static function cancelUnpaid(object $q, string $reason): void
+    public static function cancelUnpaid(object $q, string $reason): void
     {
         $unpaid = DB::table('invoice')->where('id_quotation', $q->id)->where('status', 'invoiced')->whereNull('tanggal_bayar')->orderBy('id')->lockForUpdate()->get();
         foreach ($unpaid as $old) {
@@ -161,7 +161,8 @@ class Reconfirmation
             if ($company && $decision === 'pindah_jadwal' && $targets->count() < 10) {
                 throw ValidationException::withMessages(['keputusan' => 'B2B Pindah jadwal minimal 10 peserta.']);
             }
-            $so = DB::table('sales_order')->where('id_quotation', $q->id)->first();
+            // Menunggu Deal ulang, SO berlaku sudah Batal: Refund merujuk SO terbaru, aktif didahulukan (SO-FR-21).
+            $so = DB::table('sales_order')->where('id_quotation', $q->id)->orderByRaw("CASE WHEN status = 'batal' THEN 1 ELSE 0 END")->orderByDesc('id')->first();
             $refundId = null;
             if ($decision === 'refund') {
                 if (! $so || ! $invoice?->tanggal_bayar || ! $targets->contains('status', 'deal')) {

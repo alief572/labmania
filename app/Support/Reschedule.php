@@ -103,10 +103,20 @@ class Reschedule
                     foreach (DB::table('quotation_peserta')->where('id_quotation', $q->id)->whereIn('status', ['menunggu', 'deal'])->get() as $person) {
                         DB::table('quotation_peserta_konfirmasi_ulang')->insert(['id_quotation_peserta' => $person->id, 'id_reschedule' => $rid, 'revisi' => $rev, ...Invoice::audit()]);
                     }
-                    $so = DB::table('sales_order')->where('id_quotation', $q->id)->first();
-                    if ($so) {
-                        DB::table('sales_order')->where('id', $so->id)->update(['revisi' => $rev, 'updated_by' => Auth::id(), 'updated_date' => now()]);
-                        write_log('Quotation', 'Revisi', 'Revisi '.Sales::display($so), ['sub_module' => 'Sales Order', 'old' => ['revisi' => $so->revisi], 'new' => ['revisi' => $rev], 'alasan' => $input['alasan']], 'sales_order', $so->id, $so->nomor);
+                    // Quotation Deal kembali ke Terkirim dan menunggu Deal ulang (QTN-FR-42); SO berlaku pindah ke SO Batal (SO-FR-21).
+                    // Nilai dan jumlah peserta dicatat sebelum status berubah. Invoice tidak dibatalkan, hanya diberi penanda (PJ-FR-27).
+                    if ($q->status === 'deal') {
+                        $so = DB::table('sales_order')->where('id_quotation', $q->id)->where('status', '!=', 'batal')->first();
+                        if ($so) {
+                            $count = DB::table('quotation_peserta')->where('id_quotation', $q->id)->where('status', 'deal')->count();
+                            DB::table('sales_order')->where('id', $so->id)->update(['status' => 'batal', 'batal_sebab' => 'reschedule', 'batal_alasan' => $input['alasan'], 'batal_waktu' => now(), 'batal_revisi' => $rev,
+                                'batal_peserta' => $count, 'batal_nilai' => Quotation::calculate($q, $count)['grand_total'], 'updated_by' => Auth::id(), 'updated_date' => now()]);
+                            write_log('Quotation', 'Batal', 'Batal '.$so->nomor.' karena reschedule (rev'.$rev.'): '.$input['alasan'], ['sub_module' => 'Sales Order', 'old' => ['status' => $so->status], 'new' => ['status' => 'batal'], 'alasan' => $input['alasan']], 'sales_order', $so->id, $so->nomor);
+                        }
+                        DB::table('quotation')->where('id', $q->id)->update(['status' => 'terkirim', 'deal_ulang_revisi' => $rev, 'deal_ulang_waktu' => now(), 'deal_ulang_selesai_revisi' => null, 'deal_ulang_selesai_date' => null]);
+                        DB::table('invoice')->where('id_quotation', $q->id)->where('status', 'invoiced')->update(['resched_revisi' => $rev, 'resched_waktu' => now()]);
+                    } elseif ($q->deal_ulang_revisi !== null) {
+                        DB::table('quotation')->where('id', $q->id)->update(['deal_ulang_revisi' => $rev]);
                     }
                     write_log('Quotation', 'Revisi', 'Revisi '.$q->nomor.'-rev'.$rev, ['old' => ['revisi' => $q->revisi], 'new' => ['revisi' => $rev], 'alasan' => $input['alasan']], 'quotation', $q->id, $q->nomor);
                 }

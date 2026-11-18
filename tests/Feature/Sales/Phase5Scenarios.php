@@ -54,7 +54,18 @@ trait Phase5Scenarios
         foreach (['1102-01-01', '2104-01-07', '4101-01-03', '4101-01-02', 'WAPU-UM', 'WAPU-HT'] as $i => $num) {
             DB::table('coa_master')->insert(['id' => 900 + $i, 'no_perkiraan' => $num, 'nama' => 'Akun Uji '.$num, 'level' => '5']);
         }
+        DB::table('quotation_dokumen')->insert(['id_quotation' => $q, 'nama_file' => 'po.pdf', 'path_file' => 'uploads/x/po.pdf', 'tipe_file' => 'pdf', 'ukuran_byte' => 10]);
         $this->ids5 = compact('p', 'q', 'so', 'tr', 'as', 'people');
+    }
+
+    /** Reschedule setelah Deal: SO lama Batal dan quotation Terkirim; Deal ulang menerbitkan SO -rev yang berlaku (SO-FR-21). Mengembalikan id SO baru. */
+    private function redeal5(array $people): int
+    {
+        $this->post('/quotation/'.$this->ids5['q'].'/deal', ['peserta' => $people])->assertSessionHasNoErrors();
+        $this->ids5['so'] = (int) DB::table('sales_order')->where('id_quotation', $this->ids5['q'])->where('status', '!=', 'batal')->value('id');
+        DB::table('sales_order')->where('id', $this->ids5['so'])->update(['status' => 'siap']);
+
+        return $this->ids5['so'];
     }
 
     protected function tearDown(): void
@@ -129,6 +140,8 @@ trait Phase5Scenarios
         $this->assertSame('batal', Invoice::row($old->id)->status);
         $this->get('/invoicing/create?id_sales_order='.$this->ids5['so'])->assertSessionHasErrors('invoice');
         $this->post('/quotation/peserta/'.$b.'/konfirmasi-ulang', ['revisi' => 1, 'keputusan' => 'pindah_jadwal'])->assertSessionHasNoErrors();
+        // Reschedule setelah Deal: quotation kembali Terkirim dan SO lama Batal; penagihan ulang menunggu Deal ulang yang menerbitkan SO -rev1 (SO-FR-21).
+        $this->redeal5([$b]);
         $new = $this->invoice5();
         $this->assertNotSame($old->id, $new->id);
         $this->assertSame(1, DB::table('invoice_peserta')->where('id_invoice', $new->id)->count());

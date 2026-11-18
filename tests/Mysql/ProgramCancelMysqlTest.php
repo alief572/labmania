@@ -20,7 +20,6 @@ class ProgramCancelMysqlTest extends MysqlTestCase
     {
         parent::setUp();
         $this->seedConfiguration();
-        (require base_path('database/migrations/2026_11_19_090000_penjualan_batal_dampak.php'))->up();
         $this->seedPhase5();
     }
 
@@ -52,6 +51,28 @@ class ProgramCancelMysqlTest extends MysqlTestCase
         $this->assertSame("enum('berlaku','diganti','batal')", $type('surat_kerja_trainer', 'status')->t);
         $this->assertSame('YES', $type('sales_order_refund', 'id_konfirmasi_ulang')->n);
         $this->assertSame(1, (int) DB::selectOne("SELECT COUNT(*) c FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sales_order_refund' AND COLUMN_NAME = 'id_konfirmasi_ulang' AND REFERENCED_TABLE_NAME IS NOT NULL")->c, 'FK ke konfirmasi ulang tetap ada');
+    }
+
+    public function test_so_aktif_mengizinkan_so_batal_dan_so_rev_tetapi_menolak_dua_so_aktif(): void
+    {
+        $so = DB::table('sales_order')->where('id', $this->ids5['so'])->first();
+        $row = ['id_quotation' => $so->id_quotation, 'id_penjualan' => $so->id_penjualan, 'tanggal' => '2026-11-14', 'created_by' => 1, 'created_date' => now()];
+        DB::table('sales_order')->where('id', $so->id)->update(['status' => 'batal']);
+        $this->assertNull(DB::table('sales_order')->where('id', $so->id)->value('so_aktif'), 'SO batal melepas slot aktif');
+
+        DB::table('sales_order')->insert($row + ['nomor' => $so->nomor, 'revisi' => 1, 'status' => 'open']); // SO -rev: nomor dasar sama, revisi berbeda
+        try {
+            DB::table('sales_order')->insert($row + ['nomor' => $so->nomor.'-X', 'revisi' => 2, 'status' => 'open']);
+            $this->fail('Dua SO aktif untuk satu quotation diterima.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            $this->assertSame(1062, $e->errorInfo[1]);
+        }
+        try {
+            DB::table('sales_order')->insert($row + ['nomor' => $so->nomor, 'revisi' => 1, 'status' => 'batal']);
+            $this->fail('Nomor dan revisi yang sama diterima dua kali.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            $this->assertSame(1062, $e->errorInfo[1]);
+        }
     }
 
     public function test_batal_final_dengan_invoice_dibayar_membuat_refund_dan_membebaskan_surat_tugas(): void

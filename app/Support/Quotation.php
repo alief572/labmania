@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -182,15 +183,31 @@ class Quotation
             Sales::open($program);
             $old = self::row($id, true);
             if ($old->status === 'deal') {
-                return ['so' => DB::table('sales_order')->where('id_quotation', $id)->value('nomor'), 'baru' => 0, 'cocok' => 0, 'replay' => true];
+                return ['so' => DB::table('sales_order')->where('id_quotation', $id)->where('status', '!=', 'batal')->value('nomor'), 'baru' => 0, 'cocok' => 0, 'replay' => true];
             }
-            if ($old->status !== 'terkirim' || ! $files) {
+            // Deal ulang (QTN-FR-42): quotation Terkirim yang sebelumnya Deal lalu direschedule. Dokumen lama terbawa, unggahan baru opsional.
+            $again = self::needsRedeal($old);
+            if ($old->status !== 'terkirim' || (! $files && ! ($again && DB::table('quotation_dokumen')->where('id_quotation', $id)->exists()))) {
                 throw ValidationException::withMessages(['quotation' => 'Deal memerlukan quotation Terkirim dan dokumen customer.']);
+            }
+            if ($again && today('Asia/Jakarta')->gte(Carbon::parse($program->tgl_mulai, 'Asia/Jakarta'))) {
+                throw ValidationException::withMessages(['quotation' => 'Deal ulang paling lambat H-1; batalkan quotation ini bila tidak jadi.']);
             }
             $rows = DB::table('quotation_peserta')->where('id_quotation', $id)->lockForUpdate()->get();
             $ids = array_values(array_unique(array_map('intval', $ids)));
-            $selected = $rows->whereIn('id', $ids)->where('status', 'menunggu');
-            if (Reconfirmation::pending($old, $ids)) {
+            $selected = $again ? $rows->whereIn('id', $ids)->whereIn('status', ['menunggu', 'deal']) : $rows->whereIn('id', $ids)->where('status', 'menunggu');
+            if ($again) {
+                // Yang dapat dicentang hanya peserta yang menjawab Pindah jadwal pada revisi terakhir (QTN-FR-42 butir 1).
+                $follow = Reconfirmation::targets($old)->where('a.keputusan', 'pindah_jadwal')->pluck('x.id')->map(fn ($v) => (int) $v)->all();
+                if (array_diff($ids, $follow)) {
+                    throw ValidationException::withMessages(['peserta' => 'Deal ulang hanya untuk peserta yang memilih Pindah jadwal.']);
+                }
+                // Boleh disimpan bila semua peserta sudah menjawab, atau mulai H-1 (yang belum menjawab dianggap batal).
+                $h1 = Carbon::parse($program->tgl_mulai, 'Asia/Jakarta')->subDay()->startOfDay();
+                if (Reconfirmation::targets($old)->whereNull('a.tgl_isi')->whereNull('a.diproses_date')->exists() && today('Asia/Jakarta')->lt($h1)) {
+                    throw ValidationException::withMessages(['peserta' => 'Masih ada peserta yang belum menjawab konfirmasi ulang; simpan setelah semua menjawab atau mulai H-1.']);
+                }
+            } elseif (Reconfirmation::pending($old, $ids)) {
                 throw ValidationException::withMessages(['peserta' => 'Peserta harus menyelesaikan konfirmasi ulang sebelum Deal.']);
             }
             if ($selected->count() !== count($ids) || count($ids) < ($program->jenis === 'b2b' ? 10 : 1)) {
@@ -206,18 +223,39 @@ class Quotation
                 $newCount += self::syncParticipant((array) $p, $old, $program) ? 1 : 0;
             }
             $changes = [];
+            $exits = [];
             foreach ($rows as $p) {
-                $status = in_array($p->id, $ids, true) ? 'deal' : 'batal';
+                if (in_array($p->id, $ids, true)) {
+                    $status = 'deal';
+                } elseif ($again && $p->status === 'deal') {
+                    $exits[] = $p;
+                    $status = 'keluar';
+                } else {
+                    $status = $p->status === 'keluar' ? 'keluar' : 'batal';
+                }
                 $changes['Peserta #'.$p->id.' '.$p->nama] = ['old' => $p->status, 'new' => $status];
-                DB::table('quotation_peserta')->where('id', $p->id)->update(['status' => $status]);
+                if ($status !== $p->status) {
+                    DB::table('quotation_peserta')->where('id', $p->id)->update(['status' => $status]);
+                }
             }
+            $auto = $again ? self::autoExit($old, $exits) : [];
             foreach ($files as $file) {
                 self::customerDocument($id, $file);
             }
-            $update = ['status' => 'deal', 'deal_by' => Auth::id(), 'deal_date' => now(), 'dokumen_keterangan' => $note, 'updated_by' => Auth::id(), 'updated_date' => now()];
+            $update = ['status' => 'deal', 'deal_by' => Auth::id(), 'deal_date' => now(), 'dokumen_keterangan' => $note ?? $old->dokumen_keterangan, 'updated_by' => Auth::id(), 'updated_date' => now()];
+            if ($again) {
+                $update += ['deal_ulang_revisi' => null, 'deal_ulang_waktu' => null, 'deal_ulang_selesai_revisi' => $old->revisi, 'deal_ulang_selesai_date' => now()];
+            }
             DB::table('quotation')->where('id', $id)->update($update);
-            $so = Sales::number('sales_order', 'LMI/SO/'.now()->format('m/y'));
+            // Deal ulang: SO baru memakai nomor SO lama + -rev{n} (n = revisi quotation), nomor dasar sama (SO-FR-21).
+            $previous = $again ? DB::table('sales_order')->where('id_quotation', $id)->where('status', 'batal')->orderByDesc('id')->first() : null;
+            $so = $previous ? $previous->nomor : Sales::number('sales_order', 'LMI/SO/'.now()->format('m/y'));
             $soId = DB::table('sales_order')->insertGetId(['nomor' => $so, 'id_quotation' => $id, 'id_penjualan' => $program->id, 'revisi' => $old->revisi, 'tanggal' => today()->toDateString(), 'status' => 'open', 'created_by' => Auth::id(), 'created_date' => now()]);
+            if ($previous) {
+                DB::table('sales_order')->where('id', $previous->id)->update(['digantikan_oleh' => $soId]);
+                // Invoice aktif tetap dipakai (tidak ditagih ulang): dipindah ke SO baru agar penagihan membaca SO yang berlaku.
+                DB::table('invoice')->where('id_quotation', $id)->where('status', 'invoiced')->update(['id_sales_order' => $soId, 'updated_by' => Auth::id(), 'updated_date' => now()]);
+            }
             $changes['Sales Order'] = ['old' => null, 'new' => $so];
             write_log('Quotation', 'Tambah', 'Tambah '.$so.' dari '.$old->nomor, ['sub_module' => 'Sales Order', 'nomor' => $so], 'sales_order', $soId, $so);
             if (! DB::table('surat_kerja_trainer')->where('id_penjualan', $program->id)->where('status', 'berlaku')->exists()) {
@@ -226,10 +264,86 @@ class Quotation
                 $changes['Surat Tugas'] = ['old' => null, 'new' => $number];
                 write_log('Quotation', 'Tambah', 'Tambah '.$number, ['sub_module' => 'Surat Kerja Trainer', 'nomor' => $number], 'surat_kerja_trainer', $sid, $number);
             }
-            write_log('Quotation', 'Deal', 'Deal '.$old->nomor.'; Master Peserta: '.$newCount.' baru, '.(count($ids) - $newCount).' dicocokkan', ['old' => (array) $old, 'new' => array_merge((array) $old, $update), 'detail_changes' => $changes], 'quotation', $id, $old->nomor);
+            write_log('Quotation', $again ? 'Deal Ulang' : 'Deal', ($again ? 'Deal ulang ' : 'Deal ').$old->nomor.'; Master Peserta: '.$newCount.' baru, '.(count($ids) - $newCount).' dicocokkan', ['old' => (array) $old, 'new' => array_merge((array) $old, $update), 'detail_changes' => $changes + ($auto ? ['Tidak ikut diproses' => ['old' => null, 'new' => $auto]] : [])], 'quotation', $id, $old->nomor);
 
-            return ['so' => $so, 'baru' => $newCount, 'cocok' => count($ids) - $newCount];
+            return ['so' => $so, 'baru' => $newCount, 'cocok' => count($ids) - $newCount, 'keluar' => count($exits), 'ulang' => $again];
         });
+    }
+
+    /**
+     * Penanda reschedule per quotation (QTN-FR-43): kirim link baru, Konfirmasi ulang x/y, Siap Deal ulang, atau Deal ulang rev{n}.
+     * Null bila quotation tidak sedang atau tidak pernah melewati Deal ulang.
+     */
+    public static function redealMarker(object $q): ?array
+    {
+        if (($q->deal_ulang_selesai_revisi ?? null) !== null && $q->status === 'deal') {
+            return ['kode' => 'selesai', 'teks' => 'Deal ulang rev'.$q->deal_ulang_selesai_revisi, 'sub' => $q->deal_ulang_selesai_date ? substr((string) $q->deal_ulang_selesai_date, 0, 10) : null];
+        }
+        if (! self::needsRedeal($q)) {
+            return null;
+        }
+        $targets = Reconfirmation::targets($q)->get();
+        $answered = $targets->whereNotNull('tgl_isi')->count() + $targets->whereNull('tgl_isi')->whereNotNull('diproses_date')->count();
+        $follow = $targets->where('keputusan', 'pindah_jadwal')->count();
+        if ($targets->isNotEmpty() && $answered === $targets->count()) {
+            return $follow > 0 ? ['kode' => 'siap', 'teks' => 'Siap Deal ulang', 'sub' => $follow.' peserta pindah jadwal']
+                : ['kode' => 'semua_tidak', 'teks' => 'Semua peserta tidak ikut', 'sub' => 'batalkan quotation'];
+        }
+
+        return $answered === 0 ? ['kode' => 'kirim_link', 'teks' => 'Kirim link konfirmasi baru', 'sub' => 'belum ada jawaban']
+            : ['kode' => 'konfirmasi', 'teks' => 'Konfirmasi ulang '.$answered.'/'.$targets->count(), 'sub' => 'lalu Deal ulang'];
+    }
+
+    /** Quotation Terkirim yang sebelumnya Deal lalu direschedule: menunggu Deal ulang (QTN-FR-42). */
+    public static function needsRedeal(object $q): bool
+    {
+        return $q->status === 'terkirim' && ($q->deal_ulang_revisi ?? null) !== null;
+    }
+
+    /**
+     * Peserta Deal lama yang tidak ikut jadwal baru diproses otomatis (QTN-FR-42 butir 3): invoice dibayar menjadi Refund; invoice terbit belum
+     * dibayar dibatalkan; belum ditagih keluar tanpa tagihan. Dikembalikan ringkasan untuk audit.
+     *
+     * @param  array<int, object>  $people
+     */
+    private static function autoExit(object $q, array $people): array
+    {
+        $summary = [];
+        $program = Sales::program($q->id_penjualan);
+        $so = DB::table('sales_order')->where('id_quotation', $q->id)->orderByDesc('id')->first();
+        foreach ($people as $person) {
+            $answer = DB::table('quotation_peserta_konfirmasi_ulang')->where('id_quotation_peserta', $person->id)->where('revisi', $q->revisi)->first();
+            $reason = $answer && $answer->keputusan && $answer->keputusan !== 'pindah_jadwal' ? ($answer->catatan ?: 'Tidak ikut jadwal baru') : 'Tidak menjawab konfirmasi ulang sampai H-1';
+            $b2b = $program->jenis === 'b2b';
+            $invoice = Reconfirmation::invoice($q, $b2b ? null : $person->id);
+            $paid = $invoice?->tanggal_bayar !== null && $invoice !== null;
+            $kind = $paid ? 'refund' : 'batal';
+            $refund = null;
+            if ($paid && $so) {
+                $refund = Refund::create($q, $so, $invoice, $answer, $b2b ? null : (int) $person->id, 'Peserta tidak ikut jadwal baru '.Sales::display($program).': '.$reason);
+            }
+            DB::table('quotation_peserta')->where('id', $person->id)->update(['keluar_jenis' => $kind, 'keluar_alasan' => $reason, 'keluar_revisi' => $q->revisi, 'keluar_by' => Auth::id(), 'keluar_date' => now()]);
+            if ($answer && ! $answer->diproses_date) {
+                DB::table('quotation_peserta_konfirmasi_ulang')->where('id', $answer->id)->update(['diproses_date' => now(), 'diproses_by' => Auth::id(), 'updated_by' => Auth::id(), 'updated_date' => now()]);
+            }
+            $summary[] = $person->nama.' ('.($refund ? 'Refund' : 'Batal ikut').')';
+        }
+        if ($people) {
+            // Invoice belum dibayar milik peserta yang keluar dibatalkan; TOP: semua termin belum dibayar.
+            if (self::termin($q)) {
+                Reconfirmation::cancelUnpaid($q, 'Peserta tidak ikut jadwal baru');
+            } else {
+                foreach (DB::table('invoice')->where('id_quotation', $q->id)->where('status', 'invoiced')->whereNull('tanggal_bayar')->lockForUpdate()->get() as $open) {
+                    $remaining = DB::table('invoice_peserta as ip')->join('quotation_peserta as x', 'x.id', '=', 'ip.id_quotation_peserta')->where('ip.id_invoice', $open->id)->where('x.status', 'deal')->exists();
+                    if (! $remaining) {
+                        DB::table('invoice')->where('id', $open->id)->update(['status' => 'batal', 'batal_by' => Auth::id(), 'batal_date' => now(), 'batal_alasan' => 'Peserta tidak ikut jadwal baru', 'updated_by' => Auth::id(), 'updated_date' => now()]);
+                        write_log('Invoice', 'Batal', 'Batal '.$open->nomor.': peserta tidak ikut jadwal baru', ['old' => ['status' => 'invoiced'], 'new' => ['status' => 'batal']], 'invoice', $open->id, $open->nomor);
+                    }
+                }
+            }
+        }
+
+        return $summary;
     }
 
     public static function customerDocument(int $id, array $f): void

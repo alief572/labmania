@@ -49,6 +49,18 @@ abstract class MysqlTestCase extends BaseTestCase
         }
         $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
         DB::table('groups')->insert([['id_group' => 1, 'nm_group' => 'Superadmin', 'ket' => ''], ['id_group' => 2, 'nm_group' => 'Staf', 'ket' => '']]);
+        $this->applyLaterMigrations();
+    }
+
+    /**
+     * Salinan labmania_laravel belum tentu memuat migrasi terbaru. Migrasi yang kode terbarunya butuhkan diterapkan ke database _test
+     * (idempoten, hanya database _test); salinan itu sendiri tidak diubah.
+     */
+    private function applyLaterMigrations(): void
+    {
+        foreach (['2026_11_19_090000_penjualan_batal_dampak', '2026_11_19_100000_reschedule_deal_ulang'] as $migration) {
+            (require base_path('database/migrations/'.$migration.'.php'))->up();
+        }
     }
 
     /** Salin hanya konfigurasi non-pribadi (definisi menu, satuan, satu akun COA) dari salinan ke database _test. */
