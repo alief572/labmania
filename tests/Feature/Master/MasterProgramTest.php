@@ -168,6 +168,31 @@ class MasterProgramTest extends MasterTestCase
         }
     }
 
+    public function test_halaman_mulai_penjualan_hanya_memuat_master_final_dan_jenis_terkunci(): void
+    {
+        $menu = DB::table('ms_menu')->insertGetId(['kode' => 'penjualan_program', 'judul' => 'Penjualan Program', 'link' => 'penjualan-program', 'parent_id' => 0, 'kelompok' => 1, 'urutan' => 32, 'aktif' => 1, 'sistem' => 0]);
+        foreach (['lihat', 'tambah', 'ubah', 'aktif', 'hapus', 'approve'] as $aksi) {
+            DB::table('ms_menu_aksi')->insert(['id_menu' => $menu, 'aksi' => $aksi]);
+        }
+        $final = $this->draft();
+        $draft = $this->draft();
+        $this->post("/program/$final/finalkan")->assertSessionHasNoErrors();
+
+        $this->get('/penjualan-program/mulai')->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Sales/Start')->has('masters', 1)->where('masters.0.id', $final)->where('preset', null)->where('minB2b', 10));
+        $this->get("/penjualan-program/mulai?master=$final")->assertInertia(fn ($page) => $page->where('preset', $final));
+        $this->get("/penjualan-program/mulai?master=$draft")->assertInertia(fn ($page) => $page->where('preset', null));
+
+        $this->get("/penjualan-program/create?master=$final&jenis=b2b")->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Sales/Form')->where('program.jenis', 'b2b')->where('jenisLocked', true));
+        $this->get("/penjualan-program/create?master=$final&jenis=xxx")->assertInertia(fn ($page) => $page->where('program.jenis', 'public')->where('jenisLocked', false));
+
+        $tanpaHak = $this->account('viewer');
+        DB::table('ms_user_akses')->insert(['id_user' => $tanpaHak->id_user, 'id_menu' => $menu, 'aksi' => 'lihat']);
+        $this->login($tanpaHak);
+        $this->get('/penjualan-program/mulai')->assertForbidden();
+    }
+
     public function test_daftar_master_program_memuat_varian_dan_sertifikat_produk_pertama(): void
     {
         $this->post('/program', $this->payload())->assertSessionHasNoErrors();

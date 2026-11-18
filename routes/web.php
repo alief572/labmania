@@ -124,6 +124,7 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
         Route::post('/{id}/reschedule', [RescheduleController::class, 'store'])->whereNumber('id');
         Route::get('/{id}/reschedule/{history}/pdf', [RescheduleController::class, 'historyPdf'])->whereNumber(['id', 'history']);
         Route::get('/', [SalesController::class, 'index']);
+        Route::get('/mulai', [SalesController::class, 'start']);
         Route::get('/create', [SalesController::class, 'create']);
         Route::post('/', [SalesController::class, 'store']);
         Route::get('/{id}', [SalesController::class, 'show'])->whereNumber('id');

@@ -53,10 +53,10 @@ for (const [name, props, expected] of [
     assert.deepEqual(buttons(root).map(button => button.props['data-tutorial-key']), expected ? [expected] : [], `${name}: tombol tutorial aktual`);
     app.unmount();
 }
-page.component = 'Sales/Form';
+page.component = 'Sales/Start';
 const directRoot = node('root');
 const direct = renderer.createApp(globalThis.__tutorialButtonTest.button);
 direct.mount(directRoot);
-assert.deepEqual(buttons(directRoot).map(button => button.props['data-tutorial-key']), ['qtStart'], 'Form tanpa PageHead tetap memasang tombol');
+assert.deepEqual(buttons(directRoot).map(button => button.props['data-tutorial-key']), ['qtStart'], 'Halaman tanpa PageHead tetap memasang tombol');
 direct.unmount();
 console.log('Tombol tutorial: cakupan halaman dan render komponen PageHead lulus.');

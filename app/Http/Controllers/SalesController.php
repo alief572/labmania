@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Costing;
 use App\Support\QuotationPdf;
+use App\Support\Reschedule;
 use App\Support\Sales;
 use App\Support\ServerDataTable;
 use Carbon\Carbon;
@@ -45,13 +46,14 @@ class SalesController extends Controller
             $p->nomor = Sales::display($p);
             $p->reschedule_count = (int) ($reschedules[$p->id] ?? 0);
             $p->peserta_deal = (int) ($deals[$p->id] ?? 0);
+            $p->reschedulable = Reschedule::reason($p) === null;
             $p->costing = Costing::calculate($p->durasi_hari, $p->target_peserta, $p->harga_jual_peserta, $costs->get($p->id, collect())->map(fn ($b) => (array) $b)->all());
             $p->warnings = Costing::warnings($p->costing, $p->target_peserta);
 
             return $p;
         });
 
-        $props = ['rows' => $rows, 'filters' => $f, 'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage']), 'approve' => Gate::allows('menu', [self::MENU, 'Approve']), 'cancel' => Gate::allows('menu', [self::MENU, 'Delete']), 'quotation' => Gate::allows('menu', ['quotation_program', 'Add'])],
+        $props = ['rows' => $rows, 'filters' => $f, 'can' => ['add' => Gate::allows('menu', [self::MENU, 'Add']), 'manage' => Gate::allows('menu', [self::MENU, 'Manage']), 'approve' => Gate::allows('menu', [self::MENU, 'Approve']), 'cancel' => Gate::allows('menu', [self::MENU, 'Manage']), 'quotation' => Gate::allows('menu', ['quotation_program', 'Add'])],
             'years' => DB::table('penjualan_program')->whereNotNull('tgl_mulai')->pluck('tgl_mulai')->map(fn ($d) => (int) substr($d, 0, 4))->unique()->sortDesc()->values()];
         if ($request->route('datatable')) {
             return ServerDataTable::result($request, $props['rows'], collect($props)->except('rows')->all());
@@ -60,13 +62,31 @@ class SalesController extends Controller
         return Inertia::render('Sales/Index', $props);
     }
 
-    /** ?master=<id> dari tombol "Buat Penjualan Program" di Master Program Final: memilih master itu lebih dulu (hanya yang Final). */
+    /** Langkah awal (PJ-FR-02/03): pilih Master Program Final, lalu jenis Public atau B2B. ?master=<id> memilih master itu lebih dulu. */
+    public function start(Request $request)
+    {
+        Gate::authorize('menu', [self::MENU, 'Add']);
+        $masters = DB::table('master_program')->where('status', 'final')->orderByDesc('id')->get(['id', 'nomor', 'durasi_hari', 'target_peserta', 'harga_jual_peserta']);
+        $titles = Sales::titles($masters->pluck('id')->all());
+        $costs = DB::table('master_program_biaya as b')->leftJoin('ms_satuan as s', 's.id', '=', 'b.id_satuan')->whereIn('b.id_master_program', $masters->pluck('id'))
+            ->get(['b.*', 's.nama as nama_satuan'])->groupBy('id_master_program');
+        foreach ($masters as $m) {
+            $m->judul = $titles[$m->id] ?? '';
+            $m->hpp = Costing::calculate($m->durasi_hari, $m->target_peserta, $m->harga_jual_peserta, ($costs[$m->id] ?? collect())->map(fn ($b) => (array) $b)->all())['total_hpp'];
+        }
+        $preset = $request->integer('master');
+
+        return Inertia::render('Sales/Start', ['masters' => $masters, 'preset' => $masters->contains('id', $preset) ? $preset : null, 'minB2b' => 10]);
+    }
+
+    /** ?master=<id> memilih master itu lebih dulu (hanya yang Final); ?jenis=public|b2b mengunci jenis dari halaman Mulai. */
     public function create(Request $request)
     {
         Gate::authorize('menu', [self::MENU, 'Add']);
         $master = $request->integer('master') ?: null;
+        $jenis = in_array($request->query('jenis'), ['public', 'b2b'], true) ? $request->query('jenis') : null;
 
-        return $this->form(null, $master && DB::table('master_program')->where('id', $master)->where('status', 'final')->exists() ? $master : null);
+        return $this->form(null, $master && DB::table('master_program')->where('id', $master)->where('status', 'final')->exists() ? $master : null, $jenis);
     }
 
     public function show(int $id)
@@ -87,7 +107,7 @@ class SalesController extends Controller
         return QuotationPdf::response($pdf, 'Penawaran-Program-'.$id.'.pdf');
     }
 
-    private function form(?object $p, ?int $presetMaster = null)
+    private function form(?object $p, ?int $presetMaster = null, ?string $presetJenis = null)
     {
         $masters = DB::table('master_program')->where('status', 'final')->get();
         foreach ($masters as $m) {
@@ -102,6 +122,9 @@ class SalesController extends Controller
         if (! $p && $presetMaster) {
             $program['id_master_program'] = $presetMaster;
         }
+        if (! $p && $presetJenis) {
+            $program['jenis'] = $presetJenis;
+        }
         $program['biaya'] = $p ? Sales::costs($p->id) : [];
         $actual = null;
         if ($p && $p->status === 'final') {
@@ -114,8 +137,8 @@ class SalesController extends Controller
             'trainers' => DB::table('ms_trainer')->where(fn ($w) => $w->where('aktif', 1)->when($p?->id_trainer, fn ($w) => $w->orWhere('id', $p->id_trainer)))->get(['id', 'nama', 'bidang_keahlian']),
             'assistants' => DB::table('ms_user_karyawan as u')->leftJoin('groups as g', 'g.id_group', '=', 'u.id_group')->where(fn ($w) => $w->where('u.aktif', 1)->when($p?->id_asisten, fn ($w) => $w->orWhere('u.id', $p->id_asisten)))->get(['u.id', 'u.nama', 'u.id_group', 'g.nm_group as role']),
             'rates' => DB::table('ms_rate as r')->leftJoin('ms_satuan as s', 's.id', '=', 'r.id_satuan')->where('r.aktif', 1)->get(['r.*', 's.nama as nama_satuan']),
-            'units' => DB::table('ms_satuan')->get(['id', 'nama']), 'actual' => $actual,
-            'can' => ['edit' => Gate::allows('menu', [self::MENU, $p ? 'Manage' : 'Add']), 'approve' => Gate::allows('menu', [self::MENU, 'Approve']), 'cancel' => Gate::allows('menu', [self::MENU, 'Delete'])]]);
+            'units' => DB::table('ms_satuan')->get(['id', 'nama']), 'actual' => $actual, 'jenisLocked' => (bool) $p || (bool) $presetJenis,
+            'can' => ['edit' => Gate::allows('menu', [self::MENU, $p ? 'Manage' : 'Add']), 'approve' => Gate::allows('menu', [self::MENU, 'Approve']), 'cancel' => Gate::allows('menu', [self::MENU, 'Manage'])]]);
     }
 
     private function validated(Request $r, ?object $old): array
@@ -200,7 +223,7 @@ class SalesController extends Controller
     public function status(Request $r, int $id, string $action)
     {
         abort_unless(in_array($action, ['finalkan', 'batalkan'], true), 404);
-        Gate::authorize('menu', [self::MENU, $action === 'finalkan' ? 'Approve' : 'Delete']);
+        Gate::authorize('menu', [self::MENU, $action === 'finalkan' ? 'Approve' : 'Manage']);
         DB::transaction(function () use ($id, $action) {
             $old = Sales::program($id, true);
             Sales::open($old);

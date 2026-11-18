@@ -748,3 +748,11 @@ tr.is-off > td { color: var(--ink-50); }
 .driver-popover.lm-tour .driver-popover-next-btn { background:var(--navy); color:#fff; border-color:var(--navy); }
 @media (max-width:600px) { .tour-btn, .driver-popover.lm-tour .driver-popover-footer button { min-height:44px; } }
 @media (max-width:600px) { .page-head-actions { width:100%; } .pf-formbar { flex-wrap:wrap; } }
+.choice-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.choice { display:block; text-align:left; text-decoration:none; color:inherit; padding:20px; border-radius:var(--radius); border:2px solid var(--line); background:#fff; box-shadow:var(--shadow); cursor:pointer; font-weight:400; transition:border-color .15s, transform .15s; }
+.choice:hover:not(:disabled), .choice:focus-visible { border-color:var(--orange); outline:none; transform:translateY(-1px); }
+.choice:disabled { opacity:.55; cursor:not-allowed; }
+.choice h3 { margin:10px 0 6px; font-size:18px; color:var(--navy); }
+.choice p { margin:0 0 10px; color:var(--ink-70); }
+.choice ul { margin:0; padding-left:18px; color:var(--ink-70); font-size:13px; }
+@media (max-width:600px) { .choice-grid { grid-template-columns:1fr; } }

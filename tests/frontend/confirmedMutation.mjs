@@ -283,7 +283,7 @@ try {
     }
     const program = { id: 77, nomor: 'PJP-077', status: 'draft', jenis: 'public', paket: [], biaya: [], tgl_mulai: '2026-12-01', tgl_selesai: '2026-12-02', durasi_hari: 2 };
     const quotation = { id: 77, nomor: 'QTN-077', status: 'draft', id_penjualan: 77, kuota_peserta: 1, konfirmasi_isian: [], kolom_peserta_b2b: [], keterangan: [] };
-    const base = { program, masters: [], rates: [], products: [], trainers: [], assistants: [], units: [], companies: [], can: { edit: true }, actual: null };
+    const base = { jenisLocked: false, program, masters: [], rates: [], products: [], trainers: [], assistants: [], units: [], companies: [], can: { edit: true }, actual: null };
     const quoteProps = { quotation, programs: [], peserta: [], templates: [], keteranganOptions: [], documents: [], quotaOther: 0, can: { edit: true }, revisions: [] };
     const operations = [
         ...['finalkan', 'batalkan'].map(kind => ['Master/Program/Index', {}, 'ask', [row, kind], `/program/77/${kind}`]),

@@ -55,7 +55,7 @@ export async function startTutorial(key: TutorialKey, trigger: HTMLElement, root
     for (const definition of tutorials[key]) {
         const element = definition.target ? tutorialTarget(root, definition.target) : undefined;
         if (definition.target && !element) continue;
-        const destination = key === 'qtStart' && definition.next === 'qtForm' ? trigger : definition.next ? root.querySelector<HTMLElement>(`[data-tour-next="${definition.next}"]`) : undefined;
+        const destination = definition.next ? root.querySelector<HTMLElement>(`[data-tour-next="${definition.next}"]`) : undefined;
         if (definition.next && (!destination || !visible(destination))) continue;
         steps.push({ element, popover: {
             title: definition.title, description: definition.description,
@@ -63,7 +63,6 @@ export async function startTutorial(key: TutorialKey, trigger: HTMLElement, root
                 const nextKey = definition.next as TutorialKey;
                 if (!visible(destination) || destination.matches(':disabled')) return;
                 stopTutorial();
-                if (key === 'qtStart' && nextKey === 'qtForm') { void startTutorial(nextKey, trigger, root); return; }
                 if (destination instanceof HTMLAnchorElement) {
                     const url = new URL(destination.href, location.href);
                     if (url.origin !== location.origin) return;
