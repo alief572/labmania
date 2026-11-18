@@ -60,10 +60,11 @@ class QuotationController extends Controller
         $ids = $rows->pluck('id')->all();
         $titles = Sales::titles($rows->pluck('id_master_program')->unique()->all());
         $costs = Sales::costsFor($ids);
+        $durations = Sales::durationsFor($ids);
         $statuses = DB::table('quotation')->whereIn('id_penjualan', $ids)->selectRaw('id_penjualan, status, COUNT(*) as jumlah, SUM(kuota_peserta) as kuota')->groupBy('id_penjualan', 'status')->get()->groupBy('id_penjualan');
         $deals = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->whereIn('q.id_penjualan', $ids)->where('x.status', 'deal')->selectRaw('q.id_penjualan, COUNT(*) as jumlah')->groupBy('q.id_penjualan')->pluck('jumlah', 'id_penjualan');
         $canAdd = Gate::allows('menu', [self::MENU, 'Add']);
-        $rows->through(function ($p) use ($titles, $costs, $statuses, $deals, $canAdd) {
+        $rows->through(function ($p) use ($titles, $costs, $statuses, $deals, $canAdd, $durations) {
             $p->nomor = Sales::display($p);
             $p->judul = $titles[$p->id_master_program] ?? '';
             $groups = $statuses->get($p->id, collect());
@@ -71,7 +72,7 @@ class QuotationController extends Controller
             $p->jumlah_quotation = $p->quotation_status->sum();
             $p->deal = (int) ($deals[$p->id] ?? 0);
             $p->menunggu = (int) ($groups->firstWhere('status', 'terkirim')?->kuota ?? 0);
-            $p->bep = Costing::calculate($p->durasi_hari, $p->target_peserta, $p->harga_jual_peserta, $costs->get($p->id, collect())->map(fn ($b) => (array) $b)->all())['bep_peserta'];
+            $p->bep = Sales::costingOf($p, $costs->get($p->id, collect())->map(fn ($b) => (array) $b)->all(), $durations)['bep_peserta'];
             $p->can_add = ! $p->closed_date && $canAdd && ($p->jenis !== 'b2b' || $groups->where('status', '!=', 'batal')->isEmpty());
 
             return $p;

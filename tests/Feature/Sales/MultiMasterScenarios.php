@@ -245,4 +245,26 @@ trait MultiMasterScenarios
         $single = view('pdf.program-offer', ['p' => Sales::program($id), 'title' => 'Judul', 'company' => null, 'trainer' => 'Budi', 'parts' => []])->render();
         $this->assertStringNotContainsString('Terdiri dari', $single);
     }
+
+    public function test_costing_daftar_dan_dashboard_memakai_durasi_tiap_master_program(): void
+    {
+        $this->login($this->admin());
+        $second = $this->multiSecondMaster();
+        $day = (int) (DB::table('ms_satuan')->where('nama', 'Day')->value('id') ?: DB::table('ms_satuan')->insertGetId(['category' => 'rate_fixed', 'code' => 'day', 'nama' => 'Day', 'deleted' => '0']));
+        $perDay = fn () => [['id_rate' => null, 'tipe' => 'fixed', 'item' => 'Konsumsi', 'id_satuan' => $day, 'harga' => 100000, 'is_manual' => true]];
+        $this->post('/penjualan-program', $this->multiPayload([
+            $this->multiRow($this->master, ['tgl_mulai' => '2026-12-20', 'tgl_selesai' => '2026-12-21', 'biaya' => $perDay()]),
+            $this->multiRow($second, ['tgl_mulai' => '2027-02-10', 'tgl_selesai' => '2027-02-12', 'biaya' => $perDay()]),
+        ]))->assertSessionHasNoErrors();
+        $p = DB::table('penjualan_program')->first();
+        $this->assertGreaterThan(50, (int) $p->durasi_hari, 'Rentang program jauh lebih panjang dari jumlah hari Master Program');
+
+        $costs = Sales::costsFor([$p->id])->get($p->id)->map(fn ($b) => (array) $b)->all();
+        $row = Sales::costingOf($p, $costs, Sales::durationsFor([$p->id]));
+        $this->assertEquals(500000, $row['total_fixed'], '100.000 x 2 hari + 100.000 x 3 hari');
+        $this->assertEquals(Sales::costing(Sales::masters($p), 10)['total_hpp'], $row['total_hpp'], 'Sama dengan costing form');
+
+        $list = $this->getJson('/penjualan-program/data?draw=1&start=0&length=10')->assertOk()->json('data.0');
+        $this->assertEquals(500000, $list['costing']['total_fixed']);
+    }
 }

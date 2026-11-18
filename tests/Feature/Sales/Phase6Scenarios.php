@@ -370,4 +370,21 @@ trait Phase6Scenarios
         $this->travelBack();
         parent::tearDown();
     }
+
+    public function test_budget_per_day_uses_each_master_program_duration(): void
+    {
+        $day = (int) (DB::table('ms_satuan')->where('nama', 'Day')->value('id') ?? DB::table('ms_satuan')->insertGetId(['nama' => 'Day', 'code' => 'F6-DAY']));
+        DB::table('penjualan_program_biaya')->where('id_penjualan', $this->program6)->delete();
+        $first = DB::table('penjualan_program_master')->insertGetId(['id_penjualan' => $this->program6, 'id_master_program' => 1, 'urutan' => 1, 'durasi_hari' => 2, 'tgl_mulai' => '2026-11-10', 'tgl_selesai' => '2026-11-11']);
+        $second = DB::table('penjualan_program_master')->insertGetId(['id_penjualan' => $this->program6, 'id_master_program' => 2, 'urutan' => 2, 'durasi_hari' => 5, 'tgl_mulai' => '2026-12-01', 'tgl_selesai' => '2026-12-05']);
+        // Rentang program 26 hari; harga per hari 100.000. Benar: 100.000 x 2 + 100.000 x 5 = 700.000, bukan 100.000 x 26 x 2 item.
+        DB::table('penjualan_program')->where('id', $this->program6)->update(['durasi_hari' => 26, 'tgl_mulai' => '2026-11-10', 'tgl_selesai' => '2026-12-05']);
+        foreach ([$first, $second] as $master) {
+            DB::table('penjualan_program_biaya')->insert(['id_penjualan' => $this->program6, 'id_penjualan_master' => $master, 'tipe' => 'fixed', 'item' => 'Konsumsi', 'id_satuan' => $day, 'harga' => 100000]);
+        }
+        $budget = Expenses::budget($this->program6, 'fixed');
+        $this->assertSame('700000.00', $budget['budget']);
+        $this->assertSame(['200000.00', '500000.00'], array_column($budget['items'], 'estimasi'));
+        $this->assertSame(['2.00', '5.00'], array_column($budget['items'], 'qty'));
+    }
 }

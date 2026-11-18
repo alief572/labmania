@@ -27,11 +27,12 @@ class DashboardController extends Controller
         $rows = DB::table('penjualan_program as pj')->leftJoin('master_customer as c', 'c.id_customer', '=', 'pj.id_customer')
             ->whereIn('pj.status', $statuses)->when($ids !== null, fn ($q) => $q->whereIn('pj.id', $ids))->orderBy('pj.tgl_mulai')->orderBy('pj.id')->get(['pj.*', 'c.name_customer']);
         $costs = $this->costsFor($rows->pluck('id')->all());
+        $durations = Sales::durationsFor($rows->pluck('id')->all());
 
-        return $rows->map(function ($r) use ($costs) {
+        return $rows->map(function ($r) use ($costs, $durations) {
             $r->judul = $this->title((int) $r->id_master_program);
             $r->tampil = Sales::display($r);
-            $r->c = Costing::calculate($r->durasi_hari, $r->target_peserta, $r->harga_jual_peserta, $costs[$r->id] ?? []);
+            $r->c = Sales::costingOf($r, $costs[$r->id] ?? [], $durations);
 
             return $r;
         })->all();

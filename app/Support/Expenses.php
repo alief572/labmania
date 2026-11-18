@@ -60,6 +60,8 @@ class Expenses
     {
         $programs = DB::table('penjualan_program')->whereIn('id', $ids)->get()->keyBy('id');
         $costs = Sales::costsFor($ids);
+        // Durasi tiap Master Program (PJ-FR-32): biaya per hari dihitung dengan durasi Master Program asalnya, bukan rentang program.
+        $durations = DB::table('penjualan_program_master')->whereIn('id_penjualan', $ids)->pluck('durasi_hari', 'id');
         $extra = DB::table('pengajuan_overbudget_detail as d')->join('pengajuan_overbudget as h', 'h.id', '=', 'd.id_overbudget')
             ->whereIn('h.id_penjualan', $ids)->where('h.status', 'disetujui')->get(['d.*', 'h.id_penjualan', 'h.tipe_biaya'])->groupBy(['id_penjualan', 'tipe_biaya']);
         $used = DB::table('pengajuan_biaya_detail as d')->join('pengajuan_biaya as h', 'h.id', '=', 'd.id_pengajuan')
@@ -69,23 +71,25 @@ class Expenses
             $program = $programs[$id] ?? abort(404);
             foreach (['fixed', 'variable'] as $category) {
                 $result[$id][$category] = self::calculateBudget($program, $category,
-                    ($costs[$id] ?? collect())->map(fn ($row) => (array) $row), $extra[$id][$category] ?? [], $used[$id][$category] ?? []);
+                    ($costs[$id] ?? collect())->map(fn ($row) => (array) $row), $extra[$id][$category] ?? [], $used[$id][$category] ?? [], $durations);
             }
         }
 
         return $result;
     }
 
-    private static function calculateBudget(object $p, string $category, $costs, $extra, $used): array
+    private static function calculateBudget(object $p, string $category, $costs, $extra, $used, $durations = null): array
     {
         $items = [];
         foreach ($costs as $b) {
             if ($b['tipe'] !== $category) {
                 continue;
             }
+            // Biaya tanpa Master Program (data sebelum migrasi) memakai durasi program, yang sama dengan durasi satu-satunya Master Program.
+            $days = (int) ($durations[$b['id_penjualan_master'] ?? 0] ?? $p->durasi_hari);
             $qty = match ($b['nama_satuan']) {
-                'Day' => $p->durasi_hari, 'Peserta/Event' => $p->target_peserta,
-                'Peserta/Day' => $p->target_peserta * $p->durasi_hari, default => 1,
+                'Day' => $days, 'Peserta/Event' => $p->target_peserta,
+                'Peserta/Day' => $p->target_peserta * $days, default => 1,
             };
             $items['c'.$b['id']] = ['key' => 'c'.$b['id'], 'id_penjualan_biaya' => $b['id'], 'id_overbudget_detail' => null,
                 'item' => $b['item'], 'qty' => self::money($qty), 'harga' => self::money($b['harga']),

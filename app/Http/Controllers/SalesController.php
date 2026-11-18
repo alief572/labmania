@@ -42,16 +42,17 @@ class SalesController extends Controller
         $reschedules = DB::table('penjualan_program_reschedule')->whereIn('id_penjualan', $rows->pluck('id'))->selectRaw('id_penjualan, COUNT(*) as total')->groupBy('id_penjualan')->pluck('total', 'id_penjualan');
         $deals = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->whereIn('q.id_penjualan', $rows->pluck('id'))->where('x.status', 'deal')->selectRaw('q.id_penjualan, COUNT(*) as total')->groupBy('q.id_penjualan')->pluck('total', 'id_penjualan');
         $costs = Sales::costsFor($rows->pluck('id')->all());
+        $durations = Sales::durationsFor($rows->pluck('id')->all());
         $listed = DB::table('penjualan_program_master as m')->join('master_program as mp', 'mp.id', '=', 'm.id_master_program')->leftJoin('ms_trainer as tr', 'tr.id', '=', 'm.id_trainer')
             ->whereIn('m.id_penjualan', $rows->pluck('id'))->orderBy('m.urutan')->get(['m.id_penjualan', 'mp.nomor', 'm.tgl_mulai', 'm.tgl_selesai', 'tr.nama as trainer_nama'])->groupBy('id_penjualan');
-        $rows->through(function ($p) use ($titles, $reschedules, $deals, $costs, $listed) {
+        $rows->through(function ($p) use ($titles, $reschedules, $deals, $costs, $listed, $durations) {
             $p->masters = $listed->get($p->id, collect())->values();
             $p->judul = $titles[$p->id_master_program] ?? '';
             $p->nomor = Sales::display($p);
             $p->reschedule_count = (int) ($reschedules[$p->id] ?? 0);
             $p->peserta_deal = (int) ($deals[$p->id] ?? 0);
             $p->reschedulable = Reschedule::reason($p) === null;
-            $p->costing = Costing::calculate($p->durasi_hari, $p->target_peserta, $p->harga_jual_peserta, $costs->get($p->id, collect())->map(fn ($b) => (array) $b)->all());
+            $p->costing = Sales::costingOf($p, $costs->get($p->id, collect())->map(fn ($b) => (array) $b)->all(), $durations);
             $p->warnings = Costing::warnings($p->costing, $p->target_peserta);
 
             return $p;

@@ -140,6 +140,56 @@ class Sales
         return self::titles([$master])[$master] ?? '';
     }
 
+    /**
+     * Durasi tiap Master Program, dikelompokkan per Penjualan Program (satu query). Dipakai daftar dan dashboard agar biaya per hari
+     * dihitung dengan durasi Master Program asalnya (PJ-FR-32), tidak dengan rentang seluruh program.
+     */
+    public static function durationsFor(array $ids): array
+    {
+        if (! $ids) {
+            return [];
+        }
+
+        return DB::table('penjualan_program_master')->whereIn('id_penjualan', $ids)->pluck('durasi_hari', 'id')->all();
+    }
+
+    /**
+     * Costing satu Penjualan Program dari biaya dan durasi per Master Program. Biaya tanpa baris master (data sebelum migrasi) memakai durasi header.
+     * Satu Master Program menghasilkan angka yang sama dengan Costing::calculate biasa.
+     *
+     * @param  array<int, array<string, mixed>>  $costs
+     * @param  array<int, int|string>  $durations  id penjualan_program_master => durasi hari
+     */
+    public static function costingOf(object $p, array $costs, array $durations): array
+    {
+        $groups = [];
+        foreach ($costs as $b) {
+            $groups[(int) ($b['id_penjualan_master'] ?? 0)][] = $b;
+        }
+        if (count($groups) <= 1) {
+            $key = (int) array_key_first($groups);
+            $days = $key ? ($durations[$key] ?? $p->durasi_hari) : $p->durasi_hari;
+
+            return Costing::calculate($days, $p->target_peserta, $p->harga_jual_peserta, $costs);
+        }
+        $fixed = 0.0;
+        $variable = 0.0;
+        foreach ($groups as $key => $group) {
+            $part = Costing::calculate($durations[$key] ?? $p->durasi_hari, 1, 0, $group);
+            $fixed += $part['total_fixed'];
+            $variable += $part['var_per_pax'];
+        }
+        $target = (int) $p->target_peserta;
+        $price = (float) $p->harga_jual_peserta;
+        $hpp = $fixed + $variable * $target;
+        $income = $price * $target;
+        $contribution = $price - $variable;
+
+        return ['total_fixed' => $fixed, 'var_per_pax' => $variable, 'total_var' => $variable * $target, 'total_hpp' => $hpp, 'hpp_per_pax' => $target > 0 ? $hpp / $target : 0,
+            'pendapatan' => $income, 'profit' => $income - $hpp, 'margin' => $income > 0 ? round((($income - $hpp) / $income) * 100, 1) : 0,
+            'bep_peserta' => $contribution > 0 ? max(1, (int) ceil(round($fixed / $contribution, 6))) : null];
+    }
+
     public static function costsFor(array $ids)
     {
         return DB::table('penjualan_program_biaya as b')->leftJoin('ms_satuan as s', 's.id', '=', 'b.id_satuan')
