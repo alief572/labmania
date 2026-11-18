@@ -14,7 +14,10 @@ class Invoice
     public static function uninvoiced()
     {
         return DB::table('sales_order as s')->where('s.status', 'siap')
-            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('invoice as i')->whereColumn('i.id_sales_order', 's.id')->where('i.status', 'invoiced'))
+            ->where(fn ($w) => $w->whereNotExists(fn ($q) => $q->selectRaw('1')->from('invoice as i')->whereColumn('i.id_sales_order', 's.id')->where('i.status', 'invoiced'))
+                // TOP (SO-FR-24): SO tetap di Uninvoiced sampai semua termin punya invoice aktif.
+                ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('quotation as tq')->whereColumn('tq.id', 's.id_quotation')->where('tq.cara_bayar', 'top')
+                    ->whereRaw('(SELECT COUNT(*) FROM invoice ti WHERE ti.id_sales_order = s.id AND ti.status = ?) < (SELECT COUNT(*) FROM quotation_termin tt WHERE tt.id_quotation = tq.id)', ['invoiced'])))
             ->whereExists(fn ($q) => $q->selectRaw('1')->from('quotation_peserta as x')->whereColumn('x.id_quotation', 's.id_quotation')->where('x.status', 'deal'));
     }
 
@@ -54,6 +57,37 @@ class Invoice
         }
 
         return '';
+    }
+
+    /**
+     * Keadaan termin TOP sebuah SO: daftar termin, invoice aktif per termin, dan termin berikutnya yang belum ditagih.
+     * Null bila quotation Full payment.
+     */
+    public static function terminState(object $quotation, int $soId, bool $lock = false): ?array
+    {
+        $termin = Quotation::termin($quotation);
+        if (! $termin) {
+            return null;
+        }
+        $billed = DB::table('invoice')->where('id_sales_order', $soId)->where('status', 'invoiced')->whereNotNull('termin_ke')
+            ->when($lock, fn ($q) => $q->lockForUpdate())->get()->keyBy('termin_ke');
+        $next = null;
+        foreach ($termin as $t) {
+            if (! $billed->has($t->urutan)) {
+                $next = (int) $t->urutan;
+                break;
+            }
+        }
+
+        return ['termin' => $termin, 'billed' => $billed, 'next' => $next, 'total' => count($termin), 'so' => $soId];
+    }
+
+    /** True bila semua tagihan SO sudah terbit: satu invoice aktif (Full) atau satu per termin (TOP). */
+    public static function complete(object $quotation, int $soId): bool
+    {
+        $state = self::terminState($quotation, $soId);
+
+        return $state ? $state['next'] === null : DB::table('invoice')->where('id_sales_order', $soId)->where('status', 'invoiced')->exists();
     }
 
     public static function row(int $id, bool $lock = false): object
@@ -97,7 +131,16 @@ class Invoice
             throw ValidationException::withMessages(['invoice' => 'Lengkapi Perlakuan PPN pada Master Company sebelum Invoice.']);
         }
         $detail['perlakuan_ppn'] = $treatment;
-        $detail['amounts'] = self::calculate($q, $detail['peserta']->count(), $treatment);
+        $count = $detail['peserta']->count();
+        $state = self::terminState($q, $soId);
+        $detail['termin'] = null;
+        if ($state && $state['next'] !== null) {
+            $ke = $state['next'];
+            $detail['termin'] = ['ke' => $ke, 'dari' => $state['total'], 'persen' => (string) $state['termin'][$ke - 1]->persen, 'keterangan' => $state['termin'][$ke - 1]->keterangan];
+            $detail['amounts'] = self::terminAmounts($q, $count, $treatment, $state, $ke);
+        } else {
+            $detail['amounts'] = self::calculate($q, $count, $treatment);
+        }
 
         return $detail;
     }
@@ -131,7 +174,20 @@ class Invoice
             Sales::open(Sales::program($read->id_penjualan, true));
             $so = SalesOrder::row($soId, true);
             Quotation::row($so->id_quotation, true);
-            $existing = DB::table('invoice')->where('id_sales_order', $soId)->where('status', 'invoiced')->first();
+            $state = self::terminState(Quotation::row($so->id_quotation, true), $soId, true);
+            $ke = null;
+            if ($state) {
+                // Form membawa termin yang ditagih agar klik ganda tidak menagih termin berikutnya.
+                $ke = (int) ($input['termin_ke'] ?? 0);
+                if ($ke < 1 || $ke > $state['total']) {
+                    throw ValidationException::withMessages(['termin_ke' => 'Pilih termin yang ditagih.']);
+                }
+                if (! $state['billed']->has($ke) && $state['next'] !== $ke) {
+                    throw ValidationException::withMessages(['termin_ke' => 'Termin '.$ke.' belum waktunya ditagih atau data berubah; muat ulang.']);
+                }
+            }
+            $existing = DB::table('invoice')->where('id_sales_order', $soId)->where('status', 'invoiced')
+                ->when($state, fn ($w) => $w->where('termin_ke', $ke))->first();
             if ($existing) {
                 if ($existing->tanggal !== $input['tanggal'] || ($existing->no_faktur ?? '') !== ($input['no_faktur'] ?? '') || (int) $existing->coa_penjualan !== (int) $input['coa_penjualan']) {
                     throw ValidationException::withMessages(['invoice' => 'SO sudah memiliki Invoice aktif dengan data berbeda.']);
@@ -150,6 +206,8 @@ class Invoice
             $number = Sales::number('invoice', 'LMI/INV/'.$date->format('m/y'));
             // Snapshot hanya fakta cetak; token, path berkas dan konfigurasi privat tidak disalin.
             $snapshot = array_intersect_key($source, array_flip(['so', 'program', 'judul', 'produk', 'sales', 'company', 'perlakuan_ppn']));
+            // Termin yang benar-benar ditagih ($ke), bukan "termin berikutnya" dari source(), agar snapshot historis tetap tepat.
+            $snapshot['termin'] = $state ? ['ke' => $ke, 'dari' => $state['total'], 'persen' => (string) $state['termin'][$ke - 1]->persen, 'keterangan' => $state['termin'][$ke - 1]->keterangan] : null;
             $snapshot['quotation'] = array_intersect_key((array) $q, array_flip(['id', 'nomor', 'revisi', 'tujuan', 'kepada_nama', 'up_nama', 'alamat', 'skema_harga', 'harga_peserta', 'harga_allin', 'paket_maks_peserta', 'tambahan_per_peserta', 'diskon', 'is_ppn']));
             $snapshot['quotation']['nomor'] = Sales::display($q);
             $snapshot['peserta'] = $source['peserta']->map(fn ($p) => array_intersect_key((array) $p, array_flip(['id', 'nama', 'instansi', 'jabatan'])))->all();
@@ -158,7 +216,7 @@ class Invoice
                 $snapshot['quotation']['up_nama'] = $source['peserta']->first()->nama;
             }
             $header = ['nomor' => $number, 'tanggal' => $input['tanggal'], 'id_sales_order' => $soId, 'id_quotation' => $q->id, 'id_penjualan' => $so->id_penjualan,
-                'cara_tagih' => 'satu', 'perlakuan_ppn' => $source['perlakuan_ppn'], 'no_faktur' => $q->is_ppn ? ($input['no_faktur'] ?? null) : null,
+                'cara_tagih' => 'satu', 'termin_ke' => $ke, 'perlakuan_ppn' => $source['perlakuan_ppn'], 'no_faktur' => $q->is_ppn ? ($input['no_faktur'] ?? null) : null,
                 ...$source['amounts'], 'coa_penjualan' => $input['coa_penjualan'], 'status' => 'invoiced', 'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR), ...self::audit()];
             $id = DB::table('invoice')->insertGetId($header);
             $count = count($snapshot['peserta']);
@@ -241,11 +299,27 @@ class Invoice
         }
     }
 
-    public static function calculate(object $quotation, int $count, string $treatment): array
+    /**
+     * Nilai invoice termin ke-$ke: penjualan dan biaya lain = persen x nilai Deal, termin terakhir menampung selisih
+     * terhadap invoice aktif lain. DPP, PPN, dan total diturunkan per invoice dengan rumus yang sama seperti Full payment.
+     */
+    public static function terminAmounts(object $quotation, int $count, string $treatment, array $state, int $ke): array
+    {
+        $full = self::calculate($quotation, $count, $treatment);
+        $billed = DB::table('invoice')->where('id_sales_order', $state['so'])->where('status', 'invoiced')->where('termin_ke', '!=', $ke)->get(['penjualan', 'biaya_lain']);
+        $part = [];
+        foreach (['penjualan', 'biaya_lain'] as $field) {
+            $part[$field] = Quotation::terminShare($state['termin'], $ke, $full[$field], $billed->sum(fn ($i) => (string) $i->$field));
+        }
+
+        return self::calculate($quotation, $count, $treatment, $part);
+    }
+
+    public static function calculate(object $quotation, int $count, string $treatment, ?array $part = null): array
     {
         $q = Quotation::calculate($quotation, $count);
-        $sale = BigDecimal::of($q['dpp'])->toScale(0, RoundingMode::HalfUp);
-        $other = BigDecimal::of($q['biaya_lain'])->toScale(0, RoundingMode::HalfUp);
+        $sale = BigDecimal::of($part['penjualan'] ?? $q['dpp'])->toScale(0, RoundingMode::HalfUp);
+        $other = BigDecimal::of($part['biaya_lain'] ?? $q['biaya_lain'])->toScale(0, RoundingMode::HalfUp);
         $dpp = $quotation->is_ppn ? $sale->multipliedBy(11)->dividedBy(12, 0, RoundingMode::HalfUp) : BigDecimal::zero();
         $tax = $dpp->multipliedBy(12)->dividedBy(100, 0, RoundingMode::HalfUp);
         $total = $sale->plus($tax)->plus($other);

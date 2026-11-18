@@ -8,6 +8,7 @@ use Tests\Feature\Master\MasterTestCase;
 class Phase3Test extends MasterTestCase
 {
     use Phase3Scenarios;
+    use TopQuotationScenarios;
 
     protected function setUp(): void
     {
@@ -26,6 +27,7 @@ class Phase3Test extends MasterTestCase
         $this->seedPhase3();
         (require base_path('database/migrations/2026_11_14_090000_sales_order_invoice.php'))->up();
         (require base_path('database/migrations/2026_11_14_100000_reschedule_refund.php'))->up();
+        (require base_path('database/migrations/2026_11_17_090000_quotation_top.php'))->up();
     }
 
     public function test_halaman_quotation_memuat_jumlah_tab_dan_ringkasan_batch(): void

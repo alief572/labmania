@@ -60,6 +60,48 @@ class Quotation
         ])];
     }
 
+    /** Termin TOP quotation berurutan; kosong bila Full payment atau termin kurang dari dua. */
+    public static function termin(object|array $quotation): array
+    {
+        $q = (array) $quotation;
+        if (($q['cara_bayar'] ?? 'full') !== 'top' || empty($q['id']) || ! Schema::hasTable('quotation_termin')) {
+            return [];
+        }
+        $rows = DB::table('quotation_termin')->where('id_quotation', $q['id'])->orderBy('urutan')->get(['urutan', 'persen', 'keterangan'])->all();
+
+        return count($rows) > 1 ? $rows : [];
+    }
+
+    /**
+     * Nilai termin ke-$ke dari nilai Deal (QTN-FR-44, SO-FR-24): persen x nilai, termin terakhir menampung selisih pembulatan.
+     * ponytail: dasar persen x nilai Deal dan pembulatan di termin terakhir berstatus [USULAN] di spec; ubah di sini bila BA menetapkan lain.
+     *
+     * @param  array<int, object>  $termin
+     * @param  array<int, string|int>  $sudah  nilai termin yang sudah ditagih (jumlah dipakai untuk termin terakhir)
+     */
+    public static function terminShare(array $termin, int $ke, string|int $nilai, string|int $sudah = 0): string
+    {
+        $last = $ke === count($termin);
+        if ($last) {
+            return (string) BigDecimal::of((string) $nilai)->minus((string) $sudah)->toScale(0, RoundingMode::HalfUp);
+        }
+
+        return (string) BigDecimal::of((string) $nilai)->multipliedBy((string) $termin[$ke - 1]->persen)->dividedBy(100, 0, RoundingMode::HalfUp);
+    }
+
+    /** Tulis ulang termin dari input form; hanya berlaku untuk cara_bayar top. */
+    public static function saveTermin(int $id, string $cara, array $rows): void
+    {
+        DB::table('quotation_termin')->where('id_quotation', $id)->delete();
+        if ($cara !== 'top') {
+            return;
+        }
+        foreach (array_values($rows) as $i => $r) {
+            DB::table('quotation_termin')->insert(['id_quotation' => $id, 'urutan' => $i + 1, 'persen' => $r['persen'], 'keterangan' => trim($r['keterangan']),
+                'created_by' => Auth::id(), 'created_date' => now(), 'updated_by' => Auth::id(), 'updated_date' => now()]);
+        }
+    }
+
     public static function count(object $q): int
     {
         return $q->status === 'deal' ? DB::table('quotation_peserta')->where('id_quotation', $q->id)->where('status', 'deal')->count() : (int) $q->kuota_peserta;

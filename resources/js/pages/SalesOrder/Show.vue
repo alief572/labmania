@@ -5,14 +5,14 @@ import PageHead from '../../components/PageHead.vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ReadyInvoice from '../../components/ReadyInvoice.vue';
 import { money, type Snapshot } from '../../types/salesOrder';
-defineProps<Omit<Snapshot, 'perlakuan_ppn'> & { calc: Record<string, string>; closed: boolean; canManage: boolean; canInvoice: boolean; pendingReconfirmation: boolean; exited: {id:number;nama:string;keluar_jenis:string;keluar_alasan:string}[]; revisions: {revisi:number;created_date:string}[]; invoice: { id: number; nomor: string } | null; documents: { id: number; nama_file: string; ukuran_byte: number; created_date: string; nm_lengkap: string }[]; companyConfirmation: { id: number; surat_konfirmasi_nama: string } | null }>();
+defineProps<Omit<Snapshot, 'perlakuan_ppn'> & { calc: Record<string, string>; closed: boolean; canManage: boolean; canInvoice: boolean; pendingReconfirmation: boolean; exited: {id:number;nama:string;keluar_jenis:string;keluar_alasan:string}[]; revisions: {revisi:number;created_date:string}[]; invoice: { id: number; nomor: string } | null; termin?: { urutan: number; persen: string; keterangan: string }[]; invoices?: { id: number; nomor: string; termin_ke: number | null; total_tagihan: string; tanggal_bayar: string | null }[]; documents: { id: number; nama_file: string; ukuran_byte: number; created_date: string; nm_lengkap: string }[]; companyConfirmation: { id: number; surat_konfirmasi_nama: string } | null }>();
 const page = usePage();
 const LANGKAH: Record<string, string> = {
     open: 'Periksa isi Sales Order dan surat konfirmasi peserta. Bila sudah benar, tandai Siap dibuatkan invoice.',
     siap: 'Sales Order sudah siap. Finance membuat invoice di menu Invoicing, tab Uninvoiced.',
     invoiced: 'Semua peserta Deal sudah ditagih.',
 };
-const stage = (so: { status: string }, invoice: unknown) => (invoice ? 'invoiced' : so.status === 'siap' ? 'siap' : 'open');
+const stage = (so: { status: string; status_tampil?: string }, invoice: unknown) => (so.status_tampil === 'Invoiced' ? 'invoiced' : so.status === 'siap' ? 'siap' : 'open');
 const allowed = (menu: string) => ((page.props.permissions as Record<string, string[]>)?.[menu] || []).includes('View');
 </script>
 <template>
@@ -25,6 +25,12 @@ const allowed = (menu: string) => ((page.props.permissions as Record<string, str
             <p class="qv-next"><span class="muted">Langkah berikutnya:</span> {{ LANGKAH[stage(so, invoice)] }}</p>
             <div class="row-actions"><ReadyInvoice v-if="canManage && so.status === 'open'" :so="so" :kepada="quotation.kepada_nama" :count="peserta.length" :total="calc.grand_total!" /><a class="primary" :href="appUrl(`/sales-order/${so.id}/pdf`)" target="_blank" rel="noopener">Print Out SO</a><Link v-if="allowed('quotation_program')" :href="appUrl(`/quotation/${quotation.id}`)">Buka quotation</Link></div>
         </section>
+        <section v-if="termin?.length" class="panel"><h2>Pembayaran TOP</h2><p>{{ termin.length }} termin, satu termin satu invoice.</p>
+            <div class="table-wrap"><table><caption class="sr-only">Termin dan invoice</caption><thead><tr><th>Termin</th><th>Persentase</th><th>Keterangan</th><th>Invoice</th><th class="money">Total tagihan</th><th>Pembayaran</th></tr></thead>
+                <tbody><tr v-for="t in termin" :key="t.urutan">
+                    <td class="num">{{ t.urutan }}</td><td>{{ Number(t.persen) }}%</td><td>{{ t.keterangan }}</td>
+                    <template v-for="i in [(invoices ?? []).find((x) => x.termin_ke === t.urutan)]" :key="t.urutan"><template v-if="i"><td><Link v-if="allowed('invoicing')" class="code" :href="appUrl(`/invoicing/${i.id}`)">{{ i.nomor }}</Link><span v-else class="code">{{ i.nomor }}</span></td><td class="money">{{ money(i.total_tagihan) }}</td><td><span class="badge" :class="i.tanggal_bayar ? 'st-paid' : 'st-draft'">{{ i.tanggal_bayar ? 'Dibayar' : 'Belum dibayar' }}</span></td></template><template v-else><td class="muted" colspan="3">Belum ditagih</td></template></template>
+                </tr></tbody></table></div></section>
         <section class="panel"><h2><span class="section-number">1</span> Sales Order</h2><p>Tanggal tersimpan: {{ so.tanggal }} · Quotation: {{ quotation.nomor }} · Sales: {{ sales }}</p><p>Penjualan Program: {{ program.nomor }} · {{ program.jenis.toUpperCase() }}</p><p v-if="so.siap_date">Siap invoice oleh {{ so.siap_nama }} · {{ so.siap_date }}</p></section>
         <section class="panel"><h2><span class="section-number">2</span> Ditujukan Kepada</h2><p>{{ quotation.tujuan }} · {{ quotation.kepada_nama }} · u.p. {{ quotation.up_nama }}</p><p>{{ quotation.alamat }}</p><p v-if="company">Perlakuan PPN: {{ company.perlakuan_ppn || 'Belum dilengkapi' }}</p></section>
         <section class="panel"><h2><span class="section-number">3</span> Program</h2><p v-for="k in produk" :key="k.nomor">{{ k.nomor }} · {{ k.judul }} · {{ k.varian }} · {{ k.sertifikat }}</p><p>{{ program.tgl_mulai }} s.d. {{ program.tgl_selesai }} · {{ program.waktu }} · {{ program.lokasi }}</p><p>{{ program.durasi_hari }} hari · {{ program.jam_pembelajaran }} JP · {{ quotation.skema_harga === 'allin' ? 'All-in 1 company' : 'Per peserta' }}</p></section>

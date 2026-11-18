@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Invoice;
 use App\Support\Quotation;
 use App\Support\QuotationPdf;
 use App\Support\Sales;
@@ -42,7 +43,7 @@ class SalesOrderController extends Controller
         $summaries = [];
         if ($tab === 'so') {
             DB::table('quotation as q')->join('sales_order as so', 'so.id_quotation', '=', 'q.id')->whereIn('so.id_penjualan', $ids)
-                ->select('q.*', 'so.status as so_status')->selectRaw("EXISTS (SELECT 1 FROM invoice i WHERE i.id_sales_order = so.id AND i.status = 'invoiced') as has_invoice")
+                ->select('q.*', 'so.status as so_status', 'so.id as so_id')->selectRaw("(SELECT COUNT(*) FROM invoice i WHERE i.id_sales_order = so.id AND i.status = 'invoiced') as n_invoice")
                 ->orderBy('q.id')->chunkById(250, function ($quotes) use (&$summaries) {
                     $counts = DB::table('quotation_peserta')->whereIn('id_quotation', $quotes->pluck('id'))->where('status', 'deal')->selectRaw('id_quotation, COUNT(*) as jumlah')->groupBy('id_quotation')->pluck('jumlah', 'id_quotation');
                     foreach ($quotes as $quote) {
@@ -50,7 +51,7 @@ class SalesOrderController extends Controller
                         $summary = $summaries[$id] ?? ['jumlah' => 0, 'nilai' => BigDecimal::zero(), 'statuses' => []];
                         $summary['jumlah']++;
                         $summary['nilai'] = $summary['nilai']->plus(Quotation::calculate($quote, (int) ($counts[$quote->id] ?? 0))['grand_total']);
-                        $status = $quote->has_invoice ? 'Invoiced' : ($quote->so_status === 'siap' ? 'Siap invoice' : 'Belum siap invoice');
+                        $status = $quote->n_invoice > 0 && Invoice::complete($quote, $quote->so_id) ? 'Invoiced' : ($quote->so_status === 'siap' ? 'Siap invoice' : 'Belum siap invoice');
                         $summary['statuses'][$status] = ($summary['statuses'][$status] ?? 0) + 1;
                         $summaries[$id] = $summary;
                     }
@@ -91,7 +92,7 @@ class SalesOrderController extends Controller
         $orders = DB::table('sales_order')->where('id_penjualan', $id)->when($ids !== null, fn ($q) => $q->whereIn('id', $ids))->orderByDesc('id')->get();
         $quotes = DB::table('quotation')->whereIn('id', $orders->pluck('id_quotation'))->get()->keyBy('id');
         $people = DB::table('quotation_peserta')->whereIn('id_quotation', $orders->pluck('id_quotation'))->where('status', 'deal')->orderBy('id')->get(['id_quotation', 'nama'])->groupBy('id_quotation');
-        $invoices = DB::table('invoice')->whereIn('id_sales_order', $orders->pluck('id'))->where('status', 'invoiced')->get(['id', 'nomor', 'id_sales_order'])->keyBy('id_sales_order');
+        $invoices = DB::table('invoice')->whereIn('id_sales_order', $orders->pluck('id'))->where('status', 'invoiced')->orderBy('id')->get(['id', 'nomor', 'id_sales_order'])->groupBy('id_sales_order');
         $users = DB::table('users')->whereIn('id_user', $orders->pluck('siap_by')->filter())->pluck('nm_lengkap', 'id_user');
 
         return $orders->map(function ($so) use ($quotes, $people, $invoices, $users) {
@@ -105,8 +106,8 @@ class SalesOrderController extends Controller
             $so->jumlah_peserta = $ps->count();
             $so->nama_peserta = $ps->take(2)->pluck('nama')->implode(', ');
             $so->calc = Quotation::calculate($q, $ps->count());
-            $so->invoice = $invoices->get($so->id);
-            $so->status_tampil = $so->invoice ? 'Invoiced' : ($so->status === 'siap' ? 'Siap invoice' : 'Belum siap invoice');
+            $so->invoice = $invoices->get($so->id)?->first();
+            $so->status_tampil = $so->invoice && Invoice::complete($q, $so->id) ? 'Invoiced' : ($so->status === 'siap' ? 'Siap invoice' : 'Belum siap invoice');
             $so->siap_nama = $users[$so->siap_by] ?? null;
 
             return $so;

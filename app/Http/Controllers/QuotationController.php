@@ -183,10 +183,11 @@ class QuotationController extends Controller
         }
         $form = $q ? (array) $q : ['id' => null, 'nomor' => '', 'status' => 'draft', 'id_penjualan' => $programId ?? '', 'tanggal' => today()->toDateString(), 'berlaku_sampai' => now()->format('Y').'-12-31', 'id_sales' => '', 'sumber_info' => 'Sales',
             'tujuan' => $p?->jenis === 'b2b' ? 'company' : 'personal', 'id_customer' => $p?->id_customer ?? '', 'up_nama' => '', 'kepada_nama' => '', 'alamat' => '', 'kuota_peserta' => $p?->jenis === 'b2b' ? 10 : 1,
-            'harga_allin' => $p?->jenis === 'b2b' ? $p->harga_jual_peserta * 10 : 0, 'diskon' => 0, 'is_ppn' => 1, 'biaya_lain' => 0, 'id_template_konfirmasi' => '', 'konfirmasi_isian' => [], 'konfirmasi_pernyataan' => '', 'kolom_peserta_b2b' => []];
+            'harga_allin' => $p?->jenis === 'b2b' ? $p->harga_jual_peserta * 10 : 0, 'diskon' => 0, 'is_ppn' => 1, 'biaya_lain' => 0, 'cara_bayar' => 'full', 'id_template_konfirmasi' => '', 'konfirmasi_isian' => [], 'konfirmasi_pernyataan' => '', 'kolom_peserta_b2b' => []];
         foreach (['konfirmasi_isian', 'kolom_peserta_b2b'] as $key) {
             $form[$key] = is_array($form[$key] ?? null) ? $form[$key] : (json_decode($form[$key] ?? '[]', true) ?: []);
         }
+        $form['termin'] = $q ? array_map(fn ($t) => ['persen' => (float) $t->persen, 'keterangan' => $t->keterangan], Quotation::termin($q)) : [];
         $form['keterangan'] = $q ? DB::table('quotation_keterangan')->where('id_quotation', $q->id)->orderBy('urutan')->get() : [];
         $templates = DB::table('ms_template_konfirmasi')->where('aktif', 1)->get();
         foreach ($templates as $t) {
@@ -230,7 +231,20 @@ class QuotationController extends Controller
             'harga_allin' => 'required|integer|min:0|max:9999999999999', 'diskon' => 'required|integer|min:0|max:9999999999999', 'biaya_lain' => 'required|integer|min:0|max:9999999999999', 'is_ppn' => 'required|boolean',
             'id_template_konfirmasi' => 'nullable|integer', 'konfirmasi_isian' => 'required|array|min:1|max:30', 'konfirmasi_isian.*' => 'string|max:80', 'konfirmasi_pernyataan' => 'required|string|max:2000',
             'kolom_peserta_b2b' => 'present|array', 'kolom_peserta_b2b.*' => Rule::in(['jabatan', 'email', 'wa', 'nik']), 'keterangan' => 'present|array|max:100',
-            'keterangan.*.kategori' => ['required', Rule::in(['syarat', 'termasuk', 'tidak', 'dokumen', 'klausul'])], 'keterangan.*.teks' => 'required|string|max:2000']);
+            'keterangan.*.kategori' => ['required', Rule::in(['syarat', 'termasuk', 'tidak', 'dokumen', 'klausul'])], 'keterangan.*.teks' => 'required|string|max:2000',
+            'cara_bayar' => 'nullable|in:full,top', 'termin' => 'nullable|array|max:12', 'termin.*.persen' => 'required|numeric|gt:0|lt:100', 'termin.*.keterangan' => 'required|string|max:150']);
+        $in['cara_bayar'] ??= 'full';
+        $termin = $in['cara_bayar'] === 'top' ? array_map(fn ($t) => ['persen' => round((float) $t['persen'], 2), 'keterangan' => $t['keterangan']], $in['termin'] ?? []) : [];
+        if ($in['cara_bayar'] === 'top') {
+            // QTN-FR-44: minimal 2 termin, total 100% dengan toleransi pembulatan 0,05%.
+            if (count($termin) < 2) {
+                throw ValidationException::withMessages(['termin' => 'TOP memerlukan minimal 2 termin.']);
+            }
+            if (abs(array_sum(array_column($termin, 'persen')) - 100) > 0.05) {
+                throw ValidationException::withMessages(['termin' => 'Total persentase termin harus 100%.']);
+            }
+        }
+        unset($in['termin']);
         Sales::open($p);
         if ($p->status !== 'final' || (int) $in['id_penjualan'] !== (int) $p->id) {
             throw ValidationException::withMessages(['id_penjualan' => 'Pilih Penjualan Program Final.']);
@@ -291,7 +305,7 @@ class QuotationController extends Controller
             $in['kepada_nama'] = null;
         }
 
-        return [$in, $details];
+        return [$in, $details, $termin];
     }
 
     public function store(Request $r)
@@ -314,7 +328,7 @@ class QuotationController extends Controller
             if ($old && $old->status !== 'draft') {
                 throw ValidationException::withMessages(['quotation' => 'Hanya Draft dapat diedit.']);
             }
-            [$data, $details] = $this->validated($r, $p, $old);
+            [$data, $details, $termin] = $this->validated($r, $p, $old);
             $before = $old ? DB::table('quotation_keterangan')->where('id_quotation', $id)->get()->map(fn ($d) => (array) $d)->all() : [];
             if (! $old) {
                 $data += ['nomor' => Sales::number('quotation', 'LMI/PW/'.Carbon::parse($data['tanggal'])->format('m/y')), 'status' => 'draft', 'link_token' => bin2hex(random_bytes(16)), 'link_dibuat' => now(), 'created_by' => Auth::id(), 'created_date' => now()];
@@ -323,6 +337,7 @@ class QuotationController extends Controller
                 $data += ['updated_by' => Auth::id(), 'updated_date' => now()];
                 DB::table('quotation')->where('id', $id)->update($data);
             }
+            Quotation::saveTermin($id, $data['cara_bayar'], $termin);
             DB::table('quotation_keterangan')->where('id_quotation', $id)->delete();
             foreach ($details as $i => $d) {
                 DB::table('quotation_keterangan')->insert(['id_quotation' => $id, 'kategori' => $d['kategori'], 'teks' => $d['teks'], 'urutan' => $i + 1]);
@@ -346,9 +361,9 @@ class QuotationController extends Controller
             throw ValidationException::withMessages(['quotation' => 'Hanya Draft dapat dipratinjau sebagai perubahan.']);
         }
         $p = Sales::program($old?->id_penjualan ?? $r->integer('id_penjualan'));
-        [$data, $details] = $this->validated($r, $p, $old);
+        [$data, $details, $termin] = $this->validated($r, $p, $old);
 
-        return QuotationPdf::response(QuotationPdf::offer((object) ($data + ['id' => null, 'nomor' => $old?->nomor ?? 'Preview — belum disimpan', 'status' => 'draft', 'link_token' => null]), $p, $details), 'Preview-Quotation.pdf');
+        return QuotationPdf::response(QuotationPdf::offer((object) ($data + ['id' => null, 'nomor' => $old?->nomor ?? 'Preview — belum disimpan', 'status' => 'draft', 'link_token' => null]), $p, $details, array_map(fn ($t) => (object) $t, $termin)), 'Preview-Quotation.pdf');
     }
 
     public function pdf(int $id)

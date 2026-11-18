@@ -63,9 +63,10 @@ class QuotationPdf
         }
     }
 
-    public static function offer(object $q, object $p, ?array $details = null): string
+    public static function offer(object $q, object $p, ?array $details = null, ?array $termin = null): string
     {
         $data = self::enrich($q, $p);
+        $data['termin'] = $termin ?? Quotation::termin($q);
         $data['keterangan'] = $details ?? DB::table('quotation_keterangan')->where('id_quotation', $q->id)->orderBy('urutan')->get()->map(fn ($x) => (array) $x)->all();
         $data['peserta'] = $q->id ? DB::table('quotation_peserta')->where('id_quotation', $q->id)->where('status', 'deal')->get()->map(fn ($x) => ['nama_peserta' => $x->nama])->all() : [];
         $calc = Quotation::calculate($q, $q->id ? Quotation::count($q) : (int) $q->kuota_peserta);
@@ -362,6 +363,17 @@ class QuotationPdf
         $linkRow = ! empty($q['link_token']) ? '<br><span class="mut">Konfirmasi kehadiran peserta: isi lewat link quotation.</span>' : '';
 
         $ket = '';
+        if (! empty($q['termin'])) {
+            // QTN-FR-44: tiap termin dicetak dengan nominal, persentase, dan keterangan; termin terakhir menampung selisih pembulatan.
+            $ket .= 'Cara pembayaran: TOP '.count($q['termin']).' termin<br>';
+            $paid = '0';
+            foreach ($q['termin'] as $i => $t) {
+                $nominal = Quotation::terminShare($q['termin'], $i + 1, $c['grand_total'], $paid);
+                $paid = (string) \Brick\Math\BigDecimal::of($paid)->plus($nominal);
+                $ket .= '- Termin '.($i + 1).': '.$this->rp($nominal).' ('.rtrim(rtrim(number_format((float) $t->persen, 2, ',', '.'), '0'), ',').'%) '.$this->e($t->keterangan).'<br>';
+            }
+            $ket .= '<br>';
+        }
         foreach (self::KET_PDF as $kat => $judul) {
             $items = array_filter($q['keterangan'] ?? [], function ($k) use ($kat) {
                 return $k['kategori'] === $kat;

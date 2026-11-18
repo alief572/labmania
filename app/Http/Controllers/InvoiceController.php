@@ -66,6 +66,7 @@ class InvoiceController extends Controller
             $r->sales_nama = $s['sales'];
             $r->jumlah_peserta = count($s['peserta']);
             $r->skema_harga = $s['quotation']['skema_harga'];
+            $r->termin = $s['termin'] ?? null;
             $r->tujuan = $s['quotation']['tujuan'];
             $r->tgl_mulai = $s['program']['tgl_mulai'];
             $r->tgl_selesai = $s['program']['tgl_selesai'];
@@ -82,6 +83,9 @@ class InvoiceController extends Controller
             $r->jumlah_peserta = Quotation::count($q);
             $r->pending = Reconfirmation::pending($q);
             $r->total_tagihan = Quotation::calculate($q, $r->jumlah_peserta)['grand_total'];
+            $state = Invoice::terminState($q, $r->id);
+            $r->pembayaran = $state ? ['cara' => 'top', 'jumlah' => $state['total'], 'berikutnya' => $state['next'],
+                'persen' => $state['next'] ? (string) $state['termin'][$state['next'] - 1]->persen : null, 'keterangan' => $state['next'] ? $state['termin'][$state['next'] - 1]->keterangan : null] : ['cara' => 'full'];
         }
 
         return $r;
@@ -130,14 +134,14 @@ class InvoiceController extends Controller
             $errors = $e->errors();
         }
 
-        return Inertia::render('Invoice/Form', ['source' => array_intersect_key($source, array_flip(['so', 'quotation', 'program', 'judul', 'company', 'sales', 'peserta', 'amounts', 'perlakuan_ppn'])),
+        return Inertia::render('Invoice/Form', ['source' => array_intersect_key($source, array_flip(['so', 'quotation', 'program', 'judul', 'company', 'sales', 'peserta', 'amounts', 'perlakuan_ppn', 'termin'])),
             'coa' => $coa ?: '', 'accounts' => Coa::query()->orderBy('no_perkiraan')->orderBy('id')->get(['id', 'no_perkiraan', 'nama', 'kdcab']), 'journal' => $journal, 'configurationErrors' => $errors, 'tanggal' => $r->input('tanggal', today()->toDateString())]);
     }
 
     public function store(Request $r)
     {
         Gate::authorize('menu', ['invoicing', 'Add']);
-        $input = $r->validate(['id_sales_order' => 'required|integer|min:1', 'tanggal' => 'required|date_format:Y-m-d', 'no_faktur' => 'nullable|string|max:100', 'coa_penjualan' => 'required|integer|min:1']);
+        $input = $r->validate(['id_sales_order' => 'required|integer|min:1', 'termin_ke' => 'nullable|integer|min:1|max:12', 'tanggal' => 'required|date_format:Y-m-d', 'no_faktur' => 'nullable|string|max:100', 'coa_penjualan' => 'required|integer|min:1']);
         $id = Invoice::save($input['id_sales_order'], $input);
 
         return redirect('/invoicing?tab=invoiced')->with('success', 'Invoice '.Invoice::row($id)->nomor.' tersimpan.');

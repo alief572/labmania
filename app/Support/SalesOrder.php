@@ -34,12 +34,13 @@ class SalesOrder
         $q->nomor = Sales::display($q);
         $p = Sales::program($so->id_penjualan);
         $people = DB::table('quotation_peserta')->where('id_quotation', $q->id)->where('status', 'deal')->orderBy('id')->get();
-        $invoice = DB::table('invoice')->where('id_sales_order', $so->id)->where('status', 'invoiced')->first(['id', 'nomor', 'tanggal_bayar']);
+        $invoice = DB::table('invoice')->where('id_sales_order', $so->id)->where('status', 'invoiced')->orderBy('id')->first(['id', 'nomor', 'tanggal_bayar']);
+        $complete = $invoice && Invoice::complete($q, $so->id);
 
         $facts = self::programSnapshot($p);
         $facts['company'] = $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->first(['id_customer', 'name_customer', 'address_office', 'npwp', 'perlakuan_ppn']) : null;
 
-        return ['so' => array_replace((array) $so, ['nomor' => Sales::display($so)]) + ['status_tampil' => $invoice ? 'Invoiced' : ($so->status === 'siap' ? 'Siap invoice' : 'Belum siap invoice'),
+        return ['so' => array_replace((array) $so, ['nomor' => Sales::display($so)]) + ['status_tampil' => $complete ? 'Invoiced' : ($so->status === 'siap' ? 'Siap invoice' : 'Belum siap invoice'),
             'siap_nama' => $so->siap_by ? DB::table('users')->where('id_user', $so->siap_by)->value('nm_lengkap') : null],
             'quotation' => $q, ...$facts, 'closed' => $p->closed_date !== null,
             'pendingReconfirmation' => Reconfirmation::pending($q),
@@ -47,6 +48,7 @@ class SalesOrder
             'revisions' => DB::table('quotation_revisi')->where('id_quotation', $q->id)->orderByDesc('revisi')->get(['revisi', 'created_date']),
             'sales' => DB::table('ms_user_karyawan')->where('id', $q->id_sales)->value('nama'),
             'peserta' => Quotation::participantDocuments($people), 'calc' => Quotation::calculate($q, $people->count()), 'invoice' => $invoice,
+            'termin' => Quotation::termin($q), 'invoices' => DB::table('invoice')->where('id_sales_order', $so->id)->where('status', 'invoiced')->orderBy('termin_ke')->orderBy('id')->get(['id', 'nomor', 'termin_ke', 'total_tagihan', 'tanggal_bayar']),
             'documents' => DB::table('quotation_dokumen as d')->leftJoin('users as u', 'u.id_user', '=', 'd.created_by')->where('d.id_quotation', $q->id)->get(['d.id', 'd.nama_file', 'd.ukuran_byte', 'd.created_date', 'u.nm_lengkap']),
             'companyConfirmation' => DB::table('quotation_konfirmasi_company')->where('id_quotation', $q->id)->where('revisi', $q->revisi)->first(['id', 'surat_konfirmasi_nama']),
         ];

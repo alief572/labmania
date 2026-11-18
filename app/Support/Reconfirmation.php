@@ -38,8 +38,13 @@ class Reconfirmation
             ->first(['i.*']);
     }
 
-    private static function choice(string $decision, ?object $invoice): void
+    private static function choice(string $decision, ?object $invoice, ?object $quotation = null): void
     {
+        // ponytail: refund dan batal TOP menurut termin terbayar ([JMR-7]) belum dibangun; tolak jelas daripada salah menagih atau mengembalikan dana.
+        // Pindah jadwal tidak menyentuh invoice sehingga tetap boleh. Tambahkan alokasi per termin sebelum membuka ini.
+        if ($quotation && $decision !== 'pindah_jadwal' && $decision !== 'tidak' && Quotation::termin($quotation)) {
+            throw ValidationException::withMessages(['keputusan' => 'Batal ikut atau Refund pada quotation TOP belum tersedia; hubungi Sales.']);
+        }
         $paid = $invoice?->tanggal_bayar !== null;
         if (! in_array($decision, $paid ? ['pindah_jadwal', 'refund'] : ['pindah_jadwal', 'batal'], true)) {
             throw ValidationException::withMessages(['keputusan' => 'Status pembayaran berubah atau keputusan tidak sah; muat ulang.']);
@@ -66,7 +71,7 @@ class Reconfirmation
                 throw ValidationException::withMessages(['konfirmasi' => 'Jawaban sudah diterima atau peserta tidak termasuk putaran ini. Perubahan melalui Sales.']);
             }
             $invoice = self::invoice($q, $b2b ? null : (int) $targets->first()->id_quotation_peserta);
-            self::choice($input['keputusan'], $invoice);
+            self::choice($input['keputusan'], $invoice, $q);
             $following = array_values(array_unique(array_map('intval', $input['peserta'] ?? [])));
             if ($input['keputusan'] === 'pindah_jadwal') {
                 if (! $file) {
@@ -136,7 +141,7 @@ class Reconfirmation
             $invoice = self::invoice($q, $b2b ? null : $personId);
             $decision = $input['keputusan'];
             if ($decision !== 'tidak') {
-                self::choice($decision, $invoice);
+                self::choice($decision, $invoice, $q);
             } elseif (! $b2b || $answer->keputusan !== 'tidak') {
                 throw ValidationException::withMessages(['keputusan' => 'Opsi dicoret hanya dari jawaban PIC B2B.']);
             }

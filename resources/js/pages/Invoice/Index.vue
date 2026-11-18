@@ -32,7 +32,7 @@ const busy=ref(false);
 function close(){if(busy.value)return;requestController?.abort();opened.value=false;}
 onBeforeUnmount(()=>{clearTimeout(timer);requestController?.abort();});
 const invoicedColumns=[{title:'No',orderable:false},{title:'No. Program',orderable:true},{title:'No. Invoice',orderable:true},{title:'Customer',orderable:false},{title:'PPN',orderable:true},{title:'Total',orderable:true,className:'dt-body-right'},{title:'Status bayar',orderable:true},{title:'Action',orderable:false}];
-const uninvoicedColumns=[{title:'No',orderable:false},{title:'No. Program',orderable:true},{title:'No. Sales Order',orderable:true},{title:'No. Quotation',orderable:true},{title:'Customer',orderable:true},{title:'Program',orderable:false},{title:'Sales',orderable:true},{title:'Cara tagih',orderable:false},{title:'Nilai quotation',orderable:false,className:'dt-body-right'},{title:'Status',orderable:true},{title:'Action',orderable:false}];
+const uninvoicedColumns=[{title:'No',orderable:false},{title:'No. Program',orderable:true},{title:'No. Sales Order',orderable:true},{title:'No. Quotation',orderable:true},{title:'Customer',orderable:true},{title:'Program',orderable:false},{title:'Sales',orderable:true},{title:'Pembayaran',orderable:false},{title:'Nilai quotation',orderable:false,className:'dt-body-right'},{title:'Status',orderable:true},{title:'Action',orderable:false}];
 </script>
 <template>
     <Head title="Invoicing"/><AppLayout title="Invoicing" full-width>
@@ -48,14 +48,14 @@ const uninvoicedColumns=[{title:'No',orderable:false},{title:'No. Program',order
                 <template #cell-3="{row:p}"><span class="code">{{p.nomor_quotation}}</span></template>
                 <template #cell-4="{row:p}"><span class="tag">{{p.tujuan==='company'?'Company':'Personal'}}</span> {{p.kepada_nama}}</template>
                 <template #cell-5="{row:p}">{{p.judul}}</template><template #cell-6="{row:p}">{{p.sales_nama}}</template>
-                <template #cell-7="{row:p}">{{p.skema_harga==='allin'?'All-in company':'Per quotation'}}</template><template #cell-8="{row:p}">{{money(p.total_tagihan)}}</template>
+                <template #cell-7="{row:p}"><template v-if="p.pembayaran?.cara==='top'">TOP {{p.pembayaran.jumlah}} termin<small>Berikutnya: Termin {{p.pembayaran.berikutnya}} · {{p.pembayaran.persen}}%</small><small>{{p.pembayaran.keterangan}}</small></template><template v-else>Full payment<small>{{p.skema_harga==='allin'?'All-in company':'Per quotation'}}</small></template></template><template #cell-8="{row:p}">{{money(p.total_tagihan)}}</template>
                 <template #cell-9="{row:p}"><span class="badge">{{p.pending?'Menunggu konfirmasi ulang':p.closed_date?'Closed':'Uninvoiced'}}</span></template>
                 <template #cell-10="{row:p}"><ActionMenu v-if="canAdd && !p.closed_date && !p.pending"><Link :href="appUrl(`/invoicing/create?id_sales_order=${p.id}`)">Add Invoicing</Link></ActionMenu></template>
             </ServerTable>
             <ServerTable v-else :url="appUrl('/invoicing/data')" label="Invoiced" :keyword="filters.q || ''" :columns="invoicedColumns" :filters="{...filters,tab}" refresh-on-visit @loaded="result=>{if(result.meta?.counts)tableCounts=result.meta.counts as typeof props.counts}">
                 <template #cell-0="{number}">{{number}}</template>
                 <template #cell-1="{row:p}"><span class="tag" :class="p.jenis==='b2b'?'tag-b2b':'tag-public'">{{p.jenis==='b2b'?'B2B':'Public'}}</span> <span class="code">{{p.nomor_program}}</span><small>{{p.tgl_mulai}} s.d. {{p.tgl_selesai}}</small></template>
-                <template #cell-2="{row:p}"><button type="button" class="link code" @click="open(p.id)">{{p.nomor}}</button><small>{{p.tanggal}} · {{p.nomor_so}}</small></template>
+                <template #cell-2="{row:p}"><button type="button" class="link code" @click="open(p.id)">{{p.nomor}}</button><small>{{p.tanggal}} · {{p.nomor_so}}</small><small v-if="p.termin_ke">Termin {{p.termin_ke}}<template v-if="p.termin"> dari {{p.termin.dari}}</template></small></template>
                 <template #cell-3="{row:p}"><span class="tag">{{p.tujuan==='company'?'Company':'Personal'}}</span> {{p.kepada_nama}}<small>{{p.jumlah_peserta}} peserta · {{p.sales_nama}}</small></template>
                 <template #cell-4="{row:p}">{{p.perlakuan_ppn}}<small>{{p.no_faktur?'Faktur '+p.no_faktur:'Tanpa faktur'}}</small><small v-if="p.perlakuan_ppn==='WAPU'">{{p.setor_tanggal?'Setor '+p.setor_tanggal:'Bukti setor belum'}}</small></template>
                 <template #cell-5="{row:p}">{{money(p.total_tagihan)}}<small v-if="p.piutang!==p.total_tagihan">Piutang {{money(p.piutang)}}</small></template>
