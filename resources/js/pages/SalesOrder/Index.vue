@@ -50,13 +50,15 @@ const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => 
                 <template #cell-4="{ row: p }">{{ money(p.nilai_so) }}</template>
                 <template #cell-5="{ row: p }"><ActionMenu><Link data-tour-next="soProg" :href="appUrl(`/sales-order/program/${p.id}`)">Lihat SO</Link></ActionMenu></template>
             </ServerTable>
-            <ServerTable v-else-if="tab === 'batal'" :url="appUrl('/sales-order/data')" label="SO Batal" :columns='[{"title":"No","orderable":false},{"title":"Nomor SO","orderable":true},{"title":"Quotation","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Dibatalkan","orderable":true},{"title":"Action","orderable":false}]'>
+            <ServerTable v-else-if="tab === 'batal'" :url="appUrl('/sales-order/data')" label="SO Batal" :columns='[{"title":"No","orderable":false},{"title":"Nomor SO","orderable":true},{"title":"Quotation","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Dibatalkan","orderable":true},{"title":"Saat batal","orderable":false,"className":"dt-body-right"},{"title":"Diganti oleh","orderable":false},{"title":"Action","orderable":false}]'>
                 <template #cell-0="{ number }">{{ number }}</template>
                 <template #cell-1="{ row: s }"><span class="code">{{ s.nomor }}</span><small>{{ fmt(s.tanggal) }}</small></template>
                 <template #cell-2="{ row: s }"><span class="code">{{ s.quotation_nomor }}</span><small>{{ s.kepada_nama }}</small></template>
                 <template #cell-3="{ row: s }"><span class="code">{{ s.program_nomor }}</span> <span class="tag" :class="s.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ s.jenis === 'b2b' ? 'B2B' : 'Public' }}</span><small>{{ range(s.tgl_mulai, s.tgl_selesai) }}</small></template>
                 <template #cell-4="{ row: s }"><span class="badge st-batal">{{ s.sebab }}</span><small>{{ fmt(s.batal_date) }}</small></template>
-                <template #cell-5="{ row: s }"><ActionMenu><Link :href="appUrl(`/sales-order/program/${s.id_penjualan}`)">View</Link></ActionMenu></template>
+                <template #cell-5="{ row: s }">{{ s.batal_peserta ?? 0 }} peserta<small>{{ money(s.batal_nilai ?? 0) }}</small></template>
+                <template #cell-6="{ row: s }"><template v-if="s.diganti"><Link :href="appUrl(`/sales-order/${s.diganti.id}`)" class="code">{{ s.diganti.nomor }}</Link><small>Deal ulang {{ fmt(s.diganti.tanggal) }}</small></template><span v-else-if="s.menunggu_deal_ulang" class="muted">Menunggu Deal ulang</span><span v-else class="muted">—</span></template>
+                <template #cell-7="{ row: s }"><ActionMenu><Link :href="appUrl(`/sales-order/program/${s.id_penjualan}`)">View</Link></ActionMenu></template>
             </ServerTable>
             <ServerTable v-else :url="appUrl('/sales-order/data')" label="Surat Kerja Trainer" :columns='[{"title":"No","orderable":false},{"title":"Nomor Surat","orderable":true},{"title":"Status","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Trainer & Asisten","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
                 <template #cell-0="{ number }">{{ number }}</template>

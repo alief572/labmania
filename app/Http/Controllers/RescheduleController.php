@@ -34,7 +34,7 @@ class RescheduleController extends Controller
             'reason' => Reschedule::reason($p), 'canManage' => Gate::allows('menu', ['penjualan_program', 'Manage']),
             'minimum' => today()->addDays(7)->toDateString(), 'trainers' => DB::table('ms_trainer')->where('aktif', 1)->get(['id', 'nama']),
             'assistants' => DB::table('ms_user_karyawan')->where('aktif', 1)->get(['id', 'nama']),
-            'impact' => ['quotation' => $quotes->count(), 'peserta' => DB::table('quotation_peserta')->whereIn('id_quotation', $quotes)->whereIn('status', ['deal', 'menunggu'])->count(),
+            'impact' => ['quotation' => $quotes->count(), 'deal' => DB::table('quotation')->whereIn('id', $quotes)->where('status', 'deal')->count(), 'invoice' => DB::table('invoice')->where('id_penjualan', $id)->where('status', 'invoiced')->count(), 'peserta' => DB::table('quotation_peserta')->whereIn('id_quotation', $quotes)->whereIn('status', ['deal', 'menunggu'])->count(),
                 'so' => DB::table('sales_order')->where('id_penjualan', $id)->where('status', '!=', 'batal')->count(), 'surat' => DB::table('surat_kerja_trainer')->where('id_penjualan', $id)->where('status', 'berlaku')->count(),
                 'lunas' => DB::table('invoice_peserta as x')->join('invoice as i', 'i.id', '=', 'x.id_invoice')->where('i.id_penjualan', $id)->where('i.status', 'invoiced')->whereNotNull('i.tanggal_bayar')->count()]]);
     }

@@ -291,7 +291,7 @@ try {
         ['Master/Program/Form', { ...base, satuan: { fixed: {}, variable: {} } }, 'save', [], '/program/77', 'put'],
         ['Sales/Form', base, 'save', [], '/penjualan-program/77', 'put'],
         ['Sales/Form', base, 'status', ['finalkan'], '/penjualan-program/77/finalkan'],
-        ['Sales/Reschedule', { ...base, impact: { quotation: 1, peserta: 1, so: 1 }, requestId: 'request-77', version: 'v1' }, 'save', [], '/penjualan-program/77/reschedule'],
+        ['Sales/Reschedule', { ...base, impact: { quotation: 1, peserta: 1, so: 1, deal: 1, invoice: 1 }, requestId: 'request-77', version: 'v1' }, 'save', [], '/penjualan-program/77/reschedule'],
         ['Quotation/Form', quoteProps, 'save', [], '/quotation/77', 'put'],
         ['Quotation/Form', quoteProps, 'process', ['batalkan'], '/quotation/77/batalkan'],
         ['Quotation/Form', quoteProps, 'saveQuota', [], '/quotation/77/kuota'],

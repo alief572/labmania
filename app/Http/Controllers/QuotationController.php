@@ -135,6 +135,7 @@ class QuotationController extends Controller
                     $q->calc = Quotation::calculate($q, Quotation::count($q));
                     $q->link_closed = Reconfirmation::targets($q)->exists() ? ($p->closed_date || now('Asia/Jakarta')->gte(Reconfirmation::deadline($p)) ? 'Konfirmasi ulang ditutup' : null) : Sales::linkState($q, $p);
                     $q->terisi = DB::table('quotation_peserta')->where('id_quotation', $q->id)->count();
+                    $q->redeal = Quotation::redealMarker($q);
                     $q->name_customer = $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->value('name_customer') : null;
 
                     return $q;
@@ -213,7 +214,8 @@ class QuotationController extends Controller
             'documents' => $q ? DB::table('quotation_dokumen')->where('id_quotation', $q->id)->get(['id', 'nama_file', 'ukuran_byte']) : [],
             'link' => $q ? url('/konfirmasi/'.$q->link_token) : null, 'linkClosed' => $q ? (Reconfirmation::targets($q)->exists() ? ($p->closed_date || now('Asia/Jakarta')->gte(Reconfirmation::deadline($p)) ? 'Konfirmasi ulang ditutup' : null) : Sales::linkState($q, $p)) : null,
             'calc' => $q ? Quotation::calculate($q, Quotation::count($q)) : null,
-            'salesOrder' => $q ? DB::table('sales_order')->where('id_quotation', $q->id)->first(['id', 'nomor', 'revisi']) : null,
+            'salesOrder' => $q ? DB::table('sales_order')->where('id_quotation', $q->id)->orderByRaw("CASE WHEN status = 'batal' THEN 1 ELSE 0 END")->orderByDesc('id')->first(['id', 'nomor', 'revisi', 'status']) : null,
+            'redeal' => $q ? Quotation::redealMarker($q) : null, 'needsRedeal' => $q ? Quotation::needsRedeal($q) : false, 'hasDocuments' => $q ? DB::table('quotation_dokumen')->where('id_quotation', $q->id)->exists() : false,
             'quotaOther' => $p ? DB::table('quotation')->where('id_penjualan', $p->id)->where('status', '!=', 'batal')->when($q, fn ($w) => $w->where('id', '!=', $q->id))->sum('kuota_peserta') : 0,
             'can' => ['edit' => (! $p || ! $p->closed_date) && Gate::allows('menu', [self::MENU, $q ? 'Manage' : 'Add']), 'cancel' => $p && ! $p->closed_date && Gate::allows('menu', [self::MENU, 'Delete'])]]);
     }
@@ -446,10 +448,12 @@ class QuotationController extends Controller
     public function documents(Request $r, int $id, bool $deal = false)
     {
         Gate::authorize('menu', [self::MENU, 'Manage']);
-        $in = $r->validate(['dokumen' => 'required|array|min:1|max:20', 'dokumen.*' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'dokumen_keterangan' => 'nullable|string|max:200', 'peserta' => $deal ? 'required|array|min:1' : 'nullable|array', 'peserta.*' => 'integer']);
+        // Deal ulang (QTN-FR-42): dokumen lama terbawa, unggahan baru opsional.
+        $again = $deal && Quotation::needsRedeal(Quotation::row($id));
+        $in = $r->validate(['dokumen' => ($again ? 'nullable' : 'required').'|array|min:'.($again ? '0' : '1').'|max:20', 'dokumen.*' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'dokumen_keterangan' => 'nullable|string|max:200', 'peserta' => $deal ? 'required|array|min:1' : 'nullable|array', 'peserta.*' => 'integer']);
         $files = [];
         try {
-            foreach ($r->file('dokumen') as $file) {
+            foreach ($r->file('dokumen') ?? [] as $file) {
                 $files[] = QuotationFiles::store($file, true);
             }
             if ($deal) {
@@ -457,7 +461,7 @@ class QuotationController extends Controller
                 if (! empty($result['replay'])) {
                     QuotationFiles::discard($files);
                 }
-                $message = 'Deal tersimpan. SO '.$result['so'].'; Master Peserta '.$result['baru'].' baru, '.$result['cocok'].' dicocokkan.';
+                $message = ($result['ulang'] ?? false ? 'Deal ulang tersimpan' : 'Deal tersimpan').'. SO '.$result['so'].'; Master Peserta '.$result['baru'].' baru, '.$result['cocok'].' dicocokkan.'.(($result['keluar'] ?? 0) ? ' '.$result['keluar'].' peserta tidak ikut diproses.' : '');
             } else {
                 DB::transaction(function () use ($id, $files, $in) {
                     $read = Quotation::row($id);

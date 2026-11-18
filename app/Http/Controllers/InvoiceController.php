@@ -71,6 +71,8 @@ class InvoiceController extends Controller
             $r->tgl_mulai = $s['program']['tgl_mulai'];
             $r->tgl_selesai = $s['program']['tgl_selesai'];
             $r->canManage = $r->status === 'invoiced' && ! $r->closed_date && Gate::allows('menu', ['invoicing', 'Manage']);
+            // Penanda reschedule (QTN-FR-43 butir 4): invoice tidak dibatalkan; menunggu konfirmasi ulang, lalu ikut jadwal baru setelah Deal ulang.
+            $r->resched = $r->resched_revisi === null ? null : ['revisi' => (int) $r->resched_revisi, 'menunggu' => Quotation::needsRedeal(Quotation::row($r->id_quotation))];
             unset($r->snapshot);
         } else {
             $r->nomor_so = Sales::display($r);

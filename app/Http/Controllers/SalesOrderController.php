@@ -39,11 +39,15 @@ class SalesOrderController extends Controller
         }
         if ($tab === 'batal') {
             $query->where(fn ($w) => $w->where('so.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('q.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('p.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('q.kepada_nama', 'like', '%'.($f['q'] ?? '').'%'));
-            $rows = $query->select('so.id', 'so.nomor', 'so.revisi', 'so.tanggal', 'so.updated_date as batal_date', 'p.id as id_penjualan', 'p.nomor as program_nomor', 'p.jenis', 'p.tgl_mulai', 'p.tgl_selesai', 'p.status as program_status', 'q.nomor as quotation_nomor', 'q.kepada_nama', 'q.status as quotation_status')
+            $rows = $query->select('so.id', 'so.nomor', 'so.revisi', 'so.tanggal', 'so.updated_date as batal_date', 'so.batal_sebab', 'so.batal_revisi', 'so.batal_waktu', 'so.batal_peserta', 'so.batal_nilai', 'so.digantikan_oleh', 'p.id as id_penjualan', 'p.nomor as program_nomor', 'p.jenis', 'p.tgl_mulai', 'p.tgl_selesai', 'p.status as program_status', 'q.nomor as quotation_nomor', 'q.kepada_nama', 'q.status as quotation_status')
                 ->orderByDesc('so.updated_date')->orderByDesc('so.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'so.nomor', 'q.nomor', 'p.nomor', 'so.updated_date', null, null], 'so.id'));
             $rows->through(function ($so) {
                 $so->nomor = Sales::display($so);
-                $so->sebab = $so->program_status === 'batal' ? 'Program batal' : 'Reschedule rev'.$so->revisi;
+                $so->sebab = ($so->batal_sebab ?? null) === 'program' || (($so->batal_sebab ?? null) === null && $so->program_status === 'batal') ? 'Program batal' : 'Reschedule rev'.($so->batal_revisi ?? $so->revisi);
+                $so->batal_date = $so->batal_waktu ?? $so->batal_date;
+                $next = $so->digantikan_oleh ? DB::table('sales_order')->where('id', $so->digantikan_oleh)->first(['id', 'nomor', 'revisi', 'tanggal']) : null;
+                $so->diganti = $next ? ['id' => $next->id, 'nomor' => Sales::display($next), 'tanggal' => $next->tanggal] : null;
+                $so->menunggu_deal_ulang = ! $next && ($so->batal_sebab ?? null) === 'reschedule';
 
                 return $so;
             });
