@@ -190,14 +190,18 @@ class ProductController extends Controller
     public function lingkup(Request $request, int $id)
     {
         Gate::authorize('menu', [self::MENU, 'Manage']);
-        $items = $request->validate(['items' => 'present|array|max:60', 'items.*' => 'nullable|string|max:1000'])['items'];
-        $changed = DB::transaction(function () use ($id, $items) {
+        $in = $request->validate(['items' => 'present|array|max:60', 'items.*' => 'nullable|string|max:1000', 'harga_mulai' => 'nullable|string|max:20']);
+        // Harga hanya diproses bila dikirim, sehingga klien lama yang hanya mengirim lingkup tidak menghapus harga.
+        $harga = $request->has('harga_mulai') ? ProductLingkup::hargaMulai($in['harga_mulai']) : false;
+        $changed = DB::transaction(function () use ($id, $in, $harga) {
             $paket = DB::table('paket_produk')->where('id', $id)->lockForUpdate()->first() ?? abort(404);
+            $lingkup = ProductLingkup::save($paket, $in['items']);
+            $price = $harga === false ? false : ProductLingkup::saveHargaMulai($paket, $harga);
 
-            return ProductLingkup::save($paket, $items);
+            return $lingkup || $price;
         });
 
-        return back()->with('success', $changed ? 'Lingkup tersimpan.' : 'Lingkup tidak berubah.');
+        return back()->with('success', $changed ? 'Lingkup dan harga tersimpan.' : 'Tidak ada perubahan.');
     }
 
     private function columns(array $row): array

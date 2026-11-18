@@ -8,6 +8,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import type { Menu } from '../../types';
 import PageHead from '../../components/PageHead.vue';
 
 import StatusBadge from '../../components/StatusBadge.vue';
@@ -24,14 +25,53 @@ const props = defineProps<{
 const filter = ref({ ...props.filters });
 watch(() => [filter.value.role, filter.value.status], () => { appliedFilters.value = { ...filter.value }; table.value?.reload(true); });
 const blank = () => ({ nama: '', id_group: '' as string | number, nik: '', tmp_lahir: '', tgl_lahir: '', gender: '', agama: '', telp: '', email: '', alamat: '', npwp: '', tgl_masuk: '', tipe: '', jobdesc: '', akun: false, username: '', password: '', password_confirmation: '' });
-const form = useForm(blank());
+const form = useForm({ ...blank(), override: undefined as string[] | undefined });
+// Override Permission (FR-65): matriks dimuat dari /permissions/users/{id} (JSON) hanya untuk user ber-akun yang sedang diedit.
+type Ovr = { menus: Menu[]; selected: string[]; inherited: string[]; editable: boolean };
+const ovr = ref<Ovr | null>(null);
+const ovrError = ref('');
+const ovrOpen = ref(false);
+const ACTS = ['View', 'Add', 'Manage', 'Delete', 'Approve'];
+const ovrChosen = computed(() => new Set(form.override ?? []));
+const ovrInherited = computed(() => new Set(ovr.value?.inherited ?? []));
+const ovrMenus = computed(() => (ovr.value?.menus ?? []).filter((m) => m.actions.length));
+const ovrGroups = computed(() => {
+    const out: { modul: string; items: Menu[] }[] = [];
+    for (const m of ovrMenus.value) {
+        let g = out.find((x) => x.modul === (m.modul ?? 'Umum'));
+        if (!g) out.push(g = { modul: m.modul ?? 'Umum', items: [] });
+        g.items.push(m);
+    }
+    return out;
+});
+const ovrKey = (m: Menu, a: string) => `${m.id}:${a}`;
+const ovrExtra = computed(() => [...ovrChosen.value].filter((k) => !ovrInherited.value.has(k)).length);
+function ovrToggle(m: Menu, a: string, checked: boolean) {
+    const v = new Set(form.override ?? []);
+    if (checked) { v.add(ovrKey(m, a)); if (a !== 'View') v.add(ovrKey(m, 'View')); }
+    else { v.delete(ovrKey(m, a)); if (a === 'View') ACTS.forEach((x) => v.delete(ovrKey(m, x))); }
+    form.override = [...v];
+}
+async function loadOverride(row: Row) {
+    ovr.value = null; ovrError.value = ''; ovrOpen.value = false; form.override = undefined;
+    if (!row.id_user || row.id_group === props.superadmin || !props.can.manage) return;
+    try {
+        const response = await fetch(appUrl(`/permissions/users/${row.id_user}`), { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok) throw new Error('Override Permission gagal dimuat.');
+        const json = await response.json();
+        ovr.value = { menus: json.menus, selected: json.selected, inherited: json.inherited, editable: json.editable };
+        // Hak dari role tercentang dan terkunci; yang dikirim hanya himpunan lengkap yang dilihat user.
+        form.override = [...new Set([...json.selected, ...json.inherited])];
+        ovrOpen.value = (json.selected as string[]).some((k) => !(json.inherited as string[]).includes(k));
+    } catch (failure) { ovrError.value = failure instanceof Error ? failure.message : 'Override Permission gagal dimuat.'; }
+}
 const mode = ref<'add' | 'edit' | null>(null);
 const current = ref<Row | null>(null);
 const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
 const dateOnly = (v: unknown) => str(v).slice(0, 10);
-function openAdd() { form.reset(); form.clearErrors(); Object.assign(form, blank()); current.value = null; mode.value = 'add'; }
+function openAdd() { form.reset(); form.clearErrors(); Object.assign(form, blank()); current.value = null; mode.value = 'add'; ovr.value = null; ovrError.value = ''; form.override = undefined; }
 function openEdit(row: Row) {
-    form.clearErrors(); current.value = row; mode.value = 'edit';
+    form.clearErrors(); current.value = row; mode.value = 'edit'; loadOverride(row);
     Object.assign(form, { ...blank(), nama: row.nama, id_group: row.id_group ?? '', nik: str(row.nik), tmp_lahir: str(row.tmp_lahir), tgl_lahir: dateOnly(row.tgl_lahir), gender: str(row.gender), agama: str(row.agama), telp: str(row.telp), email: str(row.email), alamat: str(row.alamat), npwp: str(row.npwp), tgl_masuk: dateOnly(row.tgl_masuk), tipe: str(row.tipe), jobdesc: str(row.jobdesc), akun: !!row.id_user, username: str(row.username) });
 }
 const close = () => { mode.value = null; };
@@ -115,6 +155,19 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Emp
                     <FormField id="upw" :label="current?.id_user ? 'Password baru (kosongkan bila tidak diganti)' : 'Password'" hint="Minimal 8 karakter." :error="form.errors.password" v-slot="{ describedBy, invalid }"><input id="upw" v-model="form.password" type="password" autocomplete="new-password" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                     <FormField id="upw2" label="Konfirmasi password" :error="err('password_confirmation')" v-slot="{ describedBy, invalid }"><input id="upw2" v-model="form.password_confirmation" type="password" autocomplete="new-password" :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                 </template>
+                <p v-if="ovrError" class="error" role="alert">{{ ovrError }}</p>
+                <details v-if="ovr" class="ovr-box" :open="ovrOpen" @toggle="ovrOpen = ($event.target as HTMLDetailsElement).open">
+                    <summary><b>Override Permission</b> <span class="muted">{{ ovrExtra ? `${ovrExtra} hak tambahan` : 'Belum ada hak tambahan' }}</span></summary>
+                    <div class="ovr-body">
+                        <p class="hint-line top">Hak menu tambahan khusus untuk user ini, di luar hak role-nya. Hak yang sudah dimiliki role tercentang dan terkunci. Override hanya menambah hak; mencentang Add, Manage, atau Delete otomatis mencentang View.</p>
+                        <p v-if="form.errors.override" class="error" role="alert">{{ form.errors.override }}</p>
+                        <div class="table-wrap ak-wrap"><table class="ak-tbl"><caption class="sr-only">Hak tambahan per menu</caption>
+                            <thead><tr><th scope="col">Modul / Menu</th><th scope="col">Hak akses</th></tr></thead>
+                            <tbody><template v-for="g in ovrGroups" :key="g.modul"><tr class="ak-mod"><td colspan="2">{{ g.modul }}</td></tr>
+                                <tr v-for="m in g.items" :key="m.id"><th scope="row">{{ m.judul }}<small class="code">{{ m.kode }}</small></th>
+                                    <td><div class="ak-chips"><label v-for="a in ACTS.filter((x) => m.actions.includes(x))" :key="a" class="ak-chip" :class="{ on: ovrChosen.has(ovrKey(m, a)), role: ovrInherited.has(ovrKey(m, a)) }"><input type="checkbox" :aria-label="`${m.judul}: ${a}`" :checked="ovrChosen.has(ovrKey(m, a))" :disabled="!ovr.editable || ovrInherited.has(ovrKey(m, a))" @change="ovrToggle(m, a, ($event.target as HTMLInputElement).checked)" />{{ a }}<span v-if="ovrInherited.has(ovrKey(m, a))" class="code">role</span></label></div></td></tr></template></tbody></table></div>
+                    </div>
+                </details>
             </fieldset>
         </ConfirmDialog>
 

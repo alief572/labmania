@@ -37,6 +37,9 @@
           <div class="judul">{{ $p->judul }}</div>
           <div class="meta"><span class="muted">Bidang</span> <b>{{ $p->nama_bidang ?? '—' }}</b></div>
           <div class="meta"><span class="muted">Varian</span> <b>{{ $p->nama_varian ?? '—' }}</b></div>
+          @if ((float) ($p->harga_mulai ?? 0) > 0)
+            <div class="meta"><span class="muted">Harga</span> <b>Start from {{ \App\Support\Invoice::rupiah((string) $p->harga_mulai) }}</b> <span class="muted" style="font-size: 7pt;">*harga perkiraan</span></div>
+          @endif
           @if ($p->lingkup)
             <div class="meta" style="margin-top: 4px;"><span class="muted">Lingkup</span>
               <ul>@foreach ($p->lingkup as $t)<li>{{ $t }}</li>@endforeach</ul></div>

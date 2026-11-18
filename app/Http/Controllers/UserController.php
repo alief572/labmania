@@ -60,6 +60,7 @@ class UserController extends Controller
             'agama' => ['nullable', Rule::in($o['agama'])], 'tipe' => ['nullable', Rule::in($o['tipe'])], 'telp' => ['nullable', 'regex:/^\+?\d{9,15}$/'],
             'email' => 'nullable|email|max:100', 'alamat' => 'nullable|string|max:255', 'npwp' => 'nullable|string|max:25', 'jobdesc' => 'nullable|string|max:500',
             'akun' => 'sometimes|boolean', 'username' => ['nullable', 'regex:/^[a-z0-9._]{3,45}$/'], 'password' => 'nullable|string|min:8|max:200|confirmed',
+            'override' => 'sometimes|array|max:5000', 'override.*' => 'required|string|distinct|max:80',
         ], [
             'nama.required' => 'Employee Name wajib diisi.', 'id_group.required' => 'Role wajib diisi.', 'nik.regex' => 'NIK 16 digit angka.', 'telp.regex' => 'Nomor telepon hanya angka (boleh diawali +), 9–15 digit.',
             'tgl_masuk.after_or_equal' => 'Join Date sebelum Birth Date.', 'username.regex' => 'Username: huruf kecil, angka, titik, atau garis bawah; 3–45 karakter.',
@@ -147,12 +148,69 @@ class UserController extends Controller
                     DB::table('ms_user_karyawan')->where('id', $id)->update(['id_user' => $idUser]);
                 }
                 $log = ['username' => $in['username'], 'sandi_diganti' => ! empty($in['password'])];
+                $log += $this->saveOverride($request, $in, $idUser, $group, $old);
             }
             $oldArr = (array) $old;
             write_log('Master User', 'Edit', 'Update User '.$old->kode, ['old' => $oldArr, 'new' => array_merge($oldArr, $emp, $log)], 'ms_user_karyawan', $id, $old->kode);
         });
 
         return back()->with('success', 'User diperbarui.');
+    }
+
+    /**
+     * Override Permission dari form (FR-65). Hanya diproses bila form mengirim `override` dan user bukan Superadmin.
+     * Saat Role diganti, hak override yang sudah tercakup role baru dibuang dulu. Override hanya menambah hak.
+     * Aktor tidak boleh mengubah override dirinya sendiri (sama seperti /permissions/users/{id}). Panggil di dalam transaksi.
+     */
+    private function saveOverride(Request $request, array $in, int $idUser, int $group, object $old): array
+    {
+        if ($group === self::SUPERADMIN || ! array_key_exists('override', $in)) {
+            return [];
+        }
+        $actor = $request->user();
+        $before = DB::table('ms_user_akses')->where('id_user', $idUser)->count();
+        $pruned = (int) $old->id_group !== $group ? Permissions::pruneOverride($idUser) : 0;
+        // Mengirim himpunan yang sama tetap diterima; hanya perubahan atas override sendiri yang ditolak.
+        if ($actor->id_user === $idUser && $this->overrideDiffers($idUser, $in['override'])) {
+            throw ValidationException::withMessages(['override' => 'Anda tidak dapat mengubah hak override Anda sendiri.']);
+        }
+        Permissions::saveGrants('user', $idUser, $in['override'], $actor, 'override');
+
+        return ['override_sebelum' => $before, 'override_sesudah' => DB::table('ms_user_akses')->where('id_user', $idUser)->count(), 'override_dibuang_karena_role' => $pruned];
+    }
+
+    /** True bila himpunan hak tambahan yang dikirim berbeda dari override tersimpan (hak dari role diabaikan, View ikut). */
+    private function overrideDiffers(int $idUser, array $grants): bool
+    {
+        $menus = DB::table('ms_menu')->where('aktif', 1)->get(['id', 'kode']);
+        $roleMap = Permissions::map(User::findOrFail($idUser), false);
+        $roleKeys = [];
+        foreach ($menus as $menu) {
+            foreach ($roleMap[$menu->kode] ?? [] as $action) {
+                $roleKeys[$menu->id.':'.$action] = true;
+            }
+        }
+        $wanted = [];
+        foreach ($grants as $grant) {
+            [$menu, $action] = explode(':', $grant);
+            $wanted[$grant] = true;
+            if ($action !== 'View') {
+                $wanted[$menu.':View'] = true;
+            }
+        }
+        $current = [];
+        foreach (DB::table('ms_user_akses')->where('id_user', $idUser)->get(['id_menu', 'aksi']) as $row) {
+            foreach (Permissions::ACTIONS as $action => $legacy) {
+                if (in_array($row->aksi, $legacy, true)) {
+                    $current[$row->id_menu.':'.$action] = true;
+                }
+            }
+        }
+        $wanted = array_diff_key($wanted, $roleKeys);
+        ksort($wanted);
+        ksort($current);
+
+        return array_keys($wanted) !== array_keys($current);
     }
 
     /** Sinkron akun login dan role. Panggil di dalam transaksi. Kembalikan id_user. */

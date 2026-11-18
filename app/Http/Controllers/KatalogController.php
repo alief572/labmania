@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Mpdf\Mpdf;
 use Mpdf\Output\Destination;
@@ -22,6 +23,8 @@ class KatalogController extends Controller
     /** Product aktif + atribut + Lingkup, difilter, dikelompokkan per Bidang (urut nama), isi urut Judul lalu Sertifikat. */
     public static function groups(array $f): array
     {
+        // Kolom harga_mulai baru ada setelah migrasi FR-69; sebelum itu Katalog tetap tampil tanpa harga.
+        $hasPrice = Schema::hasColumn('paket_produk', 'harga_mulai');
         $rows = DB::table('paket_produk as pp')
             ->leftJoin('ms_jenis_produk as jp', 'jp.id', '=', 'pp.id_jenis_produk')
             ->leftJoin('ms_jenis_bidang as jb', 'jb.id', '=', 'pp.id_jenis_bidang')
@@ -30,11 +33,12 @@ class KatalogController extends Controller
             ->where('pp.aktif', 1)
             ->when(($f['bidang'] ?? null) !== null, fn ($q) => $q->where('pp.id_jenis_bidang', (int) $f['bidang']))
             ->when(($f['sert'] ?? null) !== null, fn ($q) => $q->where('pp.id_jenis_sertifikasi', (int) $f['sert']))
-            ->get(['pp.id', 'pp.nomor', 'pp.judul', 'pp.id_jenis_bidang', 'jp.nama as nama_produk', 'jb.nama as nama_bidang', 'vp.nama as nama_varian', 'js.nama as nama_sertifikasi']);
+            ->get(array_merge(['pp.id', 'pp.nomor', 'pp.judul', 'pp.id_jenis_bidang'], $hasPrice ? ['pp.harga_mulai'] : [], ['jp.nama as nama_produk', 'jb.nama as nama_bidang', 'vp.nama as nama_varian', 'js.nama as nama_sertifikasi']));
         $lingkup = DB::table('paket_produk_lingkup')->whereIn('id_paket_produk', $rows->pluck('id'))->orderBy('id_paket_produk')->orderBy('urutan')->get()->groupBy('id_paket_produk');
         $q = mb_strtolower(trim((string) ($f['q'] ?? '')));
         $rows = $rows->map(function ($r) use ($lingkup) {
             $r->lingkup = ($lingkup[$r->id] ?? collect())->pluck('lingkup')->all();
+            $r->harga_mulai ??= null;
 
             return $r;
         })->filter(function ($r) use ($q) {
