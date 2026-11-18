@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TutorialButton from "../../components/TutorialButton.vue";
 import { appUrl } from '../../composables/appUrl';
 import MoneyInput from "../../components/MoneyInput.vue";
 import { computed, ref, watch } from 'vue';
@@ -85,9 +86,9 @@ const extra = ref('');
 </script>
 <template>
     <Head :title="q.nomor || 'Buat Quotation'" /><AppLayout title="Quotation">
-        <div class="pf-formbar"><Link class="kt-btn" :href="appUrl(form.id_penjualan ? `/quotation/batch/${form.id_penjualan}` : '/quotation')">← Kembali</Link><h1>Quotation <span v-if="q.nomor" class="code">{{ q.nomor }}</span><template v-else>baru</template></h1><span v-if="q.id" class="badge" :class="`st-${q.status}`">{{ STATUS_LABEL[q.status] ?? q.status }}</span></div>
+        <div class="pf-formbar"><Link class="kt-btn" :href="appUrl(form.id_penjualan ? `/quotation/batch/${form.id_penjualan}` : '/quotation')">← Kembali</Link><h1>Quotation <span v-if="q.nomor" class="code">{{ q.nomor }}</span><template v-else>baru</template></h1><TutorialButton /><span v-if="q.id" class="badge" :class="`st-${q.status}`">{{ STATUS_LABEL[q.status] ?? q.status }}</span></div>
         <p v-if="selected" class="notice">No. Program <span class="code">{{ selected.nomor }}</span> <span class="tag" :class="selected.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ selected.jenis === 'b2b' ? 'B2B' : 'Public' }}</span> · {{ selected.judul }}{{ selected.closed_date ? ' · Closed' : '' }}</p>
-        <section v-if="q.id" class="panel qv-panel" aria-label="Status quotation">
+        <section v-if="q.id" class="panel qv-panel" data-tour="status" aria-label="Status quotation">
             <div class="qv-panel-top"><ol class="qv-alur" aria-label="Alur quotation"><li v-for="(st, i) in alur" :key="st" :class="{ done: q.status !== 'batal' && i < alurPos, on: q.status !== 'batal' && i === alurPos }" :aria-current="i === alurPos ? 'step' : undefined">{{ STATUS_LABEL[st] }}</li></ol><span v-if="q.status === 'batal'" class="badge st-batal">Batal</span><span class="badge" :class="linkClosed ? 'st-draft' : 'st-terkirim'">{{ linkClosed ? 'Link tertutup' : 'Link terbuka' }}</span></div>
             <p class="qv-next"><span class="muted">Langkah berikutnya:</span> {{ LANGKAH[q.status] }}</p>
             <div v-if="q.status !== 'batal'" class="kq"><div class="kq-top"><span><b>{{ terisi }}</b> dari {{ kuotaTotal }} kuota terisi</span><span class="muted">{{ terisi > kuotaTotal ? `${terisi - kuotaTotal} melebihi kuota` : kuotaTotal - terisi ? `${kuotaTotal - terisi} kursi tersisa` : 'kuota penuh' }}</span></div><div class="kq-bar" role="progressbar" aria-label="Kuota terisi" aria-valuemin="0" :aria-valuemax="kuotaTotal" :aria-valuenow="terisi"><span :style="{ width: `${kuotaPct.toFixed(1)}%` }"></span></div></div>
@@ -95,7 +96,7 @@ const extra = ref('');
         <p v-if="error" class="error" role="alert">{{ error }}</p><ul v-if="Object.keys(form.errors).length" class="error" role="alert"><li v-for="e in form.errors" :key="e">{{ e }}</li></ul>
         <nav v-if="q.id" class="tabs" aria-label="Detail quotation"><button type="button" :class="{ active: !dataTab }" :aria-pressed="!dataTab" @click="dataTab = false">Detail Quotation</button><button type="button" :class="{ active: dataTab }" :aria-pressed="dataTab" @click="dataTab = true">Data Peserta<span class="nav-count">{{ peserta.length }}</span><span class="tobe">To be</span></button></nav>
         <template v-if="dataTab">
-            <section v-if="link" class="panel"><h2>Link Konfirmasi Kehadiran</h2><p>{{ linkClosed || 'Link terbuka' }}</p><a :href="link" target="_blank" rel="noopener noreferrer">{{ link }}</a><p class="muted">Bagikan link kepada calon peserta / PIC Company. Peserta hanya masuk melalui link ini.</p></section>
+            <section v-if="link" class="panel"><h2>Link Konfirmasi Kehadiran</h2><p>{{ linkClosed || 'Link terbuka' }}</p><a data-tour="link" :href="link" target="_blank" rel="noopener noreferrer">{{ link }}</a><p class="muted">Bagikan link kepada calon peserta / PIC Company. Peserta hanya masuk melalui link ini.</p></section>
             <div class="form-actions"><a :href="appUrl(`/quotation/${q.id}/excel`)">Unduh Excel</a><a v-if="peserta.some((p) => p.status !== 'batal')" :href="appUrl(`/quotation/${q.id}/letters`)" target="_blank" rel="noopener">Confirmation Letter (semua aktif)</a></div>
             <section v-if="b2b" class="panel"><h2>Konfirmasi Company</h2><template v-if="companyConfirmation"><p>{{ companyConfirmation.nama_perusahaan }} · {{ companyConfirmation.pic_nama }} · {{ companyConfirmation.pic_jabatan }}</p><p>{{ companyConfirmation.pic_hp }} · {{ companyConfirmation.pic_email }} · {{ companyConfirmation.tgl_kirim }}</p><a :href="appUrl(`/documents/company-confirmation/${companyConfirmation.id}?preview=1`)" target="_blank" rel="noopener">Lihat {{ companyConfirmation.surat_konfirmasi_nama }}</a></template><p v-else>PIC Company belum mengirim daftar peserta.</p></section>
             <QuotationParticipants v-if="q.id" :rows="peserta" :data-url="appUrl(`/quotation/batch/${q.id_penjualan}/data`)" :filters="{ data: 1, id_quotation: q.id, peserta_status: 'all' }" :manage="can.edit" status-filter />

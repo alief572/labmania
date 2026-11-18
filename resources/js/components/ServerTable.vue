@@ -60,7 +60,7 @@ const options: Options = {
     },
 };
 async function reload(reset = false) { await nextTick(); instance.value?.dt?.ajax.reload(undefined, reset); }
-watch(() => props.filters, () => { if (props.refreshOnVisit) reload(true); }, { deep: true });
+watch(() => JSON.stringify(props.filters), () => { if (props.refreshOnVisit) reload(true); });
 // Kotak cari milik halaman (toolbar mockup) memakai search[value] bawaan DataTables; kotak "Cari:" bawaan disembunyikan lewat CSS.
 let keywordTimer: ReturnType<typeof setTimeout> | undefined;
 watch(() => props.keyword, (value) => {
@@ -73,7 +73,7 @@ defineExpose({ reload });
 </script>
 
 <template>
-    <section class="server-table" :aria-label="label" :data-own-search="keyword !== undefined ? '' : undefined">
+    <section data-tour="table" class="server-table" :aria-label="label" :data-own-search="keyword !== undefined ? '' : undefined">
         <p v-if="error" class="error table-error" role="alert">{{ error }} <button type="button" @click="reload()">Coba lagi</button></p>
         <DataTable ref="instance" :columns="columns" :ajax="load" :options="options" class="display" style="width: 100%">
             <caption class="sr-only">{{ label }}</caption>

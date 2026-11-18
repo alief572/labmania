@@ -18,9 +18,9 @@ const allowed = (menu: string) => ((page.props.permissions as Record<string, str
 <template>
     <Head :title="so.nomor" />
     <AppLayout title="Sales Order">
-        <PageHead :title="`Sales Order ${so.nomor}`" :description="`${quotation.kepada_nama} · ${(produk[0]?.judul) ?? ''} · ${(produk[0]?.varian) ?? ''} · program ${program.nomor}`"><Link :href="appUrl(`/sales-order/program/${program.id}`)">← Sales Order {{ program.nomor }}</Link></PageHead>
+        <PageHead :title="`Sales Order ${so.nomor}`" :description="`${quotation.kepada_nama} · ${(produk[0]?.judul) ?? ''} · ${(produk[0]?.varian) ?? ''} · program ${program.nomor}`"><Link data-tour-next="soProg" :href="appUrl(`/sales-order/program/${program.id}`)">← Sales Order {{ program.nomor }}</Link></PageHead>
         <p v-for="e in $page.props.errors" :key="String(e)" class="error" role="alert">{{ e }}</p>
-        <section class="panel qv-panel" aria-label="Status Sales Order">
+        <section class="panel qv-panel" data-tour="status" aria-label="Status Sales Order">
             <div class="qv-panel-top"><span class="badge" :class="stage(so, invoice) === 'invoiced' ? 'st-deal' : so.status === 'siap' ? 'st-terkirim' : 'st-draft'">{{ so.status_tampil }}</span><span v-if="closed" class="badge st-draft">Program Closed</span></div>
             <p class="qv-next"><span class="muted">Langkah berikutnya:</span> {{ LANGKAH[stage(so, invoice)] }}</p>
             <div class="row-actions"><ReadyInvoice v-if="canManage && so.status === 'open'" :so="so" :kepada="quotation.kepada_nama" :count="peserta.length" :total="calc.grand_total!" /><a class="primary" :href="appUrl(`/sales-order/${so.id}/pdf`)" target="_blank" rel="noopener">Print Out SO</a><Link v-if="allowed('quotation_program')" :href="appUrl(`/quotation/${quotation.id}`)">Buka quotation</Link></div>

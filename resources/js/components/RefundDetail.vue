@@ -14,7 +14,7 @@ const emit = defineEmits<{ saved: []; busy: [value: boolean] }>();
 type History = { jenis: 'setujui' | 'tolak' | 'ajukan_ulang'; catatan: string | null; nominal_lama: string | null; nominal_baru: string | null; alasan_lama: string | null; alasan_baru: string | null; waktu: string; oleh: string | null };
 const props = defineProps<{
     refund: { id: number; nomor: string; tanggal: string; sebab: string; alasan: string; status: string; nominal_tagihan: string; nominal_refund: string | null; bank: string | null; no_rekening: string | null; atas_nama: string | null; catatan: string | null; bukti_transfer_nama: string | null; selesai_date: string | null };
-    snapshot: { peserta: string | null; company: string | null; invoice: string; nomor_so: string; nomor_quotation: string };
+    snapshot: { peserta: string | null; company: string | null; invoice: string; nomor_so: string; nomor_quotation: string; termin?: { invoice: string; termin_ke: number; piutang: string; bagian: string }[] | null };
     riwayat: History[]; maks: string; canManage: boolean; canAjukan: boolean; canApprove: boolean; closed: boolean;
     mode?: 'proses' | 'keputusan' | 'perbaiki' | null; returnToList?: boolean;
 }>();
@@ -56,6 +56,9 @@ const errors = (form: { errors: Record<string, string> }) => Object.values(form.
                 <div><dt>Nominal tagihan</dt><dd>{{ money(refund.nominal_tagihan) }}</dd></div>
                 <div><dt>Alasan</dt><dd>{{ refund.alasan }}</dd></div>
             </dl>
+            <p v-if="snapshot.termin?.length" class="hint-line">Termin yang sudah dibayar:
+                <template v-for="(t, i) in snapshot.termin" :key="t.invoice">{{ i ? '; ' : ' ' }}Termin {{ t.termin_ke }} ({{ t.invoice }}) {{ money(t.bagian) }}</template>.
+                Termin yang belum dibayar dibatalkan.</p>
             <template v-for="(h, i) in riwayat" :key="i">
                 <p class="hint-line"><b>{{ JENIS[h.jenis] }}</b> · {{ h.oleh ?? '—' }} · {{ h.waktu }}<template v-if="h.catatan"> · {{ h.catatan }}</template>
                     <template v-if="h.jenis === 'ajukan_ulang' && h.nominal_lama !== h.nominal_baru"> · nominal {{ money(h.nominal_lama) }} → {{ money(h.nominal_baru) }}</template></p>

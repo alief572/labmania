@@ -4,7 +4,7 @@ import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import ServerTable from "../../components/ServerTable.vue";
 import ActionMenu from "../../components/ActionMenu.vue";
 import { computed, ref, watch } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
@@ -31,7 +31,6 @@ const mode = ref<'edit' | null>(null);
 const current = ref<Row | null>(null);
 const editForm = useForm({ judul: '', produk: '' as string | number, bidang: '' as string | number, varian: '' as string | number, sertifikasi: '' as string | number });
 
-const openAdd = () => router.get(appUrl('/master/product/create'));
 const attrOptions = (key: 'produk' | 'bidang' | 'varian' | 'sertifikasi', value: unknown) => props.options[key].filter((o) => o.aktif !== 0 || String(o.id) === String(value));
 const usedBy = ref(0);
 function openEdit(row: Row) {
@@ -60,7 +59,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Pro
 <template>
     <Head title="Product" />
     <AppLayout title="Product" full-width>
-        <PageHead title="Product" description="Daftar paket produk (kombinasi Produk, Bidang, Varian, Sertifikat). Product berstatus Aktif dapat dipilih saat membuat Master Program, satu atau lebih per program."><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah Product</button></PageHead>
+        <PageHead title="Product" description="Daftar paket produk (kombinasi Produk, Bidang, Varian, Sertifikat). Product berstatus Aktif dapat dipilih saat membuat Master Program, satu atau lebih per program."><Link v-if="can.add" data-tour-next="combine" class="primary" :href="appUrl('/master/product/create')">+ Tambah Product</Link></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).status" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).status }}</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari nomor, judul, atau atribut…" /></label>

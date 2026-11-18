@@ -26,7 +26,7 @@ onBeforeUnmount(() => { window.removeEventListener('resize', close); window.remo
 </script>
 
 <template>
-    <button ref="trigger" type="button" class="gear" :class="{ open: expanded }" :popovertarget="id" :aria-expanded="expanded" aria-label="Buka aksi baris" title="Aksi">
+    <button data-tour="row-action" ref="trigger" type="button" class="gear" :class="{ open: expanded }" :popovertarget="id" :aria-expanded="expanded" aria-label="Buka aksi baris" title="Aksi">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1v4l-2 1 2 2v3l3 1 1 3h5l1-3 3-1v-3l3-2-3-2V7l-3-1-1-3z"/><circle cx="11.5" cy="12" r="3"/></svg>
     </button>
     <div :id="id" ref="panel" popover="auto" class="action-popover" @toggle="position" @click="chosen"><slot /></div>

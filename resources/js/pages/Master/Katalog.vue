@@ -4,6 +4,7 @@ import { useConfirmedMutation } from "../../composables/confirmedMutation";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import PageHead from '../../components/PageHead.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import MoneyInput from '../../components/MoneyInput.vue';
 import { rupiah } from '../../composables/costing';
@@ -61,13 +62,9 @@ const save = () => confirmation.visit('put', `/master/product/${editing.value!.i
 <template>
     <Head title="Katalog Produk" />
     <AppLayout title="Katalog Produk" full-width>
-        <div class="page-head">
-            <div>
-                <h1>Katalog Produk</h1>
-                <p class="page-desc">Katalog disusun otomatis dari Paket Produk berstatus Aktif. Isi Lingkup dan Harga start from tiap paket lewat tombol di kartunya. Saring berdasarkan Bidang dan Sertifikat, lalu cetak sebagai PDF untuk Promosi.</p>
-            </div>
+        <PageHead title="Katalog Produk" description="Katalog disusun otomatis dari Paket Produk berstatus Aktif. Isi Lingkup dan Harga start from tiap paket lewat tombol di kartunya. Saring berdasarkan Bidang dan Sertifikat, lalu cetak sebagai PDF untuk Promosi.">
             <a v-if="can.print" class="primary" :href="pdfUrl()" target="_blank" rel="noopener">Cetak Katalog (PDF)</a>
-        </div>
+        </PageHead>
         <p v-if="($page.props.errors as Record<string, string>).pdf" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).pdf }}</p>
 
         <div class="kt-box">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TutorialButton from "../../components/TutorialButton.vue";
 import { appUrl } from '../../composables/appUrl';
 import CostingSimulation from "../../components/CostingSimulation.vue";
 import MoneyInput from "../../components/MoneyInput.vue";
@@ -49,7 +50,7 @@ function status(kind: string) { return confirmation.form(transition, 'post', `/p
 </script>
 <template>
     <Head :title="program.nomor || 'Buat Penjualan Program'" /><AppLayout title="Penjualan Program">
-        <div class="pf-formbar"><Link class="kt-btn" :href="appUrl('/penjualan-program')">← Kembali</Link><h1>{{ program.nomor ? `Penjualan Program ${program.nomor}` : `Buat Penjualan Program ${b2bProgram ? 'B2B' : 'Public'}` }}</h1><span v-if="!isNew" class="badge" :class="`st-${program.status}`">{{ STATUS_LABEL[program.status] ?? program.status }}{{ program.closed_date ? ' · Closed' : '' }}</span></div>
+        <div class="pf-formbar"><Link class="kt-btn" :href="appUrl('/penjualan-program')">← Kembali</Link><h1>{{ program.nomor ? `Penjualan Program ${program.nomor}` : `Buat Penjualan Program ${b2bProgram ? 'B2B' : 'Public'}` }}</h1><TutorialButton /><span v-if="!isNew" class="badge" :class="`st-${program.status}`">{{ STATUS_LABEL[program.status] ?? program.status }}{{ program.closed_date ? ' · Closed' : '' }}</span></div>
         <p v-if="lockText" class="notice">{{ lockText }}</p>
         <ul v-if="errors.length" class="error" role="alert"><li v-for="e in errors" :key="e">{{ e }}</li></ul>
         <section class="panel" aria-labelledby="sales-header"><h2 id="sales-header">Header</h2><div class="form-grid">

@@ -122,6 +122,10 @@ LEGACY_DOCUMENT_ROOT opsional untuk membaca salinan dokumen lama saat rehearsal.
 
 Sidebar mengikuti `ms_menu`: label, induk, kelompok, urutan, aktif dan hak View. Registry `config/navigation.php` hanya memetakan link legacy ke route Laravel dan menjadi template bootstrap UAT. Menu tanpa route tersedia disembunyikan dari sidebar dan ditandai pada halaman Menu Sidebar; selesaikan sebelum cutover. Tautan konfirmasi CI3 `konfirmasi_kehadiran/{token}` dialihkan ke formulir Laravel dengan token yang sama.
 
+Tutorial mengikuti 38 panduan pada mockup `specs/ui-mockup/produk-to-be/Labmania.html`. Tombol **? Tutorial** tersedia manual pada halaman/form terkait; Dashboard dan halaman publik tanpa tutorial. Driver.js 1.3.1 dibundel lewat Vite, tanpa CDN. Target tersembunyi/tidak tersedia dilewati; navigasi menghentikan tutorial. Tutorial tidak menyimpan, menyetujui, membayar, atau menghapus transaksi. Gate sertifikat resmi dan survei publik tetap berlaku.
+
+Susunan seluruh sidebar dapat disimulasikan dengan `php artisan labmania:sidebar-to-be --semua-modul`. Setelah simulasi diperiksa, tambahkan `--terapkan --aktor=ID` dengan ID Superadmin aktif yang sah. Command hanya menerima salinan lokal/rehearsal yang diizinkan atau DB test terisolasi. Penerapan transaksional, teraudit, idempoten, mempertahankan ID/link/status dan hak menu; hanya grup Master Data memiliki subkelompok. Pengaturan paling akhir. Tanpa `--semua-modul`, perilaku command sebelumnya tetap. Migrasi Approval Refund tidak memberikan hak approval otomatis.
+
 Untuk dev lokal tanpa HTTPS, set SESSION_SECURE_COOKIE=false di `.env` (bukan di `.env.example`).
 
 Sebelum deployment: HTTPS, APP_DEBUG=false, SESSION_SECURE_COOKIE=true, document root public/, dan permission tulis hanya storage/bootstrap/cache. Beberapa instance memerlukan session dan cache bersama agar pembatasan login serta lock konsisten. Penerapan server production dan penerimaan pengguna tetap terpisah dari bukti lokal.

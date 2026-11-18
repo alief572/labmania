@@ -27,7 +27,7 @@ const exceeded=(i:{key:string;qty:string;harga:string})=>Number(i.qty)*Number(i.
         <section class="panel"><span class="tag" :class="program.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ program.jenis === 'b2b' ? 'B2B' : 'Public' }}</span> <span class="code">{{ program.nomor }}</span><p>{{ program.tim?.company }} · {{ program.tgl_mulai }} s.d. {{ program.tgl_selesai }} · {{ program.durasi_hari }} hari · {{ program.lokasi }}</p><p>Sales {{ program.tim?.sales.join(', ') }} · Trainer {{ program.tim?.trainer }} · Target {{ program.target_peserta }} peserta.</p><p v-if="program.closed_date" class="notice">Program Closed; pengajuan baru terkunci. Pengajuan existing tetap dapat diselesaikan.</p><p v-if="notTeam" class="notice">Anda bukan tim program ini. Akses mengikuti role dan izin yang diberikan.</p></section>
         <template v-if="!creating">
             <section v-for="(categoryBudget, cat) in budgets" :key="cat" class="panel">
-                <PageHead :title="cat === 'fixed' ? 'Fixed Cost' : 'Variable Cost'"><Link v-if="canAdd" :href="appUrl(`/pengajuan-biaya/program/${program.id}?kategori=${cat}&buat=pengajuan`)">+ Add Pengajuan</Link></PageHead>
+                <PageHead :tutorial="false" :title="cat === 'fixed' ? 'Fixed Cost' : 'Variable Cost'"><Link data-tour-next="pbForm" v-if="canAdd" :href="appUrl(`/pengajuan-biaya/program/${program.id}?kategori=${cat}&buat=pengajuan`)">+ Add Pengajuan</Link></PageHead>
                 <ExpenseBudget :budget="categoryBudget" />
                 <section v-for="kind in ['pengajuan', 'overbudget']" :key="kind">
                     <div class="page-head"><h3>{{ kind === 'pengajuan' ? 'Pengajuan' : 'Overbudget' }}</h3><Link v-if="canAdd && kind === 'overbudget'" :href="appUrl(`/pengajuan-biaya/program/${program.id}?kategori=${cat}&buat=overbudget`)">+ Add Overbudget</Link></div>
@@ -37,7 +37,7 @@ const exceeded=(i:{key:string;qty:string;harga:string})=>Number(i.qty)*Number(i.
                 </section>
             </section>
         </template>
-        <component v-else :is="over ? ConfirmDialog : 'section'" title="Add Overbudget" :busy="form.processing || confirming" @confirm="submit" @cancel="router.get(appUrl(`/pengajuan-biaya/program/${program.id}`))">
+        <component v-else :is="over ? ConfirmDialog : 'section'" title="Add Overbudget" :tutorial="over ? 'pbForm' : undefined" :busy="form.processing || confirming" @confirm="submit" @cancel="router.get(appUrl(`/pengajuan-biaya/program/${program.id}`))">
             <form class="stack" @submit.prevent="submit">
                 <section class="panel"><h2><span class="section-number">1</span> Data Pengajuan</h2><p>Request By {{requestBy}} · Tanggal {{today}}</p><label v-if="over">Alasan wajib<textarea v-model="form.alasan" maxlength="2000" required /></label><template v-else><label>Jenis *<select v-model="form.jenis" required @change="form.jenis==='direct_payment' && (form.bank='',form.no_rekening='',form.nama_rekening='')"><option value="kasbon">Kasbon</option><option value="direct_payment">Direct Payment</option></select></label><label>Deskripsi / keterangan *<textarea v-model="form.deskripsi" maxlength="2000" required /></label></template></section>
                 <section class="panel"><h2><span class="section-number">2</span> Informasi Pengajuan</h2><ExpenseBudget :budget="budget" /></section>

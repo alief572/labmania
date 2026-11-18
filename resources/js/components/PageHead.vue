@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Kepala halaman sesuai mockup: judul, deskripsi singkat, dan slot aksi (tombol tambah, cetak, dst.).
-defineProps<{ title: string; description?: string; reference?: string }>();
+import TutorialButton from './TutorialButton.vue';
+import type { TutorialKey } from '../composables/tutorials';
+withDefaults(defineProps<{ title: string; description?: string; reference?: string; tutorial?: TutorialKey | false }>(), { tutorial: undefined });
 </script>
 
 <template>
@@ -9,6 +10,6 @@ defineProps<{ title: string; description?: string; reference?: string }>();
             <h1>{{ title }}<span v-if="reference" class="ref">{{ reference }}</span></h1>
             <p v-if="description" class="page-desc">{{ description }}</p>
         </div>
-        <slot />
+        <div class="page-head-actions" data-tour="actions"><TutorialButton :tutorial="tutorial" /><slot /></div>
     </div>
 </template>

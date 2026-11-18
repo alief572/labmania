@@ -6,6 +6,7 @@ import ActionMenu from "../../components/ActionMenu.vue";
 import { computed, ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import PageHead from '../../components/PageHead.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
 
@@ -51,7 +52,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: pres
 <template>
     <Head :title="label" />
     <AppLayout :title="label" full-width>
-        <div class="page-head"><div><h1>{{ label }}</h1><p v-if="presentation" class="muted">{{ presentation.description }}</p></div><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah {{ label }}</button></div>
+        <PageHead :title="label" :description="presentation?.description"><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah {{ label }}</button></PageHead>
         <p class="notice">Data master <strong>tidak dapat dihapus</strong> — gunakan <strong>Nonaktifkan</strong>. Data nonaktif tidak muncul sebagai pilihan di form Product dan Peserta.</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode atau nama…" /></label>

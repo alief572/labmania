@@ -35,7 +35,7 @@ const range = (a: string, b: string) => (!b || a === b ? fmt(a) : `${fmt(a)} –
     <Head title="Quotation" />
     <AppLayout title="Quotation" full-width>
         <PageHead title="Daftar Quotation" description="Penjualan Program Final, Public maupun B2B, dibuatkan quotation sebagai persiapan invoice. Satu baris per Penjualan Program; Public dapat dibuatkan quotation berkali-kali. Klik Lihat detail untuk quotation-nya.">
-            <Link class="primary" :href="appUrl('/quotation/create')">+ Buat Quotation</Link>
+            <Link data-tour-next="qtnModal" class="primary" :href="appUrl('/quotation/create')">+ Buat Quotation</Link>
         </PageHead>
 
         <div class="tobe-box"><h3>Yang berubah di Quotation <span class="tobe">To be</span></h3><ol>
@@ -45,7 +45,7 @@ const range = (a: string, b: string) => (!b || a === b ? fmt(a) : `${fmt(a)} –
             <li>Tab <b>Data Peserta</b> di halaman ini: satu baris per batch Penjualan Program; <b>Lihat detail</b> menampilkan peserta semua quotation batch itu, dengan <b>Confirmation Letter</b> per peserta dan <b>Export PDF</b> (daftar + Confirmation Letter).</li>
             <li><b>Confirmation Letter</b> menjadi dokumen output quotation, dibentuk dari isian Konfirmasi Kehadiran.</li></ol></div>
 
-        <div v-if="tab !== 'data'" class="qtn-flow">
+        <div v-if="tab !== 'data'" class="qtn-flow" data-tour="stats">
             <button type="button" class="kpi" :class="{ on: f.status === 'draft' }" :aria-pressed="f.status === 'draft'" title="Saring menurut status" @click="status('draft')"><span class="kpi-l">Draft</span><span class="kpi-v">{{ stat('draft').jumlah }} <small>quotation</small></span><span class="kpi-s">kuota {{ stat('draft').peserta }} peserta, belum dikirim</span></button><span class="qf-arrow" aria-hidden="true">›</span>
             <button type="button" class="kpi kwarn" :class="{ on: f.status === 'terkirim' }" :aria-pressed="f.status === 'terkirim'" title="Saring menurut status" @click="status('terkirim')"><span class="kpi-l">Terkirim</span><span class="kpi-v">{{ stat('terkirim').jumlah }} <small>quotation</small></span><span class="kpi-s">kuota {{ stat('terkirim').peserta }} peserta, menunggu deal</span></button><span class="qf-arrow" aria-hidden="true">›</span>
             <button type="button" class="kpi good" :class="{ on: f.status === 'deal' }" :aria-pressed="f.status === 'deal'" title="Saring menurut status" @click="status('deal')"><span class="kpi-l">Deal</span><span class="kpi-v">{{ stat('deal').jumlah }} <small>quotation</small></span><span class="kpi-s">{{ stat('deal').peserta }} peserta deal · {{ rupiah(stat('deal').nilai) }}<template v-if="dealRate !== null"><br>tingkat deal {{ dealRate }}%</template></span></button><span class="qf-gap"></span>

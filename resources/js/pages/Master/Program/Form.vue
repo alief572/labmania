@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TutorialButton from "../../../components/TutorialButton.vue";
 import { appUrl } from '../../../composables/appUrl';
 import CostingSimulation from "../../../components/CostingSimulation.vue";
 import MoneyInput from "../../../components/MoneyInput.vue";
@@ -75,7 +76,7 @@ const lockText = computed(() => props.program.status === 'final'
 <template>
     <Head :title="program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program'" />
     <AppLayout :title="program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program'">
-        <div class="pf-formbar"><button type="button" class="kt-btn" @click="back">← Kembali</button><h1>{{ program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program' }}</h1></div>
+        <div class="pf-formbar"><button type="button" class="kt-btn" @click="back">← Kembali</button><h1>{{ program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program' }}</h1><TutorialButton /></div>
         <p v-if="lockText" class="notice">{{ lockText }}</p>
         <p v-if="transitionError" class="error" role="alert">{{ transitionError }}</p>
         <p v-if="err('program')" class="error" role="alert">{{ err('program') }}</p>

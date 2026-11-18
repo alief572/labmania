@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parse, compileScript } from '@vue/compiler-sfc';
 import ts from 'typescript';
-import { createRenderer, nextTick } from 'vue';
+import { createRenderer, nextTick, reactive } from 'vue';
 
 // Exercise the actual component setup without a browser or a simulated DataTables implementation.
-const source = readFileSync(new URL('../../resources/js/components/ServerTable.vue', import.meta.url), 'utf8');
+const source = readFileSync(process.argv[2] ?? new URL('../../resources/js/components/ServerTable.vue', import.meta.url), 'utf8');
 const { descriptor } = parse(source);
 let script = compileScript(descriptor, { id: 'server-table-test' }).content;
 script = script.replace(/import '.*\.css';/g, '').replace(/from '([^']+)'/g, (_, name) => {
@@ -20,7 +20,10 @@ const renderer = createRenderer({
     createComment: () => ({}), setText() {}, setElementText() {}, parentNode: () => null, nextSibling: () => null,
 });
 const loaded = [];
-const app = renderer.createApp(Component, { url: '/master/role/data', label: 'Role', columns: [{ title: 'Nama', orderable: true }], onLoaded: data => loaded.push(data) });
+const originalDocument = globalThis.document;
+globalThis.document = new EventTarget();
+globalThis.document.querySelector = () => null;
+const app = renderer.createApp(Component, { url: '/master/role/data', label: 'Role', columns: [{ title: 'Nama', orderable: true }], filters: { tab: 'ongoing', status: '' }, refreshOnVisit: true, onLoaded: data => loaded.push(data) });
 const vm = app.mount({});
 const state = vm.$.setupState;
 const originalFetch = globalThis.fetch;
@@ -57,6 +60,23 @@ try {
     await vm.reload(true);
     assert.deepEqual(paging.slice(-2), [false, true]);
 
+    const reloads = [];
+    state.instance = { dt: { ajax: { reload: (_, reset) => reloads.push(reset) } } };
+    for (let render = 0; render < 3; render++) {
+        vm.$.props.filters = { tab: 'ongoing', status: '' };
+        await nextTick();
+        await nextTick();
+    }
+    assert.deepEqual(reloads, [], 'Render ulang statistik dengan isi filter sama tidak boleh memuat ulang tabel.');
+    vm.$.props.filters = reactive({ tab: 'ongoing', status: 'deal' });
+    await nextTick();
+    await nextTick();
+    assert.deepEqual(reloads, [true], 'Perubahan nilai filter tetap memuat ulang dari halaman pertama.');
+    vm.$.props.filters.status = 'batal';
+    await nextTick();
+    await nextTick();
+    assert.deepEqual(reloads, [true, true], 'Perubahan field pada objek filter tetap terpantau.');
+
     const leaving = state.load({ draw: 5 }, data => received.push(data));
     app.unmount();
     requests[4].resolve(result(5));
@@ -65,8 +85,10 @@ try {
     assert.equal(requests[4].options.signal.aborted, true);
     assert.equal(received.some(data => data.draw === 5), false);
     assert.equal(loaded.some(data => data.draw === 5), false);
-    console.log('ServerTable lifecycle: request lama dibatalkan, error/retry, koreksi halaman, reload, dan unmount lulus.');
+    console.log('ServerTable lifecycle: request lama dibatalkan, error/retry, koreksi halaman, reload, filter tanpa loop, dan unmount lulus.');
 } finally {
     globalThis.fetch = originalFetch;
     app.unmount();
+    if (originalDocument === undefined) delete globalThis.document;
+    else globalThis.document = originalDocument;
 }

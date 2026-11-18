@@ -46,16 +46,16 @@ const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => 
                 <template #cell-2="{ row: p }"><b>{{ p.jumlah_so }}</b> SO<small>{{ statusText(p) }}</small></template>
                 <template #cell-3="{ row: p }">{{ p.peserta_deal }}</template>
                 <template #cell-4="{ row: p }">{{ money(p.nilai_so) }}</template>
-                <template #cell-5="{ row: p }"><ActionMenu><Link :href="appUrl(`/sales-order/program/${p.id}`)">Lihat SO</Link></ActionMenu></template>
+                <template #cell-5="{ row: p }"><ActionMenu><Link data-tour-next="soProg" :href="appUrl(`/sales-order/program/${p.id}`)">Lihat SO</Link></ActionMenu></template>
             </ServerTable>
             <ServerTable v-else :url="appUrl('/sales-order/data')" label="Surat Kerja Trainer" :columns='[{"title":"No","orderable":false},{"title":"Nomor Surat","orderable":true},{"title":"Status","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Trainer & Asisten","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
                 <template #cell-0="{ number }">{{ number }}</template>
-                <template #cell-1="{ row: s }"><Link class="code" :href="appUrl(`/surat-kerja-trainer/${s.id}`)">{{ s.nomor }}</Link><small>{{ fmt(s.tanggal) }}</small></template>
+                <template #cell-1="{ row: s }"><Link data-tour-next="sktDetail" class="code" :href="appUrl(`/surat-kerja-trainer/${s.id}`)">{{ s.nomor }}</Link><small>{{ fmt(s.tanggal) }}</small></template>
                 <template #cell-2="{ row: s }"><span v-if="s.status === 'diganti'" class="badge st-draft">Diganti</span><span v-else class="badge st-terkirim">Berlaku</span></template>
                 <template #cell-3="{ row: s }"><span class="code">{{ s.facts?.program.nomor || s.program_nomor }}</span><br>{{ s.facts?.judul || 'Snapshot belum tersedia — perlu rekonsiliasi' }}<small>{{ range(s.facts?.program.tgl_mulai, s.facts?.program.tgl_selesai) }} · {{ s.facts?.program.lokasi }}</small></template>
                 <template #cell-4="{ row: s }"><b v-if="s.facts?.trainer.nama">{{ s.facts?.trainer.nama }}</b><span v-else class="muted">Trainer belum dipilih</span><small>{{ s.facts?.trainer.bidang_keahlian }}</small><small>Asisten: {{ s.facts?.asisten.nama || '—' }}</small></template>
                 <template #cell-5="{ row: s }">{{ s.peserta_deal }}</template>
-                <template #cell-6="{ row: s }"><ActionMenu><Link :href="appUrl(`/surat-kerja-trainer/${s.id}`)">View</Link><a :href="appUrl(`/surat-kerja-trainer/${s.id}/pdf`)" target="_blank" rel="noopener">Print Out Surat Kerja</a></ActionMenu></template>
+                <template #cell-6="{ row: s }"><ActionMenu><Link data-tour-next="sktDetail" :href="appUrl(`/surat-kerja-trainer/${s.id}`)">View</Link><a :href="appUrl(`/surat-kerja-trainer/${s.id}/pdf`)" target="_blank" rel="noopener">Print Out Surat Kerja</a></ActionMenu></template>
             </ServerTable>
         </div>
     </AppLayout>
