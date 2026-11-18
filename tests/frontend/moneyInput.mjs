@@ -87,7 +87,7 @@ await input('9.876.543.210.123.456.789');
 assert.equal(model.value, '987654321012345678');
 await set('987654321012345678.00');
 assert.equal(el.value, '987.654.321.012.345.678');
-for (const [page, count] of [['Master/Program/Form', 5], ['Sales/Form', 5], ['Quotation/Form', 4], ['Expenses/Program', 1], ['Master/Rate', 1]]) {
+for (const [page, count] of [['Master/Program/Form', 5], ["Sales/Form", 5], ['Quotation/Form', 4], ['Expenses/Program', 1], ['Master/Rate', 1]]) {
     const text = readFileSync(new URL(`../../resources/js/pages/${page}.vue`, import.meta.url), 'utf8');
     assert.equal((text.match(/<MoneyInput\b/g) ?? []).length, count, page);
 }

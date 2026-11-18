@@ -13,33 +13,85 @@ const confirmation = useConfirmedMutation();
 const { pending: confirming } = confirmation;
 type Cost = { id_rate: number | null; tipe: 'fixed' | 'variable'; item: string; id_satuan: number; nama_satuan: string | null; harga: number | string; is_manual: number | boolean };
 type Program = { id: number | null; nomor: string; status: string; closed_date: string | null; jenis: string; id_master_program: number | ''; id_customer: string; id_trainer: number | ''; id_asisten: number | ''; tgl_mulai: string; tgl_selesai: string; waktu: string; lokasi: string; jam_pembelajaran: number | string; durasi_hari: number; target_peserta: number; harga_jual_peserta: number | string; target_profit: number | string; biaya: Cost[] };
-type Master = { id: number; nomor: string; judul: string; jam_pembelajaran: number; target_peserta: number; harga_jual_peserta: string; target_profit: string; biaya: Cost[] };
+type Master = { id: number; nomor: string; judul: string; durasi_hari?: number; jam_pembelajaran: number; target_peserta: number; harga_jual_peserta: string; target_profit: string; biaya: Cost[] };
+// Satu Master Program dalam penjualan (PJ-FR-32): jadwal, tim, harga, dan biayanya sendiri.
+type Part = { id_master_program: number | ''; judul?: string; tgl_mulai: string; tgl_selesai: string; jam_pembelajaran: number | string; id_trainer: number | ''; id_asisten: number | ''; harga_jual_peserta: number | string; target_profit: number | string; biaya: Cost[] };
 type Rate = { id: number; tipe: 'fixed' | 'variable'; item: string; id_satuan: number; nama_satuan: string; default_cost: string };
 type Actual = { total_hpp: number; pendapatan: number; profit: number; margin: number };
 const props = defineProps<{ program: Program; masters: Master[]; companies: { id_customer: string; name_customer: string }[]; trainers: { id: number; nama: string }[]; assistants: { id: number; nama: string; role: string | null }[]; rates: Rate[]; units: { id: number; nama: string }[]; can: { edit: boolean; approve: boolean; cancel: boolean }; jenisLocked: boolean; actual: { peserta: number; rencana: Actual; aktual: Actual } | null }>();
-const form = useForm({ ...props.program, harga_jual_peserta: Math.round(Number(props.program.harga_jual_peserta)) as number | string, target_profit: Math.round(Number(props.program.target_profit)) as number | string, biaya: props.program.biaya.map((b) => ({ ...b, harga: Math.round(Number(b.harga)) })) as Cost[] });
+const money = (v: unknown) => Math.round(Number(v) || 0);
+const cleanCosts = (list: Cost[]) => list.map((b) => ({ ...b, harga: money(b.harga) })) as Cost[];
+const savedParts: Part[] = ((props.program as unknown as { masters?: Part[] }).masters ?? []).map((m) => ({ ...m, harga_jual_peserta: money(m.harga_jual_peserta), target_profit: money(m.target_profit), biaya: cleanCosts(m.biaya ?? []) }));
+const form = useForm({ ...props.program, harga_jual_peserta: money(props.program.harga_jual_peserta) as number | string, target_profit: money(props.program.target_profit) as number | string, biaya: cleanCosts(props.program.biaya) });
+// parts = semua Master Program; field datar form.* (jadwal, tim, harga, biaya) memegang yang sedang tampil, seperti mockup pfStore/pfLoad.
+const parts = ref<Part[]>(savedParts.length ? savedParts : []);
+const current = ref(0);
+const ACTIVE = ['id_master_program', 'tgl_mulai', 'tgl_selesai', 'jam_pembelajaran', 'id_trainer', 'id_asisten', 'harga_jual_peserta', 'target_profit', 'biaya'] as const;
+function store() { if (!parts.value.length) return; const f = form as unknown as Record<string, unknown>; const row = parts.value[current.value] as unknown as Record<string, unknown>; ACTIVE.forEach((k) => { row[k] = f[k]; }); }
+function load(i: number) { store(); current.value = i; const f = form as unknown as Record<string, unknown>; const row = parts.value[i] as unknown as Record<string, unknown>; ACTIVE.forEach((k) => { f[k] = row[k]; }); }
+if (parts.value.length) { const f = form as unknown as Record<string, unknown>; const row = parts.value[0] as unknown as Record<string, unknown>; ACTIVE.forEach((k) => { f[k] = row[k]; }); }
 const editable = props.program.status === 'draft' && !props.program.closed_date && props.can.edit;
 const errors = computed(() => Object.values(form.errors));
 const choiceSearch = ref('');
 const matches = (label: string) => label.toLocaleLowerCase('id-ID').includes(choiceSearch.value.toLocaleLowerCase('id-ID'));
+const masterById = (id: number | '') => props.masters.find((m) => m.id === Number(id));
+// Master Program pertama (penjualan baru): jadwal dan tim kosong, JP, harga, dan biaya disalin dari Master Program.
 function source() {
-    const m = props.masters.find((m) => m.id === Number(form.id_master_program));
+    const m = masterById(form.id_master_program);
     if (!m || props.program.id) return;
     form.jam_pembelajaran = m.jam_pembelajaran; form.target_peserta = m.target_peserta;
-    form.harga_jual_peserta = Math.round(Number(m.harga_jual_peserta)); form.target_profit = Math.round(Number(m.target_profit));
-    form.biaya = m.biaya.map((b) => ({ ...b, harga: Math.round(Number(b.harga)) }));
+    form.harga_jual_peserta = money(m.harga_jual_peserta); form.target_profit = money(m.target_profit);
+    form.biaya = cleanCosts(m.biaya);
+    parts.value = [{ id_master_program: m.id, judul: m.judul, tgl_mulai: '', tgl_selesai: '', jam_pembelajaran: m.jam_pembelajaran, id_trainer: '', id_asisten: '', harga_jual_peserta: form.harga_jual_peserta, target_profit: form.target_profit, biaya: form.biaya }];
+    current.value = 0;
 }
-// Dibuka dari Master Program Final (?master=): isi biaya dan target dari master itu, sama seperti memilih manual.
+// Dibuka dari Master Program Final (?master=): isi dari master itu, sama seperti memilih manual.
 if (!props.program.id && props.program.id_master_program) source();
+// Master Program tambahan (PJ-FR-32, [JUM-2]): tanggal, trainer, dan asisten kosong dan dipilih sendiri; JP dan costing disalin.
+const addPick = ref<number | ''>('');
+function addMaster() {
+    const m = masterById(addPick.value); addPick.value = '';
+    if (!m || !parts.value.length || parts.value.some((x) => Number(x.id_master_program) === m.id)) return;
+    store();
+    parts.value.push({ id_master_program: m.id, judul: m.judul, tgl_mulai: '', tgl_selesai: '', jam_pembelajaran: m.jam_pembelajaran, id_trainer: '', id_asisten: '', harga_jual_peserta: money(m.harga_jual_peserta), target_profit: money(m.target_profit), biaya: cleanCosts(m.biaya) });
+    load(parts.value.length - 1);
+}
+function removeMaster(i: number) {
+    if (parts.value.length < 2) return;
+    store(); parts.value.splice(i, 1);
+    load(Math.min(i === current.value ? 0 : current.value > i ? current.value - 1 : current.value, parts.value.length - 1));
+}
+const partDays = (p: Part) => (p.tgl_mulai && p.tgl_selesai ? Math.max(1, (Date.parse(p.tgl_selesai) - Date.parse(p.tgl_mulai)) / 86400000 + 1 || 1) : 1);
+const usedIds = computed(() => parts.value.map((p) => Number(p.id_master_program)));
+const addOptions = computed(() => props.masters.filter((m) => !usedIds.value.includes(m.id)));
+const multi = computed(() => parts.value.length > 1);
+// Hitungan per Master Program: biaya per hari memakai durasi Master Program itu (PJ-FR-32). Baris aktif dibaca dari form agar ikut terisi saat diketik.
+const liveParts = computed<Part[]>(() => parts.value.map((p, i) => (i === current.value ? { ...p, tgl_mulai: form.tgl_mulai, tgl_selesai: form.tgl_selesai, harga_jual_peserta: form.harga_jual_peserta, target_profit: form.target_profit, biaya: form.biaya } : p)));
+const partCalc = (p: Part) => calc(partDays(p), form.target_peserta, rupiahInput(p.harga_jual_peserta), p.biaya.map((b) => ({ ...b, harga: rupiahInput(b.harga), satuan: b.nama_satuan })));
+const programResult = computed(() => {
+    const cs = liveParts.value.map((p) => partCalc(p));
+    const sum = (k: 'fixed' | 'varPer') => cs.reduce((t, c) => t + c[k], 0);
+    const fixed = sum('fixed'), varPer = sum('varPer'), n = Number(form.target_peserta) || 0;
+    const price = liveParts.value.reduce((t, p) => t + rupiahInput(p.harga_jual_peserta), 0);
+    const totalVar = varPer * n, hpp = fixed + totalVar, pendapatan = price * n, profit = pendapatan - hpp, kontribusi = price - varPer;
+    return { fixed, varPer, totalVar, hpp, pendapatan, profit, bep: kontribusi > 0 ? Math.max(1, Math.ceil(Math.round((fixed / kontribusi) * 1e6) / 1e6)) : null, hppPerPax: n > 0 ? hpp / n : 0, margin: pendapatan > 0 ? Math.round((profit / pendapatan) * 1000) / 10 : 0, price };
+});
+const programTarget = computed(() => liveParts.value.reduce((t, p) => t + rupiahInput(p.target_profit), 0));
 const days = computed(() => Math.max(1, (Date.parse(form.tgl_selesai) - Date.parse(form.tgl_mulai)) / 86400000 + 1 || 1));
 const result = computed(() => calc(days.value, form.target_peserta, rupiahInput(form.harga_jual_peserta), form.biaya.map((b) => ({ ...b, harga: rupiahInput(b.harga), satuan: b.nama_satuan }))));
+const activeLabel = computed(() => (multi.value ? (masterById(form.id_master_program)?.nomor ?? '') : ''));
 const pick = ref('');
 function addRate() {
     const r = props.rates.find((r) => r.id === Number(pick.value)); if (!r) return;
     form.biaya.push({ id_rate: r.id, tipe: r.tipe, item: r.item, id_satuan: r.id_satuan, nama_satuan: r.nama_satuan, harga: Math.round(Number(r.default_cost)), is_manual: false }); pick.value = '';
 }
 function unit(b: Cost) { b.nama_satuan = props.units.find((u) => u.id === Number(b.id_satuan))?.nama ?? null; }
-function save() { return confirmation.form(form, props.program.id ? 'put' : 'post', props.program.id ? `/penjualan-program/${props.program.id}` : '/penjualan-program', { title: 'Simpan Draft Penjualan Program?', text: props.program.nomor || 'Nomor dibuat otomatis saat disimpan.' }, { preserveState: 'errors' }); }
+function save() {
+    store();
+    const payload = parts.value.map((p) => ({ id_master_program: p.id_master_program, tgl_mulai: p.tgl_mulai, tgl_selesai: p.tgl_selesai, jam_pembelajaran: p.jam_pembelajaran, id_trainer: p.id_trainer, id_asisten: p.id_asisten, harga_jual_peserta: p.harga_jual_peserta, target_profit: p.target_profit, biaya: p.biaya }));
+    (form as unknown as { masters: unknown }).masters = payload;
+    return confirmation.form(form, props.program.id ? 'put' : 'post', props.program.id ? `/penjualan-program/${props.program.id}` : '/penjualan-program', { title: 'Simpan Draft Penjualan Program?', text: props.program.nomor || 'Nomor dibuat otomatis saat disimpan.' }, { preserveState: 'errors' });
+}
 const STATUS_LABEL: Record<string, string> = { draft: 'Draft', final: 'Final', batal: 'Batal' };
 const isNew = !props.program.id;
 const b2bProgram = computed(() => form.jenis === 'b2b');
@@ -60,9 +112,19 @@ function status(kind: 'finalkan') { return confirmation.form(transition, 'post',
             <div><strong>Jenis penjualan</strong><p>{{ form.jenis === 'b2b' ? 'B2B' : 'Public' }}</p></div>
             <div><strong>Status</strong><p><span class="badge" :class="`st-${program.status}`">{{ STATUS_LABEL[program.status] ?? program.status }}{{ program.closed_date ? ' · Closed' : '' }}</span><span v-if="program.status === 'final'" class="muted"> → Quotation</span></p></div>
         </div></section>
-        <p v-if="program.id && program.status === 'final'"><Link :href="appUrl(`/penjualan-program/${program.id}/reschedule`)">Reschedule / Riwayat</Link></p><form class="stack" @submit.prevent="save"><fieldset :disabled="!editable || form.processing" class="panel"><legend><span class="section-number">1</span> Informasi Penjualan</legend><label v-if="editable">Cari pilihan program, Company, trainer, atau asisten<input v-model="choiceSearch" type="search" maxlength="100" /></label><div class="form-grid">
+        <p v-if="program.id && program.status === 'final'"><Link :href="appUrl(`/penjualan-program/${program.id}/reschedule`)">Reschedule / Riwayat</Link></p><form class="stack" @submit.prevent="save"><fieldset :disabled="!editable || form.processing" class="panel"><legend><span class="section-number">1</span> Informasi Penjualan</legend><label v-if="editable">Cari pilihan program, Company, trainer, atau asisten<input v-model="choiceSearch" type="search" maxlength="100" /></label>
+            <div v-if="parts.length" class="pj-mps-block" data-tour="table"><p class="hint">Satu penjualan boleh berisi lebih dari satu Master Program; tanggal, Jam Pembelajaran, trainer, asisten (bagian 1) dan costing (bagian 2 – 4) diisi per Master Program. Klik nama Master Program untuk menampilkan isiannya.</p>
+                <div class="table-wrap"><table class="pj-mps"><caption class="sr-only">Master Program dalam penjualan</caption><thead><tr><th>Master Program</th><th>Jadwal &amp; tim</th><th class="money">Harga jual / peserta</th><th class="money">HPP</th><th class="money">Profit</th><th><span class="sr-only">Aksi</span></th></tr></thead><tbody>
+                    <tr v-for="(p, i) in liveParts" :key="String(p.id_master_program)" :class="{ on: i === current }"><td><button type="button" :aria-current="i === current ? 'true' : undefined" @click="load(i)"><span class="code">{{ masterById(p.id_master_program)?.nomor }}</span> {{ p.judul ?? masterById(p.id_master_program)?.judul }}</button><span v-if="i === current && multi" class="tag">tampil di bawah</span></td>
+                        <td><template v-if="p.tgl_mulai">{{ p.tgl_mulai }} – {{ p.tgl_selesai || '…' }} · {{ partDays(p) }} hari · {{ p.jam_pembelajaran }} JP</template><span v-else class="muted">Tanggal belum diisi</span><small>{{ trainers.find((t) => t.id === Number(p.id_trainer))?.nama ?? 'Trainer —' }} · {{ assistants.find((a) => a.id === Number(p.id_asisten))?.nama ?? 'Asisten —' }}</small></td>
+                        <td class="money">{{ rupiah(rupiahInput(p.harga_jual_peserta)) }}</td><td class="money">{{ rupiah(partCalc(p).hpp) }}</td><td class="money" :class="{ neg: partCalc(p).profit < 0 }">{{ rupiah(partCalc(p).profit) }}</td>
+                        <td><button v-if="editable && multi" type="button" class="danger" :aria-label="`Hapus ${masterById(p.id_master_program)?.nomor} dari penjualan ini`" @click="removeMaster(i)">Hapus</button></td></tr>
+                </tbody><tfoot v-if="multi"><tr><th>Total program <small>{{ parts.length }} Master Program</small></th><td>{{ liveParts.reduce((t, p) => t + (Number(p.jam_pembelajaran) || 0), 0) }} JP</td><td class="money"><b>{{ rupiah(programResult.price) }}</b></td><td class="money"><b>{{ rupiah(programResult.hpp) }}</b></td><td class="money" :class="{ neg: programResult.profit < 0 }"><b>{{ rupiah(programResult.profit) }}</b></td><td /></tr></tfoot></table></div>
+                <label v-if="editable"><span class="sr-only">Tambah Master Program</span><select v-model="addPick" aria-label="Tambah Master Program" @change="addMaster"><option value="">+ Tambah Master Program Final…</option><option v-for="m in addOptions" :key="m.id" :value="m.id">{{ m.nomor }} — {{ m.judul }} · {{ rupiah(m.harga_jual_peserta) }}</option></select></label>
+                <p v-if="multi" class="hint mp-aktif-note">Tanggal, Jam Pembelajaran, trainer, dan asisten di bawah milik <b>{{ activeLabel }}</b>. Pilih Master Program lain di tabel untuk mengisi jadwalnya.</p></div>
+            <div class="form-grid">
             <label>Jenis<select v-model="form.jenis" :disabled="jenisLocked"><option value="public">Public</option><option value="b2b">B2B</option></select></label>
-            <label>Master Program<select v-model="form.id_master_program" required :disabled="!!program.id" @change="source"><option value="">— Pilih Master Program Final —</option><option v-for="m in masters.filter((m) => m.id === Number(form.id_master_program) || matches(m.nomor + ' ' + m.judul))" :key="m.id" :value="m.id">{{ m.nomor }} · {{ m.judul }}</option></select></label>
+            <label v-if="!parts.length">Master Program<select v-model="form.id_master_program" required :disabled="!!program.id" @change="source"><option value="">— Pilih Master Program Final —</option><option v-for="m in masters.filter((m) => m.id === Number(form.id_master_program) || matches(m.nomor + ' ' + m.judul))" :key="m.id" :value="m.id">{{ m.nomor }} · {{ m.judul }}</option></select></label>
             <label v-if="form.jenis === 'b2b'">Company<select v-model="form.id_customer" required><option value="">— Pilih Company aktif —</option><option v-for="c in companies.filter((c) => c.id_customer === form.id_customer || matches(c.name_customer))" :key="c.id_customer" :value="c.id_customer">{{ c.name_customer }}</option></select></label>
             <label>Trainer<select v-model="form.id_trainer" required><option value="">— Pilih trainer aktif —</option><option v-for="t in trainers.filter((t) => t.id === Number(form.id_trainer) || matches(t.nama))" :key="t.id" :value="t.id">{{ t.nama }}</option></select></label>
             <label>Asisten trainer<select v-model="form.id_asisten" required><option value="">— Pilih asisten aktif —</option><option v-for="a in assistants.filter((a) => a.id === Number(form.id_asisten) || matches(a.nama + ' ' + (a.role ?? '')))" :key="a.id" :value="a.id">{{ a.nama }}{{ a.role ? ' · ' + a.role : '' }}</option></select></label>
@@ -73,7 +135,7 @@ function status(kind: 'finalkan') { return confirmation.form(transition, 'post',
         <fieldset v-for="(category,ci) in (['fixed','variable'] as const)" :key="category" :disabled="!editable || form.processing" class="panel cost-section"><legend><span class="section-number">{{ci+2}}</span> {{category==='fixed'?'Fixed Cost':'Variable Cost'}}</legend>
 <div v-for="unitName in (category==='fixed'?['Event','Day']:['Peserta/Event','Peserta/Day'])" :key="unitName" class="cost-group"><h3>{{category==='fixed'?'Fixed Cost':'Variable Cost'}} / {{unitName}}</h3><div class="table-wrap"><table><thead><tr><th>Item</th><th class="money">Nominal (Rp)</th><th class="money">Qty</th><th class="money">Total</th><th>Aksi</th></tr></thead><tbody><tr v-for="{b,i} in form.biaya.map((b,i)=>({b,i})).filter(({b})=>b.tipe===category && (b.nama_satuan===unitName || (!b.nama_satuan && unitName===(category==='fixed'?'Event':'Peserta/Event'))))" :key="i"><td><input v-if="b.is_manual" v-model="b.item" :aria-label="`Item ${i+1}`" maxlength="150" required/><span v-else>{{b.item}}</span><label v-if="b.is_manual">Satuan<select v-model="b.id_satuan" required @change="unit(b)"><option :value="0">Pilih</option><option v-for="u in units.filter(u=>(category==='fixed'?['Event','Day']:['Peserta/Event','Peserta/Day']).includes(u.nama))" :key="u.id" :value="u.id">{{u.nama}}</option></select></label></td><td><MoneyInput v-model="b.harga" :aria-label="`Nominal ${b.item}`" required/></td><td class="money">{{costQuantity(b.tipe,b.nama_satuan,days,form.target_peserta)}}</td><td class="money">{{rupiah(rupiahInput(b.harga)*costQuantity(b.tipe,b.nama_satuan,days,form.target_peserta))}}</td><td><button v-if="editable" type="button" class="danger" :aria-label="`Hapus ${b.item}`" @click="form.biaya.splice(i,1)">Hapus</button></td></tr></tbody></table></div><div v-if="editable" class="filters"><label>Tambah dari Master Rate<select v-model="pick" @change="addRate"><option value="">Pilih item</option><option v-for="r in rates.filter(r=>r.tipe===category && r.nama_satuan===unitName && !form.biaya.some(b=>b.id_rate===r.id))" :key="r.id" :value="r.id">{{r.item}} · {{rupiah(r.default_cost)}}</option></select></label><button type="button" @click="form.biaya.push({id_rate:null,tipe:category,item:'',id_satuan:units.find(u=>u.nama===unitName)?.id || 0,nama_satuan:unitName,harga:'',is_manual:true})">+ Biaya lain</button></div></div>
 <p class="cost-total">Total {{category==='fixed'?'Fixed Cost':'Variable Cost'}} <strong>{{rupiah(category==='fixed'?result.fixed:result.totalVar)}}</strong></p></fieldset>
-        <section class="panel"><h2><span class="section-number">4</span> Simulasi Hasil</h2><div class="form-grid"><label>Target peserta<input v-model="form.target_peserta" type="number" :min="form.jenis==='b2b'?10:1" :disabled="!editable" required/></label><label>Harga jual / peserta (Rp)<MoneyInput v-model="form.harga_jual_peserta" :disabled="!editable" required/></label><label>Target profit (Rp)<MoneyInput v-model="form.target_profit" :disabled="!editable"/></label></div><CostingSimulation :result="result" :participants="form.target_peserta" :price="form.harga_jual_peserta" :target-profit="form.target_profit" /><p v-if="result.profit < 0 || (result.bep ?? Infinity) > Number(form.target_peserta)" class="notice">Target belum mencapai titik impas.</p></section>
+        <section class="panel"><h2><span class="section-number">4</span> Simulasi Hasil</h2><div class="form-grid"><label>Target peserta<input v-model="form.target_peserta" type="number" :min="form.jenis==='b2b'?10:1" :disabled="!editable" required/></label><label>Harga jual / peserta (Rp)<MoneyInput v-model="form.harga_jual_peserta" :disabled="!editable" required/></label><label>Target profit (Rp)<MoneyInput v-model="form.target_profit" :disabled="!editable"/></label></div><p v-if="multi" class="hint">Ringkasan seluruh program ({{ parts.length }} Master Program): harga jual, HPP, pendapatan, dan profit dijumlah; biaya per hari memakai durasi tiap Master Program.</p><CostingSimulation :result="multi ? programResult : result" :participants="form.target_peserta" :price="multi ? programResult.price : form.harga_jual_peserta" :target-profit="multi ? programTarget : form.target_profit" /><p v-if="(multi ? programResult : result).profit < 0 || ((multi ? programResult : result).bep ?? Infinity) > Number(form.target_peserta)" class="notice">Target belum mencapai titik impas.</p></section>
         <p v-for="e in transition.errors" :key="e" class="error" role="alert">{{ e }}</p>
         <div class="form-actions page-actions">
             <Link :href="appUrl('/penjualan-program')">{{ isNew ? 'Batal' : 'Kembali' }}</Link>
