@@ -11,6 +11,8 @@ use Tests\Feature\Sales\Phase5Scenarios;
 class Phase5MysqlTest extends MysqlTestCase
 {
     use Phase5Scenarios;
+    use \Tests\Feature\Sales\TopReconfirmationScenarios;
+    use \Tests\Feature\Sales\RefundApprovalScenarios;
 
     public function test_concurrent_revision_payment_and_refund_share_program_lock_and_unique_request(): void
     {

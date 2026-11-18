@@ -306,11 +306,18 @@ class Invoice
     public static function terminAmounts(object $quotation, int $count, string $treatment, array $state, int $ke): array
     {
         $full = self::calculate($quotation, $count, $treatment);
-        $billed = DB::table('invoice')->where('id_sales_order', $state['so'])->where('status', 'invoiced')->where('termin_ke', '!=', $ke)->get(['penjualan', 'biaya_lain']);
-        $part = [];
-        foreach (['penjualan', 'biaya_lain'] as $field) {
-            $part[$field] = Quotation::terminShare($state['termin'], $ke, $full[$field], $billed->sum(fn ($i) => (string) $i->$field));
+        $billed = DB::table('invoice')->where('id_sales_order', $state['so'])->where('status', 'invoiced')->where('termin_ke', '!=', $ke)->get(['id', 'biaya_lain']);
+        // Penjualan yang sudah ditagih dihitung dari bagian peserta yang masih Deal: peserta yang keluar (refund) tidak lagi dihitung, sehingga
+        // termin terakhir menagih sisa nilai Deal yang benar. Tanpa peserta keluar hasilnya sama dengan jumlah penjualan invoice lain.
+        $sold = BigDecimal::zero();
+        $nominals = DB::table('invoice_peserta as ip')->join('quotation_peserta as x', 'x.id', '=', 'ip.id_quotation_peserta')
+            ->whereIn('ip.id_invoice', $billed->pluck('id')->all())->where('x.status', 'deal')->pluck('ip.nominal');
+        foreach ($nominals as $nominal) {
+            $sold = $sold->plus((string) $nominal);
         }
+        $other = $billed->reduce(fn ($carry, $i) => $carry->plus((string) $i->biaya_lain), BigDecimal::zero());
+        $part = ['penjualan' => Quotation::terminShare($state['termin'], $ke, $full['penjualan'], (string) $sold),
+            'biaya_lain' => Quotation::terminShare($state['termin'], $ke, $full['biaya_lain'], (string) $other)];
 
         return self::calculate($quotation, $count, $treatment, $part);
     }

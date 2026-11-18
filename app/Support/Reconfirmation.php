@@ -35,16 +35,13 @@ class Reconfirmation
     {
         return DB::table('invoice as i')->where('i.id_quotation', $q->id)->where('i.status', 'invoiced')
             ->when($person !== null, fn ($w) => $w->whereExists(fn ($x) => $x->selectRaw('1')->from('invoice_peserta as ip')->whereColumn('ip.id_invoice', 'i.id')->where('ip.id_quotation_peserta', $person)))
+            // TOP: banyak invoice termin; yang sudah dibayar didahulukan agar status bayar mewakili dana yang sudah masuk ([JMR-7]).
+            ->orderByRaw('CASE WHEN i.tanggal_bayar IS NULL THEN 1 ELSE 0 END')->orderBy('i.id')
             ->first(['i.*']);
     }
 
-    private static function choice(string $decision, ?object $invoice, ?object $quotation = null): void
+    private static function choice(string $decision, ?object $invoice): void
     {
-        // ponytail: refund dan batal TOP menurut termin terbayar ([JMR-7]) belum dibangun; tolak jelas daripada salah menagih atau mengembalikan dana.
-        // Pindah jadwal tidak menyentuh invoice sehingga tetap boleh. Tambahkan alokasi per termin sebelum membuka ini.
-        if ($quotation && $decision !== 'pindah_jadwal' && $decision !== 'tidak' && Quotation::termin($quotation)) {
-            throw ValidationException::withMessages(['keputusan' => 'Batal ikut atau Refund pada quotation TOP belum tersedia; hubungi Sales.']);
-        }
         $paid = $invoice?->tanggal_bayar !== null;
         if (! in_array($decision, $paid ? ['pindah_jadwal', 'refund'] : ['pindah_jadwal', 'batal'], true)) {
             throw ValidationException::withMessages(['keputusan' => 'Status pembayaran berubah atau keputusan tidak sah; muat ulang.']);
@@ -71,7 +68,7 @@ class Reconfirmation
                 throw ValidationException::withMessages(['konfirmasi' => 'Jawaban sudah diterima atau peserta tidak termasuk putaran ini. Perubahan melalui Sales.']);
             }
             $invoice = self::invoice($q, $b2b ? null : (int) $targets->first()->id_quotation_peserta);
-            self::choice($input['keputusan'], $invoice, $q);
+            self::choice($input['keputusan'], $invoice);
             $following = array_values(array_unique(array_map('intval', $input['peserta'] ?? [])));
             if ($input['keputusan'] === 'pindah_jadwal') {
                 if (! $file) {
@@ -113,6 +110,16 @@ class Reconfirmation
         DB::table('quotation_peserta')->where('id', $id)->update(['surat_konfirmasi' => $file['path'], 'surat_konfirmasi_nama' => $file['name']]);
     }
 
+    /** TOP: batalkan semua invoice termin aktif yang belum dibayar; invoice yang sudah dibayar tetap dan menjadi dasar refund. */
+    private static function cancelUnpaid(object $q, string $reason): void
+    {
+        $unpaid = DB::table('invoice')->where('id_quotation', $q->id)->where('status', 'invoiced')->whereNull('tanggal_bayar')->orderBy('id')->lockForUpdate()->get();
+        foreach ($unpaid as $old) {
+            DB::table('invoice')->where('id', $old->id)->update(['status' => 'batal', 'batal_by' => Auth::id(), 'batal_date' => now(), 'batal_alasan' => $reason, 'updated_by' => Auth::id(), 'updated_date' => now()]);
+            write_log('Invoice', 'Batal', 'Batal '.$old->nomor.': '.$reason, ['old' => ['status' => $old->status], 'new' => ['status' => 'batal'], 'alasan' => $reason], 'invoice', $old->id, $old->nomor);
+        }
+    }
+
     public static function process(int $personId, array $input): void
     {
         Sales::transaction(function () use ($personId, $input) {
@@ -141,7 +148,7 @@ class Reconfirmation
             $invoice = self::invoice($q, $b2b ? null : $personId);
             $decision = $input['keputusan'];
             if ($decision !== 'tidak') {
-                self::choice($decision, $invoice, $q);
+                self::choice($decision, $invoice);
             } elseif (! $b2b || $answer->keputusan !== 'tidak') {
                 throw ValidationException::withMessages(['keputusan' => 'Opsi dicoret hanya dari jawaban PIC B2B.']);
             }
@@ -173,7 +180,10 @@ class Reconfirmation
                 write_log('Quotation', $decision === 'pindah_jadwal' ? 'Konfirmasi Ulang' : 'Keluar', $old->nama.' - '.Sales::display($q), ['sub_module' => 'Data Peserta', 'old' => (array) $old, 'new' => array_merge((array) $old, $changes),
                     'detail_changes' => ['Keputusan' => ['old' => $a->keputusan, 'new' => $decision]], 'alasan' => $reason, 'refund_id' => $refundId], 'quotation_peserta', $old->id, Sales::display($q));
             }
-            if ($decision === 'batal' && $invoice) {
+            if (in_array($decision, ['batal', 'refund'], true) && Quotation::termin($q)) {
+                // TOP ([JMR-7]): refund dari termin yang sudah dibayar; semua termin yang belum dibayar dibatalkan (tidak dihapus).
+                self::cancelUnpaid($q, $reason);
+            } elseif ($decision === 'batal' && $invoice) {
                 $old = Invoice::row($invoice->id, true);
                 if ($old->tanggal_bayar !== null) {
                     throw ValidationException::withMessages(['invoice' => 'Invoice sudah dibayar; muat ulang untuk opsi Refund.']);

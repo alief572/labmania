@@ -79,14 +79,14 @@ class RefundController extends Controller
         abort_unless(Gate::allows('menu', [self::LIST, 'View']) || Gate::allows('menu', [self::APPROVAL, 'View']), 403);
         $row = DB::table('sales_order_refund')->where('id', $id)->first() ?? abort(404);
         $s = json_decode($row->snapshot, true);
+        $maks = Refund::ceiling($row);
         unset($row->snapshot, $row->bukti_transfer);
         $p = DB::table('sales_order as s')->join('penjualan_program as p', 'p.id', '=', 's.id_penjualan')->where('s.id', $row->id_sales_order)->first(['p.closed_date']);
         $history = DB::table('sales_order_refund_riwayat as h')->leftJoin('users as u', 'u.id_user', '=', 'h.oleh')->where('h.id_refund', $id)->orderBy('h.id')
             ->get(['h.jenis', 'h.catatan', 'h.nominal_lama', 'h.nominal_baru', 'h.alasan_lama', 'h.alasan_baru', 'h.waktu', 'u.nm_lengkap as oleh']);
-        $invoice = DB::table('invoice')->where('id', DB::table('sales_order_refund')->where('id', $id)->value('id_invoice'))->first(['piutang']);
         $open = $p->closed_date === null;
 
-        $props = ['refund' => $row, 'snapshot' => $s, 'riwayat' => $history, 'maks' => (string) ($invoice->piutang ?? $row->nominal_tagihan),
+        $props = ['refund' => $row, 'snapshot' => $s, 'riwayat' => $history, 'maks' => $maks,
             'canManage' => Gate::allows('menu', [self::LIST, 'Manage']) && $open, 'canAjukan' => Gate::allows('menu', [self::LIST, 'Add']) && $open,
             'canApprove' => Gate::allows('menu', [self::APPROVAL, 'Approve']) && $open, 'closed' => ! $open];
 

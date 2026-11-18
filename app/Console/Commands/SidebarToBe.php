@@ -11,7 +11,7 @@ use Throwable;
 
 class SidebarToBe extends Command
 {
-    protected $signature = 'labmania:sidebar-to-be {--terapkan : Tulis pada salinan lokal} {--aktor= : ID Superadmin untuk audit}';
+    protected $signature = 'labmania:sidebar-to-be {--terapkan : Tulis pada salinan lokal} {--aktor= : ID Superadmin untuk audit} {--semua-modul : Susun seluruh modul sesuai mockup}';
 
     protected $description = 'Sesuaikan menu Master Data dengan mockup tiga level; default simulasi';
 
@@ -27,7 +27,7 @@ class SidebarToBe extends Command
                 }
                 Auth::setUser($user);
             }
-            $changes = Sidebar::sync((bool) $this->option('terapkan'));
+            $changes = $this->option('semua-modul') ? Sidebar::syncAll((bool) $this->option('terapkan')) : Sidebar::sync((bool) $this->option('terapkan'));
             $this->line(json_encode(['mode' => $this->option('terapkan') ? 'terapkan' : 'simulasi', 'changes' => $changes], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
 
             return self::SUCCESS;

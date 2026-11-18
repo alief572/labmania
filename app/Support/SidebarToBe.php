@@ -32,6 +32,82 @@ class SidebarToBe
         }
     }
 
+    public static function syncAll(bool $apply = false): array
+    {
+        self::guard();
+        if ($apply && (! Auth::user() || ! Permissions::superadmin(Auth::user()))) {
+            throw new RuntimeException('Penerapan memerlukan aktor Superadmin aktif.');
+        }
+        $modules = [
+            'm_master_data' => ['Master Data', self::GROUPS],
+            'm_penjualan' => ['Penjualan Program', [1 => ['master_program' => 'Daftar Master Program', 'penjualan_program' => 'Daftar Penjualan Program']]],
+            'm_quotation' => ['Quotation', [1 => ['quotation_program' => 'Daftar Quotation', 'sales_order' => 'Sales Order']]],
+            'm_invoice' => ['Invoice', [1 => ['invoicing' => 'Invoicing']]],
+            'm_refund' => ['Refund', [1 => ['refund_daftar' => 'Daftar Refund', 'refund_approval' => 'Approval Refund']]],
+            'm_manage_peserta' => ['Manage Peserta', [1 => ['manage_peserta' => 'Manage Peserta', 'monitoring_peserta' => 'Monitoring Peserta']]],
+            'm_pengajuan_biaya' => ['Pengajuan Biaya', [1 => ['pengajuan_biaya' => 'Pengajuan Biaya', 'approval_pengajuan_biaya' => 'Approval Pengajuan']]],
+            'm_activity_log' => ['Activity Log', [1 => ['activity_log' => 'Activity Log']]],
+            'm_pengaturan' => ['Pengaturan', [1 => ['menu_labmania' => 'Menu Sidebar']]],
+        ];
+
+        return DB::transaction(function () use ($apply, $modules) {
+            $all = DB::table('ms_menu')->when($apply, fn ($q) => $q->lockForUpdate())->get();
+            $menus = $all->keyBy('kode');
+            if ($all->count() !== $menus->count()) {
+                throw new RuntimeException('Kode menu duplikat; perbaiki sebelum penerapan.');
+            }
+            if (! isset($menus['dashboard']) || $menus['dashboard']->link === '#') {
+                throw new RuntimeException('Menu dashboard tidak lengkap.');
+            }
+            foreach ($modules as $code => [$title, $groups]) {
+                $parent = $menus[$code] ?? null;
+                if ($parent && ($parent->link !== '#' || (int) $parent->parent_id !== 0 || (int) $parent->aktif !== 1)) {
+                    throw new RuntimeException('Induk '.$code.' harus aktif, tingkat atas, dan link #.');
+                }
+                foreach ($groups as $members) {
+                    foreach ($members as $child => $label) {
+                        if (! isset($menus[$child]) || $menus[$child]->link === '#') {
+                            throw new RuntimeException('Menu sumber tidak lengkap: '.$child);
+                        }
+                    }
+                }
+            }
+            $changes = [];
+            $update = function (string $code, array $data) use ($apply, $menus, &$changes) {
+                $old = isset($menus[$code]) ? (array) $menus[$code] : null;
+                if ($old && ! array_diff_assoc($data, $old)) {
+                    return $old['id'];
+                }
+                $changes[] = ['kode' => $code, 'old' => $old ? array_intersect_key($old, $data) : null, 'new' => $data];
+                if (! $apply) {
+                    return $old['id'] ?? '@'.$code;
+                }
+                if ($old) {
+                    $id = $old['id'];
+                    DB::table('ms_menu')->where('id', $id)->update($data + ['updated_by' => Auth::id(), 'updated_date' => now()]);
+                } else {
+                    $id = DB::table('ms_menu')->insertGetId($data + ['kode' => $code, 'link' => '#', 'aktif' => 1, 'sistem' => 0, 'created_by' => Auth::id(), 'created_date' => now()]);
+                }
+                write_log('Menu Sidebar', $old ? 'Edit' : 'Tambah', 'Susun sidebar '.$code, ['old' => $old, 'new' => (array) DB::table('ms_menu')->where('id', $id)->first()], 'ms_menu', $id, $code);
+
+                return $id;
+            };
+            $update('dashboard', ['parent_id' => 0, 'kelompok' => 1, 'urutan' => 10]);
+            $position = 10;
+            foreach ($modules as $code => [$title, $groups]) {
+                $parent = $update($code, ['judul' => $title, 'parent_id' => 0, 'kelompok' => 1, 'urutan' => $position += 10]);
+                foreach ($groups as $group => $members) {
+                    $order = 0;
+                    foreach ($members as $child => $label) {
+                        $update($child, ['judul' => $label, 'parent_id' => $parent, 'kelompok' => $group, 'urutan' => $order += 10]);
+                    }
+                }
+            }
+
+            return $changes;
+        });
+    }
+
     public static function sync(bool $apply = false): array
     {
         self::guard();

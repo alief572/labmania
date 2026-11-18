@@ -34,7 +34,9 @@ class MysqlSmokeTest extends MysqlTestCase
 
     public function test_seluruh_alur_master_data_dan_program_berjalan_di_mysql(): void
     {
-        $coa = $this->seedConfiguration();
+        $this->seedConfiguration();
+        $coa = 'SMOKE-5';
+        DB::table('coa_master')->insert(['no_perkiraan' => $coa, 'nama' => 'COA fixture smoke test', 'level' => '5']);
         $root = $this->superadmin();
         $this->loginAs($root);
         $sat = DB::table('ms_satuan')->whereIn('code', ['event', 'day', 'peserta_event', 'peserta_day'])->pluck('id', 'code');

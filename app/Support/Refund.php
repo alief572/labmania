@@ -41,18 +41,37 @@ class Refund
     public static function create(object $q, object $so, object $invoice, object $answer, ?int $participant, string $reason): int
     {
         $key = $participant ? 'peserta:'.$participant : 'company';
+        // TOP ([JMR-7]): dana yang dikembalikan berasal dari semua invoice termin yang sudah dibayar. Invoice termin dibayar pertama menjadi
+        // rujukan (id_invoice), sehingga satu penerima paling banyak satu refund aktif seperti pada Full payment.
+        $paidTermins = ($invoice->termin_ke ?? null) === null ? [] : DB::table('invoice')->where('id_quotation', $q->id)->where('status', 'invoiced')
+            ->whereNotNull('tanggal_bayar')->whereNotNull('termin_ke')->orderBy('termin_ke')->get()->all();
+        if ($paidTermins) {
+            $invoice = $paidTermins[0];
+        }
         $existing = DB::table('sales_order_refund')->where('id_invoice', $invoice->id)->where('kunci_penerima', $key)->first();
         if ($existing) {
             return $existing->id;
         }
         $weights = DB::table('invoice_peserta')->where('id_invoice', $invoice->id)->orderBy('id_quotation_peserta')->pluck('nominal', 'id_quotation_peserta')->all();
-        $amount = $participant ? (self::allocate((string) $invoice->piutang, $weights)[$participant] ?? '0') : (string) $invoice->piutang;
+        // ponytail: bagian tiap termin dialokasikan dari piutang invoice termin itu (dana yang benar-benar masuk), setara persen termin x nilai peserta
+        // sampai selisih pembulatan. Ubah di sini bila BA menetapkan rumus lain.
+        $amount = '0';
+        $parts = [];
+        foreach ($paidTermins ?: [$invoice] as $source) {
+            $w = DB::table('invoice_peserta')->where('id_invoice', $source->id)->orderBy('id_quotation_peserta')->pluck('nominal', 'id_quotation_peserta')->all();
+            $part = $participant ? (self::allocate((string) $source->piutang, $w)[$participant] ?? '0') : (string) $source->piutang;
+            $amount = (string) BigDecimal::of($amount)->plus($part);
+            if ($paidTermins) {
+                $parts[] = ['invoice' => $source->nomor, 'termin_ke' => (int) $source->termin_ke, 'piutang' => (string) $source->piutang, 'bagian' => $part];
+            }
+        }
         if (BigDecimal::of($amount)->isLessThanOrEqualTo(0)) {
             throw ValidationException::withMessages(['keputusan' => 'Tidak ada dana lunas teralokasi untuk Refund; rekonsiliasi diperlukan.']);
         }
         $snapshot = ['invoice' => $invoice->nomor, 'piutang' => (string) $invoice->piutang, 'tanggal_bayar' => $invoice->tanggal_bayar,
             'nomor_so' => Sales::display($so), 'nomor_quotation' => Sales::display($q), 'peserta' => $participant ? DB::table('quotation_peserta')->where('id', $participant)->value('nama') : null,
-            'company' => $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->value('name_customer') : null, 'bobot' => $weights, 'batas_dana' => $amount];
+            'company' => $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->value('name_customer') : null, 'bobot' => $weights, 'batas_dana' => $amount,
+            'termin' => $parts ?: null];
         $new = ['nomor' => Sales::number('sales_order_refund', 'LMI/RF/'.now()->format('m/y')), 'tanggal' => today()->toDateString(),
             'id_sales_order' => $so->id, 'id_quotation_peserta' => $participant, 'id_invoice' => $invoice->id, 'id_konfirmasi_ulang' => $answer->id,
             'kunci_penerima' => $key, 'revisi' => $q->revisi, 'nominal_tagihan' => $amount, 'alasan' => $reason, 'status' => 'menunggu',
@@ -61,6 +80,25 @@ class Refund
         write_log('Refund', 'Tambah', 'Refund '.$new['nomor'].' dari '.$invoice->nomor, ['sub_module' => 'Refund', 'new' => $new], 'sales_order_refund', $id, $new['nomor']);
 
         return $id;
+    }
+
+    /**
+     * Batas atas nominal tagihan saat diajukan ulang: seluruh piutang invoice (Full payment) atau jumlah piutang semua invoice termin
+     * yang dibayar (TOP). Invoice yang tidak lagi aktif dan lunas tidak dihitung.
+     */
+    public static function ceiling(object $refund): string
+    {
+        $s = json_decode((string) $refund->snapshot, true) ?: [];
+        if (! empty($s['termin'])) {
+            $sum = BigDecimal::zero();
+            foreach (DB::table('invoice')->whereIn('nomor', array_column($s['termin'], 'invoice'))->where('status', 'invoiced')->whereNotNull('tanggal_bayar')->pluck('piutang') as $piutang) {
+                $sum = $sum->plus((string) $piutang);
+            }
+
+            return (string) $sum;
+        }
+
+        return (string) (DB::table('invoice')->where('id', $refund->id_invoice)->value('piutang') ?? $refund->nominal_tagihan);
     }
 
     /**
@@ -127,8 +165,9 @@ class Refund
                 throw ValidationException::withMessages(['refund' => 'Invoice tidak lagi memenuhi syarat Refund.']);
             }
             $amount = BigDecimal::of($nominal);
-            if ($amount->isLessThanOrEqualTo(0) || $amount->isGreaterThan((string) $invoice->piutang)) {
-                throw ValidationException::withMessages(['nominal' => 'Nominal tagihan 1 sampai '.Invoice::rupiah((string) $invoice->piutang).'.']);
+            $max = self::ceiling($old);
+            if ($amount->isLessThanOrEqualTo(0) || $amount->isGreaterThan($max)) {
+                throw ValidationException::withMessages(['nominal' => 'Nominal tagihan 1 sampai '.Invoice::rupiah($max).'.']);
             }
             DB::table('sales_order_refund')->where('id', $id)->update(['status' => 'menunggu', 'alasan' => $reason, 'nominal_tagihan' => (string) $amount, 'updated_by' => Auth::id(), 'updated_date' => now()]);
             DB::table('sales_order_refund_riwayat')->insert(['id_refund' => $id, 'jenis' => 'ajukan_ulang', 'catatan' => $note, 'nominal_lama' => $old->nominal_tagihan, 'nominal_baru' => (string) $amount,

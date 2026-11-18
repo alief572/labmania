@@ -53,8 +53,8 @@ trait SidebarMigrationScenarios
         $this->assertSame([], Navigation::items(['master_data.rate' => ['Manage']]));
         $items = Navigation::items(['master_data.rate' => ['View'], 'master_program' => ['View'], 'refund_daftar' => ['View']]);
         $this->assertSame(['master_data.rate', 'master_program', 'refund_daftar'], array_column($items, 'menu'));
-        // Daftar Refund berada di kelompok 3 "Refund" di bawah Quotation (config/navigation-groups.php), bukan lagi di Sales Order.
-        $this->assertSame(['Product', 'Master Program', 'Refund'], array_column($items, 'subgroupLabel'));
+        // Label subgroup hanya ditampilkan pada Master Data sesuai mockup.
+        $this->assertSame(['Product', '', ''], array_column($items, 'subgroupLabel'));
         $after = DB::table('ms_menu')->orderBy('id')->get()->toJson();
         $this->applySidebarMigration();
         $this->assertSame($after, DB::table('ms_menu')->orderBy('id')->get()->toJson());
