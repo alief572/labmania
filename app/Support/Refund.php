@@ -38,7 +38,7 @@ class Refund
         return $result;
     }
 
-    public static function create(object $q, object $so, object $invoice, object $answer, ?int $participant, string $reason): int
+    public static function create(object $q, object $so, object $invoice, ?object $answer, ?int $participant, string $reason, string $cause = 'reschedule'): int
     {
         $key = $participant ? 'peserta:'.$participant : 'company';
         // TOP ([JMR-7]): dana yang dikembalikan berasal dari semua invoice termin yang sudah dibayar. Invoice termin dibayar pertama menjadi
@@ -73,7 +73,7 @@ class Refund
             'company' => $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->value('name_customer') : null, 'bobot' => $weights, 'batas_dana' => $amount,
             'termin' => $parts ?: null];
         $new = ['nomor' => Sales::number('sales_order_refund', 'LMI/RF/'.now()->format('m/y')), 'tanggal' => today()->toDateString(),
-            'id_sales_order' => $so->id, 'id_quotation_peserta' => $participant, 'id_invoice' => $invoice->id, 'id_konfirmasi_ulang' => $answer->id,
+            'id_sales_order' => $so->id, 'id_quotation_peserta' => $participant, 'id_invoice' => $invoice->id, 'id_konfirmasi_ulang' => $answer?->id, 'sebab' => $cause,
             'kunci_penerima' => $key, 'revisi' => $q->revisi, 'nominal_tagihan' => $amount, 'alasan' => $reason, 'status' => 'menunggu',
             'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR), ...Invoice::audit()];
         $id = DB::table('sales_order_refund')->insertGetId($new);

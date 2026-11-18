@@ -81,7 +81,7 @@ class SalesOrder
         if (! is_array($snapshot) || empty($snapshot['program']) || empty($snapshot['trainer']) || empty($snapshot['asisten'])) {
             throw ValidationException::withMessages(['surat' => 'Snapshot Surat Tugas belum tersedia; rekonsiliasi dokumen asal diperlukan sebelum ditampilkan atau dicetak.']);
         }
-        $snapshot['jumlah_so'] = DB::table('sales_order')->where('id_penjualan', $row->id_penjualan)->count();
+        $snapshot['jumlah_so'] = DB::table('sales_order')->where('id_penjualan', $row->id_penjualan)->where('status', '!=', 'batal')->count();
         $snapshot['peserta_deal'] = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $row->id_penjualan)->where('x.status', 'deal')->count();
 
         return ['surat' => $row, ...$snapshot];

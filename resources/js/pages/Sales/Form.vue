@@ -6,6 +6,7 @@ import MoneyInput from "../../components/MoneyInput.vue";
 import { computed, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import CancelProgramDialog from '../../components/CancelProgramDialog.vue';
 import { calc, rupiah, rupiahInput, costQuantity } from '../../composables/costing';
 import { useConfirmedMutation } from '../../composables/confirmedMutation';
 const confirmation = useConfirmedMutation();
@@ -46,7 +47,8 @@ const lockText = computed(() => props.program.status === 'final'
     ? 'Penjualan Program Final — terkunci. Buat Quotation dari menu Quotation (' + (b2bProgram.value ? 'ke Company penjualan' : 'ke Company atau Personal') + ') — persiapan invoice dengan peserta yang sudah fix.' + (props.program.closed_date ? ' Program sudah Closed.' : ' Jadwal, trainer, dan asisten masih dapat diubah lewat Reschedule.')
     : props.program.status === 'batal' ? 'Penjualan Program dibatalkan dan tidak dapat diubah.' : '');
 const transition = useForm({});
-function status(kind: string) { return confirmation.form(transition, 'post', `/penjualan-program/${props.program.id}/${kind}`, { title: `${kind === 'finalkan' ? 'Finalkan' : 'Batalkan'} ${props.program.nomor}?`, text: kind === 'finalkan' ? 'Program terkunci setelah Final. Periksa jadwal, tim dan costing sebelum melanjutkan.' : 'Program yang dibatalkan tidak dapat dibuka kembali.', confirmLabel: kind === 'finalkan' ? 'Ya, finalkan' : 'Ya, batalkan', danger: kind === 'batalkan' }, { preserveState: 'errors' }); }
+const cancelling = ref(false);
+function status(kind: 'finalkan') { return confirmation.form(transition, 'post', `/penjualan-program/${props.program.id}/${kind}`, { title: `Finalkan ${props.program.nomor}?`, text: 'Program terkunci setelah Final. Periksa jadwal, tim dan costing sebelum melanjutkan.', confirmLabel: 'Ya, finalkan' }, { preserveState: 'errors' }); }
 </script>
 <template>
     <Head :title="program.nomor || 'Buat Penjualan Program'" /><AppLayout title="Penjualan Program">
@@ -75,7 +77,7 @@ function status(kind: string) { return confirmation.form(transition, 'post', `/p
         <p v-for="e in transition.errors" :key="e" class="error" role="alert">{{ e }}</p>
         <div class="form-actions page-actions">
             <Link :href="appUrl('/penjualan-program')">{{ isNew ? 'Batal' : 'Kembali' }}</Link>
-            <button v-if="program.id && program.status === 'draft' && can.cancel" type="button" :disabled="confirming" @click="status('batalkan')">Batalkan</button>
+            <button v-if="program.id && (program.status === 'draft' || program.status === 'final') && !program.closed_date && can.cancel" type="button" class="danger" :disabled="confirming" @click="cancelling = true">Batalkan</button>
             <button v-if="editable" class="primary" :disabled="form.processing || confirming">{{ form.processing ? 'Menyimpan…' : 'Simpan Draft' }}</button>
             <button v-if="program.id && program.status === 'draft' && can.approve" type="button" class="primary" :disabled="confirming" @click="status('finalkan')">Finalkan → Quotation</button>
             <Link v-if="program.status === 'final' && !program.closed_date" :href="appUrl(`/penjualan-program/${program.id}/reschedule`)">Reschedule</Link>
@@ -84,5 +86,6 @@ function status(kind: string) { return confirmation.form(transition, 'post', `/p
         </div>
         </form>
         <section v-if="actual" class="panel"><h2>Rencana vs Aktual</h2><p>Aktual berdasarkan {{ actual.peserta }} peserta Deal dan harga Penjualan Program.</p><div class="table-wrap"><table><thead><tr><th>Perhitungan</th><th>Rencana</th><th>Aktual</th><th>Selisih</th></tr></thead><tbody><tr><th>Peserta</th><td class="money">{{ program.target_peserta }}</td><td class="money">{{ actual.peserta }}</td><td class="money">{{ actual.peserta - program.target_peserta }}</td></tr><tr v-for="[field, label] in ([['total_hpp', 'HPP'], ['pendapatan', 'Pendapatan'], ['profit', 'Profit']] as const)" :key="field"><th>{{ label }}</th><td class="money">{{ rupiah(actual.rencana[field]) }}</td><td class="money">{{ rupiah(actual.aktual[field]) }}</td><td class="money">{{ rupiah(actual.aktual[field] - actual.rencana[field]) }}</td></tr></tbody></table></div></section>
+        <CancelProgramDialog v-if="cancelling && program.id" :id="program.id" :nomor="program.nomor" @close="cancelling = false" />
     </AppLayout>
 </template>

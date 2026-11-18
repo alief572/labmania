@@ -129,6 +129,7 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
         Route::post('/', [SalesController::class, 'store']);
         Route::get('/{id}', [SalesController::class, 'show'])->whereNumber('id');
         Route::get('/{id}/pdf', [SalesController::class, 'pdf'])->whereNumber('id');
+        Route::get('/{id}/dampak-batal', [SalesController::class, 'cancelImpact'])->whereNumber('id');
         Route::put('/{id}', [SalesController::class, 'update'])->whereNumber('id');
         Route::post('/{id}/{action}', [SalesController::class, 'status'])->whereNumber('id')->whereIn('action', ['finalkan', 'batalkan']);
     });

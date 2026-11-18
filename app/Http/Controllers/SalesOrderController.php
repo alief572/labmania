@@ -20,10 +20,11 @@ class SalesOrderController extends Controller
     {
         Gate::authorize('menu', ['sales_order', 'View']);
         ServerDataTable::prepare($r);
-        $f = $r->validate(['tab' => 'nullable|in:so,surat', 'q' => 'nullable|string|max:100', 'jenis' => 'nullable|in:public,b2b', 'tahun' => 'nullable|integer|min:1900|max:2200', 'bulan' => 'nullable|integer|min:1|max:12']);
+        $f = $r->validate(['tab' => 'nullable|in:so,batal,surat', 'q' => 'nullable|string|max:100', 'jenis' => 'nullable|in:public,b2b', 'tahun' => 'nullable|integer|min:1900|max:2200', 'bulan' => 'nullable|integer|min:1|max:12']);
         $tab = $f['tab'] ?? 'so';
-        $query = $tab === 'so' ? DB::table('penjualan_program as p')->whereExists(fn ($q) => $q->selectRaw('1')->from('sales_order as so')->whereColumn('so.id_penjualan', 'p.id'))
-            : DB::table('surat_kerja_trainer as st')->join('penjualan_program as p', 'p.id', '=', 'st.id_penjualan');
+        $query = $tab === 'so' ? DB::table('penjualan_program as p')->whereExists(fn ($q) => $q->selectRaw('1')->from('sales_order as so')->whereColumn('so.id_penjualan', 'p.id')->where('so.status', '!=', 'batal'))
+            : ($tab === 'batal' ? DB::table('sales_order as so')->join('penjualan_program as p', 'p.id', '=', 'so.id_penjualan')->join('quotation as q', 'q.id', '=', 'so.id_quotation')->where('so.status', 'batal')
+                : DB::table('surat_kerja_trainer as st')->join('penjualan_program as p', 'p.id', '=', 'st.id_penjualan'));
         ServerDataTable::scope($r, $query);
         Sales::filter($query, $f);
         if (($f['q'] ?? '') !== '') {
@@ -36,7 +37,19 @@ class SalesOrderController extends Controller
                 }
             });
         }
-        $rows = $query->select($tab === 'so' ? 'p.*' : ['st.*', 'p.jenis', 'p.nomor as program_nomor'])->orderByDesc($tab === 'so' ? 'p.id' : 'st.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, ($tab === 'so' ? [null, 'p.nomor', null, null, null, null] : [null, 'st.nomor', 'st.status', 'p.nomor', null, null, null]), $tab === 'so' ? 'p.id' : 'st.id'));
+        if ($tab === 'batal') {
+            $query->where(fn ($w) => $w->where('so.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('q.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('p.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('q.kepada_nama', 'like', '%'.($f['q'] ?? '').'%'));
+            $rows = $query->select('so.id', 'so.nomor', 'so.revisi', 'so.tanggal', 'so.updated_date as batal_date', 'p.id as id_penjualan', 'p.nomor as program_nomor', 'p.jenis', 'p.tgl_mulai', 'p.tgl_selesai', 'p.status as program_status', 'q.nomor as quotation_nomor', 'q.kepada_nama', 'q.status as quotation_status')
+                ->orderByDesc('so.updated_date')->orderByDesc('so.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'so.nomor', 'q.nomor', 'p.nomor', 'so.updated_date', null, null], 'so.id'));
+            $rows->through(function ($so) {
+                $so->nomor = Sales::display($so);
+                $so->sebab = $so->program_status === 'batal' ? 'Program batal' : 'Reschedule rev'.$so->revisi;
+
+                return $so;
+            });
+        } else {
+            $rows = $query->select($tab === 'so' ? 'p.*' : ['st.*', 'p.jenis', 'p.nomor as program_nomor'])->orderByDesc($tab === 'so' ? 'p.id' : 'st.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, ($tab === 'so' ? [null, 'p.nomor', null, null, null, null] : [null, 'st.nomor', 'st.status', 'p.nomor', null, null, null]), $tab === 'so' ? 'p.id' : 'st.id'));
+        }
         $ids = $rows->pluck($tab === 'so' ? 'id' : 'id_penjualan')->all();
         $titles = $tab === 'so' ? Sales::titles($rows->pluck('id_master_program')->unique()->all()) : [];
         $deals = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->whereIn('q.id_penjualan', $ids)->where('x.status', 'deal')->selectRaw('q.id_penjualan, COUNT(*) as jumlah')->groupBy('q.id_penjualan')->pluck('jumlah', 'id_penjualan');
@@ -57,7 +70,7 @@ class SalesOrderController extends Controller
                     }
                 }, 'q.id', 'id');
         }
-        $rows->through(function ($p) use ($tab, $titles, $deals, $summaries) {
+        $tab === 'batal' ?: $rows->through(function ($p) use ($tab, $titles, $deals, $summaries) {
             $p->peserta_deal = (int) ($deals[$tab === 'so' ? $p->id : $p->id_penjualan] ?? 0);
             if ($tab === 'surat') {
                 $p->facts = json_decode($p->snapshot ?? '', true);
@@ -76,7 +89,7 @@ class SalesOrderController extends Controller
         });
 
         $props = ['rows' => $rows, 'filters' => $f, 'tab' => $tab,
-                                    'counts' => ['so' => DB::table('sales_order')->count(), 'surat' => DB::table('surat_kerja_trainer')->count()],
+                                    'counts' => ['so' => DB::table('sales_order')->where('status', '!=', 'batal')->count(), 'batal' => DB::table('sales_order')->where('status', 'batal')->count(), 'surat' => DB::table('surat_kerja_trainer')->count()],
             'years' => DB::table('penjualan_program')->whereNotNull('tgl_mulai')->pluck('tgl_mulai')->map(fn ($d) => (int) substr((string) $d, 0, 4))->unique()->sortDesc()->values()];
         if ($r->route('datatable')) {
             return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());
@@ -87,7 +100,7 @@ class SalesOrderController extends Controller
 
     private function orders(int $id, ?array $ids = null)
     {
-        $orders = DB::table('sales_order')->where('id_penjualan', $id)->when($ids !== null, fn ($q) => $q->whereIn('id', $ids))->orderByDesc('id')->get();
+        $orders = DB::table('sales_order')->where('id_penjualan', $id)->where('status', '!=', 'batal')->when($ids !== null, fn ($q) => $q->whereIn('id', $ids))->orderByDesc('id')->get();
         $quotes = DB::table('quotation')->whereIn('id', $orders->pluck('id_quotation'))->get()->keyBy('id');
         $people = DB::table('quotation_peserta')->whereIn('id_quotation', $orders->pluck('id_quotation'))->where('status', 'deal')->orderBy('id')->get(['id_quotation', 'nama'])->groupBy('id_quotation');
         $invoices = DB::table('invoice')->whereIn('id_sales_order', $orders->pluck('id'))->where('status', 'invoiced')->orderBy('id')->get(['id', 'nomor', 'id_sales_order'])->groupBy('id_sales_order');

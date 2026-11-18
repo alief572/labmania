@@ -133,7 +133,11 @@ trait Phase3Scenarios
         $this->post('/penjualan-program/'.$id.'/finalkan')->assertSessionHasNoErrors();
         $this->get('/penjualan-program')->assertInertia(fn ($p) => $p->where('rows.data.0.jam_pembelajaran', 16)->where('rows.data.0.asisten_nama', 'Sales Sintetis')->has('years', 1));
         $this->put('/penjualan-program/'.$id, $payload)->assertSessionHasErrors('program');
-        $this->post('/penjualan-program/'.$id.'/batalkan')->assertSessionHasErrors('program');
+        // Final kini boleh dibatalkan (mockup pjBatal) selama belum Closed; alasan wajib, Closed tetap ditolak. Dampak diuji di ProgramCancelTest.
+        $this->post('/penjualan-program/'.$id.'/batalkan')->assertSessionHasErrors('alasan');
+        DB::table('penjualan_program')->where('id', $id)->update(['closed_date' => now()]);
+        $this->post('/penjualan-program/'.$id.'/batalkan', ['alasan' => 'uji'])->assertSessionHasErrors('program');
+        DB::table('penjualan_program')->where('id', $id)->update(['closed_date' => null]);
         $this->get('/penjualan-program/'.$id)->assertInertia(fn ($p) => $p->component('Sales/Form')->where('actual.peserta', 0));
     }
 

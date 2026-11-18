@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { appUrl } from '../../composables/appUrl';
 import PageHead from '../../components/PageHead.vue';
+import CancelProgramDialog from '../../components/CancelProgramDialog.vue';
 
 import ActionMenu from "../../components/ActionMenu.vue";
 
@@ -8,7 +9,7 @@ import ServerTable from "../../components/ServerTable.vue";
 
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 
-import { onBeforeUnmount, reactive, watch } from 'vue';
+import { onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 import AppLayout from '../../layouts/AppLayout.vue';
 
@@ -34,12 +35,13 @@ const fmt = (d?: string) => (d ? new Date(`${d.slice(0, 10)}T00:00:00`).toLocale
 const range = (a?: string, b?: string) => (!b || a === b ? fmt(a) : `${fmt(a)} – ${fmt(b)}`);
 
 const transition = useForm({});
-function process(row:Row,action:'finalkan'|'batalkan') {
+const cancelling = ref<Row | null>(null);
+function process(row:Row,action:'finalkan') {
     transition.clearErrors();
     return confirmation.form(transition,'post',`/penjualan-program/${row.id}/${action}`,{
-        title:`${action==='finalkan'?'Finalkan':'Batalkan'} ${row.nomor}?`,
+        title:`Finalkan ${row.nomor}?`,
         text:`${row.judul}\n${row.durasi_hari} hari, ${row.target_peserta} peserta, ${rupiah(row.harga_jual_peserta)} / peserta.\nPendapatan ${rupiah(row.costing.pendapatan)}, HPP ${rupiah(row.costing.total_hpp)}, profit ${rupiah(row.costing.profit)}, BEP ${row.costing.bep_peserta ?? 'tidak tercapai'}.\n${row.warnings.join('\n')}\nDraft terkunci setelah diproses.`,
-        confirmLabel:action==='finalkan'?'Ya, finalkan':'Ya, batalkan',danger:action==='batalkan',
+        confirmLabel:'Ya, finalkan',
     },{preserveScroll:true});
 }
 </script>
@@ -58,9 +60,10 @@ function process(row:Row,action:'finalkan'|'batalkan') {
             <label>Bulan<select v-model="f.bulan"><option value="">Semua bulan</option><option v-for="n in 12" :key="n" :value="n">{{ bulan(n) }}</option></select></label>
         </div>
 
-        <ServerTable :url="appUrl('/penjualan-program/data')" label="Daftar Penjualan Program" :columns='[{"title": "No", "orderable": false, "className": ""}, {"title": "Nomor", "orderable": true, "className": ""}, {"title": "Jenis", "orderable": true, "className": ""}, {"title": "Master Program", "orderable": true, "className": ""}, {"title": "Pelaksanaan", "orderable": true, "className": ""}, {"title": "Target peserta", "orderable": true, "className": "dt-body-right"}, {"title": "Harga jual / peserta", "orderable": true, "className": "dt-body-right"}, {"title": "Status", "orderable": true, "className": ""}, {"title": "Action", "orderable": false, "className": ""}]' :filters="{ ...filters }" :keyword="f.q" refresh-on-visit ><template #cell-0="{ row: p, number }">{{ number }}</template><template #cell-1="{ row: p, number }"><Link class="code" :href="appUrl(`/penjualan-program/${p.id}`)">{{ p.nomor }}</Link></template><template #cell-2="{ row: p, number }"><span class="tag" :class="p.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ p.jenis === 'b2b' ? 'B2B' : 'Public' }}</span><small v-if="p.jenis === 'b2b' && p.name_customer">{{ p.name_customer }}</small></template><template #cell-3="{ row: p, number }">{{ p.judul }}<small>{{ p.master_nomor }}</small></template><template #cell-4="{ row: p, number }">{{ range(p.tgl_mulai, p.tgl_selesai) }}<template v-if="p.jam_pembelajaran"> · {{ p.jam_pembelajaran }} JP</template><small>{{ p.lokasi }}</small><small>Trainer: {{ p.trainer_nama || "Belum diisi" }} · Asisten: {{ p.asisten_nama || "Belum diisi" }}</small><small v-if="p.reschedule_count">Reschedule {{ p.reschedule_count }}×</small></template><template #cell-5="{ row: p, number }">{{ p.target_peserta }}<small v-if="p.status==='final'">Deal {{ p.peserta_deal }}</small></template><template #cell-6="{ row: p, number }">{{ rupiah(p.harga_jual_peserta) }}</template><template #cell-7="{ row: p, number }"><span class="badge" :class="`st-${p.status}`">{{ STATUS_LABEL[p.status] ?? p.status }}</span><small v-if="p.status === 'final'">→ Quotation</small></template><template #cell-8="{ row: p, number }"><ActionMenu><Link :href="appUrl(`/penjualan-program/${p.id}`)">{{ p.status==='draft' && can.manage ? "Edit" : "Lihat" }}</Link><button v-if="p.status==='draft' && !p.closed_date && can.approve" type="button" :disabled="confirming" @click="process(p,'finalkan')">Finalkan</button><button v-if="p.status==='draft' && !p.closed_date && can.cancel" type="button" class="danger" :disabled="confirming" @click="process(p,'batalkan')">Batalkan</button><Link v-if="p.status==='final' && !p.closed_date && can.quotation" :href="appUrl(`/quotation/create?id_penjualan=${p.id}`)">+ Buat Quotation</Link><Link v-if="p.reschedulable && can.manage" :href="appUrl(`/penjualan-program/${p.id}/reschedule`)">Reschedule</Link><a v-if="p.status==='final'" :href="appUrl(`/penjualan-program/${p.id}/pdf`)" target="_blank" rel="noopener">Cetak Surat Penawaran</a></ActionMenu></template></ServerTable>
+        <ServerTable :url="appUrl('/penjualan-program/data')" label="Daftar Penjualan Program" :columns='[{"title": "No", "orderable": false, "className": ""}, {"title": "Nomor", "orderable": true, "className": ""}, {"title": "Jenis", "orderable": true, "className": ""}, {"title": "Master Program", "orderable": true, "className": ""}, {"title": "Pelaksanaan", "orderable": true, "className": ""}, {"title": "Target peserta", "orderable": true, "className": "dt-body-right"}, {"title": "Harga jual / peserta", "orderable": true, "className": "dt-body-right"}, {"title": "Status", "orderable": true, "className": ""}, {"title": "Action", "orderable": false, "className": ""}]' :filters="{ ...filters }" :keyword="f.q" refresh-on-visit ><template #cell-0="{ row: p, number }">{{ number }}</template><template #cell-1="{ row: p, number }"><Link class="code" :href="appUrl(`/penjualan-program/${p.id}`)">{{ p.nomor }}</Link></template><template #cell-2="{ row: p, number }"><span class="tag" :class="p.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ p.jenis === 'b2b' ? 'B2B' : 'Public' }}</span><small v-if="p.jenis === 'b2b' && p.name_customer">{{ p.name_customer }}</small></template><template #cell-3="{ row: p, number }">{{ p.judul }}<small>{{ p.master_nomor }}</small></template><template #cell-4="{ row: p, number }">{{ range(p.tgl_mulai, p.tgl_selesai) }}<template v-if="p.jam_pembelajaran"> · {{ p.jam_pembelajaran }} JP</template><small>{{ p.lokasi }}</small><small>Trainer: {{ p.trainer_nama || "Belum diisi" }} · Asisten: {{ p.asisten_nama || "Belum diisi" }}</small><small v-if="p.reschedule_count">Reschedule {{ p.reschedule_count }}×</small></template><template #cell-5="{ row: p, number }">{{ p.target_peserta }}<small v-if="p.status==='final'">Deal {{ p.peserta_deal }}</small></template><template #cell-6="{ row: p, number }">{{ rupiah(p.harga_jual_peserta) }}</template><template #cell-7="{ row: p, number }"><span class="badge" :class="`st-${p.status}`">{{ STATUS_LABEL[p.status] ?? p.status }}</span><small v-if="p.status === 'final'">→ Quotation</small></template><template #cell-8="{ row: p, number }"><ActionMenu><Link :href="appUrl(`/penjualan-program/${p.id}`)">{{ p.status==='draft' && can.manage ? "Edit" : "Lihat" }}</Link><button v-if="p.status==='draft' && !p.closed_date && can.approve" type="button" :disabled="confirming" @click="process(p,'finalkan')">Finalkan</button><button v-if="(p.status==='draft' || p.status==='final') && !p.closed_date && can.cancel" type="button" class="danger" :disabled="confirming" @click="cancelling=p">Batalkan</button><Link v-if="p.status==='final' && !p.closed_date && can.quotation" :href="appUrl(`/quotation/create?id_penjualan=${p.id}`)">+ Buat Quotation</Link><Link v-if="p.reschedulable && can.manage" :href="appUrl(`/penjualan-program/${p.id}/reschedule`)">Reschedule</Link><a v-if="p.status==='final'" :href="appUrl(`/penjualan-program/${p.id}/pdf`)" target="_blank" rel="noopener">Cetak Surat Penawaran</a></ActionMenu></template></ServerTable>
 
         <p v-for="error in transition.errors" :key="error" class="error" role="alert">{{error}}</p>
+        <CancelProgramDialog v-if="cancelling" :id="cancelling.id" :nomor="cancelling.nomor" @close="cancelling=null" />
     </AppLayout>
 
 </template>

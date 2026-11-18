@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Costing;
+use App\Support\ProgramCancel;
 use App\Support\QuotationPdf;
 use App\Support\Reschedule;
 use App\Support\Sales;
@@ -224,11 +225,18 @@ class SalesController extends Controller
     {
         abort_unless(in_array($action, ['finalkan', 'batalkan'], true), 404);
         Gate::authorize('menu', [self::MENU, $action === 'finalkan' ? 'Approve' : 'Manage']);
-        DB::transaction(function () use ($id, $action) {
+        $reason = $action === 'batalkan' ? $r->validate(['alasan' => 'required|string|max:300'], ['alasan.required' => 'Isi alasan pembatalan.'])['alasan'] : null;
+        $message = Sales::transaction(function () use ($id, $action, $reason) {
             $old = Sales::program($id, true);
             Sales::open($old);
+            if ($action === 'batalkan') {
+                $done = ProgramCancel::apply($old, trim($reason));
+
+                return 'Penjualan Program '.Sales::display($old).' dibatalkan'.($done['quotation'] || $done['sales_order'] || $done['invoice_belum'] || $done['refund_dibuat']
+                    ? '; '.$done['quotation'].' quotation, '.$done['sales_order'].' SO, '.$done['invoice_belum'].' invoice ikut batal'.($done['refund_dibuat'] ? ', '.$done['refund_dibuat'].' refund menunggu approval' : '') : '').'.';
+            }
             if ($old->status !== 'draft') {
-                throw ValidationException::withMessages(['program' => 'Hanya Draft dapat diproses.']);
+                throw ValidationException::withMessages(['program' => 'Hanya Draft dapat difinalkan.']);
             }
             if ($action === 'finalkan') {
                 $input = (array) $old;
@@ -238,12 +246,22 @@ class SalesController extends Controller
                 $input['biaya'] = array_map(fn ($b) => array_replace($b, ['harga' => (int) $b['harga']]), Sales::costs($id));
                 $this->validated(new Request($input), $old);
             }
-            $new = ['status' => $action === 'finalkan' ? 'final' : 'batal', 'updated_by' => Auth::id(), 'updated_date' => now()];
-            $new += $action === 'finalkan' ? ['confirmed_by' => Auth::id(), 'confirmed_date' => now()] : ['closed_by' => Auth::id(), 'closed_date' => now()];
+            $new = ['status' => 'final', 'updated_by' => Auth::id(), 'updated_date' => now(), 'confirmed_by' => Auth::id(), 'confirmed_date' => now()];
             DB::table('penjualan_program')->where('id', $id)->update($new);
-            write_log('Penjualan Program', $action === 'finalkan' ? 'Finalkan' : 'Batal', ucfirst($action).' '.$old->nomor, ['old' => (array) $old, 'new' => array_merge((array) $old, $new)], 'penjualan_program', $id, $old->nomor);
+            write_log('Penjualan Program', 'Finalkan', 'Finalkan '.$old->nomor, ['old' => (array) $old, 'new' => array_merge((array) $old, $new)], 'penjualan_program', $id, $old->nomor);
+
+            return 'Penjualan Program '.Sales::display($old).' Final: siap Quotation.';
         });
 
-        return back()->with('success', 'Status Penjualan Program diperbarui.');
+        return back()->with('success', $message);
+    }
+
+    /** Ringkasan dampak pembatalan untuk modal konfirmasi (mockup qtCancel). Hanya membaca. */
+    public function cancelImpact(int $id)
+    {
+        Gate::authorize('menu', [self::MENU, 'Manage']);
+        $p = Sales::program($id);
+
+        return response()->json(['allowed' => ProgramCancel::allowed($p), 'nomor' => Sales::display($p)] + ProgramCancel::impact($p));
     }
 }
