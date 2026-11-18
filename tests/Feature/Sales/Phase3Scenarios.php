@@ -116,7 +116,10 @@ trait Phase3Scenarios
     {
         $this->login($this->admin());
         $payload = $this->salesPayload();
-        $this->post('/penjualan-program', $payload)->assertSessionHasNoErrors();
+        $payload['biaya'][] = ['id_rate' => null, 'tipe' => 'fixed', 'item' => 'Biaya nol', 'id_satuan' => $this->unit, 'harga' => 0, 'is_manual' => true];
+        $this->post('/penjualan-program', $payload)->assertSessionHasNoErrors()
+            ->assertSessionHas('success', 'Penjualan Program PJP-2611-001 tersimpan sebagai Draft · 1 item bernilai 0 dibuang.');
+        $payload['biaya'] = array_slice($payload['biaya'], 0, 1);
         $id = DB::table('penjualan_program')->value('id');
         $this->assertDatabaseHas('penjualan_program', ['id' => $id, 'nomor' => 'PJP-2611-001', 'durasi_hari' => 2, 'harga_jual_peserta' => 1000000]);
         $payload['harga_jual_peserta'] = 1200000;

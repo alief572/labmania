@@ -191,7 +191,7 @@ class SalesController extends Controller
     private function save(Request $r, ?int $id)
     {
         Gate::authorize('menu', [self::MENU, $id ? 'Manage' : 'Add']);
-        [$id, $dropped] = Sales::transaction(function () use ($r, $id) {
+        [$id, $dropped, $nomor] = Sales::transaction(function () use ($r, $id) {
             $old = $id ? Sales::program($id, true) : null;
             if ($old) {
                 Sales::open($old);
@@ -215,10 +215,11 @@ class SalesController extends Controller
             $new = (array) Sales::program($id);
             write_log('Penjualan Program', $old ? 'Edit' : 'Tambah', ($old ? 'Update ' : 'Tambah ').$new['nomor'], ['old' => $old ? (array) $old : [], 'new' => $new, 'detail_changes' => Costing::changes($before, $costs)], 'penjualan_program', $id, $new['nomor']);
 
-            return [$id, $dropped];
+            return [$id, $dropped, Sales::display($new)];
         });
 
-        return redirect('/penjualan-program/'.$id)->with('success', 'Penjualan Program disimpan.'.($dropped ? " $dropped item bernilai 0 tidak dipakai." : ''));
+        // Pesan sama dengan Master Program dan mockup saveCost: nomor, status Draft, dan jumlah item bernilai 0 yang dibuang.
+        return redirect('/penjualan-program/'.$id)->with('success', 'Penjualan Program '.$nomor.' tersimpan sebagai Draft'.($dropped ? ' · '.$dropped.' item bernilai 0 dibuang' : '').'.');
     }
 
     public function status(Request $r, int $id, string $action)
