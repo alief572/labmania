@@ -68,7 +68,8 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
 
     Route::get('/invoicing/data', [InvoiceController::class, 'index'])->defaults('datatable', true);
 
-    Route::get('/sales-order/refund/data', [RefundController::class, 'index'])->defaults('datatable', true);
+    Route::get('/refund/data', [RefundController::class, 'index'])->defaults('datatable', true);
+    Route::get('/refund/approval/data', [RefundController::class, 'approval'])->defaults('datatable', true);
 
     Route::get('/sales-order/data', [SalesOrderController::class, 'index'])->defaults('datatable', true);
 
@@ -152,10 +153,19 @@ Route::middleware(['auth', 'verified.account'])->group(function () {
         Route::post('/peserta/{id}/surat', [QuotationController::class, 'replaceLetter'])->whereNumber('id');
     });
 
+    Route::prefix('refund')->group(function () {
+        Route::get('/', [RefundController::class, 'index']);
+        Route::get('/approval', [RefundController::class, 'approval']);
+        Route::get('/{id}', [RefundController::class, 'show'])->whereNumber('id');
+        Route::post('/{id}', [RefundController::class, 'process'])->whereNumber('id');
+        Route::post('/{id}/keputusan', [RefundController::class, 'decide'])->whereNumber('id');
+        Route::post('/{id}/ajukan-ulang', [RefundController::class, 'resubmit'])->whereNumber('id');
+    });
+
     Route::prefix('sales-order')->group(function () {
-        Route::get('/refund', [RefundController::class, 'index']);
-        Route::get('/refund/{id}', [RefundController::class, 'show'])->whereNumber('id');
-        Route::post('/refund/{id}', [RefundController::class, 'process'])->whereNumber('id');
+        // Tab Refund di Sales Order dihapus (RF-FR-01); alamat lama dialihkan agar tautan dan penanda buku tidak patah.
+        Route::get('/refund', fn () => redirect('/refund', 301));
+        Route::get('/refund/{id}', fn (int $id) => redirect('/refund/'.$id, 301))->whereNumber('id');
         Route::get('/', [SalesOrderController::class, 'index']);
         Route::get('/program/{id}', [SalesOrderController::class, 'program'])->whereNumber('id');
         Route::get('/{id}', [SalesOrderController::class, 'show'])->whereNumber('id');

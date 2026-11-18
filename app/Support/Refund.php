@@ -58,9 +58,85 @@ class Refund
             'kunci_penerima' => $key, 'revisi' => $q->revisi, 'nominal_tagihan' => $amount, 'alasan' => $reason, 'status' => 'menunggu',
             'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR), ...Invoice::audit()];
         $id = DB::table('sales_order_refund')->insertGetId($new);
-        write_log('Quotation', 'Tambah', 'Refund '.$new['nomor'].' dari '.$invoice->nomor, ['sub_module' => 'Refund', 'new' => $new], 'sales_order_refund', $id, $new['nomor']);
+        write_log('Refund', 'Tambah', 'Refund '.$new['nomor'].' dari '.$invoice->nomor, ['sub_module' => 'Refund', 'new' => $new], 'sales_order_refund', $id, $new['nomor']);
 
         return $id;
+    }
+
+    /**
+     * Keputusan Finance (RF-FR-05): Setujui atau Tolak. Hanya dari status menunggu. Tolak wajib beralasan.
+     * Keputusan yang sama diulang (replay) tidak menggandakan riwayat; keputusan berbeda pada refund yang sudah diputuskan ditolak.
+     */
+    public static function decide(int $id, string $decision, ?string $note): void
+    {
+        $note = trim((string) $note);
+        if (! in_array($decision, ['setujui', 'tolak'], true)) {
+            throw ValidationException::withMessages(['keputusan' => 'Pilih Setujui atau Tolak.']);
+        }
+        if ($decision === 'tolak' && $note === '') {
+            throw ValidationException::withMessages(['catatan' => 'Isi alasan penolakan (yang harus diperbaiki Sales/Marketing).']);
+        }
+        Sales::transaction(function () use ($id, $decision, $note) {
+            $read = DB::table('sales_order_refund')->where('id', $id)->first() ?? abort(404);
+            Sales::open(Sales::program(SalesOrder::row($read->id_sales_order)->id_penjualan, true));
+            $old = DB::table('sales_order_refund')->where('id', $id)->lockForUpdate()->first();
+            $to = $decision === 'setujui' ? 'disetujui' : 'ditolak';
+            if ($old->status === $to) {
+                return;
+            }
+            if ($old->status !== 'menunggu') {
+                throw ValidationException::withMessages(['refund' => 'Refund sudah diputuskan atau tidak lagi menunggu approval; muat ulang.']);
+            }
+            DB::table('sales_order_refund')->where('id', $id)->update(['status' => $to, 'updated_by' => Auth::id(), 'updated_date' => now()]);
+            DB::table('sales_order_refund_riwayat')->insert(['id_refund' => $id, 'jenis' => $decision, 'catatan' => $note ?: null, 'oleh' => Auth::id(), 'waktu' => now()]);
+            write_log('Refund', 'Approval Refund', ($decision === 'setujui' ? 'Setujui ' : 'Tolak ').$old->nomor, ['sub_module' => 'Approval Refund',
+                'old' => ['status' => $old->status], 'new' => ['status' => $to], 'catatan' => $note ?: null], 'sales_order_refund', $id, $old->nomor);
+        });
+    }
+
+    /**
+     * Perbaiki dan ajukan ulang refund Ditolak (RF-FR-07): alasan, nominal tagihan (1 s.d. nilai invoice), dan catatan perbaikan wajib.
+     * Kembali ke Menunggu Approval tanpa batas jumlah pengajuan ulang. Riwayat tetap tersimpan.
+     */
+    public static function resubmit(int $id, string $reason, string $nominal, string $note): void
+    {
+        $reason = trim($reason);
+        $note = trim($note);
+        $errors = [];
+        if ($reason === '') {
+            $errors['alasan'] = 'Isi alasan refund.';
+        }
+        if ($note === '') {
+            $errors['catatan'] = 'Tulis apa yang diperbaiki.';
+        }
+        if (! preg_match('/^[0-9]{1,18}$/', $nominal)) {
+            $errors['nominal'] = 'Nominal harus berupa angka rupiah.';
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+        Sales::transaction(function () use ($id, $reason, $nominal, $note) {
+            $read = DB::table('sales_order_refund')->where('id', $id)->first() ?? abort(404);
+            Sales::open(Sales::program(SalesOrder::row($read->id_sales_order)->id_penjualan, true));
+            $old = DB::table('sales_order_refund')->where('id', $id)->lockForUpdate()->first();
+            if ($old->status !== 'ditolak') {
+                throw ValidationException::withMessages(['refund' => 'Hanya refund yang ditolak yang dapat diajukan ulang; muat ulang.']);
+            }
+            $invoice = Invoice::row($old->id_invoice, true);
+            if ($invoice->status !== 'invoiced' || ! $invoice->tanggal_bayar) {
+                throw ValidationException::withMessages(['refund' => 'Invoice tidak lagi memenuhi syarat Refund.']);
+            }
+            $amount = BigDecimal::of($nominal);
+            if ($amount->isLessThanOrEqualTo(0) || $amount->isGreaterThan((string) $invoice->piutang)) {
+                throw ValidationException::withMessages(['nominal' => 'Nominal tagihan 1 sampai '.Invoice::rupiah((string) $invoice->piutang).'.']);
+            }
+            DB::table('sales_order_refund')->where('id', $id)->update(['status' => 'menunggu', 'alasan' => $reason, 'nominal_tagihan' => (string) $amount, 'updated_by' => Auth::id(), 'updated_date' => now()]);
+            DB::table('sales_order_refund_riwayat')->insert(['id_refund' => $id, 'jenis' => 'ajukan_ulang', 'catatan' => $note, 'nominal_lama' => $old->nominal_tagihan, 'nominal_baru' => (string) $amount,
+                'alasan_lama' => $old->alasan, 'alasan_baru' => $reason, 'oleh' => Auth::id(), 'waktu' => now()]);
+            write_log('Refund', 'Ajukan Ulang', 'Ajukan ulang '.$old->nomor, ['sub_module' => 'Daftar Refund',
+                'old' => ['status' => 'ditolak', 'alasan' => $old->alasan, 'nominal_tagihan' => (string) $old->nominal_tagihan],
+                'new' => ['status' => 'menunggu', 'alasan' => $reason, 'nominal_tagihan' => (string) $amount], 'catatan' => $note], 'sales_order_refund', $id, $old->nomor);
+        });
     }
 
     public static function finish(int $id, array $input, array $file): bool
@@ -70,6 +146,10 @@ class Refund
             $so = SalesOrder::row($read->id_sales_order);
             Sales::open(Sales::program($so->id_penjualan, true));
             $old = DB::table('sales_order_refund')->where('id', $id)->lockForUpdate()->first();
+            if (! in_array($old->status, ['disetujui', 'selesai'], true)) {
+                throw ValidationException::withMessages(['refund' => $old->status === 'ditolak'
+                    ? 'Refund ditolak dan perlu diperbaiki Sales/Marketing sebelum dapat diproses.' : 'Refund belum disetujui di Approval Refund.']);
+            }
             $invoice = Invoice::row($old->id_invoice, true);
             if ($invoice->status !== 'invoiced' || ! $invoice->tanggal_bayar) {
                 throw ValidationException::withMessages(['refund' => 'Invoice tidak lagi memenuhi syarat Refund.']);
@@ -97,7 +177,7 @@ class Refund
             $data += ['status' => 'selesai', 'bukti_transfer' => $file['path'], 'bukti_transfer_nama' => $file['name'], 'selesai_by' => Auth::id(), 'selesai_date' => now(), 'updated_by' => Auth::id(), 'updated_date' => now()];
             DB::table('sales_order_refund')->where('id', $id)->update($data);
             $safe = fn ($row) => array_intersect_key((array) $row, array_flip(['id', 'nomor', 'status', 'nominal_tagihan', 'nominal_refund', 'bank', 'atas_nama', 'catatan', 'bukti_transfer_nama']));
-            write_log('Quotation', 'Proses Refund', 'Selesai '.$old->nomor, ['sub_module' => 'Refund', 'old' => $safe($old), 'new' => $safe(array_merge((array) $old, $data))], 'sales_order_refund', $id, $old->nomor);
+            write_log('Refund', 'Proses Refund', 'Selesai '.$old->nomor, ['sub_module' => 'Refund', 'old' => $safe($old), 'new' => $safe(array_merge((array) $old, $data))], 'sales_order_refund', $id, $old->nomor);
 
             return true;
         });

@@ -8,7 +8,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import { money, type PageRows, type Program } from '../../types/salesOrder';
 type Row = Program & { judul: string; jumlah_so: number; peserta_deal: number; nilai_so: string; statuses: Record<string, number>; program_nomor?: string; status?: string; tanggal?: string; facts?: { judul: string; program: Program; trainer: { nama: string; bidang_keahlian: string }; asisten: { nama: string } } | null };
-const props = defineProps<{ rows: PageRows<Row>; filters: Record<string, string>; tab: string; canRefund: boolean; refundPending: number; counts: { so: number; surat: number }; years?: number[] }>();
+const props = defineProps<{ rows: PageRows<Row>; filters: Record<string, string>; tab: string; counts: { so: number; surat: number }; years?: number[] }>();
 const f = reactive({ q: '', jenis: '', tahun: '', bulan: '', ...props.filters, tab: props.tab });
 // Filter langsung berlaku (mockup tanpa tombol Terapkan); kata kunci ditunda 300 ms.
 const search = () => router.get(appUrl('/sales-order'), Object.fromEntries(Object.entries(f).filter(([k, v]) => v !== '' && v !== null && !(k === 'tab' && v === 'so'))), { preserveState: true, preserveScroll: true, replace: true });
@@ -33,7 +33,6 @@ const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => 
             <nav class="tabs" aria-label="Jenis dokumen">
                 <Link :href="appUrl('/sales-order')" :aria-current="tab === 'so' ? 'page' : undefined">Sales Order<span class="nav-count">{{ counts.so }}</span></Link>
                 <Link :href="appUrl('/sales-order?tab=surat')" :aria-current="tab === 'surat' ? 'page' : undefined">Surat Kerja Trainer<span class="nav-count">{{ counts.surat }}</span></Link>
-                <Link v-if="canRefund" :href="appUrl('/sales-order/refund')">Refund<span class="nav-count">{{ refundPending }}</span></Link>
             </nav>
             <div class="filters">
                 <label class="grow">Cari<input v-model="f.q" type="search" maxlength="100" :placeholder="surat() ? 'Cari nomor surat, program, judul, trainer…' : 'Cari nomor program, judul, nomor SO, quotation, customer…'" /></label>

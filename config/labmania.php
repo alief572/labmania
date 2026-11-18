@@ -31,7 +31,7 @@ return [
     'documents' => [
         'expense' => ['table' => 'pengajuan_biaya_lampiran', 'path' => 'file_path', 'name' => 'nama_file', 'menu' => 'pengajuan_biaya', 'prefix' => 'uploads/pengajuan_biaya/'],
         'bnsp' => ['table' => 'quotation_peserta_sertifikat', 'path' => 'file_sertifikat_bnsp', 'name' => 'no_sertifikat_bnsp', 'menu' => 'manage_peserta', 'prefix' => 'uploads/sertifikat/'],
-        'refund' => ['table' => 'sales_order_refund', 'path' => 'bukti_transfer', 'name' => 'bukti_transfer_nama', 'menu' => 'sales_order_refund', 'prefix' => 'uploads/refund/'],
+        'refund' => ['table' => 'sales_order_refund', 'path' => 'bukti_transfer', 'name' => 'bukti_transfer_nama', 'menu' => 'refund_daftar', 'prefix' => 'uploads/refund/'],
         'confirmation' => ['table' => 'quotation_peserta', 'path' => 'surat_konfirmasi', 'name' => 'surat_konfirmasi_nama', 'menu' => 'quotation_program', 'prefix' => 'uploads/konfirmasi_kehadiran/'],
         'company-confirmation' => ['table' => 'quotation_konfirmasi_company', 'path' => 'surat_konfirmasi', 'name' => 'surat_konfirmasi_nama', 'menu' => 'quotation_program', 'prefix' => 'uploads/konfirmasi_kehadiran/'],
         'confirmation-history' => ['table' => 'quotation_peserta_surat_riwayat', 'path' => 'surat_konfirmasi', 'name' => 'surat_konfirmasi_nama', 'menu' => 'quotation_program', 'prefix' => 'uploads/konfirmasi_kehadiran/'],

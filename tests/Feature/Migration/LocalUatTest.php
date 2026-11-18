@@ -26,7 +26,7 @@ class LocalUatTest extends TestCase
             DB::statement('DROP TABLE '.$table);
         }
         DB::unprepared(file_get_contents(__DIR__.'/../../fixtures/sales_base.sql'));
-        foreach (['2026_11_13_130000_penjualan_quotation_to_be', '2026_11_14_090000_sales_order_invoice', '2026_11_14_100000_reschedule_refund', '2026_11_14_110000_operasional_biaya', '2026_11_17_090000_quotation_top'] as $migration) {
+        foreach (['2026_11_13_130000_penjualan_quotation_to_be', '2026_11_14_090000_sales_order_invoice', '2026_11_14_100000_reschedule_refund', '2026_11_14_110000_operasional_biaya', '2026_11_17_090000_quotation_top', '2026_11_18_100000_refund_approval'] as $migration) {
             (require base_path('database/migrations/'.$migration.'.php'))->up();
         }
         DB::table('groups')->delete();

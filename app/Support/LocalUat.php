@@ -88,7 +88,9 @@ class LocalUat
                 'master_data.company' => ['lihat', 'tambah', 'ubah', 'aktif', 'hapus'],
                 'master_program', 'penjualan_program' => ['lihat', 'tambah', 'ubah', 'aktif', 'approve', ...($code === 'penjualan_program' ? ['hapus'] : [])],
                 'approval_pengajuan_biaya' => ['lihat', 'approve'],
-                'sales_order', 'sales_order_refund', 'manage_peserta' => ['lihat', 'ubah'],
+                'sales_order', 'manage_peserta' => ['lihat', 'ubah'],
+                'refund_daftar' => ['lihat', 'tambah', 'ubah'],
+                'refund_approval' => ['lihat', 'approve'],
                 'invoicing', 'pengajuan_biaya', 'quotation_program' => ['lihat', 'tambah', 'ubah'],
                 default => ['lihat', 'tambah', 'ubah', 'aktif'],
             };

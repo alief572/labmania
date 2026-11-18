@@ -222,22 +222,23 @@ trait Phase5Scenarios
         $this->post('/quotation/peserta/'.$person.'/konfirmasi-ulang', ['revisi' => 1, 'keputusan' => 'refund', 'alasan' => 'Tidak ikut'])->assertSessionHasNoErrors();
         $rf = DB::table('sales_order_refund')->first();
         $staff = $this->account('finance5');
-        foreach (['sales_order' => ['lihat', 'ubah'], 'sales_order_refund' => ['lihat']] as $code => $actions) {
+        foreach (['sales_order' => ['lihat', 'ubah'], 'refund_daftar' => ['lihat']] as $code => $actions) {
             foreach ($actions as $aksi) {
                 DB::table('ms_user_akses')->insert(['id_user' => $staff->id_user, 'id_menu' => DB::table('ms_menu')->where('kode', $code)->value('id'), 'aksi' => $aksi]);
             }
         }
         $this->login($staff);
-        $this->get('/sales-order/refund/'.$rf->id)->assertOk();
+        $this->get('/refund/'.$rf->id)->assertOk();
         $in = ['nominal_refund' => '1', 'bank' => 'Bank', 'no_rekening' => '123456', 'atas_nama' => 'Nama', 'catatan' => 'Potongan', 'bukti' => UploadedFile::fake()->image('bukti.png')];
-        $this->post('/sales-order/refund/'.$rf->id, $in)->assertForbidden();
+        $this->post('/refund/'.$rf->id, $in)->assertForbidden();
         $this->post('/quotation/peserta/'.$person.'/konfirmasi-ulang', ['revisi' => 1, 'keputusan' => 'refund', 'alasan' => 'Tidak ikut'])->assertForbidden();
-        $this->assertSame('menunggu', DB::table('sales_order_refund')->value('status'));
-        $this->assertSame(0, DB::table('ms_user_akses')->where('id_user', $staff->id_user)->where('aksi', 'ubah')->where('id_menu', DB::table('ms_menu')->where('kode', 'sales_order_refund')->value('id'))->count());
+        $this->assertSame('menunggu', DB::table('sales_order_refund')->value('status'), 'Refund baru menunggu approval, belum bisa ditransfer.');
+        $this->assertSame(0, DB::table('ms_user_akses')->where('id_user', $staff->id_user)->where('aksi', 'ubah')->where('id_menu', DB::table('ms_menu')->where('kode', 'refund_daftar')->value('id'))->count());
         $this->login($admin);
         $count = count(File::allFiles($this->root5));
         DB::table('penjualan_program')->where('id', $this->ids5['p'])->update(['closed_date' => now()]);
-        $this->post('/sales-order/refund/'.$rf->id, $in)->assertSessionHasErrors();
+        DB::table('sales_order_refund')->where('id', $rf->id)->update(['status' => 'disetujui']);
+        $this->post('/refund/'.$rf->id, $in)->assertSessionHasErrors();
         $this->assertSame($count, count(File::allFiles($this->root5)));
     }
 
@@ -296,16 +297,20 @@ trait Phase5Scenarios
         $this->post($url, ['revisi' => 1, 'keputusan' => 'refund', 'alasan' => 'Bentrok jadwal'])->assertSessionHasNoErrors();
         $rf = DB::table('sales_order_refund')->first();
         $this->assertSame('1059501', (string) $rf->nominal_tagihan);
-        $this->getJson('/sales-order/refund/'.$rf->id.'?modal=1')->assertOk()->assertJsonPath('refund.id', $rf->id)->assertJsonMissingPath('refund.bukti_transfer');
+        $this->getJson('/refund/'.$rf->id.'?modal=1')->assertOk()->assertJsonPath('refund.id', $rf->id)->assertJsonMissingPath('refund.bukti_transfer');
         $this->assertSame('invoiced', Invoice::row($invoice->id)->status);
         $this->post($url, ['revisi' => 1, 'keputusan' => 'refund', 'alasan' => 'Bentrok jadwal'])->assertSessionHasNoErrors();
         $this->assertSame(1, DB::table('sales_order_refund')->count());
         $input = ['nominal_refund' => '1000000', 'bank' => 'Bank Uji', 'no_rekening' => '0012345678', 'atas_nama' => 'Penerima', 'catatan' => 'Potongan administrasi', 'bukti' => UploadedFile::fake()->image('transfer.png')];
-        $this->post('/sales-order/refund/'.$rf->id, array_replace($input, ['nominal_refund' => '999999999']))->assertSessionHasErrors('nominal_refund');
-        $this->post('/sales-order/refund/'.$rf->id, $input)->assertSessionHasNoErrors();
-        $this->post('/sales-order/refund/'.$rf->id, $input)->assertSessionHasNoErrors();
+        $this->post('/refund/'.$rf->id, $input)->assertSessionHasErrors('refund');
+        $this->assertSame('menunggu', DB::table('sales_order_refund')->value('status'), 'Belum disetujui: transfer ditolak.');
+        $this->post('/refund/'.$rf->id.'/keputusan', ['keputusan' => 'setujui'])->assertSessionHasNoErrors();
+        $this->assertSame('disetujui', DB::table('sales_order_refund')->value('status'));
+        $this->post('/refund/'.$rf->id, array_replace($input, ['nominal_refund' => '999999999']))->assertSessionHasErrors('nominal_refund');
+        $this->post('/refund/'.$rf->id, $input)->assertSessionHasNoErrors();
+        $this->post('/refund/'.$rf->id, $input)->assertSessionHasNoErrors();
         $this->assertSame('selesai', DB::table('sales_order_refund')->value('status'));
-        $this->getJson('/sales-order/refund/data')->assertOk()->assertJsonPath('data.0.status', 'selesai')->assertJsonPath('data.0.nominal_refund', fn ($value) => (int) $value === 1000000)->assertJsonStructure(['data' => [['selesai_oleh']]])->assertJsonMissingPath('data.0.bukti_transfer')->assertJsonMissingPath('data.0.no_rekening');
+        $this->getJson('/refund/data')->assertOk()->assertJsonPath('data.0.status', 'selesai')->assertJsonPath('data.0.nominal_refund', fn ($value) => (int) $value === 1000000)->assertJsonStructure(['data' => [['selesai_oleh']]])->assertJsonMissingPath('data.0.bukti_transfer')->assertJsonMissingPath('data.0.no_rekening');
         $this->get('/documents/refund/'.$rf->id)->assertOk();
         $this->assertSame(3, DB::table('invoice_jurnal')->count());
         $log = DB::table('logs')->where('action', 'Proses Refund')->value('data');

@@ -76,9 +76,7 @@ class SalesOrderController extends Controller
         });
 
         $props = ['rows' => $rows, 'filters' => $f, 'tab' => $tab,
-            'canRefund' => Gate::allows('menu', ['sales_order_refund', 'View']),
-            'refundPending' => Gate::allows('menu', ['sales_order_refund', 'View']) ? DB::table('sales_order_refund')->where('status', 'menunggu')->count() : 0,
-            'counts' => ['so' => DB::table('sales_order')->count(), 'surat' => DB::table('surat_kerja_trainer')->count()],
+                                    'counts' => ['so' => DB::table('sales_order')->count(), 'surat' => DB::table('surat_kerja_trainer')->count()],
             'years' => DB::table('penjualan_program')->whereNotNull('tgl_mulai')->pluck('tgl_mulai')->map(fn ($d) => (int) substr((string) $d, 0, 4))->unique()->sortDesc()->values()];
         if ($r->route('datatable')) {
             return ServerDataTable::result($r, $props['rows'], collect($props)->except('rows')->all());

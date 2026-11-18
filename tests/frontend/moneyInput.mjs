@@ -95,8 +95,9 @@ const expense = readFileSync(new URL('../../resources/js/pages/Expenses/Program.
 assert.match(expense, /<input v-model="i.qty"[^>]*step="0.01"/);
 assert.match(expense, /<input v-model="form.no_rekening"/);
 const refund = readFileSync(new URL('../../resources/js/components/RefundDetail.vue', import.meta.url), 'utf8');
-assert.match(refund, /<MoneyInput v-model="form.nominal_refund" :max-digits="18"/);
-assert.match(refund, /<input v-model="form.no_rekening"/);
+assert.match(refund, /<MoneyInput v-model="proses.nominal_refund" :max-digits="18"/);
+assert.match(refund, /<MoneyInput v-model="perbaiki.nominal" :max-digits="18"/);
+assert.match(refund, /<input v-model="proses.no_rekening"/);
 console.log('MoneyInput: format/model mentah, nol/kosong, DECIMAL, paste, batas 13/18 digit, caret, penghapusan, atribut, 16 binding dan qty/rekening lulus.');
 
 const master = readFileSync(new URL('../../resources/js/pages/Master/Program/Form.vue', import.meta.url), 'utf8');

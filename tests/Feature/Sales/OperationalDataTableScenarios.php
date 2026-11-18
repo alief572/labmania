@@ -83,7 +83,7 @@ trait OperationalDataTableScenarios
 
     public function test_operational_sidebar_badges_follow_list_scope_and_view_permission(): void
     {
-        $codes = ['invoicing', 'manage_peserta', 'monitoring_peserta', 'pengajuan_biaya', 'approval_pengajuan_biaya', 'sales_order_refund'];
+        $codes = ['invoicing', 'manage_peserta', 'monitoring_peserta', 'pengajuan_biaya', 'approval_pengajuan_biaya', 'refund_daftar', 'refund_approval'];
         foreach ($codes as $code) {
             $url = collect(config('navigation'))->firstWhere('menu', $code)['url'];
             DB::table('ms_menu')->where('kode', $code)->update(['parent_id' => 0, 'link' => $url]);
@@ -96,7 +96,8 @@ trait OperationalDataTableScenarios
         $this->assertSame(1, $items['monitoring_peserta']['count']);
         $this->assertSame(1, $items['pengajuan_biaya']['count']);
         $this->assertSame(1, $items['approval_pengajuan_biaya']['count']);
-        $this->assertSame(0, $items['sales_order_refund']['count']);
+        $this->assertSame(0, $items['refund_daftar']['count']);
+        $this->assertSame(0, $items['refund_approval']['count']);
         $this->login6($this->user6('badge_unrelated'));
         $items = collect(\App\Support\Navigation::items($permissions))->keyBy('menu');
         $this->assertSame(0, $items['pengajuan_biaya']['count']);
@@ -106,7 +107,7 @@ trait OperationalDataTableScenarios
 
     public function test_operational_datatables_contract_and_permissions(): void
     {
-        foreach (['penjualan_program', 'quotation_program', 'sales_order_refund'] as $code) {
+        foreach (['penjualan_program', 'quotation_program', 'refund_daftar', 'refund_approval'] as $code) {
             if (! DB::table('ms_menu')->where('kode', $code)->exists()) {
                 $id = DB::table('ms_menu')->insertGetId(['kode' => $code, 'judul' => $code, 'link' => '#', 'parent_id' => 0, 'kelompok' => 1, 'urutan' => 99, 'aktif' => 1, 'sistem' => 0]);
                 DB::table('ms_menu_aksi')->insert(['id_menu' => $id, 'aksi' => 'lihat']);
@@ -115,7 +116,7 @@ trait OperationalDataTableScenarios
         $paths = ['/program/data', '/penjualan-program/data', '/quotation/data', '/sales-order/data', '/sales-order/data?tab=surat',
             '/invoicing/data', '/invoicing/data?tab=invoiced', '/manage-peserta/data', '/manage-peserta/monitoring/data',
             '/manage-peserta/'.$this->program6.'/data', '/pengajuan-biaya/data', '/pengajuan-biaya/data?tab=pengajuan',
-            '/pengajuan-biaya/approval/data', '/pengajuan-biaya/approval/data?tab=overbudget', '/sales-order/refund/data', '/activity-log/data', '/quotation/batch/'.$this->program6.'/data', '/quotation/batch/'.$this->program6.'/data?data=1', '/sales-order/program/'.$this->program6.'/data', '/pengajuan-biaya/program/'.$this->program6.'/data?kategori=fixed&kind=pengajuan', '/pengajuan-biaya/program/'.$this->program6.'/data?kategori=variable&kind=overbudget'];
+            '/pengajuan-biaya/approval/data', '/pengajuan-biaya/approval/data?tab=overbudget', '/refund/data', '/refund/approval/data', '/activity-log/data', '/quotation/batch/'.$this->program6.'/data', '/quotation/batch/'.$this->program6.'/data?data=1', '/sales-order/program/'.$this->program6.'/data', '/pengajuan-biaya/program/'.$this->program6.'/data?kategori=fixed&kind=pengajuan', '/pengajuan-biaya/program/'.$this->program6.'/data?kategori=variable&kind=overbudget'];
         foreach ($paths as $path) {
             $url = $path.(str_contains($path, '?') ? '&' : '?').'draw=7&start=0&length=10';
             $response = $this->getJson($url);

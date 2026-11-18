@@ -62,7 +62,11 @@ class Navigation
             if ($code === 'monitoring_peserta') {
                 return Participants::query()->count();
             }
-            if ($code === 'sales_order_refund') {
+            // Badge Daftar Refund = yang menunggu tindakan Sales/Finance (ditolak diperbaiki, disetujui ditransfer); Approval = menunggu keputusan.
+            if ($code === 'refund_daftar') {
+                return DB::table('sales_order_refund')->whereIn('status', ['ditolak', 'disetujui'])->count();
+            }
+            if ($code === 'refund_approval') {
                 return DB::table('sales_order_refund')->where('status', 'menunggu')->count();
             }
             if ($code === 'pengajuan_biaya') {

@@ -301,7 +301,9 @@ try {
         ['Invoice/Form', { source: { so: row, amounts: { total_tagihan: '100000' } }, accounts: [], coa: 7 }, 'save', [], '/invoicing'],
         ['components/InvoiceDetail', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/pembayaran', 'post', s => { s.action = 'pembayaran'; }],
         ['components/InvoiceDetail', { invoice: { id: 77, nomor: 'INV-077', piutang: '100000', ppn: '11000' } }, 'save', [], '/invoicing/77/bukti-setor', 'post', s => { s.action = 'bukti-setor'; }],
-        ['components/RefundDetail', { refund: { id: 77, nomor: 'RF-077', nominal_tagihan: '987654321012345678.00' } }, 'save', [], '/sales-order/refund/77'],
+        ['components/RefundDetail', { refund: { id: 77, nomor: 'RF-077', nominal_tagihan: '987654321012345678.00', alasan: 'Alasan', status: 'disetujui', sebab: 'reschedule' }, snapshot: { peserta: 'A', company: null, invoice: 'INV', nomor_so: 'SO', nomor_quotation: 'Q' }, riwayat: [], maks: '100000', canManage: true, canAjukan: true, canApprove: true, closed: false }, 'saveProses', [], '/refund/77', 'post', s => { s.proses.nominal_refund = '987654321012345678'; }],
+        ['components/RefundDetail', { refund: { id: 77, nomor: 'RF-077', nominal_tagihan: '987654321012345678.00', alasan: 'Alasan', status: 'menunggu', sebab: 'reschedule' }, snapshot: { peserta: 'A', company: null, invoice: 'INV', nomor_so: 'SO', nomor_quotation: 'Q' }, riwayat: [], maks: '100000', canManage: true, canAjukan: true, canApprove: true, closed: false }, 'saveKeputusan', [], '/refund/77/keputusan'],
+        ['components/RefundDetail', { refund: { id: 77, nomor: 'RF-077', nominal_tagihan: '987654321012345678.00', alasan: 'Alasan', status: 'ditolak', sebab: 'reschedule' }, snapshot: { peserta: 'A', company: null, invoice: 'INV', nomor_so: 'SO', nomor_quotation: 'Q' }, riwayat: [], maks: '100000', canManage: true, canAjukan: true, canApprove: true, closed: false }, 'savePerbaiki', [], '/refund/77/ajukan-ulang'],
         ...['pengajuan', 'overbudget'].map(creating => ['Expenses/Program', { ...base, creating, budget: { items: [] } }, 'submit', [], `/pengajuan-biaya/program/77/${creating}`]),
         ...['setujui', 'tolak', 'batal', 'paid'].map(kind => ['Expenses/Show', { header: { id: 77, nomor: 'PB-077', total: '100000' }, kind: 'pengajuan' }, 'send', [kind], `/pengajuan-biaya/pengajuan/77/${kind}`]),
         ['Participants/Show', { program, filters: {}, warnings: [], blockers: [] }, 'save', [], '/manage-peserta/peserta/77/nama', 'post', s => { s.editing = row; }],
@@ -328,7 +330,7 @@ try {
         dialogs.at(-1).resolve({ isConfirmed: false });
         await pending;
         assert.equal(requests.length, count, `${name}:${fn} cancel`);
-        const form = state.form || state.deal;
+        const form = state.form || state.deal || state.proses;
         if (form && 'bukti' in form) form.bukti = Array.isArray(form.bukti) ? [file] : file;
         if (form && 'surat' in form) form.surat = file;
         const chosenArgs = args.map(value => value && typeof value === 'object' ? { ...value } : value);
@@ -349,7 +351,7 @@ try {
         request.options.onError({ field: 'Validasi gagal.' });
         finish(request);
         if (form && 'surat' in form) assert.equal(form.surat, file, 'Error mempertahankan lampiran.');
-        if (name === 'components/RefundDetail') assert.equal(request.options.data.nominal_refund, '987654321012345678');
+        if (name === 'components/RefundDetail' && fn === 'saveProses') assert.equal(request.options.data.nominal_refund, '987654321012345678');
         app.unmount();
     }
     const pdfPage = await page('Quotation/Form', quoteProps);
