@@ -48,6 +48,79 @@ class Sales
         }
     }
 
+    /**
+     * Master Program dalam satu Penjualan Program (PJ-FR-32), urut tampil. Tiap baris memuat jadwal, tim, harga, dan biayanya sendiri.
+     * Penjualan tanpa baris master (data sebelum migrasi) dibaca dari header sebagai satu Master Program.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function masters(object $program): array
+    {
+        $rows = DB::table('penjualan_program_master')->where('id_penjualan', $program->id)->orderBy('urutan')->get();
+        if ($rows->isEmpty()) {
+            return [self::headerAsMaster($program)];
+        }
+        $costs = DB::table('penjualan_program_biaya as b')->leftJoin('ms_satuan as s', 's.id', '=', 'b.id_satuan')->where('b.id_penjualan', $program->id)
+            ->select('b.*', 's.nama as nama_satuan')->orderBy('b.id')->get()->groupBy('id_penjualan_master');
+
+        return $rows->map(fn ($m) => (array) $m + ['biaya' => ($costs->get($m->id, collect()))->map(fn ($b) => (array) $b)->all()])->values()->all();
+    }
+
+    private static function headerAsMaster(object $p): array
+    {
+        return ['id' => null, 'id_penjualan' => $p->id, 'id_master_program' => $p->id_master_program, 'urutan' => 1, 'tgl_mulai' => $p->tgl_mulai, 'tgl_selesai' => $p->tgl_selesai,
+            'durasi_hari' => $p->durasi_hari, 'jam_pembelajaran' => $p->jam_pembelajaran, 'id_trainer' => $p->id_trainer, 'id_asisten' => $p->id_asisten,
+            'harga_jual_peserta' => $p->harga_jual_peserta, 'target_profit' => $p->target_profit ?? 0, 'biaya' => self::costs($p->id)];
+    }
+
+    /**
+     * Nilai program dari Master Program-nya (PJ-FR-32): tanggal = mulai paling awal s.d. selesai paling akhir, Jam Pembelajaran dan harga jual = jumlah,
+     * trainer dan asisten program = milik Master Program pertama (dipakai tampilan lama), durasi = rentang tanggal.
+     *
+     * @param  array<int, array<string, mixed>>  $masters
+     */
+    public static function aggregate(array $masters): array
+    {
+        $start = array_values(array_filter(array_column($masters, 'tgl_mulai')));
+        $end = array_values(array_filter(array_column($masters, 'tgl_selesai')));
+        sort($start);
+        sort($end);
+        $from = $start[0] ?? null;
+        $to = $end ? $end[count($end) - 1] : null;
+        $sum = fn (string $key) => array_sum(array_map(fn ($m) => (float) ($m[$key] ?? 0), $masters));
+        $first = $masters[0];
+
+        return ['tgl_mulai' => $from, 'tgl_selesai' => $to,
+            'durasi_hari' => $from && $to && $to >= $from ? (int) Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1 : (int) array_sum(array_column($masters, 'durasi_hari')),
+            'jam_pembelajaran' => (int) $sum('jam_pembelajaran') ?: null, 'id_trainer' => $first['id_trainer'], 'id_asisten' => $first['id_asisten'],
+            'harga_jual_peserta' => $sum('harga_jual_peserta'), 'target_profit' => $sum('target_profit'), 'id_master_program' => $first['id_master_program']];
+    }
+
+    /**
+     * Costing seluruh program (PJ-FR-32): biaya per hari memakai durasi Master Program masing-masing, bukan rentang program; sisanya dijumlah.
+     * Satu Master Program menghasilkan angka yang sama dengan Costing::calculate biasa.
+     */
+    public static function costing(array $masters, int|string $target): array
+    {
+        $fixed = 0.0;
+        $variable = 0.0;
+        foreach ($masters as $m) {
+            $part = Costing::calculate($m['durasi_hari'], 1, 0, $m['biaya']);
+            $fixed += $part['total_fixed'];
+            $variable += $part['var_per_pax'];
+        }
+        $target = (int) $target;
+        $price = array_sum(array_map(fn ($m) => (float) ($m['harga_jual_peserta'] ?? 0), $masters));
+        $totalVar = $variable * $target;
+        $hpp = $fixed + $totalVar;
+        $income = $price * $target;
+        $contribution = $price - $variable;
+
+        return ['total_fixed' => $fixed, 'var_per_pax' => $variable, 'total_var' => $totalVar, 'total_hpp' => $hpp, 'hpp_per_pax' => $target > 0 ? $hpp / $target : 0,
+            'pendapatan' => $income, 'profit' => $income - $hpp, 'margin' => $income > 0 ? round((($income - $hpp) / $income) * 100, 1) : 0,
+            'bep_peserta' => $contribution > 0 ? max(1, (int) ceil(round($fixed / $contribution, 6))) : null];
+    }
+
     public static function costs(int $id): array
     {
         return DB::table('penjualan_program_biaya as b')->leftJoin('ms_satuan as s', 's.id', '=', 'b.id_satuan')

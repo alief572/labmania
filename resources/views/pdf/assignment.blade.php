@@ -11,7 +11,18 @@
 <table class="form"><tr><td>Nama</td><td>: ........................................................</td></tr><tr><td>Jabatan</td><td>: Operational Manager</td></tr></table>
 <p>Dengan ini menugaskan kepada:</p>
 <table width="100%" style="border-collapse:collapse"> <thead><tr>@foreach(['No.', 'Nama', 'NIK', 'Jabatan'] as $h)<th style="border:0.3mm solid #111;padding:2mm">{{ $h }}</th>@endforeach</tr></thead><tbody>
+@php
+    // Beberapa Master Program (SO-FR-25): setiap trainer dan asisten didaftar dengan judul Product dan tanggal Master Program-nya.
+    $rows = collect($tim ?? [])->flatMap(fn ($m) => [
+        ['nama' => $m['trainer']['nama'] ?? '', 'jabatan' => 'Trainer '.$m['judul'], 'tanggal' => $m['tgl_mulai']],
+        ['nama' => $m['asisten']['nama'] ?? '', 'jabatan' => 'Asisten Trainer '.$m['judul'], 'tanggal' => $m['tgl_mulai']],
+    ])->values();
+@endphp
+@if($rows->isNotEmpty())
+@foreach($rows as $n => $r)<tr><td style="border:0.3mm solid #111;padding:2mm" width="8%">{{ $n + 1 }}</td><td style="border:0.3mm solid #111;padding:2mm" width="40%">{{ $r['nama'] }}</td><td style="border:0.3mm solid #111;padding:2mm" width="25%">........................</td><td style="border:0.3mm solid #111;padding:2mm">{{ $r['jabatan'] }} ({{ \Carbon\Carbon::parse($r['tanggal'])->locale('id')->translatedFormat('j F Y') }})</td></tr>@endforeach
+@else
 @for($i=1;$i<=10;$i++)<tr><td style="border:0.3mm solid #111;padding:2mm" width="8%">{{ $i <= 2 ? $i : '' }}</td><td style="border:0.3mm solid #111;padding:2mm" width="40%">{{ $i === 1 ? $trainer['nama'] : ($i === 2 ? $asisten['nama'] : '') }}</td><td style="border:0.3mm solid #111;padding:2mm" width="25%">{{ $i <= 2 ? '........................' : '' }}</td><td style="border:0.3mm solid #111;padding:2mm">{{ $i === 1 ? 'Trainer' : ($i === 2 ? 'Asisten Trainer' : '') }}</td></tr>@endfor
+@endif
 </tbody></table>
 <p>Sebagaimana ditugaskan sebagai <b>Trainer / Asisten Trainer</b> dalam acara {{ $variant }} "{{ $title }}" bertempat di {{ $program['lokasi'] }} yang dilaksanakan pada:</p>
 <table class="form"><tr><td>Hari / Tanggal</td><td>: {{ $start->translatedFormat('l, j F Y') }}@if($program['tgl_selesai'] !== $program['tgl_mulai']) s.d. {{ $end->translatedFormat('l, j F Y') }}@endif</td></tr><tr><td>Waktu</td><td>: {{ $program['waktu'] }}</td></tr></table>

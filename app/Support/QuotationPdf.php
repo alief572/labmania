@@ -34,6 +34,8 @@ class QuotationPdf
         }
         $data['jenis'] = $data['jenis_pj'] = $p->jenis;
         $data['nama_paket'] = Sales::title($p->id_master_program);
+        $all = Sales::masters($p);
+        $data['terdiri_dari'] = count($all) > 1 ? array_map(fn ($m) => ['judul' => Sales::title((int) $m['id_master_program']), 'tgl_mulai' => $m['tgl_mulai'], 'tgl_selesai' => $m['tgl_selesai'], 'jam_pembelajaran' => (int) $m['jam_pembelajaran']], $all) : [];
         $data['nama_company'] = $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->value('name_customer') : null;
 
         return $data;
@@ -52,7 +54,10 @@ class QuotationPdf
         try {
             $layout = new self;
             $m = $layout->mulai('Surat Penawaran '.$p->nomor);
-            $html = view('pdf.program-offer', ['p' => $p, 'title' => Sales::title($p->id_master_program),
+            $masters = Sales::masters($p);
+            $parts = count($masters) > 1 ? array_map(fn ($m) => ['judul' => Sales::title((int) $m['id_master_program']), 'tgl_mulai' => $m['tgl_mulai'], 'tgl_selesai' => $m['tgl_selesai'],
+                'jam_pembelajaran' => $m['jam_pembelajaran'], 'trainer' => DB::table('ms_trainer')->where('id', $m['id_trainer'])->value('nama')], $masters) : [];
+            $html = view('pdf.program-offer', ['p' => $p, 'title' => Sales::title($p->id_master_program), 'parts' => $parts,
                 'company' => $p->id_customer ? DB::table('master_customer')->where('id_customer', $p->id_customer)->first() : null,
                 'trainer' => DB::table('ms_trainer')->where('id', $p->id_trainer)->value('nama')])->render();
             $layout->page($m, $html, $layout->foot('Penjualan Program', '{PAGENO}', now()->format('d/m/Y')));
@@ -349,6 +354,7 @@ class QuotationPdf
         $jp = ! empty($q['jam_pembelajaran']) ? (int) $q['jam_pembelajaran'].' JP<br>' : '';
 
         $desk = (int) $q['durasi_hari'].' hari<br>'.$jp.$this->e($this->rentang($q['tgl_mulai'] ?? null, $q['tgl_selesai'] ?? null)).'<br>'.$this->e($q['waktu'] ?? '—').'<br>'.$this->e($q['lokasi'] ?? '—')
+            .(! empty($q['terdiri_dari']) ? '<br><span class="mut">Terdiri dari:<br>'.implode('<br>', array_map(fn ($x) => $this->e($x['judul']).' · '.$this->e($this->rentang($x['tgl_mulai'], $x['tgl_selesai'])).' · '.(int) $x['jam_pembelajaran'].' JP', $q['terdiri_dari'])).'</span>' : '')
             .($nama ? '<br><span class="mut">Peserta: '.$this->e(implode(', ', $nama)).'</span>' : '');
         $hargaCell = $allin ? $this->rp($c['harga_allin']).'<br><span class="mut">all-in paket</span>' : $this->rp($c['harga_peserta']);
         $diskCell = $allin ? ($c['total_diskon'] ? $this->rp($c['total_diskon']) : '0') : ($c['diskon'] ? $this->rp($c['diskon']) : '0');

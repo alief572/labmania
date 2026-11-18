@@ -28,10 +28,20 @@ class RescheduleController extends Controller
             $h->surat_lama = $snap['surat_lama'] ?? null;
             $h->surat_baru = $snap['surat_baru'] ?? null;
             $h->team = $snap['team'] ?? null;
+            // Riwayat per Master Program yang berubah (PJ-FR-34); kosong untuk reschedule sebelum fitur ini.
+            $h->rincian = DB::table('penjualan_program_reschedule_detail as d')->join('master_program as m', 'm.id', '=', 'd.id_master_program')
+                ->leftJoin('ms_trainer as tl', 'tl.id', '=', 'd.id_trainer_lama')->leftJoin('ms_trainer as tb', 'tb.id', '=', 'd.id_trainer_baru')
+                ->leftJoin('ms_user_karyawan as al', 'al.id', '=', 'd.id_asisten_lama')->leftJoin('ms_user_karyawan as ab', 'ab.id', '=', 'd.id_asisten_baru')
+                ->where('d.id_reschedule', $h->id)->orderBy('d.urutan')
+                ->get(['d.id_master_program', 'm.nomor as master_nomor', 'd.tgl_mulai_lama', 'd.tgl_selesai_lama', 'd.tgl_mulai_baru', 'd.tgl_selesai_baru', 'tl.nama as trainer_lama', 'tb.nama as trainer_baru', 'al.nama as asisten_lama', 'ab.nama as asisten_baru']);
         }
+        // Satu baris per Master Program dengan status kunci H-7 (PJ-FR-34); klien menampilkan isian hanya untuk yang terbuka.
+        $rows = array_map(fn ($m) => ['id_master_program' => (int) $m['id_master_program'], 'nomor' => DB::table('master_program')->where('id', $m['id_master_program'])->value('nomor'),
+            'judul' => Sales::title((int) $m['id_master_program']), 'tgl_mulai' => $m['tgl_mulai'], 'tgl_selesai' => $m['tgl_selesai'], 'durasi_hari' => (int) $m['durasi_hari'],
+            'id_trainer' => (int) $m['id_trainer'], 'id_asisten' => (int) $m['id_asisten'], 'terbuka' => Reschedule::openRow($m)], Sales::masters($p));
 
         return Inertia::render('Sales/Reschedule', ['program' => $p, 'history' => $history, 'version' => Reschedule::version($p), 'requestId' => (string) Str::uuid(),
-            'reason' => Reschedule::reason($p), 'canManage' => Gate::allows('menu', ['penjualan_program', 'Manage']),
+            'rows' => $rows, 'reason' => Reschedule::reason($p), 'canManage' => Gate::allows('menu', ['penjualan_program', 'Manage']),
             'minimum' => today()->addDays(7)->toDateString(), 'trainers' => DB::table('ms_trainer')->where('aktif', 1)->get(['id', 'nama']),
             'assistants' => DB::table('ms_user_karyawan')->where('aktif', 1)->get(['id', 'nama']),
             'impact' => ['quotation' => $quotes->count(), 'deal' => DB::table('quotation')->whereIn('id', $quotes)->where('status', 'deal')->count(), 'invoice' => DB::table('invoice')->where('id_penjualan', $id)->where('status', 'invoiced')->count(), 'peserta' => DB::table('quotation_peserta')->whereIn('id_quotation', $quotes)->whereIn('status', ['deal', 'menunggu'])->count(),
@@ -42,8 +52,13 @@ class RescheduleController extends Controller
     public function store(Request $r, int $id)
     {
         Gate::authorize('menu', ['penjualan_program', 'Manage']);
-        $input = $r->validate(['request_id' => 'required|uuid', 'version' => 'required|string|size:64', 'tgl_mulai' => 'required|date_format:Y-m-d|after_or_equal:'.today()->addDays(7)->toDateString(),
-            'id_trainer' => 'required|integer|exists:ms_trainer,id,aktif,1', 'id_asisten' => 'required|integer|exists:ms_user_karyawan,id,aktif,1',
+        // Payload baru memakai masters[] (satu baris per Master Program yang diubah); payload lama (satu Master Program) tetap diterima.
+        $multi = $r->has('masters');
+        $input = $r->validate(['request_id' => 'required|uuid', 'version' => 'required|string|size:64',
+            'tgl_mulai' => ($multi ? 'nullable' : 'required').'|date_format:Y-m-d|after_or_equal:'.today()->addDays(7)->toDateString(),
+            'id_trainer' => ($multi ? 'nullable' : 'required').'|integer|exists:ms_trainer,id,aktif,1', 'id_asisten' => ($multi ? 'nullable' : 'required').'|integer|exists:ms_user_karyawan,id,aktif,1',
+            'masters' => 'nullable|array|min:1|max:50', 'masters.*.id_master_program' => 'required|integer', 'masters.*.tgl_mulai' => 'required|date_format:Y-m-d',
+            'masters.*.id_trainer' => 'required|integer|exists:ms_trainer,id,aktif,1', 'masters.*.id_asisten' => 'required|integer|exists:ms_user_karyawan,id,aktif,1',
             'alasan' => 'required|string|max:500', 'evidence' => 'required|array|min:1', 'evidence.*' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx']);
         unset($input['evidence']);
         $files = [];

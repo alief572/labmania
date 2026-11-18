@@ -58,7 +58,7 @@ abstract class MysqlTestCase extends BaseTestCase
      */
     private function applyLaterMigrations(): void
     {
-        foreach (['2026_11_19_090000_penjualan_batal_dampak', '2026_11_19_100000_reschedule_deal_ulang'] as $migration) {
+        foreach (['2026_11_19_090000_penjualan_batal_dampak', '2026_11_19_100000_reschedule_deal_ulang', '2026_11_19_110000_penjualan_multi_master'] as $migration) {
             (require base_path('database/migrations/'.$migration.'.php'))->up();
         }
     }

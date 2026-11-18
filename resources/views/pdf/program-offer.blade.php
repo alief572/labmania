@@ -15,7 +15,11 @@
     <tr><th>Pelaksanaan</th><td>{{ $p->tgl_mulai }} s.d. {{ $p->tgl_selesai }} · {{ $p->waktu }} · {{ $p->lokasi }}</td></tr>
     <tr><th>Durasi</th><td>{{ $p->durasi_hari }} hari</td></tr>
     <tr><th>Jam Pembelajaran</th><td>{{ $p->jam_pembelajaran }} JP</td></tr>
+    @if(! empty($parts))
+    <tr><th>Terdiri dari</th><td>@foreach($parts as $x){{ $x['judul'] }} · {{ $x['tgl_mulai'] }} s.d. {{ $x['tgl_selesai'] }} · {{ $x['jam_pembelajaran'] }} JP · Trainer {{ $x['trainer'] }}<br>@endforeach</td></tr>
+    @else
     <tr><th>Trainer</th><td>{{ $trainer }}</td></tr>
+    @endif
     <tr><th>Harga / peserta</th><td>Rp {{ number_format($p->harga_jual_peserta, 0, ',', '.') }}</td></tr>
     <tr><th>Jumlah peserta</th><td>{{ $p->target_peserta }} peserta</td></tr>
     <tr><th>Total</th><td><b>Rp {{ number_format($p->harga_jual_peserta * $p->target_peserta, 0, ',', '.') }}</b></td></tr>

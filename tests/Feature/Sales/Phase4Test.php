@@ -23,6 +23,7 @@ class Phase4Test extends MasterTestCase
         (require base_path('database/migrations/2026_11_18_100000_refund_approval.php'))->up();
         (require base_path('database/migrations/2026_11_19_090000_penjualan_batal_dampak.php'))->up();
         (require base_path('database/migrations/2026_11_19_100000_reschedule_deal_ulang.php'))->up();
+        (require base_path('database/migrations/2026_11_19_110000_penjualan_multi_master.php'))->up();
         $this->seedPhase4();
     }
 }

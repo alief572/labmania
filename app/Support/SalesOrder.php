@@ -23,8 +23,19 @@ class SalesOrder
         $assistant = DB::table('ms_user_karyawan')->where('id', $p->id_asisten)->first(['id', 'nama', 'jabatan', 'telp', 'email']);
         $company = $p->id_customer ? DB::table('master_customer')->where('id_customer', $p->id_customer)->first(['id_customer', 'name_customer', 'address_office', 'npwp', 'perlakuan_ppn']) : null;
 
+        // Beberapa Master Program (SO-FR-25): satu surat per program berisi tim tiap Master Program. Hanya untuk program lebih dari satu Master Program,
+        // sehingga snapshot dan cetakan program satu Master Program tidak berubah.
+        $masters = Sales::masters($p);
+        $team = count($masters) > 1 ? array_map(function ($m) {
+            $t = DB::table('ms_trainer')->where('id', $m['id_trainer'])->first(['id', 'nama', 'bidang_keahlian']);
+            $a = DB::table('ms_user_karyawan')->where('id', $m['id_asisten'])->first(['id', 'nama', 'jabatan']);
+
+            return ['id_master_program' => (int) $m['id_master_program'], 'nomor' => DB::table('master_program')->where('id', $m['id_master_program'])->value('nomor'), 'judul' => Sales::title((int) $m['id_master_program']),
+                'tgl_mulai' => $m['tgl_mulai'], 'tgl_selesai' => $m['tgl_selesai'], 'trainer' => $t, 'asisten' => $a];
+        }, $masters) : null;
+
         return ['program' => array_replace(array_intersect_key((array) $p, array_flip(['id', 'nomor', 'jenis', 'id_master_program', 'tgl_mulai', 'tgl_selesai', 'waktu', 'lokasi', 'durasi_hari', 'jam_pembelajaran', 'id_trainer', 'id_asisten'])), ['nomor' => Sales::display($p)]),
-            'judul' => Sales::title($p->id_master_program), 'produk' => $products, 'trainer' => $trainer, 'asisten' => $assistant, 'company' => $company];
+            'judul' => Sales::title($p->id_master_program), 'produk' => $products, 'trainer' => $trainer, 'asisten' => $assistant, 'company' => $company] + ($team ? ['tim' => $team] : []);
     }
 
     public static function detail(object $so): array

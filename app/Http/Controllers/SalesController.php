@@ -42,7 +42,10 @@ class SalesController extends Controller
         $reschedules = DB::table('penjualan_program_reschedule')->whereIn('id_penjualan', $rows->pluck('id'))->selectRaw('id_penjualan, COUNT(*) as total')->groupBy('id_penjualan')->pluck('total', 'id_penjualan');
         $deals = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->whereIn('q.id_penjualan', $rows->pluck('id'))->where('x.status', 'deal')->selectRaw('q.id_penjualan, COUNT(*) as total')->groupBy('q.id_penjualan')->pluck('total', 'id_penjualan');
         $costs = Sales::costsFor($rows->pluck('id')->all());
-        $rows->through(function ($p) use ($titles, $reschedules, $deals, $costs) {
+        $listed = DB::table('penjualan_program_master as m')->join('master_program as mp', 'mp.id', '=', 'm.id_master_program')->leftJoin('ms_trainer as tr', 'tr.id', '=', 'm.id_trainer')
+            ->whereIn('m.id_penjualan', $rows->pluck('id'))->orderBy('m.urutan')->get(['m.id_penjualan', 'mp.nomor', 'm.tgl_mulai', 'm.tgl_selesai', 'tr.nama as trainer_nama'])->groupBy('id_penjualan');
+        $rows->through(function ($p) use ($titles, $reschedules, $deals, $costs, $listed) {
+            $p->masters = $listed->get($p->id, collect())->values();
             $p->judul = $titles[$p->id_master_program] ?? '';
             $p->nomor = Sales::display($p);
             $p->reschedule_count = (int) ($reschedules[$p->id] ?? 0);
@@ -127,10 +130,12 @@ class SalesController extends Controller
             $program['jenis'] = $presetJenis;
         }
         $program['biaya'] = $p ? Sales::costs($p->id) : [];
+        // Master Program dalam penjualan (PJ-FR-32): tersimpan, atau satu baris awal dari preset (jadwal, tim kosong; biaya disalin klien dari Master Program).
+        $program['masters'] = $p ? array_map(fn ($m) => $m + ['judul' => Sales::title((int) $m['id_master_program'])], Sales::masters($p)) : [];
         $actual = null;
         if ($p && $p->status === 'final') {
             $n = DB::table('quotation_peserta as x')->join('quotation as q', 'q.id', '=', 'x.id_quotation')->where('q.id_penjualan', $p->id)->where('x.status', 'deal')->count();
-            $actual = ['peserta' => $n, 'rencana' => Costing::calculate($p->durasi_hari, $p->target_peserta, $p->harga_jual_peserta, $program['biaya']), 'aktual' => Costing::calculate($p->durasi_hari, $n, $p->harga_jual_peserta, $program['biaya'])];
+            $actual = ['peserta' => $n, 'rencana' => Sales::costing(Sales::masters($p), $p->target_peserta), 'aktual' => Sales::costing(Sales::masters($p), $n)];
         }
 
         return Inertia::render('Sales/Form', ['program' => $program, 'masters' => $masters,
@@ -142,40 +147,74 @@ class SalesController extends Controller
             'can' => ['edit' => Gate::allows('menu', [self::MENU, $p ? 'Manage' : 'Add']), 'approve' => Gate::allows('menu', [self::MENU, 'Approve']), 'cancel' => Gate::allows('menu', [self::MENU, 'Manage'])]]);
     }
 
+    /**
+     * Payload baru memakai masters[] (PJ-FR-32): jadwal, tim, harga, target profit, dan biaya per Master Program. Payload lama (satu Master Program,
+     * field di tingkat atas) dibungkus menjadi satu baris agar klien dan tes lama tetap berlaku.
+     *
+     * @return array{0: array, 1: array, 2: int} header penjualan, Master Program beserta biayanya, jumlah item bernilai 0 yang dibuang
+     */
     private function validated(Request $r, ?object $old): array
     {
-        foreach (['harga_jual_peserta', 'target_profit'] as $key) {
-            if (is_string($r->input($key))) {
-                $r->merge([$key => str_replace('.', '', $r->input($key))]);
-            }
+        if (! $r->has('masters')) {
+            $r->merge(['masters' => [array_intersect_key($r->all(), array_flip(['id_master_program', 'id_trainer', 'id_asisten', 'tgl_mulai', 'tgl_selesai', 'jam_pembelajaran', 'harga_jual_peserta', 'target_profit', 'biaya']))]]);
         }
-        $in = $r->validate(['jenis' => 'required|in:public,b2b', 'id_master_program' => 'required|integer|exists:master_program,id', 'id_customer' => 'nullable|string|max:20',
-            'id_trainer' => 'required|integer', 'id_asisten' => 'required|integer', 'tgl_mulai' => 'required|date_format:Y-m-d', 'tgl_selesai' => 'required|date_format:Y-m-d|after_or_equal:tgl_mulai',
-            'waktu' => 'nullable|string|max:50', 'lokasi' => 'nullable|string|max:150', 'jam_pembelajaran' => 'required|integer|min:1|max:10000',
-            'target_peserta' => 'required|integer|min:1|max:100000', 'harga_jual_peserta' => 'required|integer|min:0|max:9999999999999', 'target_profit' => 'nullable|integer|min:0|max:9999999999999', 'biaya' => 'present|array|max:200']);
-        $master = DB::table('master_program')->where('id', $in['id_master_program'])->first();
-        if ($master->status !== 'final' || ($old && ($old->jenis !== $in['jenis'] || $old->id_master_program !== (int) $in['id_master_program']))) {
+        $masters = $r->input('masters');
+        if (is_array($masters)) {
+            foreach ($masters as $i => $m) {
+                foreach (['harga_jual_peserta', 'target_profit'] as $key) {
+                    if (is_array($m) && is_string($m[$key] ?? null)) {
+                        $masters[$i][$key] = str_replace('.', '', $m[$key]);
+                    }
+                }
+            }
+            $r->merge(['masters' => $masters]);
+        }
+        $in = $r->validate(['jenis' => 'required|in:public,b2b', 'id_customer' => 'nullable|string|max:20', 'waktu' => 'nullable|string|max:50', 'lokasi' => 'nullable|string|max:150',
+            'target_peserta' => 'required|integer|min:1|max:100000',
+            'masters' => 'required|array|min:1|max:50',
+            'masters.*.id_master_program' => 'required|integer|exists:master_program,id', 'masters.*.id_trainer' => 'required|integer', 'masters.*.id_asisten' => 'required|integer',
+            'masters.*.tgl_mulai' => 'required|date_format:Y-m-d', 'masters.*.tgl_selesai' => 'required|date_format:Y-m-d|after_or_equal:masters.*.tgl_mulai',
+            'masters.*.jam_pembelajaran' => 'required|integer|min:1|max:10000', 'masters.*.harga_jual_peserta' => 'required|integer|min:0|max:9999999999999',
+            'masters.*.target_profit' => 'nullable|integer|min:0|max:9999999999999', 'masters.*.biaya' => 'present|array|max:200']);
+        $ids = array_map(fn ($m) => (int) $m['id_master_program'], $in['masters']);
+        if (count($ids) !== count(array_unique($ids))) {
+            throw ValidationException::withMessages(['masters' => 'Master Program yang sama tidak dapat dipilih dua kali.']);
+        }
+        $oldIds = $old ? array_column(Sales::masters($old), 'id_master_program') : [];
+        if ($old && ($old->jenis !== $in['jenis'])) {
             throw ValidationException::withMessages(['id_master_program' => 'Pilih Master Program Final; jenis dan sumber terkunci setelah disimpan.']);
         }
-        if (! DB::table('ms_trainer')->where('id', $in['id_trainer'])->where('aktif', 1)->exists()) {
-            throw ValidationException::withMessages(['id_trainer' => 'Pilih trainer aktif.']);
-        }
-        if (! DB::table('ms_user_karyawan')->where('id', $in['id_asisten'])->where('aktif', 1)->exists()) {
-            throw ValidationException::withMessages(['id_asisten' => 'Pilih asisten trainer aktif.']);
+        $oldRates = $old ? DB::table('penjualan_program_biaya')->where('id_penjualan', $old->id)->pluck('id_rate')->filter()->all() : [];
+        $dropped = 0;
+        $rows = [];
+        foreach ($in['masters'] as $n => $m) {
+            $master = DB::table('master_program')->where('id', $m['id_master_program'])->first();
+            // Master Program yang sudah ada di penjualan ini boleh tetap walau statusnya berubah; yang baru harus Final.
+            if ($master->status !== 'final' && ! in_array((int) $m['id_master_program'], array_map('intval', $oldIds), true)) {
+                throw ValidationException::withMessages(['masters.'.$n.'.id_master_program' => 'Pilih Master Program Final; jenis dan sumber terkunci setelah disimpan.']);
+            }
+            if (! DB::table('ms_trainer')->where('id', $m['id_trainer'])->where('aktif', 1)->exists()) {
+                throw ValidationException::withMessages(['masters.'.$n.'.id_trainer' => 'Pilih trainer aktif.']);
+            }
+            if (! DB::table('ms_user_karyawan')->where('id', $m['id_asisten'])->where('aktif', 1)->exists()) {
+                throw ValidationException::withMessages(['masters.'.$n.'.id_asisten' => 'Pilih asisten trainer aktif.']);
+            }
+            [$costs, $errors, $drop] = Costing::cleanRows($m['biaya'], $oldRates);
+            if ($errors) {
+                throw ValidationException::withMessages(collect($errors)->mapWithKeys(fn ($v, $k) => ['masters.'.$n.'.'.$k => $v])->all());
+            }
+            $dropped += $drop;
+            $rows[] = ['id_master_program' => (int) $m['id_master_program'], 'urutan' => $n + 1, 'tgl_mulai' => $m['tgl_mulai'], 'tgl_selesai' => $m['tgl_selesai'],
+                'durasi_hari' => (int) Carbon::parse($m['tgl_mulai'])->diffInDays(Carbon::parse($m['tgl_selesai'])) + 1, 'jam_pembelajaran' => (int) $m['jam_pembelajaran'],
+                'id_trainer' => (int) $m['id_trainer'], 'id_asisten' => (int) $m['id_asisten'], 'harga_jual_peserta' => (int) $m['harga_jual_peserta'], 'target_profit' => (int) ($m['target_profit'] ?? 0), 'biaya' => $costs];
         }
         if ($in['jenis'] === 'b2b' && ($in['target_peserta'] < 10 || ! DB::table('master_customer')->where('id_customer', $in['id_customer'] ?? '')->whereIn('activation', ['aktif', 'active', '1'])->exists())) {
             throw ValidationException::withMessages(['id_customer' => 'B2B wajib Company aktif dan target minimal 10.']);
         }
-        [$costs, $errors, $dropped] = Costing::cleanRows($in['biaya'], $old ? DB::table('penjualan_program_biaya')->where('id_penjualan', $old->id)->pluck('id_rate')->filter()->all() : []);
-        if ($errors) {
-            throw ValidationException::withMessages($errors);
-        }
-        unset($in['biaya']);
-        $in['id_customer'] = $in['jenis'] === 'b2b' ? $in['id_customer'] : null;
-        $in['durasi_hari'] = (int) Carbon::parse($in['tgl_mulai'])->diffInDays(Carbon::parse($in['tgl_selesai'])) + 1;
-        $in['target_profit'] = $in['target_profit'] ?? 0;
+        $header = ['jenis' => $in['jenis'], 'id_customer' => $in['jenis'] === 'b2b' ? $in['id_customer'] : null, 'waktu' => $in['waktu'] ?? null, 'lokasi' => $in['lokasi'] ?? null,
+            'target_peserta' => (int) $in['target_peserta']] + Sales::aggregate($rows);
 
-        return [$in, $costs, $dropped];
+        return [$header, $rows, $dropped];
     }
 
     public function store(Request $r)
@@ -199,8 +238,9 @@ class SalesController extends Controller
                     throw ValidationException::withMessages(['program' => 'Hanya Draft dapat diubah.']);
                 }
             }
-            [$data, $costs, $dropped] = $this->validated($r, $old);
+            [$data, $masters, $dropped] = $this->validated($r, $old);
             $before = $old ? DB::table('penjualan_program_biaya')->where('id_penjualan', $id)->get()->map(fn ($x) => (array) $x)->all() : [];
+            $costs = array_merge(...array_map(fn ($m) => $m['biaya'], $masters));
             if (! $old) {
                 $data += ['nomor' => Sales::number('penjualan_program', ($data['jenis'] === 'b2b' ? 'PJB' : 'PJP').'-'.now()->format('ym')), 'status' => 'draft', 'created_by' => Auth::id(), 'created_date' => now()];
                 $id = DB::table('penjualan_program')->insertGetId($data);
@@ -209,8 +249,14 @@ class SalesController extends Controller
                 DB::table('penjualan_program')->where('id', $id)->update($data);
             }
             DB::table('penjualan_program_biaya')->where('id_penjualan', $id)->delete();
-            foreach ($costs as $cost) {
-                DB::table('penjualan_program_biaya')->insert(['id_penjualan' => $id] + $cost);
+            DB::table('penjualan_program_master')->where('id_penjualan', $id)->delete();
+            foreach ($masters as $m) {
+                $biaya = $m['biaya'];
+                unset($m['biaya']);
+                $masterId = DB::table('penjualan_program_master')->insertGetId(['id_penjualan' => $id, 'created_by' => Auth::id(), 'created_date' => now()] + $m);
+                foreach ($biaya as $cost) {
+                    DB::table('penjualan_program_biaya')->insert(['id_penjualan' => $id, 'id_penjualan_master' => $masterId] + $cost);
+                }
             }
             $new = (array) Sales::program($id);
             write_log('Penjualan Program', $old ? 'Edit' : 'Tambah', ($old ? 'Update ' : 'Tambah ').$new['nomor'], ['old' => $old ? (array) $old : [], 'new' => $new, 'detail_changes' => Costing::changes($before, $costs)], 'penjualan_program', $id, $new['nomor']);
@@ -240,11 +286,12 @@ class SalesController extends Controller
                 throw ValidationException::withMessages(['program' => 'Hanya Draft dapat difinalkan.']);
             }
             if ($action === 'finalkan') {
+                // Validasi ulang seluruh Master Program (PJ-FR-32: validasi simpan berlaku untuk semua Master Program).
                 $input = (array) $old;
-                foreach (['harga_jual_peserta', 'target_profit'] as $field) {
-                    $input[$field] = (int) $old->$field;
-                }
-                $input['biaya'] = array_map(fn ($b) => array_replace($b, ['harga' => (int) $b['harga']]), Sales::costs($id));
+                $input['masters'] = array_map(fn ($m) => array_replace($m, [
+                    'harga_jual_peserta' => (int) $m['harga_jual_peserta'], 'target_profit' => (int) $m['target_profit'],
+                    'biaya' => array_map(fn ($b) => array_replace($b, ['harga' => (int) $b['harga']]), $m['biaya']),
+                ]), Sales::masters($old));
                 $this->validated(new Request($input), $old);
             }
             $new = ['status' => 'final', 'updated_by' => Auth::id(), 'updated_date' => now(), 'confirmed_by' => Auth::id(), 'confirmed_date' => now()];

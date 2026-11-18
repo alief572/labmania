@@ -24,6 +24,10 @@ class DashboardTest extends MasterTestCase
         }
         DB::unprepared(file_get_contents(__DIR__.'/../../fixtures/sales_base.sql'));
         (require base_path('database/migrations/2026_11_13_130000_penjualan_quotation_to_be.php'))->up();
+        foreach (['2026_11_14_090000_sales_order_invoice.php', '2026_11_14_100000_reschedule_refund.php', '2026_11_17_090000_quotation_top.php', '2026_11_18_100000_refund_approval.php',
+            '2026_11_19_090000_penjualan_batal_dampak.php', '2026_11_19_100000_reschedule_deal_ulang.php', '2026_11_19_110000_penjualan_multi_master.php'] as $migration) {
+            (require base_path('database/migrations/'.$migration))->up();
+        }
         $this->travelTo(now()->setDate(2026, 11, 13)->startOfDay());
         foreach (['dashboard' => 50, 'penjualan_program' => 41] as $code => $id) {
             DB::table('ms_menu')->insert(['id' => $id, 'kode' => $code, 'judul' => $code, 'link' => '#', 'parent_id' => 0, 'kelompok' => 1, 'urutan' => $id, 'aktif' => 1, 'sistem' => 0]);

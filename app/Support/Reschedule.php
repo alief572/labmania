@@ -17,11 +17,83 @@ class Reschedule
         if ($p->status !== 'final') {
             return 'Reschedule hanya untuk program Final.';
         }
-        if (! $p->tgl_mulai || today()->gt(Carbon::parse($p->tgl_mulai)->subDays(7))) {
+        $open = array_filter(Sales::masters($p), fn ($m) => self::openRow($m));
+        if (! $p->tgl_mulai || ! $open) {
             return 'Batas H-7 dari jadwal lama sudah lewat.';
         }
 
         return null;
+    }
+
+    /** Batas H-7 per Master Program: yang mulainya kurang dari 7 hari lagi terkunci (PJ-FR-34). */
+    public static function openRow(array $master): bool
+    {
+        return ! empty($master['tgl_mulai']) && ! today()->gt(Carbon::parse($master['tgl_mulai'])->subDays(7));
+    }
+
+    /**
+     * Perubahan per Master Program. Payload baru: masters[] (id_master_program, tgl_mulai, id_trainer, id_asisten). Payload lama: tgl_mulai,
+     * id_trainer, id_asisten untuk program satu Master Program. Hanya baris yang berubah dikembalikan; baris yang lewat H-7 ditolak.
+     *
+     * @param  array<int, array<string, mixed>>  $masters
+     * @return array<int, array<string, mixed>>
+     */
+    private static function changes(array $masters, array $input): array
+    {
+        $given = $input['masters'] ?? [['id_master_program' => $masters[0]['id_master_program'], 'tgl_mulai' => $input['tgl_mulai'], 'id_trainer' => $input['id_trainer'], 'id_asisten' => $input['id_asisten']]];
+        $out = [];
+        foreach ($given as $g) {
+            $row = collect($masters)->first(fn ($m) => (int) $m['id_master_program'] === (int) $g['id_master_program']);
+            if (! $row) {
+                throw ValidationException::withMessages(['reschedule' => 'Master Program tidak termasuk penjualan ini.']);
+            }
+            $changed = $row['tgl_mulai'] !== $g['tgl_mulai'] || (int) $row['id_trainer'] !== (int) $g['id_trainer'] || (int) $row['id_asisten'] !== (int) $g['id_asisten'];
+            if (! $changed) {
+                continue;
+            }
+            if (! self::openRow($row)) {
+                throw ValidationException::withMessages(['reschedule' => 'Master Program '.$row['id_master_program'].' sudah lewat H-7 dan tidak dapat diubah.']);
+            }
+            if ($row['tgl_mulai'] !== $g['tgl_mulai'] && Carbon::parse($g['tgl_mulai'])->lt(today()->addDays(7))) {
+                throw ValidationException::withMessages(['tgl_mulai' => 'Tanggal mulai baru paling cepat hari ini + 7 hari.']);
+            }
+            $end = Carbon::parse($g['tgl_mulai'])->addDays(((int) $row['durasi_hari']) - 1)->toDateString();
+            $out[(int) $row['id_master_program']] = ['id_master_program' => (int) $row['id_master_program'], 'urutan' => (int) $row['urutan'], 'id_penjualan_master' => $row['id'],
+                'tgl_mulai_lama' => $row['tgl_mulai'], 'tgl_selesai_lama' => $row['tgl_selesai'], 'tgl_mulai_baru' => $g['tgl_mulai'], 'tgl_selesai_baru' => $end,
+                'id_trainer_lama' => $row['id_trainer'], 'id_trainer_baru' => (int) $g['id_trainer'], 'id_asisten_lama' => $row['id_asisten'], 'id_asisten_baru' => (int) $g['id_asisten']];
+        }
+
+        return $out;
+    }
+
+    /** Master Program setelah perubahan; durasi tetap sehingga costing Final tidak berubah. */
+    private static function apply(array $masters, array $changes): array
+    {
+        return array_map(function ($m) use ($changes) {
+            $c = $changes[(int) $m['id_master_program']] ?? null;
+
+            return $c ? array_replace($m, ['tgl_mulai' => $c['tgl_mulai_baru'], 'tgl_selesai' => $c['tgl_selesai_baru'], 'id_trainer' => $c['id_trainer_baru'], 'id_asisten' => $c['id_asisten_baru']]) : $m;
+        }, $masters);
+    }
+
+    private static function writeMasters(int $program, int $reschedule, array $changes): void
+    {
+        $now = now();
+        foreach ($changes as $c) {
+            $new = ['tgl_mulai' => $c['tgl_mulai_baru'], 'tgl_selesai' => $c['tgl_selesai_baru'], 'id_trainer' => $c['id_trainer_baru'], 'id_asisten' => $c['id_asisten_baru'], 'updated_by' => Auth::id(), 'updated_date' => $now];
+            if ($c['id_penjualan_master']) {
+                DB::table('penjualan_program_master')->where('id', $c['id_penjualan_master'])->update($new);
+            } else {
+                // Data sebelum migrasi: baris master dibuat dari header agar jadwal per Master Program dan riwayatnya tersimpan.
+                $header = Sales::program($program);
+                $c['id_penjualan_master'] = DB::table('penjualan_program_master')->insertGetId(['id_penjualan' => $program, 'id_master_program' => $c['id_master_program'], 'urutan' => 1, 'durasi_hari' => $header->durasi_hari,
+                    'jam_pembelajaran' => $header->jam_pembelajaran, 'harga_jual_peserta' => $header->harga_jual_peserta ?? 0, 'target_profit' => $header->target_profit ?? 0, 'created_by' => Auth::id(), 'created_date' => $now] + $new);
+                DB::table('penjualan_program_biaya')->where('id_penjualan', $program)->whereNull('id_penjualan_master')->update(['id_penjualan_master' => $c['id_penjualan_master']]);
+            }
+            DB::table('penjualan_program_reschedule_detail')->insert(['id_reschedule' => $reschedule, 'id_penjualan_master' => $c['id_penjualan_master'], 'id_master_program' => $c['id_master_program'], 'urutan' => $c['urutan'],
+                'tgl_mulai_lama' => $c['tgl_mulai_lama'], 'tgl_selesai_lama' => $c['tgl_selesai_lama'], 'tgl_mulai_baru' => $c['tgl_mulai_baru'], 'tgl_selesai_baru' => $c['tgl_selesai_baru'],
+                'id_trainer_lama' => $c['id_trainer_lama'], 'id_trainer_baru' => $c['id_trainer_baru'], 'id_asisten_lama' => $c['id_asisten_lama'], 'id_asisten_baru' => $c['id_asisten_baru'], 'created_by' => Auth::id(), 'created_date' => $now]);
+        }
     }
 
     public static function version(object $p): string
@@ -54,8 +126,11 @@ class Reschedule
             if (! hash_equals(self::version($p), $input['version'])) {
                 throw ValidationException::withMessages(['reschedule' => 'Data berubah sejak pratinjau; muat ulang sebelum menyimpan.']);
             }
-            $dateChanged = $p->tgl_mulai !== $input['tgl_mulai'];
-            if (! $dateChanged && (int) $p->id_trainer === (int) $input['id_trainer'] && (int) $p->id_asisten === (int) $input['id_asisten']) {
+            // Jadwal baru per Master Program: payload lama (satu Master Program) dibungkus menjadi satu baris.
+            $masters = Sales::masters($p);
+            $changes = self::changes($masters, $input);
+            $dateChanged = (bool) array_filter($changes, fn ($c) => $c['tgl_mulai_lama'] !== $c['tgl_mulai_baru']);
+            if (! $changes) {
                 throw ValidationException::withMessages(['reschedule' => 'Minimal tanggal, trainer atau asisten harus berubah.']);
             }
             $oldLetter = DB::table('surat_kerja_trainer')->where('id_penjualan', $id)->where('status', 'berlaku')->lockForUpdate()->first();
@@ -77,8 +152,11 @@ class Reschedule
                     $history[] = ['id_quotation' => $q->id, 'revisi' => $q->revisi, 'link_token_hash' => $q->link_token ? hash('sha256', $q->link_token) : null, 'snapshot' => json_encode($snap, JSON_THROW_ON_ERROR)];
                 }
             }
-            $update = ['tgl_mulai' => $input['tgl_mulai'], 'tgl_selesai' => Carbon::parse($input['tgl_mulai'])->addDays($p->durasi_hari - 1)->toDateString(),
-                'id_trainer' => $input['id_trainer'], 'id_asisten' => $input['id_asisten'], 'revisi' => $p->revisi + ($dateChanged ? 1 : 0), 'updated_by' => Auth::id(), 'updated_date' => now()];
+            $aggregate = Sales::aggregate(self::apply($masters, $changes));
+            $update = ['tgl_mulai' => $aggregate['tgl_mulai'], 'tgl_selesai' => $aggregate['tgl_selesai'], 'durasi_hari' => $aggregate['durasi_hari'],
+                'id_trainer' => $aggregate['id_trainer'], 'id_asisten' => $aggregate['id_asisten'], 'revisi' => $p->revisi + ($dateChanged ? 1 : 0), 'updated_by' => Auth::id(), 'updated_date' => now()];
+            $input['id_trainer'] = $aggregate['id_trainer'];
+            $input['id_asisten'] = $aggregate['id_asisten'];
             $snap = ['old' => (array) $p, 'new' => array_merge((array) $p, $update), 'quotation' => $dateChanged ? $quotes->count() : 0,
                 'pdf_program' => base64_encode(QuotationPdf::program($p)), 'surat_lama' => $oldLetter?->id];
             $trainers = DB::table('ms_trainer')->whereIn('id', [$p->id_trainer, $input['id_trainer']])->pluck('nama', 'id');
@@ -89,6 +167,7 @@ class Reschedule
                 'id_trainer_lama' => $p->id_trainer, 'id_trainer_baru' => $input['id_trainer'], 'id_asisten_lama' => $p->id_asisten, 'id_asisten_baru' => $input['id_asisten'],
                 'alasan' => $input['alasan'], 'request_id' => $input['request_id'], 'request_hash' => $digest, 'snapshot' => json_encode($snap, JSON_THROW_ON_ERROR), ...Invoice::audit()];
             $rid = DB::table('penjualan_program_reschedule')->insertGetId($row);
+            self::writeMasters($id, $rid, $changes);
             foreach ($files as $f) {
                 DB::table('penjualan_program_reschedule_evidence')->insert(['id_reschedule' => $rid, 'nama_file' => $f['name'], 'path_file' => $f['path'], 'tipe_file' => $f['ext'], 'ukuran_byte' => $f['size'], ...Invoice::audit()]);
             }

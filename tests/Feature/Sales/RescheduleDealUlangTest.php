@@ -21,7 +21,7 @@ class RescheduleDealUlangTest extends MasterTestCase
         }
         DB::unprepared(file_get_contents(__DIR__.'/../../fixtures/sales_base.sql'));
         foreach (['2026_11_13_130000_penjualan_quotation_to_be.php', '2026_11_14_090000_sales_order_invoice.php', '2026_11_14_100000_reschedule_refund.php', '2026_11_14_110000_operasional_biaya.php',
-            '2026_11_17_090000_quotation_top.php', '2026_11_18_100000_refund_approval.php', '2026_11_19_090000_penjualan_batal_dampak.php', '2026_11_19_100000_reschedule_deal_ulang.php'] as $f) {
+            '2026_11_17_090000_quotation_top.php', '2026_11_18_100000_refund_approval.php', '2026_11_19_090000_penjualan_batal_dampak.php', '2026_11_19_100000_reschedule_deal_ulang.php', '2026_11_19_110000_penjualan_multi_master.php'] as $f) {
             (require base_path('database/migrations/'.$f))->up();
         }
         $this->seedPhase5();
