@@ -3,7 +3,7 @@ import { appUrl } from '../../composables/appUrl';
 import { ref } from 'vue';
 import PageHead from '../../components/PageHead.vue';
 import ServerTable from '../../components/ServerTable.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import { rupiah } from '../../composables/costing';
@@ -41,35 +41,35 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
     <AppLayout title="Dashboard" full-width>
         <PageHead title="Dashboard" description="Ringkasan Master Program dan Penjualan Program. Angka adalah total seluruh Penjualan Program Final (rencana)." />
         <div class="kpis" role="list">
-            <button type="button" class="kpi" role="listitem" @click="open('final')"><span class="kpi-l">Total Penjualan Program Final <small>rincian ›</small></span><strong class="kpi-v">{{ kpi.final }}</strong><span class="kpi-s">Public {{ kpi.public }} · B2B {{ kpi.b2b }}</span></button>
-            <button type="button" class="kpi" role="listitem" @click="open('pend')"><span class="kpi-l">Total pendapatan rencana <small>rincian ›</small></span><strong class="kpi-v">{{ rupiah(kpi.pendapatan) }}</strong><span class="kpi-s">{{ kpi.peserta }} peserta = total target peserta dari {{ kpi.final }} Penjualan Final</span></button>
-            <button type="button" class="kpi" :class="kpi.profit < 0 ? 'bad' : 'good'" role="listitem" @click="open('prof')"><span class="kpi-l">Total profit rencana <small>rincian ›</small></span><strong class="kpi-v">{{ rupiah(kpi.profit) }}</strong><span class="kpi-s">Pendapatan − biaya (HPP) · margin {{ pct(kpi.margin) }}</span></button>
-            <button type="button" class="kpi" :class="{ warn: kpi.draft }" role="listitem" @click="open('draft')"><span class="kpi-l">Total masih Draft <small>rincian ›</small></span><strong class="kpi-v">{{ kpi.draft }}</strong><span class="kpi-s">Master Program + Penjualan Program belum Final</span></button>
+            <button type="button" class="kpi" role="listitem" @click="open('final')"><span class="kpi-l">Total Penjualan Program Final <small class="kpi-more">rincian ›</small></span><strong class="kpi-v">{{ kpi.final }}</strong><span class="kpi-s">Public {{ kpi.public }} · B2B {{ kpi.b2b }}</span></button>
+            <button type="button" class="kpi" role="listitem" @click="open('pend')"><span class="kpi-l">Total pendapatan rencana <small class="kpi-more">rincian ›</small></span><strong class="kpi-v">{{ rupiah(kpi.pendapatan) }}</strong><span class="kpi-s">{{ kpi.peserta }} peserta = total target peserta dari {{ kpi.final }} Penjualan Final</span></button>
+            <button type="button" class="kpi" :class="kpi.profit < 0 ? 'bad' : 'good'" role="listitem" @click="open('prof')"><span class="kpi-l">Total profit rencana <small class="kpi-more">rincian ›</small></span><strong class="kpi-v">{{ rupiah(kpi.profit) }}</strong><span class="kpi-s">Pendapatan − biaya (HPP) · margin {{ pct(kpi.margin) }}</span></button>
+            <button type="button" class="kpi" :class="{ kwarn: kpi.draft }" role="listitem" @click="open('draft')"><span class="kpi-l">Total masih Draft <small class="kpi-more">rincian ›</small></span><strong class="kpi-v">{{ kpi.draft }}</strong><span class="kpi-s">Master Program + Penjualan Program belum Final</span></button>
         </div>
 
         <div class="dash-grid">
-            <section class="panel" aria-labelledby="jadwal"><h2 id="jadwal">Jadwal pelaksanaan terdekat <small class="muted">Penjualan Program Final</small></h2>
+            <section class="panel dash-card" aria-labelledby="jadwal"><h2 id="jadwal">Jadwal pelaksanaan terdekat <small class="muted">Penjualan Program Final · klik baris untuk membuka</small></h2>
                 <div v-if="jadwal.length" class="table-wrap"><table>
                     <caption class="sr-only">Lima jadwal pelaksanaan terdekat</caption>
-                    <thead><tr><th scope="col">Tanggal</th><th scope="col">Program</th><th scope="col">Jenis</th><th scope="col">Peserta</th></tr></thead>
-                    <tbody><tr v-for="p in jadwal" :key="p.id">
-                        <td>{{ range(p.tgl_mulai, p.tgl_selesai) }}</td>
-                        <td><Link v-if="can.sales" :href="appUrl(`/sales/${p.id}`)">{{ p.judul }}</Link><template v-else>{{ p.judul }}</template><small>{{ p.nomor }} · {{ where(p) }}</small></td>
-                        <td>{{ p.jenis === 'b2b' ? 'B2B' : 'Public' }}</td><td>{{ p.target }}</td>
+                    <thead><tr><th scope="col">Tanggal</th><th scope="col">Program</th><th scope="col">Jenis</th><th scope="col" class="money">Peserta</th></tr></thead>
+                    <tbody><tr v-for="p in jadwal" :key="p.id" :class="{ 'dash-link': can.sales }" @click="can.sales && router.visit(appUrl(`/sales/${p.id}`))">
+                        <td class="nowrap">{{ range(p.tgl_mulai, p.tgl_selesai) }}</td>
+                        <td class="title"><Link v-if="can.sales" :href="appUrl(`/sales/${p.id}`)" @click.stop>{{ p.judul }}</Link><template v-else>{{ p.judul }}</template><small>{{ p.nomor }} · {{ where(p) }}</small></td>
+                        <td><span class="tag" :class="`tag-${p.jenis}`">{{ p.jenis === 'b2b' ? 'B2B' : 'Public' }}</span></td><td class="money">{{ p.target }}</td>
                     </tr></tbody>
                 </table></div>
                 <p v-else class="empty">Belum ada Penjualan Program Final yang akan dilaksanakan.</p>
             </section>
-            <section class="panel" aria-labelledby="tindakan"><h2 id="tindakan">Perlu tindakan</h2>
+            <section class="panel dash-card" aria-labelledby="tindakan"><h2 id="tindakan">Perlu tindakan</h2>
                 <ul v-if="todo.length" class="dash-list">
-                    <li v-for="t in todo" :key="`${t.type}-${t.id}-${t.msg}`"><Link :href="link(t)"><span class="code">{{ t.nomor }}</span> {{ t.judul }}</Link><small :class="t.warn ? 'error' : 'muted'">{{ t.msg }}</small></li>
+                    <li v-for="t in todo" :key="`${t.type}-${t.id}-${t.msg}`" class="dash-link" @click="router.visit(link(t))"><Link :href="link(t)" @click.stop><span class="code">{{ t.nomor }}</span> {{ t.judul }}</Link><small :class="t.warn ? 'error' : 'muted'">{{ t.msg }}</small></li>
                 </ul>
                 <p v-else class="empty">Tidak ada yang perlu ditindaklanjuti.</p>
-                <p v-if="todoTotal > todo.length" class="muted">+{{ todoTotal - todo.length }} lainnya</p>
+                <p v-if="todoTotal > todo.length" class="dash-empty">+{{ todoTotal - todo.length }} lainnya</p>
             </section>
         </div>
 
-        <ConfirmDialog v-if="key" :title="titles[key]" confirm-label="Tutup" @confirm="key = null" @cancel="key = null">
+        <ConfirmDialog v-if="key" :title="titles[key]" size="xwide" info @cancel="key = null">
             <template v-if="key === 'draft'">
                 <section v-for="source in ['master', 'penjualan']" :key="source">
                     <h3>{{ source === 'master' ? 'Master Program Draft' : 'Penjualan Program Draft' }}</h3>
@@ -80,7 +80,7 @@ const pct = (v: number) => String(v).replace('.', ',') + '%';
                 </section>
             </template>
             <template v-else>
-                <p class="muted"><b>Sumber data:</b> {{ FINAL_SRC }}</p>
+                <p class="dash-src"><b>Sumber data:</b> {{ FINAL_SRC }}</p>
                 <p v-if="key === 'pend'">Pendapatan = harga jual / peserta × target peserta.</p>
                 <p v-if="key === 'prof'">Profit = pendapatan − Fixed Cost − Variable Cost.</p>
                 <ServerTable :key="key" :url="appUrl(`/dashboard/kpi/${key}/data`)" :label="titles[key]" :columns="columns()" @loaded="loaded">

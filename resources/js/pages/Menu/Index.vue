@@ -7,6 +7,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import FormField from '../../components/FormField.vue';
+import PageHead from '../../components/PageHead.vue';
 import { useConfirmedMutation } from '../../composables/confirmedMutation';
 const confirmation = useConfirmedMutation();
 const { pending: confirming } = confirmation;
@@ -36,8 +37,7 @@ const isMenu = () => form.tipe === 'menu';
 <template>
     <Head title="Menu Sidebar" />
     <AppLayout title="Menu Sidebar" full-width>
-        <div class="page-head"><h1>Menu Sidebar</h1><button v-if="can.add" type="button" class="primary" @click="open(null)">+ Tambah Menu</button></div>
-        <p class="muted">Struktur menu dan aksi yang dapat diberi hak di Role &amp; Permission. Menu sistem tidak dapat dinonaktifkan dan linknya terkunci.</p>
+        <PageHead title="Menu Sidebar" description="Struktur menu dan aksi yang dapat diberi hak di Role &amp; Permission. Menu sistem tidak dapat dinonaktifkan dan linknya terkunci."><button v-if="can.add" type="button" class="primary" @click="open(null)">+ Tambah Menu</button></PageHead>
         <div v-if="unmapped.length" class="notice" role="status">
             <p>Menu berikut belum mempunyai route Laravel yang tersedia dan belum ditampilkan di sidebar:</p>
             <ul><li v-for="menu in unmapped" :key="menu.id">{{ menu.judul }}: <code>{{ menu.link }}</code></li></ul>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue';
-const props = defineProps<{ title: string; confirmLabel?: string; busy?: boolean; danger?: boolean }>();
+// size: lebar modal mockup (.wide 780px, .xwide 1080px). info: hanya tombol Tutup, untuk dialog baca-saja.
+const props = defineProps<{ title: string; confirmLabel?: string; busy?: boolean; danger?: boolean; size?: 'wide' | 'xwide'; info?: boolean }>();
 const emit = defineEmits<{ confirm: []; cancel: [] }>();
 const box = ref<HTMLElement | null>(null);
 const previous = document.activeElement as HTMLElement | null;
@@ -20,12 +21,12 @@ function keys(event: KeyboardEvent) {
 <template>
     <Teleport to="body">
     <div class="dialog-back" @mousedown.self="close">
-        <div ref="box" class="dialog" role="dialog" aria-modal="true" :aria-label="props.title" @keydown="keys">
+        <div ref="box" class="dialog" :class="size" role="dialog" aria-modal="true" :aria-label="props.title" @keydown="keys">
             <header class="dialog-head"><h2>{{ title }}</h2><button type="button" class="dialog-close" aria-label="Tutup dialog" @click="close">×</button></header>
             <div class="dialog-body"><slot /></div>
             <div class="form-actions dialog-foot">
-                <button type="button" @click="close">Batal</button>
-                <button type="button" class="primary" :class="{ danger }" :disabled="busy" @click="emit('confirm')">{{ busy ? 'Memproses…' : (confirmLabel || 'Simpan') }}</button>
+                <button type="button" @click="close">{{ info ? 'Tutup' : 'Batal' }}</button>
+                <button v-if="!info" type="button" class="primary" :class="{ danger }" :disabled="busy" @click="emit('confirm')">{{ busy ? 'Memproses…' : (confirmLabel || 'Simpan') }}</button>
             </div>
         </div>
     </div>

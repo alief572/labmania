@@ -121,7 +121,7 @@ const save = () => confirmation.form(form, 'put', `/permissions/roles/${editing.
                 <div class="ak-bar">
                     <b>Matrix Hak Akses</b> <span class="tag">{{ count }} dari {{ total }} dipilih</span>
                     <span class="ak-bar-r">
-                        <template v-if="!locked"><button type="button" @click="all(true)">Pilih Semua Modul</button><button type="button" @click="all(false)">Kosongkan</button></template>
+                        <template v-if="!locked"><button type="button" class="btn btn-outline sm" @click="all(true)">Pilih Semua Modul</button><button type="button" class="btn btn-ghost sm" @click="all(false)">Kosongkan</button></template>
                         <input v-model="search" type="search" placeholder="Cari menu / hak…" aria-label="Cari menu atau hak" />
                     </span>
                 </div>
@@ -136,7 +136,7 @@ const save = () => confirmation.form(form, 'put', `/permissions/roles/${editing.
                                 <td><div class="ak-chips">
                                     <label v-for="a in m.actions" :key="a" class="ak-chip" :class="{ on: on(m, a) }"><input type="checkbox" :checked="on(m, a)" :disabled="locked" @change="toggle(m, a, ($event.target as HTMLInputElement).checked)" />{{ a }} <span class="code">{{ code(m, a) }}</span></label>
                                 </div></td>
-                                <td class="ak-c"><button v-if="!locked" type="button" class="kt-btn" @click="toggleRow(m)">{{ rowFull(m) ? 'Batal Semua' : 'Pilih Semua' }}</button></td>
+                                <td class="ak-c"><button v-if="!locked" type="button" class="btn btn-ghost sm" @click="toggleRow(m)">{{ rowFull(m) ? 'Batal Semua' : 'Pilih Semua' }}</button></td>
                                 <td class="ak-c"><span class="ak-scope" :class="{ on: m.actions.some((a) => on(m, a)) }">{{ m.actions.filter((a) => on(m, a)).length }} / {{ m.actions.length }}</span></td>
                             </tr>
                         </template>

@@ -62,7 +62,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
             <template #cell-1="{ row }"><span class="code">{{ row.kode }}</span></template>
             <template #cell-2="{ row }">{{ label[row.kategori] ?? row.kategori }}</template>
             <template #cell-3="{ row }">{{ row.teks }}</template>
-            <template #cell-4="{ row }">{{ label[row.berlaku_untuk] }}</template>
+            <template #cell-4="{ row }"><span v-if="row.berlaku_untuk === 'public' || row.berlaku_untuk === 'b2b'" class="tag" :class="row.berlaku_untuk === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ label[row.berlaku_untuk] }}</span><template v-else>{{ label[row.berlaku_untuk] }}</template></template>
             <template #cell-5="{ row }"><b v-if="row.is_default">Ya</b><span v-else class="muted">Tidak</span></template>
             <template #cell-6="{ row }"><StatusBadge :active="row.aktif" /></template>
             <template #cell-7="{ row }"><ActionMenu v-if="can.manage" ><button type="button" @click="open(row)" :disabled="confirming">Edit</button><button type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></ActionMenu></template>

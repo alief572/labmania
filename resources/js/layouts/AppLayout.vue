@@ -4,6 +4,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3';
 import type { SharedProps } from '../types';
 import { navigationBreadcrumb, navigationSections } from '../composables/navigation';
+import Toast from '../components/Toast.vue';
+import Highlight from '../components/Highlight.vue';
 
 defineProps<{ title: string; fullWidth?: boolean }>();
 const page = usePage<SharedProps>();
@@ -72,7 +74,7 @@ function searchKey(event: KeyboardEvent) {
         if (first) { event.preventDefault(); open.value = false; router.visit(appUrl(first.url)); }
     }
 }
-function resized() { mobile.value = window.innerWidth <= 760; if (!mobile.value) open.value = false; }
+function resized() { mobile.value = window.innerWidth <= 900; if (!mobile.value) open.value = false; }
 onMounted(() => { resized(); window.addEventListener('resize', resized); });
 onBeforeUnmount(() => window.removeEventListener('resize', resized));
 </script>
@@ -83,24 +85,24 @@ onBeforeUnmount(() => window.removeEventListener('resize', resized));
         <aside id="sidebar" ref="sidebar" class="sidebar" :class="{ 'is-open': open }" :inert="collapsed && !open" @keydown="trapFocus">
             <Link class="brand" :href="appUrl('/')"><span class="brand-mark">L</span><span><strong>Labmania</strong><small>ERP · Modul Program</small></span></Link>
             <button ref="closeButton" class="mobile-close" type="button" @click="closeMenu">Tutup menu</button>
-            <button class="nav-hide" type="button" aria-controls="sidebar" @click="collapsed = true; nextTick(() => toggleButton?.focus())">Sembunyikan menu</button>
-            <label class="nav-search"><span class="sr-only">Cari menu</span><input v-model="search" type="search" placeholder="Cari menu…" @keydown="searchKey" /></label>
+            <button class="nav-hide" type="button" aria-controls="sidebar" aria-label="Sembunyikan menu" title="Sembunyikan menu" @click="collapsed = true; nextTick(() => toggleButton?.focus())"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6M20 4v16" /></svg></button>
+            <label class="nav-search"><span class="sr-only">Cari menu</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg><input v-model="search" type="search" placeholder="Cari menu…" @keydown="searchKey" /></label>
             <nav aria-label="Menu utama">
                 <template v-for="section in menus" :key="section.key">
                     <template v-if="!section.label">
                         <Link v-for="item in section.groups[0].items" :key="item.url" class="nav-home" :href="appUrl(item.url)" :aria-current="item.active ? 'page' : undefined" @click="open = false">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7" /></svg><span>{{ item.label }}</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7" /></svg><span><Highlight :text="item.label" :query="searchQuery" /></span>
                         </Link>
                     </template>
                     <details v-else :key="`${section.key}-${page.url.split('?')[0]}-${searchQuery.trim()}`" class="nav-module" :open="!!searchQuery.trim() || section.key === currentSection?.key">
-                        <summary class="nav-module-head"><svg viewBox="0 0 24 24" aria-hidden="true"><template v-if="section.label === 'Master Data'"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></template><path v-else :d="icons[section.label] || icons.Quotation"/></svg><span>{{ section.label }}</span><i class="caret" aria-hidden="true"></i></summary>
+                        <summary class="nav-module-head"><svg viewBox="0 0 24 24" aria-hidden="true"><template v-if="section.label === 'Master Data'"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></template><path v-else :d="icons[section.label] || icons.Quotation"/></svg><span><Highlight :text="section.label" :query="searchQuery" /></span><i class="caret" aria-hidden="true"></i></summary>
                         <div class="nav-module-body">
                             <template v-for="group in section.groups" :key="group.key">
                                 <details v-if="group.label" :key="`${group.key}-${page.url.split('?')[0]}-${searchQuery.trim()}`" class="nav-subgroup" :open="!!searchQuery.trim() || group.items.some(item => item.active)">
-                                    <summary>{{ group.label }}<i class="caret" aria-hidden="true"></i></summary>
-                                    <Link v-for="item in group.items" :key="item.url" :href="appUrl(item.url)" :aria-current="item.active ? 'page' : undefined" @click="open = false">{{ item.label }}<span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span></Link>
+                                    <summary><Highlight :text="group.label" :query="searchQuery" /><i class="caret" aria-hidden="true"></i></summary>
+                                    <Link v-for="item in group.items" :key="item.url" :href="appUrl(item.url)" :aria-current="item.active ? 'page' : undefined" @click="open = false"><Highlight :text="item.label" :query="searchQuery" /><span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span></Link>
                                 </details>
-                                <template v-else><Link v-for="item in group.items" :key="item.url" :href="appUrl(item.url)" :aria-current="item.active ? 'page' : undefined" @click="open = false">{{ item.label }}<span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span></Link></template>
+                                <template v-else><Link v-for="item in group.items" :key="item.url" :href="appUrl(item.url)" :aria-current="item.active ? 'page' : undefined" @click="open = false"><Highlight :text="item.label" :query="searchQuery" /><span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span></Link></template>
                             </template>
                         </div>
                     </details>
@@ -111,11 +113,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', resized));
         </aside>
         <button v-if="open" type="button" tabindex="-1" class="scrim" aria-label="Tutup menu" @click="closeMenu"></button>
         <div class="main-panel" :inert="open">
-            <header class="topbar"><button ref="toggleButton" class="menu-toggle" type="button" :aria-expanded="mobile ? open : !collapsed" aria-controls="sidebar" @click="showMenu">Menu</button><span class="crumb"><span v-for="(label, index) in breadcrumb" :key="index">{{ label }} / </span><b>{{ title }}</b></span><span class="pill">Labmania ERP</span></header>
+            <header class="topbar"><button ref="toggleButton" class="menu-toggle" type="button" :aria-expanded="mobile ? open : !collapsed" aria-controls="sidebar" @click="showMenu" aria-label="Menu" title="Menu"><span></span><span></span><span></span></button><span class="crumb"><span v-for="(label, index) in breadcrumb" :key="index">{{ label }} / </span><b>{{ title }}</b></span><span class="pill">Labmania ERP</span></header>
             <main id="main" tabindex="-1" class="content" :class="{ 'content--fluid': fullWidth }">
-                <p v-if="page.props.flash.success" role="status" class="notice">{{ page.props.flash.success }}</p>
                 <slot />
             </main>
         </div>
+        <Toast :message="page.props.flash.success" />
     </div>
 </template>
