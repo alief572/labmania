@@ -98,7 +98,18 @@ class ExpenseController extends Controller
             $query->select('h.id', 'h.nomor', 'h.total', 'h.status', 'h.tanggal', 'u.nm_lengkap as pengaju', 'h.'.$description)
                 ->selectRaw($f['kind'] === 'overbudget' ? "'Overbudget' as jenis" : 'h.jenis')->orderByDesc('h.id');
 
-            return ServerDataTable::result($r, ServerDataTable::page($r, $query, [null, 'h.nomor', $f['kind'] === 'overbudget' ? null : 'h.jenis', 'h.tanggal', 'h.'.$description, 'h.total', 'u.nm_lengkap', 'h.status', null], 'h.id'));
+            $columns = $f['kind'] === 'overbudget'
+                ? [null, 'h.nomor', null, 'h.total', 'h.status', 'u.nm_lengkap', null]
+                : [null, 'h.nomor', 'h.deskripsi', 'h.total', 'h.jenis', 'u.nm_lengkap', 'h.status', 'h.tanggal', null];
+            $page = ServerDataTable::page($r, $query, $columns, 'h.id');
+            if ($f['kind'] === 'overbudget') {
+                $items = DB::table('pengajuan_overbudget_detail')->whereIn('id_overbudget', $page->getCollection()->pluck('id'))->orderBy('id')->get(['id_overbudget', 'item'])->groupBy('id_overbudget');
+                $page->getCollection()->each(function ($row) use ($items) {
+                    $row->items = $items->get($row->id, collect())->pluck('item')->all();
+                });
+            }
+
+            return ServerDataTable::result($r, $page);
         }
         $p->judul = Sales::title($p->id_master_program);
         $p->nomor = Sales::display($p);

@@ -8,6 +8,7 @@ import ActionMenu from "../../components/ActionMenu.vue";
 import {Head,Link,router,useForm} from '@inertiajs/vue3';
 import {computed} from 'vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
+import TutorialButton from '../../components/TutorialButton.vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 import {rupiah as money} from '../../composables/costing';
 import {progress,type OpsProgram,type Budget,type ExpenseRow} from '../../types/operations';
@@ -23,16 +24,35 @@ const exceeded=(i:{key:string;qty:string;harga:string})=>Number(i.qty)*Number(i.
 </script>
 <template>
     <Head :title="program.nomor" /><AppLayout title="Pengajuan Biaya" full-width>
-        <PageHead :title="creating ? `${over ? 'Add Overbudget' : 'Add Pengajuan'} — ${category === 'fixed' ? 'Fixed Cost' : 'Variable Cost'}` : `Pengajuan Biaya — ${program.nomor}`" :description="program.judul"><Link :href="appUrl(creating ? `/pengajuan-biaya/program/${program.id}` : '/pengajuan-biaya')">← Kembali</Link></PageHead>
-        <section class="panel"><span class="tag" :class="program.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ program.jenis === 'b2b' ? 'B2B' : 'Public' }}</span> <span class="code">{{ program.nomor }}</span><p>{{ program.tim?.company }} · {{ program.tgl_mulai }} s.d. {{ program.tgl_selesai }} · {{ program.durasi_hari }} hari · {{ program.lokasi }}</p><p>Sales {{ program.tim?.sales.join(', ') }} · Trainer {{ program.tim?.trainer }} · Target {{ program.target_peserta }} peserta.</p><p v-if="program.closed_date" class="notice">Program Closed; pengajuan baru terkunci. Pengajuan existing tetap dapat diselesaikan.</p><p v-if="notTeam" class="notice">Anda bukan tim program ini. Akses mengikuti role dan izin yang diberikan.</p></section>
+        <PageHead v-if="creating" :title="`${over ? 'Add Overbudget' : 'Add Pengajuan'} — ${category === 'fixed' ? 'Fixed Cost' : 'Variable Cost'}`"><Link :href="appUrl(`/pengajuan-biaya/program/${program.id}`)">← Kembali</Link></PageHead>
+        <div v-else class="pf-formbar"><Link :href="appUrl('/pengajuan-biaya')">← Kembali</Link><h1>Pengajuan {{ program.nomor }}</h1><TutorialButton /></div>
+        <section class="panel pb-head">
+            <dl class="pb-kvs">
+                <div><dt>No. Program</dt><dd><span class="code">{{ program.nomor }}</span> <span class="tag" :class="program.jenis === 'b2b' ? 'tag-b2b' : 'tag-public'">{{ program.jenis === 'b2b' ? 'B2B' : 'Public' }}</span></dd></div>
+                <div><dt>Sales (quotation)</dt><dd>{{ program.tim?.sales.join(', ') || 'Belum ada quotation' }}</dd></div>
+                <div><dt>Customer</dt><dd>{{ program.jenis === 'b2b' ? program.tim?.company || '—' : 'Public' }}</dd></div>
+                <div><dt>Trainer</dt><dd>{{ program.tim?.trainer || '—' }}</dd></div>
+                <div><dt>Program</dt><dd>{{ program.judul }}</dd></div>
+                <div><dt>Waktu</dt><dd>{{ program.tgl_mulai }} s.d. {{ program.tgl_selesai }}<template v-if="program.waktu"> · {{ program.waktu }}</template></dd></div>
+                <div><dt>Lokasi</dt><dd>{{ program.lokasi || '—' }}</dd></div>
+                <div><dt>Durasi · Target peserta</dt><dd>{{ program.durasi_hari }} hari · {{ program.target_peserta }} peserta</dd></div>
+            </dl>
+        </section>
+        <p v-if="program.closed_date" class="notice">Program Closed; pengajuan baru terkunci. Pengajuan existing tetap dapat diselesaikan.</p><p v-if="notTeam" class="notice">Anda bukan tim program ini. Akses mengikuti role dan izin yang diberikan.</p>
         <template v-if="!creating">
             <section v-for="(categoryBudget, cat) in budgets" :key="cat" class="panel">
-                <PageHead :tutorial="false" :title="cat === 'fixed' ? 'Fixed Cost' : 'Variable Cost'"><Link data-tour-next="pbForm" v-if="canAdd" :href="appUrl(`/pengajuan-biaya/program/${program.id}?kategori=${cat}&buat=pengajuan`)">+ Add Pengajuan</Link></PageHead>
-                <ExpenseBudget :budget="categoryBudget" />
-                <section v-for="kind in ['pengajuan', 'overbudget']" :key="kind">
-                    <div class="page-head"><h3>{{ kind === 'pengajuan' ? 'Pengajuan' : 'Overbudget' }}</h3><Link v-if="canAdd && kind === 'overbudget'" :href="appUrl(`/pengajuan-biaya/program/${program.id}?kategori=${cat}&buat=overbudget`)">+ Add Overbudget</Link></div>
-                    <ServerTable :url="appUrl(`/pengajuan-biaya/program/${program.id}/data`)" :label="`${cat} ${kind}`" :filters="{kategori:cat,kind}" :columns="[{title:'No',orderable:false},{title:kind==='pengajuan'?'No. Pengajuan':'No. Overbudget',orderable:true},{title:'Jenis',orderable:kind==='pengajuan'},{title:'Tanggal',orderable:true},{title:'Deskripsi / Item',orderable:true},{title:'Total',orderable:true,className:'dt-body-right'},{title:'Request By',orderable:true},{title:'Progres',orderable:true},{title:'Action',orderable:false}]" refresh-on-visit>
-                        <template #cell-0="{number}">{{number}}</template><template #cell-1="{row:h}"><span class="code" :class="{'is-off':['batal','ditolak'].includes(h.status)}">{{h.nomor}}</span></template><template #cell-2="{row:h}">{{h.jenis==='direct_payment'?'Direct Payment':h.jenis==='kasbon'?'Kasbon':'Overbudget'}}</template><template #cell-3="{row:h}">{{h.tanggal}}</template><template #cell-4="{row:h}">{{h.deskripsi || h.alasan}}</template><template #cell-5="{row:h}">{{money(h.total)}}</template><template #cell-6="{row:h}">{{h.pengaju}}</template><template #cell-7="{row:h}"><span class="badge" :class="`st-${h.status}`">{{progress[h.status]}}</span></template><template #cell-8="{row:h}"><ActionMenu><Link :href="appUrl(`/pengajuan-biaya/${kind}/${h.id}`)">Lihat</Link></ActionMenu></template>
+                <div class="pb-blok-h">
+                    <h2>Pengajuan {{ cat === 'fixed' ? 'Fixed Cost' : 'Variable Cost' }}</h2>
+                    <div class="kpis pb-kpis"><div v-for="(label, field) in {budget:'Budget',aktual:'Aktual',sisa:'Sisa Budget'}" :key="field" class="kpi" :class="{bad:field==='sisa' && Number(categoryBudget.sisa)<=0,good:field==='sisa' && Number(categoryBudget.sisa)>0}"><span class="kpi-l">{{label}}</span><strong class="kpi-v">{{money(categoryBudget[field])}}</strong></div></div>
+                </div>
+                <div v-if="canAdd" class="pb-btns"><Link class="btn btn-accent sm" data-tour-next="pbForm" :href="appUrl(`/pengajuan-biaya/program/${program.id}?kategori=${cat}&buat=pengajuan`)">+ Add Pengajuan</Link></div>
+                <ServerTable :url="appUrl(`/pengajuan-biaya/program/${program.id}/data`)" :label="`${cat} pengajuan`" :filters="{kategori:cat,kind:'pengajuan'}" keyword="" :columns="[{title:'No',orderable:false},{title:'No. Pengajuan',orderable:true},{title:'Deskripsi',orderable:true},{title:'Total',orderable:true,className:'dt-body-right'},{title:'Jenis',orderable:true},{title:'Request By',orderable:true},{title:'Status',orderable:true},{title:'Tanggal',orderable:true},{title:'Option',orderable:false}]" refresh-on-visit>
+                    <template #cell-0="{number}">{{number}}</template><template #cell-1="{row:h}"><span class="code" :class="{'is-off':['batal','ditolak'].includes(h.status)}">{{h.nomor}}</span></template><template #cell-2="{row:h}">{{h.deskripsi}}</template><template #cell-3="{row:h}">{{money(h.total)}}</template><template #cell-4="{row:h}"><span class="tag">{{h.jenis==='direct_payment'?'Direct Payment':'Kasbon'}}</span></template><template #cell-5="{row:h}">{{h.pengaju}}</template><template #cell-6="{row:h}"><span class="badge" :class="`st-${h.status}`">{{progress[h.status]}}</span></template><template #cell-7="{row:h}">{{h.tanggal}}</template><template #cell-8="{row:h}"><ActionMenu><Link :href="appUrl(`/pengajuan-biaya/pengajuan/${h.id}`)">Lihat</Link></ActionMenu></template>
+                </ServerTable>
+                <section class="pb-ob">
+                    <div class="pb-ob-h"><h3>Overbudget {{ cat === 'fixed' ? 'Fixed Cost' : 'Variable Cost' }}</h3><Link v-if="canAdd" class="btn btn-outline sm" :href="appUrl(`/pengajuan-biaya/program/${program.id}?kategori=${cat}&buat=overbudget`)">+ Add Overbudget</Link></div>
+                    <ServerTable :url="appUrl(`/pengajuan-biaya/program/${program.id}/data`)" :label="`${cat} overbudget`" :filters="{kategori:cat,kind:'overbudget'}" keyword="" :columns="[{title:'No',orderable:false},{title:'No. Overbudget',orderable:true},{title:'Item',orderable:false},{title:'Amount',orderable:true,className:'dt-body-right'},{title:'Status',orderable:true},{title:'Pembuat Pengajuan',orderable:true},{title:'Option',orderable:false}]" refresh-on-visit>
+                        <template #cell-0="{number}">{{number}}</template><template #cell-1="{row:h}"><span class="code" :class="{'is-off':['batal','ditolak'].includes(h.status)}">{{h.nomor}}</span></template><template #cell-2="{row:h}">{{h.items.join(', ')}}</template><template #cell-3="{row:h}">{{money(h.total)}}</template><template #cell-4="{row:h}"><span class="badge" :class="`st-${h.status}`">{{h.status==='menunggu'?'Menunggu Approval':h.status==='disetujui'?'Disetujui':progress[h.status]}}</span></template><template #cell-5="{row:h}">{{h.pengaju}}</template><template #cell-6="{row:h}"><ActionMenu><Link :href="appUrl(`/pengajuan-biaya/overbudget/${h.id}`)">Lihat</Link></ActionMenu></template>
                     </ServerTable>
                 </section>
             </section>
@@ -50,3 +70,23 @@ const exceeded=(i:{key:string;qty:string;harga:string})=>Number(i.qty)*Number(i.
         </component>
     </AppLayout>
 </template>
+
+<style scoped>
+.pb-head { margin-bottom: 14px; }
+.pb-head > .pb-kvs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; margin: 0; }
+.pb-kvs > div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; font-size: 13px; align-items: baseline; }
+.pb-kvs dt, .pb-kvs dd { padding: 0; border: 0; }
+.pb-kvs dt { color: var(--ink-70); font-weight: 600; }
+.pb-kvs dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.pb-blok-h { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2.2fr); gap: 16px; align-items: center; margin-bottom: 12px; }
+.pb-blok-h h2, .pb-ob-h h3 { margin: 0; font-size: 15px; color: var(--navy); }
+.pb-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pb-kpis .kpi { min-width: 0; cursor: default; }
+.pb-kpis .kpi:hover { transform: none; box-shadow: none; }
+.pb-kpis .kpi-v { overflow-wrap: anywhere; }
+.pb-btns, .pb-ob-h { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.pb-ob { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.panel > .server-table, .pb-ob > .server-table { margin-top: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+@media (max-width: 1100px) { .pb-blok-h, .pb-head > .pb-kvs { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .pb-kvs > div { grid-template-columns: 1fr; gap: 2px; } .pb-kpis { grid-template-columns: 1fr; } }
+</style>

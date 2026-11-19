@@ -6,6 +6,22 @@ use Illuminate\Support\Facades\DB;
 
 trait OperationalDataTableScenarios
 {
+    public function test_expense_program_tables_follow_mockup_columns_and_scope_items(): void
+    {
+        foreach ([['Zebra', '10000'], ['Alpha', '20000']] as [$description, $price]) {
+            \App\Support\Expenses::save($this->program6, $this->input6(['deskripsi' => $description, 'items' => [['key' => 'c'.$this->cost6, 'qty' => '1', 'harga' => $price]]]), false);
+        }
+        $path = '/pengajuan-biaya/program/'.$this->program6.'/data?kategori=fixed&kind=';
+        $this->getJson($path.'pengajuan&order[0][column]=2&order[0][dir]=asc')->assertOk()->assertJsonPath('data.0.deskripsi', 'Alpha');
+        $this->getJson($path.'pengajuan&order[0][column]=3&order[0][dir]=asc')->assertOk()->assertJsonPath('data.0.deskripsi', 'Zebra');
+        foreach ([['Zebra item', '10000'], ['Alpha item', '20000']] as [$item, $price]) {
+            \App\Support\Expenses::save($this->program6, ['tipe_biaya' => 'fixed', 'alasan' => $item, 'items' => [['key' => '', 'item' => $item, 'qty' => '1', 'harga' => $price]]], true);
+        }
+        $this->getJson($path.'overbudget&order[0][column]=3&order[0][dir]=asc')->assertOk()->assertJsonPath('data.0.items', ['Zebra item'])->assertJsonPath('data.1.items', ['Alpha item']);
+        $this->getJson($path.'overbudget&start=1&length=10')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.items', ['Zebra item']);
+        $this->getJson('/pengajuan-biaya/program/'.$this->program6.'/data?kategori=variable&kind=overbudget')->assertOk()->assertJsonCount(0, 'data');
+    }
+
     public function test_quotation_participants_table_scopes_quotation_before_pagination(): void
     {
         if (! DB::table('ms_menu')->where('kode', 'quotation_program')->exists()) {
