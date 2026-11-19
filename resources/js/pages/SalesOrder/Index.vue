@@ -26,9 +26,7 @@ const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => 
 <template>
     <Head title="Sales Order" />
     <AppLayout title="Sales Order" full-width>
-        <PageHead title="Sales Order" :description="surat()
-            ? 'Surat Tugas untuk trainer dan asisten trainer program. Terbit saat program mendapat Sales Order pertama; bila reschedule mengganti tanggal, trainer, atau asisten, surat lama berstatus Diganti dan surat baru terbit dengan nomor baru.'
-            : 'Setiap quotation yang Deal otomatis menjadi satu Sales Order, yaitu surat konfirmasi pesanan dari LabMania ke customer. Sales Order tidak dapat dibatalkan. Buka Lihat SO untuk melihat, mencetak, dan menandai siap dibuatkan invoice. Invoice dibuat dari Sales Order yang sudah siap.'" />
+        <PageHead title="Sales Order" />
         <p v-for="e in $page.props.errors" :key="String(e)" class="error" role="alert">{{ e }}</p>
         <div class="batch-card">
             <nav class="tabs" aria-label="Jenis dokumen">

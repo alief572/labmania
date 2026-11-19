@@ -31,6 +31,14 @@ const requests = [];
 globalThis.fetch = (url, options) => new Promise(resolve => requests.push({ url, options, resolve }));
 const result = (draw, recordsFiltered = 30) => ({ ok: true, json: async () => ({ draw, recordsFiltered, recordsTotal: 30, data: [{ nama: 'Role Uji' }] }) });
 try {
+    assert.equal(state.options.layout.topStart, null, 'Pilihan jumlah baris tidak muncul di atas tabel.');
+    assert.deepEqual(state.options.layout.bottomStart, ['pageLength', 'info']);
+    assert.equal(state.options.layout.bottomEnd, 'paging');
+    assert.equal(state.options.layout.topEnd, 'search', 'Tabel tanpa pencarian halaman tetap punya kotak cari.');
+    const ownSearchApp = renderer.createApp(Component, { url: '/master/role/data', label: 'Role', columns: [], keyword: '' });
+    const ownSearchVm = ownSearchApp.mount({});
+    assert.equal(ownSearchVm.$.setupState.options.layout.topEnd, null, 'Pencarian halaman tidak menyisakan toolbar kosong di atas tabel.');
+    ownSearchApp.unmount();
     const received = [];
     const first = state.load({ draw: 1, start: 0, length: 10 }, data => received.push(data));
     const second = state.load({ draw: 2, start: 10, length: 10 }, data => received.push(data));

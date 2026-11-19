@@ -77,7 +77,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
 <template>
     <Head title="Master Trainer" />
     <AppLayout title="Master Trainer" full-width>
-        <PageHead title="Master Trainer" description="Data trainer/fasilitator beserta riwayatnya (format CV trainer). Trainer aktif wajib dipilih di Penjualan Program (satu trainer per event) dan menerima Surat Kerja Trainer dari menu Sales Order."><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah Trainer</button></PageHead>
+        <PageHead title="Master Trainer"><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah Trainer</button></PageHead>
         <p class="notice">Trainer <strong>tidak dapat dihapus</strong> — gunakan <strong>Nonaktifkan</strong>. Trainer nonaktif tidak muncul di pilihan Penjualan Program.</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari ID, nama, atau bidang keahlian…" /></label>

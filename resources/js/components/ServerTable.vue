@@ -51,6 +51,7 @@ const load: AjaxFunction = async (data, callback) => {
 };
 const options: Options = {
     serverSide: true, processing: true, pageLength: 25, lengthMenu: [10, 25, 50, 100], searchDelay: 300,
+    layout: { topStart: null, topEnd: props.keyword !== undefined ? null : 'search', bottomStart: ['pageLength', 'info'], bottomEnd: 'paging' },
     order: [], autoWidth: false, scrollX: true, stateSave: false, search: { search: String(props.keyword ?? props.filters?.q ?? props.filters?.keyword ?? '') },
     language: {
         search: 'Cari:', searchPlaceholder: 'Cari data…', lengthMenu: 'Tampilkan _MENU_ baris',
@@ -83,3 +84,29 @@ defineExpose({ reload });
         </DataTable>
     </section>
 </template>
+
+<style scoped>
+.server-table :deep(.dt-length label) {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: var(--ink-70);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.server-table :deep(.dt-length select) {
+    width: 76px;
+    min-height: 44px;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid #6F7F94;
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--navy);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.server-table :deep(.dt-length select:hover) { border-color: var(--navy); }
+</style>

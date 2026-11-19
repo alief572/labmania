@@ -15,7 +15,7 @@ onBeforeUnmount(() => clearTimeout(timer));
 </script>
 <template>
     <Head title="Approval Pengajuan" /><AppLayout title="Approval Pengajuan" full-width>
-        <PageHead title="Approval Pengajuan" description="Pengajuan Kasbon / Direct Payment dan Overbudget yang Menunggu Approval. Approval 1 level oleh Manajemen; alasan wajib bila ditolak. Overbudget yang disetujui menambah budget item atau membuat item baru. Pencairan oleh Finance menyusul." />
+        <PageHead title="Approval Pengajuan" />
         <p v-if="!canApprove" class="notice">Anda dapat melihat daftar, tetapi tidak memiliki hak Approve atau peran yang diperlukan untuk menyetujui pengajuan.</p>
         <div class="batch-card">
             <nav class="tabs" aria-label="Jenis approval"><Link :href="appUrl('/pengajuan-biaya/approval')" :aria-current="kind === 'pengajuan' ? 'page' : undefined">Pengajuan<span class="nav-count">{{ counts.pengajuan }}</span></Link><Link :href="appUrl('/pengajuan-biaya/approval?tab=overbudget')" :aria-current="kind === 'overbudget' ? 'page' : undefined">Overbudget<span class="nav-count">{{ counts.overbudget }}</span></Link></nav>

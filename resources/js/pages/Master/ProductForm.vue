@@ -25,7 +25,7 @@ const save = () => confirmation.form(form, 'post', '/master/product', { title: `
 <template>
     <Head title="Tambah Product" />
     <AppLayout title="Product" full-width>
-        <PageHead title="Tambah Product" description="Isi judul, lalu susun satu atau lebih kombinasi atribut. Saat disimpan, setiap baris menjadi satu paket produk dengan nomor sendiri." />
+        <PageHead title="Tambah Product" />
         <form class="panel" @submit.prevent="save">
             <FormField id="cf-judul" label="Judul" :error="form.errors.judul" v-slot="{ describedBy, invalid }">
                 <input id="cf-judul" v-model="form.judul" maxlength="150" required placeholder="Judul / topik paket, diisi manual" :aria-invalid="invalid" :aria-describedby="describedBy" />

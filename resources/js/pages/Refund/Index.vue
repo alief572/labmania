@@ -54,10 +54,7 @@ const empty = computed(() => props.rows.total === 0 && !props.filters.q && !prop
 <template>
     <Head :title="approval ? 'Approval Refund' : 'Daftar Refund'" />
     <AppLayout :title="approval ? 'Approval Refund' : 'Daftar Refund'" full-width>
-        <PageHead :title="approval ? 'Approval Refund' : 'Daftar Refund'"
-            :description="approval
-                ? 'Persetujuan Finance sebelum dana ditransfer. Setujui: refund lanjut ke proses transfer. Tolak: alasan wajib; refund kembali ke Sales/Marketing untuk diperbaiki lalu diajukan ulang.'
-                : 'Pengembalian dana peserta atau company yang sudah membayar lalu tidak ikut. Refund terbentuk otomatis, bukan diinput manual. Setelah disetujui di Approval Refund, Finance mencatat transfer di sini.'" />
+        <PageHead :title="approval ? 'Approval Refund' : 'Daftar Refund'" />
         <div class="batch-card">
             <nav v-if="approval" class="tabs" aria-label="Status approval">
                 <Link :href="appUrl('/refund/approval')" :aria-current="tab === 'menunggu' ? 'page' : undefined">Menunggu Approval<span class="nav-count">{{ counts.menunggu }}</span></Link>

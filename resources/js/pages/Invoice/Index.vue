@@ -36,7 +36,7 @@ const uninvoicedColumns=[{title:'No',orderable:false},{title:'No. Program',order
 </script>
 <template>
     <Head title="Invoicing"/><AppLayout title="Invoicing" full-width>
-        <PageHead title="Invoicing" description="Tab Uninvoiced: Sales Order yang sudah ditandai Siap invoice dan belum ditagih (to be: invoice dibuat dari Sales Order, bukan langsung dari quotation). Tab Invoiced: invoice yang sudah dibuat, satu baris per invoice. Satu quotation Deal = satu invoice, tidak digabung per program; B2B per peserta = satu invoice per peserta. Saring Public / B2B dengan filter jenis; kolom No. Program untuk menelusuri."><a :href="excel">Excel</a></PageHead>
+        <PageHead title="Invoicing"><a :href="excel">Excel</a></PageHead>
         <p v-for="e in $page.props.errors" :key="String(e)" class="error" role="alert">{{e}}</p>
         <div class="batch-card">
             <nav class="tabs" aria-label="Status Invoicing"><Link :href="appUrl('/invoicing')" :aria-current="tab==='uninvoiced'?'page':undefined">Uninvoiced<span class="nav-count">{{tableCounts.uninvoiced}}</span></Link><Link :href="appUrl('/invoicing?tab=invoiced')" :aria-current="tab==='invoiced'?'page':undefined">Invoiced<span class="nav-count">{{tableCounts.invoiced}}</span></Link></nav>

@@ -158,8 +158,9 @@ textarea { width: 100%; padding: 8px 10px; border: 1px solid #6F7F94; border-rad
 .card h3 { margin: 0 0 4px; font-size: 15px; }
 .card ol { margin: 8px 0 0; padding-left: 20px; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 16px 0; }
-.tabs a, .tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 10px 16px; text-decoration: none; color: #14304F; }
-.tabs [aria-current=page], .tabs [aria-pressed=true], .tabs .active { border-bottom-color: #D5A320; font-weight: 600; }
+.tabs a, .tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 14px 14px 11px; margin-bottom: -1px; text-decoration: none; color: var(--ink-70); font-weight: 600; }
+.tabs a:hover, .tabs button:hover { color: var(--navy); }
+.tabs [aria-current=page], .tabs [aria-pressed=true], .tabs .active { color: var(--navy); border-bottom-color: var(--orange); }
 .invoice-actions { position: sticky; bottom: 0; display: flex; gap: 12px; align-items: center; padding: 12px; background: white; border-top: 1px solid var(--line); z-index: 1; }
 
 /* Dashboard (FR-40..42) */
@@ -249,8 +250,6 @@ details[open] > summary > .caret { transform: rotate(45deg); }
 .panel > h2 { color: var(--navy); font-size: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .panel > .form-grid + .form-grid { margin-top: 16px; }
 .tabs { flex-wrap: wrap; background: white; padding: 0 16px; border-radius: 10px 10px 0 0; }
-.tabs a, .tabs button { font-weight: 600; }
-.tabs [aria-current=page], .tabs [aria-pressed=true] { background: var(--orange-50); }
 .quotation-steps [aria-current=step] { border-bottom-color: var(--gold); background: var(--orange-50); color: var(--navy); }
 .content > dl, .panel > dl, .dialog-body > dl { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr); gap: 0; margin: 16px 0; }
 dt, dd { margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
@@ -482,7 +481,7 @@ progress { accent-color: var(--gold); height: 8px; }
 .chk { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 .chk input { margin: 0; }
 
-.tabs a .nav-count, .tabs button .nav-count { margin-left: 6px; background: var(--navy-50); color: var(--navy); }
+.tabs a .nav-count, .tabs button .nav-count { min-width: 22px; margin-left: 6px; background: var(--navy-50); color: var(--navy); text-align: center; }
 
 .form-sec { grid-column: 1 / -1; margin-top: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--navy); }
 .hint-line.top { margin: 0 0 12px; }
@@ -516,6 +515,7 @@ progress { accent-color: var(--gold); height: 8px; }
 .batch-card { border: 1px solid var(--line); border-radius: var(--radius); background: white; box-shadow: var(--shadow); padding: 0 0 8px; }
 .batch-card .tabs { margin: 0; border-radius: var(--radius) var(--radius) 0 0; }
 .batch-card .filters { margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.batch-card > .table-wrap { border: 0; border-radius: 0; box-shadow: none; }
 .batch-card .server-table { padding: 0 8px; }
 
 /* Detail Quotation: panel status (mockup .qv-panel, .qv-alur, .kq) */

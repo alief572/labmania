@@ -37,7 +37,7 @@ const isMenu = () => form.tipe === 'menu';
 <template>
     <Head title="Menu Sidebar" />
     <AppLayout title="Menu Sidebar" full-width>
-        <PageHead title="Menu Sidebar" description="Struktur menu dan aksi yang dapat diberi hak di Role &amp; Permission. Menu sistem tidak dapat dinonaktifkan dan linknya terkunci."><button v-if="can.add" type="button" class="primary" @click="open(null)">+ Tambah Menu</button></PageHead>
+        <PageHead title="Menu Sidebar"><button v-if="can.add" type="button" class="primary" @click="open(null)">+ Tambah Menu</button></PageHead>
         <div v-if="unmapped.length" class="notice" role="status">
             <p>Menu berikut belum mempunyai route Laravel yang tersedia dan belum ditampilkan di sidebar:</p>
             <ul><li v-for="menu in unmapped" :key="menu.id">{{ menu.judul }}: <code>{{ menu.link }}</code></li></ul>

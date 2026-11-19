@@ -50,7 +50,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
 <template>
     <Head title="Template Keterangan Quotation" />
     <AppLayout title="Template Keterangan Quotation" full-width>
-        <PageHead title="Template Keterangan Quotation" description="Teks default blok Keterangan di Penawaran, per kategori. Butir Default otomatis tersalin ke quotation baru sesuai jenis penjualan, lalu dapat diedit per quotation tanpa mengubah master."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Butir</button></PageHead>
+        <PageHead title="Template Keterangan Quotation"><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Butir</button></PageHead>
         <p class="notice">Perubahan di sini hanya berlaku untuk quotation <strong>baru</strong>; quotation yang sudah dibuat menyimpan teksnya sendiri. Tidak dapat dihapus — gunakan Nonaktifkan.</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode atau teks…" /></label>

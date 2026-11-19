@@ -50,7 +50,7 @@ function process(row:Row,action:'finalkan') {
 
     <Head title="Penjualan Program" /><AppLayout title="Penjualan Program" full-width>
 
-        <PageHead title="Daftar Penjualan Program" description="Tarik Master Program Final, pilih Public atau B2B, isi tanggal & lokasi, lalu sesuaikan harga dan costing — form sama untuk kedua jenis, perubahan tidak mengubah Master Program. Setelah Final, Public maupun B2B dibuatkan Quotation (modul Quotation)."><Link data-tour-next="qtStart" v-if="can.add" class="primary" :href="appUrl('/penjualan-program/mulai')">+ Buat Penjualan Program</Link></PageHead>
+        <PageHead title="Daftar Penjualan Program"><Link data-tour-next="qtStart" v-if="can.add" class="primary" :href="appUrl('/penjualan-program/mulai')">+ Buat Penjualan Program</Link></PageHead>
 
         <div class="filters">
             <label class="grow">Cari<input v-model="f.q" type="search" maxlength="100" placeholder="Cari nomor, program, atau lokasi…" /></label>

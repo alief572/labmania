@@ -29,7 +29,7 @@ function changes(data: Record<string, unknown>) {
 <template>
     <Head title="Activity Log" />
     <AppLayout title="Activity Log" full-width>
-        <PageHead title="Activity Log" description="Semua pergerakan data di sistem: siapa, kapan (tanggal & jam), modul, aksi, data, dan field yang berubah (sebelum → sesudah). Catatan tidak dapat diubah atau dihapus pengguna." />
+        <PageHead title="Activity Log" />
         <div class="batch-card">
         <form class="filters" @submit.prevent="submit">
             <label class="grow">Cari<input v-model="filter.keyword" type="search" maxlength="100" placeholder="Cari data, keterangan, atau pengguna…" /></label>

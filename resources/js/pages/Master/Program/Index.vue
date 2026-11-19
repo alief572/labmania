@@ -32,7 +32,7 @@ const ask = (row: Row, action: 'finalkan' | 'batalkan') => askTransition(row.id,
 <template>
     <Head title="Daftar Master Program" />
     <AppLayout title="Daftar Master Program" full-width>
-        <PageHead title="Daftar Master Program" description="Program siap jual: Paket Produk + costing baseline. Tidak ada Public/B2B, customer, tanggal, atau lokasi acara — semuanya diisi di Penjualan Program."><Link data-tour-next="mpForm" v-if="can.add" class="primary" :href="appUrl('/program/create')">+ Buat Master Program</Link></PageHead>
+        <PageHead title="Daftar Master Program"><Link data-tour-next="mpForm" v-if="can.add" class="primary" :href="appUrl('/program/create')">+ Buat Master Program</Link></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).program" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).program }}</p>
         <p v-if="summaryError" class="error" role="alert">{{ summaryError }}</p>
         <div class="filters">

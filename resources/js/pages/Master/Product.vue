@@ -59,7 +59,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Pro
 <template>
     <Head title="Product" />
     <AppLayout title="Product" full-width>
-        <PageHead title="Product" description="Daftar paket produk (kombinasi Produk, Bidang, Varian, Sertifikat). Product berstatus Aktif dapat dipilih saat membuat Master Program, satu atau lebih per program."><Link v-if="can.add" data-tour-next="combine" class="primary" :href="appUrl('/master/product/create')">+ Tambah Product</Link></PageHead>
+        <PageHead title="Product"><Link v-if="can.add" data-tour-next="combine" class="primary" :href="appUrl('/master/product/create')">+ Tambah Product</Link></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).status" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).status }}</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari nomor, judul, atau atribut…" /></label>

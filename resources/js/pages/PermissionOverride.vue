@@ -36,7 +36,7 @@ function save() {
 <template>
     <Head title="Override Permission" />
     <AppLayout title="Override Permission" full-width>
-        <PageHead title="Override Permission" :description="kind === 'user' ? `${targetName} · Hak dari role terkunci; override menambah hak.` : 'Atur hak akses per role, atau pilih user untuk menambah hak di luar role-nya.'" />
+        <PageHead title="Override Permission" :description="kind === 'user' ? targetName : undefined" />
         <div class="filters">
             <label v-if="roles.length">Role<select :value="kind === 'role' ? targetId : ''" :disabled="confirming" @change="choose($event, 'role')"><option v-for="role in roles" :key="role.id_group" :value="role.id_group">{{ role.nm_group }}</option></select></label>
             <label v-if="users.length">Override user<select :value="kind === 'user' ? targetId : ''" :disabled="confirming" @change="choose($event, 'user')"><option value="">Pilih user</option><option v-for="user in users" :key="user.id_user" :value="user.id_user">{{ user.nm_lengkap }}</option></select></label>

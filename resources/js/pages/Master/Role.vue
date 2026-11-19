@@ -39,7 +39,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Nam
 <template>
     <Head title="Master Role" />
     <AppLayout title="Master Role" full-width>
-        <PageHead title="Master Role" description="Daftar role yang dipakai di Master User dan diatur haknya di Role & Permission. Role diinput manual. Role yang masih dipakai user tidak dapat dihapus."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Role</button></PageHead>
+        <PageHead title="Master Role"><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Role</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <div class="filters"><label class="grow">Cari<input v-model="keyword" type="search" maxlength="100" placeholder="Cari nama role…" /></label></div>
         <ServerTable ref="table" :url="appUrl('/master/role/data')" :columns="columns" :keyword="keyword" :label="'Role'">

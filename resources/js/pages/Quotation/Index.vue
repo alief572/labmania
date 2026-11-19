@@ -34,16 +34,9 @@ const range = (a: string, b: string) => (!b || a === b ? fmt(a) : `${fmt(a)} –
 <template>
     <Head title="Quotation" />
     <AppLayout title="Quotation" full-width>
-        <PageHead title="Daftar Quotation" description="Penjualan Program Final, Public maupun B2B, dibuatkan quotation sebagai persiapan invoice. Satu baris per Penjualan Program; Public dapat dibuatkan quotation berkali-kali. Klik Lihat detail untuk quotation-nya.">
+        <PageHead title="Daftar Quotation">
             <Link data-tour-next="qtnModal" class="primary" :href="appUrl('/quotation/create')">+ Buat Quotation</Link>
         </PageHead>
-
-        <div class="tobe-box"><h3>Yang berubah di Quotation <span class="tobe">To be</span></h3><ol>
-            <li>Form quotation tidak lagi memilih peserta dari Master Peserta; diganti <b>Kuota peserta</b>.</li>
-            <li>Saat quotation disimpan, sistem membuat <b>link Konfirmasi Kehadiran</b> khusus quotation itu. Tiap calon peserta mengisi data dirinya sendiri.</li>
-            <li>Hasil isian masuk ke tab <b>Data Peserta</b> di detail quotation, lengkap dengan Preview dan Download. Peserta <b>hanya</b> masuk lewat link; tidak ada tambah manual, supaya semua tercatat di sistem.</li>
-            <li>Tab <b>Data Peserta</b> di halaman ini: satu baris per batch Penjualan Program; <b>Lihat detail</b> menampilkan peserta semua quotation batch itu, dengan <b>Confirmation Letter</b> per peserta dan <b>Export PDF</b> (daftar + Confirmation Letter).</li>
-            <li><b>Confirmation Letter</b> menjadi dokumen output quotation, dibentuk dari isian Konfirmasi Kehadiran.</li></ol></div>
 
         <div v-if="tab !== 'data'" class="qtn-flow" data-tour="stats">
             <button type="button" class="kpi" :class="{ on: f.status === 'draft' }" :aria-pressed="f.status === 'draft'" title="Saring menurut status" @click="status('draft')"><span class="kpi-l">Draft</span><span class="kpi-v">{{ stat('draft').jumlah }} <small>quotation</small></span><span class="kpi-s">kuota {{ stat('draft').peserta }} peserta, belum dikirim</span></button><span class="qf-arrow" aria-hidden="true">›</span>
@@ -52,6 +45,7 @@ const range = (a: string, b: string) => (!b || a === b ? fmt(a) : `${fmt(a)} –
             <button type="button" class="kpi lost" :class="{ on: f.status === 'batal' }" :aria-pressed="f.status === 'batal'" title="Saring menurut status" @click="status('batal')"><span class="kpi-l">Batal</span><span class="kpi-v">{{ stat('batal').jumlah }} <small>quotation</small></span><span class="kpi-s">kuota {{ stat('batal').peserta }} peserta</span></button>
         </div>
 
+        <div class="batch-card">
         <nav class="tabs" aria-label="Kelompok program"><Link v-for="[key, label, href] in tabs" :key="key" :href="href" :aria-current="tab === key ? 'page' : undefined">{{ label }}<span class="nav-count">{{ tabCounts[key] }}</span></Link></nav>
         <div class="filters">
             <label class="grow">Cari<input v-model="f.q" type="search" maxlength="100" :placeholder="tab === 'data' ? 'Cari program, nomor, atau nama peserta…' : 'Cari program, nomor quotation, kepada, atau peserta…'" /></label>
@@ -68,5 +62,6 @@ const range = (a: string, b: string) => (!b || a === b ? fmt(a) : `${fmt(a)} –
             <template #cell-4="{ row: p }"><b>{{ p.jumlah_quotation }}</b> quotation<small>{{ statusText(p) }}</small></template>
             <template #cell-5="{ row: p }"><ActionMenu><Link :href="appUrl(`/quotation/batch/${p.id}${tab === 'data' ? '?data=1' : ''}`)">{{ tab === 'data' ? 'Data Peserta' : 'Lihat detail' }}</Link><Link v-if="p.can_add" :href="appUrl(`/quotation/create?id_penjualan=${p.id}`)">+ Buat Quotation</Link></ActionMenu></template>
         </ServerTable></div>
+        </div>
     </AppLayout>
 </template>

@@ -102,7 +102,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Emp
 <template>
     <Head title="Master User" />
     <AppLayout title="Master User" full-width>
-        <PageHead title="Master User" description="Data karyawan Labmania dan akun login ke sistem. Role dipilih dari Master Role; hak aksesnya diatur di Role & Permission. Override Permission memberi satu user hak menu tambahan di luar role-nya. User nonaktif tidak dapat login; data tidak dihapus."><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah User</button></PageHead>
+        <PageHead title="Master User"><button v-if="can.add" type="button" class="primary" @click="openAdd" :disabled="confirming">+ Tambah User</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).status" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).status }}</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari ID, nama, username, email, atau role…" /></label>

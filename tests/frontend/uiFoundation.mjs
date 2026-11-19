@@ -7,8 +7,8 @@ const walk = (d) => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirect
 const vue = walk(join(root, 'pages')).concat(walk(join(root, 'components'))).filter((f) => f.endsWith('.vue'));
 const src = (f) => readFileSync(f, 'utf8');
 
-// Header kolom aksi mengikuti mockup ("Action"), bukan "Aksi".
-for (const f of vue) assert.doesNotMatch(src(f), /title: 'Aksi'|"title": "Aksi"/, `${f}: header kolom harus "Action"`);
+// Master atribut/rate memakai label Aksi; modul lain mempertahankan Action dari mockup.
+for (const f of vue.filter(f => !/(Atribut|Rate)\.vue$/.test(f))) assert.doesNotMatch(src(f), /title: 'Aksi'|"title": "Aksi"/, `${f}: header kolom harus "Action"`);
 
 // Tidak ada helper rupiah lokal yang menduplikasi composables/costing.
 for (const f of vue) assert.doesNotMatch(src(f), /const rupiah = \(/, `${f}: pakai rupiah dari composables/costing`);
@@ -19,8 +19,10 @@ for (const f of vue) assert.doesNotMatch(src(f), /<td>\{\{ *(rupiah|money)\(/, `
 // Kolom ServerTable bernama Nilai/Default Cost rata kanan.
 for (const f of vue) for (const m of src(f).matchAll(/\{ ?"?title"?: ['"](Nilai|Default Cost)['"][^}]*\}/g)) assert.match(m[0], /dt-body-right/, `${f}: kolom ${m[1]}`);
 
-// Halaman daftar Master memakai PageHead dengan deskripsi dari mockup.
-for (const n of ['Product', 'Peserta', 'Company', 'Role', 'User', 'Trainer', 'TemplateKeterangan', 'TemplateKonfirmasi', 'Rate']) assert.match(src(join(root, 'pages/Master', `${n}.vue`)), /<PageHead [^>]*description="/, n);
+// Judul tetap memakai PageHead; pengantar modul statis tidak ditampilkan lagi.
+for (const n of ['Product', 'Peserta', 'Company', 'Role', 'User', 'Trainer', 'TemplateKeterangan', 'TemplateKonfirmasi', 'Rate']) assert.match(src(join(root, 'pages/Master', `${n}.vue`)), /<PageHead\b/, n);
+for (const f of vue) assert.doesNotMatch(src(f), /<PageHead\b[^>]*\sdescription="/, `${f}: pengantar modul statis`);
+for (const f of ['SalesOrder/Index.vue', 'Refund/Index.vue', 'Master/Atribut.vue']) assert.doesNotMatch(src(join(root, 'pages', f)), /<PageHead\b[^>]*:description=/, `${f}: pengantar modul dinamis`);
 
 // FormField menampilkan * hanya lewat atribut required pada kontrol anak.
 const ff = src(join(root, 'components/FormField.vue'));

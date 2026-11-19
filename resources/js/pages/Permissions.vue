@@ -82,7 +82,7 @@ const save = () => confirmation.form(form, 'put', `/permissions/roles/${editing.
 <template>
     <Head title="Role & Permission" />
     <AppLayout title="Role & Permission" full-width>
-        <PageHead title="Role & Permission" description="Role diambil dari Master Role. Atur setiap role: menu apa saja yang bisa dibuka dan apa yang bisa dilakukan di menu itu — View = membuka menu & daftar, Add = tambah / ajukan, Manage = ubah, Delete = hapus / batalkan / nonaktifkan, Approve = finalkan program dan proses approval." />
+        <PageHead title="Role & Permission" />
         <div class="kpis">
             <div class="kpi"><div class="kpi-l">Total Role</div><div class="kpi-v">{{ kpi.roles }}</div><div class="kpi-s">dari Master Role</div></div>
             <div class="kpi"><div class="kpi-l">User berakun</div><div class="kpi-v">{{ kpi.users }}</div><div class="kpi-s">tersebar di semua role</div></div>

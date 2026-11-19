@@ -12,8 +12,8 @@ assert.ok(src.includes('Cari kode atau item…'));
 assert.match(src, /title: `Kode \$\{props\.title\}`/);
 assert.match(src, /title: 'Default Cost', orderable: true, className: 'dt-body-right'/);
 
-// Urutan field modal = mockup: Kode, Kategori, Satuan, Item, Default Cost, Keterangan, COA.
-const order = ['id="rkode"', 'id="rkat"', 'id="satuan"', 'id="item"', 'id="cost"', 'id="ket"', 'id="coa"'].map((k) => src.indexOf(k));
+// Item mendahului pasangan Satuan/Default Cost agar grid tidak menyisakan sel kosong.
+const order = ['id="rkode"', 'id="rkat"', 'id="item"', 'id="satuan"', 'id="cost"', 'id="ket"', 'id="coa"'].map((k) => src.indexOf(k));
 assert.ok(order.every((v) => v > 0) && order.every((v, i) => i === 0 || v > order[i - 1]), `urutan field: ${order}`);
 
 // Kategori tidak bisa diubah dari modal (server menolak ganti tipe); rupiah lewat helper tunggal.

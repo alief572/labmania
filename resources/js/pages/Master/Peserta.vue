@@ -66,7 +66,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
 <template>
     <Head title="Master Peserta" />
     <AppLayout title="Master Peserta" full-width>
-        <PageHead title="Master Peserta" description="Data peserta pelatihan/sertifikasi, dikelompokkan menurut Jenis Bidang. Peserta yang Deal di quotation masuk otomatis saat Deal; yang bertanda Belum lengkap dilengkapi lewat Edit."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Peserta</button></PageHead>
+        <PageHead title="Master Peserta"><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Peserta</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode, nama, instansi, NIK, atau bidang…" /></label>

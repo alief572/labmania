@@ -65,7 +65,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
 <template>
     <Head title="Master Company" />
     <AppLayout title="Master Company" full-width>
-        <PageHead title="Master Company" description="Data perusahaan/instansi yang menjadi customer penjualan B2B. Company aktif dipilih di Penjualan Program B2B (wajib) dan sebagai tujuan Quotation ke Company."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Company</button></PageHead>
+        <PageHead title="Master Company"><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Company</button></PageHead>
         <p v-if="($page.props.errors as Record<string, string>).hapus" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).hapus }}</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode, nama, kota, atau PIC…" /></label>

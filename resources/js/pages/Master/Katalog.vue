@@ -62,7 +62,7 @@ const save = () => confirmation.visit('put', `/master/product/${editing.value!.i
 <template>
     <Head title="Katalog Produk" />
     <AppLayout title="Katalog Produk" full-width>
-        <PageHead title="Katalog Produk" description="Katalog disusun otomatis dari Paket Produk berstatus Aktif. Isi Lingkup dan Harga start from tiap paket lewat tombol di kartunya. Saring berdasarkan Bidang dan Sertifikat, lalu cetak sebagai PDF untuk Promosi.">
+        <PageHead title="Katalog Produk">
             <a v-if="can.print" class="primary" :href="pdfUrl()" target="_blank" rel="noopener">Cetak Katalog (PDF)</a>
         </PageHead>
         <p v-if="($page.props.errors as Record<string, string>).pdf" class="error" role="alert">{{ ($page.props.errors as Record<string, string>).pdf }}</p>

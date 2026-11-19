@@ -53,7 +53,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
 <template>
     <Head title="Template Formulir Konfirmasi" />
     <AppLayout title="Template Formulir Konfirmasi" full-width>
-        <PageHead title="Template Formulir Konfirmasi" description="Template Formulir Konfirmasi Keikutsertaan yang dicetak bersama quotation. Template dipilih otomatis dari Jenis Produk paket, lalu isian dan kalimat pernyataannya dapat disesuaikan per quotation."><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Template</button></PageHead>
+        <PageHead title="Template Formulir Konfirmasi"><button v-if="can.add" type="button" class="primary" @click="open(null)" :disabled="confirming">+ Tambah Template</button></PageHead>
         <p class="notice">Perubahan di sini hanya berlaku untuk quotation <strong>baru</strong>. Tidak dapat dihapus — gunakan Nonaktifkan.</p>
         <div class="filters">
             <label class="grow">Cari<input v-model="filter.q" type="search" maxlength="100" placeholder="Cari kode atau nama template…" /></label>
