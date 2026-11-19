@@ -4,6 +4,14 @@ import { parse, compileScript } from '@vue/compiler-sfc';
 import ts from 'typescript';
 import { createRenderer, nextTick, reactive } from 'vue';
 
+for (const page of ['Master/Program/Index', 'SalesOrder/Index', 'Quotation/Batch']) {
+    const source = readFileSync(new URL(`../../resources/js/pages/${page}.vue`, import.meta.url), 'utf8');
+    const tables = [...source.matchAll(/<ServerTable\b(?:"[^"]*"|'[^']*'|[^'">])*>/g)];
+    assert.ok(tables.length, `${page}: tabel ditemukan`);
+    for (const [table] of tables) assert.match(table, /:keyword="filters\.q \|\| ''"/, `${page}: input halaman harus menggantikan search bawaan`);
+}
+assert.match(readFileSync(new URL('../../resources/js/components/QuotationParticipants.vue', import.meta.url), 'utf8'), /:keyword="filters\?\.q !== undefined \? String\(filters\.q\) : undefined"/, 'Data peserta Quotation meneruskan keyword bila pencarian berasal dari halaman');
+
 // Exercise the actual component setup without a browser or a simulated DataTables implementation.
 const source = readFileSync(process.argv[2] ?? new URL('../../resources/js/components/ServerTable.vue', import.meta.url), 'utf8');
 const { descriptor } = parse(source);
