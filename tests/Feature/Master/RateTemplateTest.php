@@ -101,6 +101,26 @@ class RateTemplateTest extends MasterTestCase
         $this->get('/master/template-konfirmasi')->assertOk();
     }
 
+    public function test_contoh_formulir_merender_jadwal_bold_dan_html_dengan_aman(): void
+    {
+        $template = ['isian' => '["nama","email"]', 'label_kegiatan' => 'Workshop',
+            'pernyataan' => '**Bersedia** mengikuti {judul} pada {tanggal}, {waktu}, {durasi} hari, {lokasi}. <script>alert(1)</script>',
+            'catatan' => "Hubungi {email} / {telp}\n**{kegiatan}**: {judul}"];
+        $html = \App\Support\QuotationPdf::confirmationPreview($template, (object) [
+            'tgl_mulai' => '2026-11-20', 'tgl_selesai' => '2026-11-21', 'waktu' => '08.00–16.00 WIB',
+            'durasi_hari' => 2, 'lokasi' => 'Bekasi',
+        ], 'Uji <img src=x onerror=alert(1)>');
+        foreach (['<b>Bersedia</b>', '20–21 November 2026', '08.00–16.00 WIB', '2 hari, Bekasi',
+            'Uji &lt;img', '&lt;script&gt;', '<b>Workshop</b>', 'telah membaca', 'menyetujui',
+            'FR/LMI-TR-01/02/Ed.Rev-1.0', '297mm', '(..........................................................)'] as $text) {
+            $this->assertStringContainsString($text, $html);
+        }
+        foreach (['{judul}', '{tanggal}', '{waktu}', '{durasi}', '{lokasi}', '{email}', '{telp}', '{kegiatan}', '<script>', '<img'] as $text) {
+            $this->assertStringNotContainsString($text, $html);
+        }
+        $this->assertStringContainsString('— hari', \App\Support\QuotationPdf::confirmationPreview($template, null, null));
+    }
+
     public function test_daftar_template_konfirmasi_menyaring_status_dan_mencari_kode(): void
     {
         $base = ['nama' => 'Form A', 'label_kegiatan' => 'Workshop', 'pernyataan' => 'Saya menyatakan benar.', 'isian' => ['nama']];

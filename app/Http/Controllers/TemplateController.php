@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\CodeGenerator;
+use App\Support\QuotationPdf;
 use App\Support\ServerDataTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -171,7 +172,7 @@ class TemplateController extends Controller
 
     /**
      * Contoh formulir: Penjualan Program Final terbaru dibaca lewat master_program_produk (bukan kolom id_paket_produk
-     * yang sudah dihapus). Mengembalikan data mentah; tidak ada teks contoh yang disimpan atau ditambahkan.
+     * yang sudah dihapus). Preview tidak menyimpan data atau mengambil identitas peserta.
      */
     public function contoh(int $id)
     {
@@ -184,6 +185,7 @@ class TemplateController extends Controller
         return response()->json([
             'template' => ['nama' => $t->nama, 'label_kegiatan' => $t->label_kegiatan, 'isian' => json_decode((string) $t->isian, true) ?: [], 'pernyataan' => $t->pernyataan, 'catatan' => $t->catatan],
             'fields' => self::KF_FIELDS, 'program' => $judul,
+            'document' => QuotationPdf::confirmationPreview((array) $t, $pj, $judul),
         ]);
     }
 

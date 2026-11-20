@@ -136,7 +136,8 @@ summary { min-height: 44px; padding: 8px 0; color: #14304F; }
 .nav-group { margin: 14px 0 4px; padding: 0 12px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #D3DCE8; }
 .page-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .page-head h1 { margin: 0; }
-.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--navy-50); color: #14304F; border: 1px solid #6F7F94; }
+.badge { display: inline-flex; align-items: center; white-space: nowrap; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--navy-50); color: #14304F; border: 1px solid #6F7F94; }
+.badge::before { flex-shrink: 0; }
 .badge.on { background: var(--navy-50); color: var(--navy); border-color: var(--navy-100); }
 .badge.off { background: #F2F5F9; color: var(--ink-70); }
 .badge.warn { background: var(--orange-50); color: #493300; border-color: #8A6A00; }
@@ -742,7 +743,7 @@ tr.is-off > td { color: var(--ink-50); }
 
 .page-head-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .tutorial-control { display:inline-flex; align-items:center; flex-wrap:wrap; gap:8px; }
-.tour-btn { display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:0 14px; border:1px solid var(--navy); border-radius:8px; background:var(--navy); color:#fff; font-weight:600; cursor:pointer; white-space:nowrap; }
+.tour-btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:8px 16px; border:1px solid var(--navy); border-radius:8px; background:var(--navy); color:#fff; font-weight:600; cursor:pointer; white-space:nowrap; }
 .tour-btn:hover:not(:disabled) { background:var(--navy-700); border-color:var(--navy-700); color:#fff; }
 .tour-btn:active:not(:disabled) { transform:translateY(1px); }
 .tour-btn:focus-visible, .lm-tour button:focus-visible { outline:2px solid var(--orange); outline-offset:2px; }

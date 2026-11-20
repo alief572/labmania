@@ -73,6 +73,8 @@ class ParticipantController extends Controller
         $p->company = $p->id_customer ? DB::table('master_customer')->where('id_customer', $p->id_customer)->value('name_customer') : 'Public';
         $f = $r->validate(['q' => 'nullable|string|max:100', 'tab' => 'nullable|in:peserta,sertifikat,survey']);
         $q = Participants::query($id);
+        $p->peserta = (clone $q)->count();
+        $p->operational_status = $p->closed_date ? 'Closed' : ($p->tgl_selesai < today()->toDateString() ? 'Acara selesai' : 'Berjalan');
         ServerDataTable::scope($r, $q);
         $this->searchPerson($q, $f['q'] ?? '');
         $props = ['program' => $p, 'rows' => $this->peoplePage($q),

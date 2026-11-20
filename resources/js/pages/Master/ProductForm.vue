@@ -26,14 +26,15 @@ const save = () => confirmation.form(form, 'post', '/master/product', { title: `
     <Head title="Tambah Product" />
     <AppLayout title="Product" full-width>
         <PageHead title="Tambah Product" />
-        <form class="panel" @submit.prevent="save">
+        <form class="product-form" @submit.prevent="save">
+            <section class="panel">
             <FormField id="cf-judul" label="Judul" :error="form.errors.judul" v-slot="{ describedBy, invalid }">
                 <input id="cf-judul" v-model="form.judul" maxlength="150" required placeholder="Judul / topik paket, diisi manual" :aria-invalid="invalid" :aria-describedby="describedBy" />
             </FormField>
             <div class="sub-head"><h2>Kombinasi Atribut</h2><span class="muted">{{ n }} baris → akan menjadi {{ n }} paket produk</span></div>
             <div class="table-wrap combine-table"><table class="tr-table">
                 <caption class="sr-only">Kombinasi atribut Product</caption>
-                <thead><tr><th class="num">#</th><th v-for="[, label] in fields" :key="label">{{ label }}</th><th>Action</th></tr></thead>
+                <thead><tr><th class="num">#</th><th v-for="[, label] in fields" :key="label">{{ label }}</th><th class="act">Action</th></tr></thead>
                 <tbody>
                     <template v-for="(row, i) in form.rows" :key="i">
                         <tr :class="{ 'row-err': rowError(i) }">
@@ -41,15 +42,29 @@ const save = () => confirmation.form(form, 'post', '/master/product', { title: `
                             <td v-for="[key, label] in fields" :key="key">
                                 <select v-model="row[key]" :aria-label="`${label} baris ${i + 1}`" required><option value="">— Pilih {{ label }} —</option><option v-for="o in props.options[key]" :key="o.id" :value="o.id">{{ o.nama }}</option></select>
                             </td>
-                            <td><button type="button" :disabled="n === 1 || confirming" @click="delRow(i)">Hapus</button></td>
+                            <td class="act"><button type="button" class="btn btn-ghost sm" :disabled="n === 1 || confirming" @click="delRow(i)">Hapus</button></td>
                         </tr>
                         <tr v-if="rowError(i)" class="row-msg"><td></td><td colspan="5" class="error" role="alert">{{ rowError(i) }}</td></tr>
                     </template>
                 </tbody>
             </table></div>
-            <button type="button" class="kt-btn" :disabled="confirming || n >= 50" @click="addRow">+ Tambah Baris</button>
+            <button type="button" class="btn btn-outline" :disabled="confirming || n >= 50" @click="addRow">+ Tambah Baris</button>
             <p class="hint-line">Antar paket minimal satu dari empat atribut harus berbeda. Hanya data master berstatus Aktif yang dapat dipilih.</p>
-            <div class="form-actions page-actions"><Link :href="appUrl('/master/product')">Batal</Link><button class="primary" :disabled="form.processing || confirming">Simpan {{ n }} Paket</button></div>
+            </section>
+            <div class="form-actions page-actions"><Link class="btn btn-ghost" :href="appUrl('/master/product')">Batal</Link><button class="btn btn-primary" :disabled="form.processing || confirming">Simpan {{ n }} Paket</button></div>
         </form>
     </AppLayout>
 </template>
+
+<style scoped>
+.product-form .sub-head { margin: 22px 0 10px; }
+.combine-table { margin-bottom: 12px; }
+.combine-table table { min-width: 760px; }
+.combine-table th { padding: 10px 14px; font-size: 11.5px; letter-spacing: .04em; }
+.combine-table td { padding: 11px 14px; }
+.combine-table .num { width: 56px; }
+.combine-table .act { width: 96px; text-align: right; white-space: nowrap; }
+.combine-table select { width: 100%; min-width: 0; }
+.combine-table .row-msg td { padding-top: 0; }
+.product-form > .form-actions { margin-top: 16px; gap: 8px; flex-wrap: wrap; }
+</style>

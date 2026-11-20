@@ -83,6 +83,7 @@ trait OperationalDataTableScenarios
         DB::table('penjualan_program')->where('id', $this->program6)->update(['tgl_selesai' => '2020-01-01']);
         $this->getJson('/manage-peserta/data')->assertOk()->assertJsonPath('meta.counts.ongoing', 1)->assertJsonPath('meta.counts.selesai', 0)->assertJsonCount(1, 'data');
         $this->getJson('/manage-peserta/'.$this->program6.'/data')->assertOk()->assertJsonStructure(['data' => [['kode', 'nama']]]);
+        $this->get('/manage-peserta/'.$this->program6.'?q=not-a-participant')->assertOk()->assertInertia(fn ($p) => $p->where('program.peserta', 1)->where('program.operational_status', 'Acara selesai')->where('rows.total', 0));
         $this->getJson('/manage-peserta/monitoring/data')->assertOk()->assertJsonStructure(['meta' => ['years']]);
         DB::table('penjualan_program')->where('id', $this->program6)->update(['closed_date' => now()]);
         $this->getJson('/manage-peserta/data?tab=selesai')->assertOk()->assertJsonPath('meta.counts.ongoing', 0)->assertJsonPath('meta.counts.selesai', 1)->assertJsonCount(1, 'data');

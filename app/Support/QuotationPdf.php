@@ -441,13 +441,28 @@ class QuotationPdf
         return [$p1, $p2];
     }
 
-    private function konfirmasi(array $q, array $p, array $pk, array $sales, array $tpl)
+    public static function confirmationPreview(array $template, ?object $program, ?string $title): string
+    {
+        $layout = new self;
+        $data = (array) $program;
+        $data['konfirmasi_isian'] = json_decode((string) $template['isian'], true) ?: [];
+        $data['konfirmasi_pernyataan'] = $template['pernyataan'];
+        $data['durasi_hari'] = $program?->durasi_hari;
+
+        return view('pdf.confirmation-preview', [
+            'header' => $layout->kop(),
+            'body' => $layout->konfirmasi($data, [], ['judul' => $title ?? '—'], [], $template, true),
+            'footer' => $layout->foot('FR/LMI-TR-01/02/Ed.Rev-1.0', '1 dari 1', '01/08/2023'),
+        ])->render();
+    }
+
+    private function konfirmasi(array $q, array $p, array $pk, array $sales, array $tpl, bool $blank = false)
     {
         $isian = $q['konfirmasi_isian'] ?? '[]';
         $isian = is_array($isian) ? $isian : (json_decode($isian, true) ?: []);
         $vars = [
             'judul' => $pk['judul'] ?? '', 'tanggal' => $this->rentang($q['tgl_mulai'] ?? null, $q['tgl_selesai'] ?? null),
-            'waktu' => ($q['waktu'] ?? '') !== '' ? $q['waktu'] : '..........', 'durasi' => (int) $q['durasi_hari'], 'lokasi' => ($q['lokasi'] ?? '') !== '' ? $q['lokasi'] : '—',
+            'waktu' => ($q['waktu'] ?? '') !== '' ? $q['waktu'] : '..........', 'durasi' => $q['durasi_hari'] === null ? '—' : (int) $q['durasi_hari'], 'lokasi' => ($q['lokasi'] ?? '') !== '' ? $q['lokasi'] : '—',
         ];
         // Semua isian dari isian link peserta itu, bukan Master Peserta (QTN-FR-16, TB-3)
         $nilai = [
@@ -484,7 +499,7 @@ class QuotationPdf
             .'<table class="form" width="100%">'.$rows.'</table><br>'
             .'<p>Dengan ini menyatakan:</p><ol class="small"><li>'.$this->mark($this->fill($q['konfirmasi_pernyataan'] ?? '', $vars)).'</li>'
             .'<li>Saya <b><u>telah membaca</u></b> dan <b><u>menyetujui</u></b> syarat &amp; ketentuan yang berlaku di LabMania</li></ol><br>'
-            .'<div style="text-align:right;">..........., '.$this->e($this->tgl(today()->toDateString())).'<br><br><br><br><br>'.$this->e($p['nama'] ?? '').'<br><b>Jabatan:</b> '.$this->e($p['jabatan'] ?? '').'</div><br>'
+            .'<div class="confirmation-sign" style="text-align:right;">'.($blank ? '..........., ...................... 20.....' : '..........., '.$this->e($this->tgl(today()->toDateString()))).'<br><br><br><br><br>'.($blank ? '(..........................................................)' : $this->e($p['nama'] ?? '')).'<br><b>Jabatan:</b> '.$this->e($p['jabatan'] ?? '').'</div><br>'
             .'<div class="small"><b><u>Catatan :</u></b><ul>'.$catatan.'</ul></div>';
     }
 

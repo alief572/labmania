@@ -28,7 +28,10 @@ const short = (v: string) => (v.length > 110 ? `${v.slice(0, 110)}…` : v);
 const editing = ref<Row | null>(null);
 const adding = ref(false);
 const form = useForm({ nama: '', label_kegiatan: '', id_jenis_produk: '' as string | number, isian: [] as string[], pernyataan: '', catatan: '' });
-const sample = ref<{ template: { nama: string; label_kegiatan: string; isian: string[]; pernyataan: string; catatan: string | null }; fields: Record<string, string>; program: string | null } | null>(null);
+const sample = ref<{ template: { nama: string }; program: string | null; document: string } | null>(null);
+const preview = ref<HTMLIFrameElement | null>(null);
+const sampleLoading = ref(false);
+const sampleError = ref('');
 function open(row: Row | null) {
     form.reset(); form.clearErrors(); editing.value = row; adding.value = !row;
     if (row) Object.assign(form, { nama: row.nama, label_kegiatan: row.label_kegiatan, id_jenis_produk: row.id_jenis_produk ?? '', isian: [...row.isian], pernyataan: row.pernyataan, catatan: row.catatan ?? '' });
@@ -43,7 +46,16 @@ const toggle = (row: Row) => confirmation.visit('post', `/master/template-konfir
     title: `${row.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${row.nama} (${row.kode})?`,
     confirmLabel: row.aktif ? 'Ya, nonaktifkan' : 'Ya, aktifkan', danger: !!row.aktif,
 }, { preserveScroll: true, onSuccess: reload });
-async function contoh(row: Row) { sample.value = await (await fetch(appUrl(`/master/template-konfirmasi/${row.id}/contoh`), { headers: { Accept: 'application/json' } })).json(); }
+async function contoh(row: Row) {
+    if (sampleLoading.value) return;
+    sampleLoading.value = true; sampleError.value = '';
+    try {
+        const response = await fetch(appUrl(`/master/template-konfirmasi/${row.id}/contoh`), { headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error('Preview gagal dimuat.');
+        sample.value = await response.json();
+    } catch { sampleError.value = 'Contoh formulir tidak dapat dimuat. Silakan coba lagi.'; }
+    finally { sampleLoading.value = false; }
+}
 
 const table = ref<InstanceType<typeof ServerTable> | null>(null);
 const reload = () => table.value?.reload();
@@ -69,6 +81,8 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
             <template #cell-6="{ row }"><StatusBadge :active="row.aktif" /></template>
             <template #cell-7="{ row }"><ActionMenu><button v-if="can.manage" type="button" @click="open(row)" :disabled="confirming">Edit</button><button type="button" @click="contoh(row)" :disabled="confirming">Lihat contoh</button><button v-if="can.manage" type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></ActionMenu></template>
         </ServerTable>
+        <p v-if="sampleLoading" role="status">Memuat contoh formulir…</p>
+        <p v-if="sampleError" class="error" role="alert">{{ sampleError }}</p>
 
         <ConfirmDialog v-if="adding || editing" :title="editing ? `Edit Template ${editing.kode}` : 'Tambah Template Formulir Konfirmasi'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
             <div class="kf-grid">
@@ -94,15 +108,17 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'Kod
             </div>
         </ConfirmDialog>
 
-        <ConfirmDialog v-if="sample" :title="`Contoh — ${sample.template.nama}`" confirm-label="Tutup" @confirm="sample = null" @cancel="sample = null">
-            <p class="muted">Contoh dengan program: {{ sample.program ?? 'belum ada Penjualan Program Final' }}</p>
-            <div class="letter">
-                <p><b>FORMULIR KONFIRMASI KEIKUTSERTAAN</b><br><span class="muted">{{ sample.template.label_kegiatan }}</span></p>
-                <dl class="summary"><div v-for="k in sample.template.isian" :key="k"><dt>{{ sample.fields[k] }}</dt><dd>&nbsp;</dd></div></dl>
-                <p class="qtn-h">Pernyataan</p>
-                <p>{{ sample.template.pernyataan }}</p>
-                <template v-if="sample.template.catatan"><p class="qtn-h">Catatan</p><ol><li v-for="(c, i) in sample.template.catatan.split(/\r?\n/).filter(Boolean)" :key="i">{{ c }}</li></ol></template>
+        <ConfirmDialog v-if="sample" :title="`Contoh — ${sample.template.nama}`" size="xwide" info @cancel="sample = null">
+            <div class="preview-tools">
+                <span class="muted">Contoh dengan program: {{ sample.program ?? 'belum ada Penjualan Program Final' }}</span>
+                <button type="button" class="btn btn-ghost sm" @click="preview?.contentWindow?.print()">Cetak / Simpan PDF</button>
             </div>
+            <iframe ref="preview" class="confirmation-preview" title="Contoh Formulir Konfirmasi Keikutsertaan" sandbox="allow-same-origin allow-modals" :srcdoc="sample.document"></iframe>
         </ConfirmDialog>
     </AppLayout>
 </template>
+
+<style scoped>
+.preview-tools { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.confirmation-preview { display: block; width: 100%; height: 68vh; border: 0; border-radius: 8px; background: #e9ecf2; }
+</style>

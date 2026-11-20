@@ -94,7 +94,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
             <template #cell-7="{ row }"><ActionMenu><button v-if="can.manage" type="button" @click="openEdit(row)" :disabled="confirming">Edit</button><button type="button" @click="viewCv(row)" :disabled="confirming">Lihat CV</button><button v-if="can.manage" type="button" @click="toggle(row)" :disabled="confirming">{{ row.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button></ActionMenu></template>
         </ServerTable>
 
-        <ConfirmDialog v-if="mode" :title="mode === 'edit' ? `Edit Trainer ${currentCode}` : 'Tambah Trainer'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
+        <ConfirmDialog v-if="mode" size="xwide" :title="mode === 'edit' ? `Edit Trainer ${currentCode}` : 'Tambah Trainer'" :busy="form.processing || confirming" @confirm="save" @cancel="close">
             <div class="tabs tr-tabs" role="tablist"><button v-for="[key, label] in tabs" :key="key" type="button" role="tab" :aria-selected="tab === key" :class="{ active: tab === key }" @click="tab = key" :disabled="confirming">{{ label }}<span v-if="count(key) !== null" class="nav-count">{{ count(key) }}</span></button></div>
 
             <div v-show="tab === 'identitas'">
@@ -121,7 +121,7 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
                 </div>
             </div>
 
-            <div v-for="key in listKeys" v-show="tab === key" :key="key">
+            <div v-for="key in listKeys" v-show="tab === key" :key="key" class="trainer-history">
                 <div class="table-wrap"><table class="tr-table">
                     <caption class="sr-only">{{ tabs.find((t) => t[0] === key)?.[1] }}</caption>
                     <thead><tr><th class="num">No.</th><th v-for="[c, label, cls] in lists[key]" :key="c" :class="cls">{{ label }}</th><th></th></tr></thead>
@@ -129,16 +129,16 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
                         <tr v-for="(row, i) in (form as any)[key]" :key="i" :class="{ 'row-err': err(`${key}.${i}.${lists[key][0][0]}`) }">
                             <td class="num">{{ Number(i) + 1 }}</td>
                             <td v-for="[c, label, cls] in lists[key]" :key="c" :class="cls"><input v-model="row[c]" :aria-label="`${label} baris ${Number(i) + 1}`" :placeholder="cls === 'yr' ? 'mis. 2025' : ''" /></td>
-                            <td><button type="button" :aria-label="`Hapus baris ${Number(i) + 1}`" @click="(form as any)[key].splice(i, 1)" :disabled="confirming">Hapus</button></td>
+                            <td><button type="button" class="btn btn-ghost sm" :aria-label="`Hapus baris ${Number(i) + 1}`" @click="(form as any)[key].splice(i, 1)" :disabled="confirming">Hapus</button></td>
                         </tr>
                         <tr v-if="!(form as any)[key].length"><td :colspan="lists[key].length + 2" class="empty">Belum ada data. Klik + Tambah Baris.</td></tr>
                     </tbody>
                 </table></div>
-                <button type="button" class="kt-btn" :disabled="confirming" @click="(form as any)[key].push(Object.fromEntries(lists[key].map(([c]) => [c, ''])))">+ Tambah Baris</button>
+                <button type="button" class="btn btn-outline sm" :disabled="confirming" @click="(form as any)[key].push(Object.fromEntries(lists[key].map(([c]) => [c, ''])))">+ Tambah Baris</button>
                 <template v-for="(row, i) in (form as any)[key]" :key="`e${i}`"><p v-if="err(`${key}.${i}.${lists[key][0][0]}`)" class="error" role="alert">Baris {{ Number(i) + 1 }}: {{ err(`${key}.${i}.${lists[key][0][0]}`) }}</p></template>
             </div>
 
-            <div v-show="tab === 'lampiran'">
+            <div v-show="tab === 'lampiran'" class="trainer-history">
                 <div class="table-wrap"><table class="tr-table">
                     <caption class="sr-only">Lampiran Dokumen</caption>
                     <thead><tr><th class="num">No.</th><th class="wide">Dokumen / Sertifikat Lampiran</th><th class="yr">Tahun</th><th class="file">File</th><th></th></tr></thead>
@@ -150,17 +150,17 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
                             <td class="file"><a v-if="row.ada_file && row.file_id && !row.file" :href="appUrl(`/documents/trainer/${row.file_id}`)" target="_blank" rel="noopener">Berkas saat ini</a> <span v-if="row.file" class="code">{{ row.file.name }}</span>
                                 <label class="file-btn">{{ row.ada_file || row.file ? 'Ganti' : 'Unggah' }}<input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden :aria-label="`Berkas lampiran ${Number(i) + 1}`" @change="row.file = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>
                                 <small v-if="err(`lampiran.${i}.file`)" class="error" role="alert">{{ err(`lampiran.${i}.file`) }}</small></td>
-                            <td><button type="button" :aria-label="`Hapus lampiran ${Number(i) + 1}`" @click="form.lampiran.splice(i, 1)" :disabled="confirming">Hapus</button></td>
+                            <td><button type="button" class="btn btn-ghost sm" :aria-label="`Hapus lampiran ${Number(i) + 1}`" @click="form.lampiran.splice(i, 1)" :disabled="confirming">Hapus</button></td>
                         </tr>
                         <tr v-if="!form.lampiran.length"><td colspan="5" class="empty">Belum ada data. Klik + Tambah Baris.</td></tr>
                     </tbody>
                 </table></div>
-                <button type="button" class="kt-btn" :disabled="confirming" @click="form.lampiran.push({ dokumen: '', tahun: '', file: null, file_id: null, ada_file: false })">+ Tambah Baris</button>
+                <button type="button" class="btn btn-outline sm" :disabled="confirming" @click="form.lampiran.push({ dokumen: '', tahun: '', file: null, file_id: null, ada_file: false })">+ Tambah Baris</button>
                 <p class="hint-line">File lampiran PDF/JPG/PNG, maks 5 MB.</p>
             </div>
         </ConfirmDialog>
 
-        <ConfirmDialog v-if="cv" :title="`CV Trainer — ${cv.trainer.nama}`" confirm-label="Tutup" @confirm="cv = null" @cancel="cv = null">
+        <ConfirmDialog v-if="cv" size="xwide" info :title="`CV Trainer — ${cv.trainer.nama}`" @confirm="cv = null" @cancel="cv = null">
             <div class="letter">
                 <p><b>MASTER TRAINER — IDENTITAS FASILITATOR</b><br><span class="muted code">{{ cv.trainer.kode }}</span></p>
                 <dl class="summary">
@@ -193,3 +193,16 @@ const columns = computed(() => [{ title: 'No', orderable: false }, { title: 'ID 
         </ConfirmDialog>
     </AppLayout>
 </template>
+
+<style scoped>
+.tr-tabs { padding: 0; margin: -4px 0 14px; flex-wrap: wrap; }
+.tr-tabs button { flex-shrink: 0; }
+.trainer-history .table-wrap { margin-bottom: 12px; box-shadow: none; }
+.trainer-history .tr-table { min-width: 800px; }
+.trainer-history th { padding: 10px 14px; font-size: 11.5px; }
+.trainer-history td { padding: 11px 14px; }
+.trainer-history .wide { min-width: 280px; }
+.trainer-history .yr { width: 130px; }
+.trainer-history td:last-child { text-align: right; white-space: nowrap; }
+.trainer-history td.empty { padding: 32px; text-align: center; white-space: normal; }
+</style>

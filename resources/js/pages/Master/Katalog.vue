@@ -101,7 +101,7 @@ const save = () => confirmation.visit('put', `/master/product/${editing.value!.i
             </template>
         </div>
 
-        <ConfirmDialog v-if="editing" :title="`Lingkup & Harga: ${editing.item.judul}`" confirm-label="Simpan" :busy="form.processing || confirming" @confirm="save" @cancel="editing = null">
+        <ConfirmDialog v-if="editing" size="wide" :title="`Lingkup & Harga: ${editing.item.judul}`" confirm-label="Simpan" :busy="form.processing || confirming" @confirm="save" @cancel="editing = null">
             <p class="kt-hint"><span class="kt-code">{{ editing.item.nomor }}</span> · {{ [editing.item.nama_produk, editing.bidang, editing.item.nama_varian, editing.item.nama_sertifikasi].filter(Boolean).join(' · ') }}. Lingkup tampil di kartu Katalog Produk dan di PDF katalog. Satu baris untuk satu item; tekan Enter untuk menambah baris.</p>
             <div class="field"><label for="hm">Harga start from (Rp) <span class="muted">(opsional)</span></label><MoneyInput id="hm" v-model="form.harga_mulai" :aria-describedby="form.errors.harga_mulai ? 'hm-err' : 'hm-hint'" /><small id="hm-hint">Perkiraan untuk promosi, bukan harga final. Tidak dipakai di Master Program, Penjualan Program, quotation, atau invoice.</small><p v-if="form.errors.harga_mulai" id="hm-err" class="error" role="alert">{{ form.errors.harga_mulai }}</p></div>
             <ol class="ling-list">
