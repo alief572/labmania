@@ -75,7 +75,7 @@ const lockText = computed(() => props.program.status === 'final'
 
 <template>
     <Head :title="program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program'" />
-    <AppLayout :title="program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program'">
+    <AppLayout :title="program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program'" full-width>
         <div class="pf-formbar"><button type="button" class="kt-btn" @click="back">← Kembali</button><h1>{{ program.nomor ? `Master Program ${program.nomor}` : 'Buat Master Program' }}</h1><TutorialButton /></div>
         <p v-if="lockText" class="notice">{{ lockText }}</p>
         <p v-if="transitionError" class="error" role="alert">{{ transitionError }}</p>

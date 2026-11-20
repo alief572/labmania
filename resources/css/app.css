@@ -147,6 +147,8 @@ summary { min-height: 44px; padding: 8px 0; color: #14304F; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .form-grid label, .field { display: block; }
 .form-grid label span, .field > span { display: block; margin-bottom: 6px; font-weight: 600; }
+.field > label { margin-bottom: 6px; }
+.field > label > span { display: inline; margin-bottom: 0; }
 .form-grid .wide { grid-column: 1 / -1; }
 textarea { width: 100%; padding: 8px 10px; border: 1px solid #6F7F94; border-radius: 6px; background: white; font: inherit; min-height: 88px; }
 .dialog-back { position: fixed; inset: 0; background: rgba(3, 6, 55, .55); display: grid; place-items: center; padding: 16px; z-index: 20; }

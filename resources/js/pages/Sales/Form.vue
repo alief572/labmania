@@ -107,7 +107,7 @@ function status(kind: 'finalkan') { return confirmation.form(transition, 'post',
 </script>
 <template>
     <Head :title="program.nomor || 'Buat Penjualan Program'" />
-    <AppLayout title="Penjualan Program">
+    <AppLayout title="Penjualan Program" full-width>
         <div class="pf-formbar">
             <Link class="back-link" :href="appUrl('/penjualan-program')">← Kembali</Link>
             <h1>{{ program.nomor ? 'Penjualan Program ' + program.nomor : 'Buat Penjualan Program ' + (b2bProgram ? 'B2B' : 'Public') }}</h1>
@@ -153,8 +153,6 @@ function status(kind: 'finalkan') { return confirmation.form(transition, 'post',
                         <label v-else>Master Program<select v-model="form.id_master_program" required :disabled="!!program.id" @change="source"><option value="">— Pilih Master Program Final —</option><option v-for="m in masters" :key="m.id" :value="m.id">{{ m.nomor }} · {{ m.judul }}</option></select></label>
                         <label v-if="form.jenis === 'b2b'">Company<select v-model="form.id_customer" required><option value="">— Pilih Company aktif —</option><option v-for="c in companies" :key="c.id_customer" :value="c.id_customer">{{ c.name_customer }}</option></select></label>
                         <p v-if="multi" class="hint span3 mp-aktif-note">Tanggal, Jam Pembelajaran, trainer, dan asisten di bawah milik <b>{{ activeLabel }}</b>. Pilih Master Program lain di tabel untuk mengisi jadwalnya.</p>
-                    </div>
-                    <div class="grid3 schedule-grid">
                         <label>Tanggal mulai<input v-model="form.tgl_mulai" type="date" required /></label>
                         <label>Tanggal selesai<input v-model="form.tgl_selesai" type="date" :min="form.tgl_mulai" required /><small class="hint">durasi = selesai − mulai + 1 hari</small></label>
                         <label>Waktu<input v-model="form.waktu" maxlength="50" placeholder="mis. 09.00–15.15 WIB" /><small class="hint">Jam pelaksanaan; tercetak di Penawaran &amp; Formulir Konfirmasi</small></label>
@@ -258,7 +256,6 @@ details:not([open]) > summary .step-sum { display: inline; }
 .span3 { grid-column: 1 / -1; }
 .field-label, .sales-form label { font-size: 13px; font-weight: 600; }
 .static { min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
-.schedule-grid { margin-top: 16px; }
 .input-unit { display: flex; align-items: center; gap: 8px; }
 .input-unit input { flex: 1; min-width: 0; }
 .unit { color: var(--ink-70); font-weight: 500; }
