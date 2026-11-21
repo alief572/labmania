@@ -27,10 +27,12 @@ function keys(event: KeyboardEvent) {
         <div ref="box" class="dialog" :class="size" role="dialog" aria-modal="true" :aria-label="props.title" @keydown="keys">
             <header class="dialog-head"><h2>{{ title }}</h2><TutorialButton v-if="tutorial" :tutorial="tutorial" /><button type="button" class="dialog-close" aria-label="Tutup dialog" @click="close">×</button></header>
             <div class="dialog-body"><slot /></div>
+            <slot name="footer">
             <div class="form-actions dialog-foot">
                 <button type="button" @click="close">{{ info ? 'Tutup' : 'Batal' }}</button>
                 <button v-if="!info" type="button" class="primary" :class="{ danger }" :disabled="busy" @click="emit('confirm')">{{ busy ? 'Memproses…' : (confirmLabel || 'Simpan') }}</button>
             </div>
+            </slot>
         </div>
     </div>
     </Teleport>

@@ -205,8 +205,8 @@ class QuotationController extends Controller
             $form['nomor'] = Sales::display($q);
         }
 
-        return Inertia::render('Quotation/Form', ['quotation' => $form, 'programs' => array_values($programs),
-            'companies' => DB::table('master_customer')->whereIn('activation', ['aktif', 'active', '1'])->get(['id_customer', 'name_customer', 'pic_name', 'address_office', 'kota']),
+        $props = ['quotation' => $form, 'programs' => array_values($programs),
+            'companies' => DB::table('master_customer')->whereIn('activation', ['aktif', 'active', '1'])->get(['id_customer', 'name_customer', 'pic_name', 'address_office', 'kota', 'perlakuan_ppn']),
             'sales' => DB::table('ms_user_karyawan')->where('aktif', 1)->get(['id', 'nama']), 'templates' => $templates, 'fields' => TemplateController::KF_FIELDS,
             'keteranganOptions' => DB::table('ms_template_keterangan')->where('aktif', 1)->orderBy('id')->get(),
             'peserta' => $q ? Quotation::participantDocuments(DB::table('quotation_peserta')->where('id_quotation', $q->id)->get()) : [],
@@ -218,7 +218,9 @@ class QuotationController extends Controller
             'salesOrder' => $q ? DB::table('sales_order')->where('id_quotation', $q->id)->orderByRaw("CASE WHEN status = 'batal' THEN 1 ELSE 0 END")->orderByDesc('id')->first(['id', 'nomor', 'revisi', 'status']) : null,
             'redeal' => $q ? Quotation::redealMarker($q) : null, 'needsRedeal' => $q ? Quotation::needsRedeal($q) : false, 'hasDocuments' => $q ? DB::table('quotation_dokumen')->where('id_quotation', $q->id)->exists() : false,
             'quotaOther' => $p ? DB::table('quotation')->where('id_penjualan', $p->id)->where('status', '!=', 'batal')->when($q, fn ($w) => $w->where('id', '!=', $q->id))->sum('kuota_peserta') : 0,
-            'can' => ['edit' => (! $p || ! $p->closed_date) && Gate::allows('menu', [self::MENU, $q ? 'Manage' : 'Add']), 'cancel' => $p && ! $p->closed_date && Gate::allows('menu', [self::MENU, 'Delete'])]]);
+            'can' => ['edit' => (! $p || ! $p->closed_date) && Gate::allows('menu', [self::MENU, $q ? 'Manage' : 'Add']), 'cancel' => $p && ! $p->closed_date && Gate::allows('menu', [self::MENU, 'Delete'])]];
+
+        return ! $q && request()->expectsJson() ? response()->json($props) : Inertia::render('Quotation/Form', $props);
     }
 
     private function validated(Request $r, object $p, ?object $old = null): array
@@ -356,7 +358,7 @@ class QuotationController extends Controller
 
     public function preview(Request $r)
     {
-        $r->validate(['id' => 'nullable|integer', 'id_penjualan' => 'required|integer']);
+        $r->validate(['id' => 'nullable|integer', 'id_penjualan' => 'required|integer', 'preview_document' => 'nullable|in:offer,confirmation']);
         $id = $r->integer('id') ?: null;
         Gate::authorize('menu', [self::MENU, $id ? 'Manage' : 'Add']);
         $old = $id ? Quotation::row($id) : null;
@@ -366,7 +368,10 @@ class QuotationController extends Controller
         $p = Sales::program($old?->id_penjualan ?? $r->integer('id_penjualan'));
         [$data, $details, $termin] = $this->validated($r, $p, $old);
 
-        return QuotationPdf::response(QuotationPdf::offer((object) ($data + ['id' => null, 'nomor' => $old?->nomor ?? 'Preview — belum disimpan', 'status' => 'draft', 'link_token' => null]), $p, $details, array_map(fn ($t) => (object) $t, $termin)), 'Preview-Quotation.pdf');
+        $document = $r->input('preview_document');
+        $content = QuotationPdf::offer((object) ($data + ['id' => null, 'nomor' => $old?->nomor ?? 'Preview — belum disimpan', 'status' => 'draft', 'link_token' => null]), $p, $details, array_map(fn ($t) => (object) $t, $termin), $document);
+
+        return $document ? response()->json(['document' => $content])->header('Cache-Control', 'private, no-store') : QuotationPdf::response($content, 'Preview-Quotation.pdf');
     }
 
     public function pdf(int $id)

@@ -9,7 +9,7 @@ import 'datatables.net-dt/css/dataTables.dataTables.css';
 import { lastTablePage, tableError, tableQuery } from '../composables/serverTable';
 
 DataTable.use(DataTablesCore);
-const props = defineProps<{ url: string; label: string; columns: { title: string; orderable: boolean; className?: string }[]; filters?: Record<string, string | number>; refreshOnVisit?: boolean; keyword?: string }>();
+const props = defineProps<{ url: string; label: string; columns: { title: string; orderable: boolean; className?: string; visible?: boolean }[]; filters?: Record<string, string | number>; refreshOnVisit?: boolean; keyword?: string }>();
 const emit = defineEmits<{ loaded: [result: { recordsTotal: number; recordsFiltered: number; data?: unknown[]; meta?: Record<string, unknown> }] }>();
 const instance = shallowRef<{ dt?: Api } | null>(null);
 const error = ref('');

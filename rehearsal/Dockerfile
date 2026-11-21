@@ -23,3 +23,4 @@ RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts \
     && chown -R www-data:www-data storage bootstrap/cache
 COPY --from=frontend /build/public/build ./public/build
 COPY rehearsal/apache.conf /etc/apache2/sites-available/000-default.conf
+COPY rehearsal/uploads.ini /usr/local/etc/php/conf.d/zz-labmania-uploads.ini

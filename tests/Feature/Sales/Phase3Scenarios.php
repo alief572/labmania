@@ -375,6 +375,110 @@ trait Phase3Scenarios
         $this->getJson('/quotation/batch/'.$p.'/pdf')->assertUnprocessable();
     }
 
+    public function test_draft_document_previews_are_readonly_and_escape_current_fields(): void
+    {
+        $this->login($this->admin());
+        $p = $this->program();
+        $in = $this->quotePayload($p, ['kepada_nama' => '<script>alert(1)</script>',
+            'konfirmasi_isian' => ['nama', 'email', 'Isian tambahan uji'],
+            'konfirmasi_pernyataan' => '**{judul}** <script>alert(2)</script>']);
+        $counts = [DB::table('quotation')->count(), DB::table('logs')->count()];
+        $offer = $this->postJson('/quotation/preview', $in + ['preview_document' => 'offer'])->assertOk()->json('document');
+        $this->assertSame(3, substr_count($offer, '<section class="page"'));
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $offer);
+        $this->assertStringContainsString('SYARAT &amp; KETENTUAN', $offer);
+        $this->assertStringNotContainsString('<script>', $offer);
+        $letter = $this->postJson('/quotation/preview', $in + ['preview_document' => 'confirmation'])->assertOk()->json('document');
+        $this->assertSame(1, substr_count($letter, '<section class="page"'));
+        $this->assertStringContainsString('Konfirmasi Keikutsertaan Peserta', $letter);
+        $this->assertStringContainsString('Isian tambahan uji', $letter);
+        $this->assertStringNotContainsString('NIK', $letter);
+        $this->assertStringContainsString('&lt;script&gt;alert(2)&lt;/script&gt;', $letter);
+        $this->assertStringContainsString('<b>'.e(Sales::title($this->master)).'</b>', $letter);
+        $this->assertStringNotContainsString('<script>', $letter);
+        $this->assertSame($counts, [DB::table('quotation')->count(), DB::table('logs')->count()]);
+        $this->postJson('/quotation/preview', $in + ['preview_document' => 'invalid'])->assertUnprocessable();
+        $invalid = $in;
+        $invalid['id_sales'] = 0;
+        $this->postJson('/quotation/preview', $invalid + ['preview_document' => 'offer'])->assertUnprocessable();
+
+        $b2b = $this->program(true);
+        $company = $this->quotePayload($b2b, ['tujuan' => 'company', 'id_customer' => 'CO-001', 'kuota_peserta' => 10,
+            'harga_allin' => 10000000, 'kolom_peserta_b2b' => ['email', 'nik']]);
+        $counts = [DB::table('quotation')->count(), DB::table('logs')->count()];
+        $letter = $this->postJson('/quotation/preview', $company + ['preview_document' => 'confirmation'])->assertOk()->json('document');
+        $this->assertSame(2, substr_count($letter, '<section class="page"'));
+        $this->assertStringContainsString('Konfirmasi Keikutsertaan Perusahaan', $letter);
+        $this->assertStringContainsString('Lampiran: Daftar Peserta', $letter);
+        $this->assertStringContainsString('<th>Email</th><th>NIK</th>', $letter);
+        $this->assertSame($counts, [DB::table('quotation')->count(), DB::table('logs')->count()]);
+        $this->login($this->account('document-preview-denied'));
+        $this->postJson('/quotation/preview', $in + ['preview_document' => 'offer'])->assertForbidden();
+    }
+
+    public function test_create_quotation_modal_loads_defaults_and_preserves_access_checks(): void
+    {
+        $this->login($this->admin());
+        $id = $this->program();
+        $url = '/quotation/create?id_penjualan='.$id;
+        $this->getJson($url)->assertOk()->assertJsonPath('quotation.id', null)
+            ->assertJsonPath('quotation.id_penjualan', $id)->assertJsonPath('can.edit', true)
+            ->assertJsonStructure(['programs', 'companies', 'sales', 'templates', 'fields', 'keteranganOptions']);
+        $this->get('/quotation/create')->assertOk();
+        $this->getJson('/quotation/create?id_penjualan=invalid')->assertUnprocessable();
+        $this->login($this->account('create-denied'));
+        $this->getJson($url)->assertForbidden();
+    }
+
+    public function test_batch_pdf_merges_uploaded_pdf_and_image_and_reports_missing_letter(): void
+    {
+        $this->login($this->admin());
+        $q = $this->quote($p = $this->program());
+        $letter = \App\Support\QuotationPdf::document('Surat uji', '<p>Surat konfirmasi sintetis untuk tes.</p>');
+        $pdf = \App\Support\QuotationFiles::store(UploadedFile::fake()->createWithContent('surat.pdf', $letter));
+        $image = \App\Support\QuotationFiles::store($this->letter());
+        $id = $this->participant($q, ['surat_konfirmasi' => $pdf['path'], 'surat_konfirmasi_nama' => 'surat.pdf']);
+        $this->participant($q, ['status' => 'deal', 'surat_konfirmasi' => $image['path'], 'surat_konfirmasi_nama' => 'surat.png']);
+        $this->participant($q, ['status' => 'batal']);
+        $url = '/quotation/batch/'.$p.'/pdf';
+        $bytes = $this->get($url)->assertOk()->assertHeader('Content-Type', 'application/pdf')->getContent();
+        $this->assertStringStartsWith('%PDF-', $bytes);
+        $reader = new \Mpdf\Mpdf(['tempDir' => storage_path('app/mpdf')]);
+        $this->assertSame(3, $reader->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString($bytes)));
+        $this->assertDatabaseHas('logs', ['action' => 'Export PDF', 'ref_table' => 'penjualan_program', 'ref_id' => $p]);
+        DB::table('quotation_peserta')->where('id', $id)->update(['surat_konfirmasi' => null]);
+        $error = $this->getJson($url)->assertUnprocessable()->json('errors.pdf.0');
+        $this->assertStringContainsString('peserta #'.$id, $error);
+        $this->assertStringContainsString($q->nomor, $error);
+        $this->login($this->account('pdf-denied'));
+        $this->getJson($url)->assertForbidden();
+    }
+
+    public function test_deal_accepts_multiple_documents_and_rejects_invalid_uploads(): void
+    {
+        $this->login($this->admin());
+        $q = $this->quote($this->program());
+        DB::table('quotation')->where('id', $q->id)->update(['status' => 'terkirim']);
+        $pid = $this->participant($q);
+        $url = '/quotation/'.$q->id.'/deal';
+        foreach ([
+            [[UploadedFile::fake()->create('besar.pdf', 5121, 'application/pdf')], 'dokumen.0'],
+            [[UploadedFile::fake()->createWithContent('script.exe', 'tidak diizinkan')], 'dokumen.0'],
+            [array_fill(0, 21, $this->letter()), 'dokumen'],
+        ] as [$files, $field]) {
+            $this->post($url, ['peserta' => [$pid], 'dokumen' => $files])->assertSessionHasErrors($field);
+            $this->assertDatabaseHas('quotation', ['id' => $q->id, 'status' => 'terkirim']);
+            $this->assertDatabaseCount('quotation_dokumen', 0);
+        }
+        $pdf = \App\Support\QuotationPdf::document('PO sintetis', '<p>Dokumen uji.</p>');
+        $this->post($url, ['peserta' => [$pid], 'dokumen' => [
+            UploadedFile::fake()->createWithContent('PO.pdf', $pdf), $this->letter(),
+        ]])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('quotation_dokumen', 2);
+        $this->assertDatabaseHas('quotation', ['id' => $q->id, 'status' => 'deal']);
+        $this->assertCount(2, File::allFiles($this->documents));
+    }
+
     public function test_after_deal_documents_append_and_closed_blocks_upload_without_orphans(): void
     {
         $this->login($this->admin());

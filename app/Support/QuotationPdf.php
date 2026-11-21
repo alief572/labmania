@@ -68,7 +68,7 @@ class QuotationPdf
         }
     }
 
-    public static function offer(object $q, object $p, ?array $details = null, ?array $termin = null): string
+    public static function offer(object $q, object $p, ?array $details = null, ?array $termin = null, ?string $previewDocument = null): string
     {
         $data = self::enrich($q, $p);
         $data['termin'] = $termin ?? Quotation::termin($q);
@@ -79,7 +79,9 @@ class QuotationPdf
         $data['calc']['diskon'] = $q->diskon;
         $level = error_reporting();
         try {
-            return (new self)->render($data);
+            $layout = new self;
+
+            return $previewDocument ? $layout->draftPreview($data, $previewDocument) : $layout->render($data);
         } finally {
             error_reporting($level);
         }
@@ -129,12 +131,12 @@ class QuotationPdf
         $level = error_reporting();
         try {
             $m = $layout->mulai('Data Peserta '.$p->nomor);
-            $html = '<h2>Daftar Peserta</h2><p>'.$layout->e($p->nomor.' · '.Sales::title($p->id_master_program)).'</p><table class="tbl participant-list"><thead><tr><th>No</th><th>Nama Lengkap</th><th>Instansi</th><th>Kontak</th><th>Quotation</th><th>Status</th></tr></thead><tbody>';
+            $html = '<h2 class="title">Daftar Peserta</h2><p>'.$layout->e($p->nomor.' · '.Sales::title($p->id_master_program).' · '.$layout->rentang($p->tgl_mulai, $p->tgl_selesai).' · '.$p->lokasi).'</p><table class="tbl participant-list"><thead><tr><th>No</th><th>Nama Lengkap</th><th>Instansi</th><th>Kontak</th><th>Quotation</th><th>Status</th></tr></thead><tbody>';
             foreach ($rows as $i => $r) {
                 $r->nomor_quotation = Sales::display((object) ['nomor' => $r->nomor_quotation, 'revisi' => $r->revisi]);
-                $html .= '<tr><td>'.($i + 1).'</td><td>'.$layout->e($r->nama).'</td><td>'.$layout->e($r->instansi).'</td><td>'.$layout->e(($r->no_wa ?: $r->no_hp).' '.$r->email).'</td><td>'.$layout->e($r->nomor_quotation).'</td><td>'.$layout->e($r->status).'</td></tr>';
+                $html .= '<tr><td>'.($i + 1).'</td><td>'.$layout->e($r->nama).'</td><td>'.$layout->e($r->instansi).'</td><td>'.$layout->e(($r->no_wa ?: $r->no_hp).' '.$r->email).'</td><td>'.$layout->e($r->nomor_quotation).'</td><td>'.$layout->e($r->status === 'deal' ? 'Deal' : 'Menunggu').'</td></tr>';
             }
-            $layout->page($m, $html.'</tbody></table>', $layout->foot('Data Peserta', '{PAGENO}', now()->format('d/m/Y')));
+            $layout->page($m, $html.'</tbody></table><p>'.$rows->count().' peserta. Halaman berikutnya: surat konfirmasi bertanda tangan yang diunggah peserta, urut sesuai daftar.</p>', $layout->foot('Data Peserta', '{PAGENO}', now()->format('d/m/Y')));
             $seen = [];
             foreach ($rows as $r) {
                 $relative = $r->surat_konfirmasi;
@@ -145,7 +147,7 @@ class QuotationPdf
                     $relative = DB::table('quotation_konfirmasi_company')->where('id_quotation', $r->id_quotation)->where('revisi', $r->revisi)->value('surat_konfirmasi');
                 }
                 if (! $relative) {
-                    throw ValidationException::withMessages(['pdf' => 'Surat konfirmasi peserta #'.$r->id.' belum tersedia.']);
+                    throw ValidationException::withMessages(['pdf' => 'Surat konfirmasi peserta #'.$r->id.' ('.$r->nomor_quotation.') belum tersedia.']);
                 }
                 try {
                     $path = QuotationFiles::path($relative);
@@ -441,6 +443,31 @@ class QuotationPdf
         return [$p1, $p2];
     }
 
+    private function previewPages(array $pages): string
+    {
+        return view('pdf.document-preview', ['header' => $this->kop(), 'styles' => $this->css(), 'pages' => $pages])->render();
+    }
+
+    private function draftPreview(array $q, string $document): string
+    {
+        [$pk, $sales, $tpl] = $this->extra($q);
+        if ($document === 'confirmation') {
+            if ($q['jenis_pj'] === 'b2b') {
+                return $this->surat_company($q, [], [], json_decode($q['kolom_peserta_b2b'] ?: '[]', true), true);
+            }
+
+            return $this->previewPages([['body' => $this->konfirmasi($q, [], $pk, $sales, $tpl, true),
+                'footer' => $this->foot('FR/LMI-TR-01/02/Ed.Rev-1.0', '1 dari 1', '01/08/2023')]]);
+        }
+        [$h1, $h2] = $this->snk();
+
+        return $this->previewPages([
+            ['body' => $this->penawaran($q, $pk, $sales), 'footer' => $this->foot('FR/LMI-TR-01/01/Ed.Rev-1.1', 'Halaman 1 dari 1', '01/01/2025')],
+            ['body' => $h1, 'footer' => $this->foot('DP/LMI-TR-01/01/Ed.Rev-1.1', '1 dari 2', '21/10/2024')],
+            ['body' => $h2, 'footer' => $this->foot('DP/LMI-TR-01/01/Ed.Rev-1.1', '2 dari 2', '21/10/2024')],
+        ]);
+    }
+
     public static function confirmationPreview(array $template, ?object $program, ?string $title): string
     {
         $layout = new self;
@@ -520,9 +547,9 @@ class QuotationPdf
         return $this->selesai($m);
     }
 
-    public function surat_company(array $q, array $in, array $rows, array $kolom)
+    public function surat_company(array $q, array $in, array $rows, array $kolom, bool $preview = false)
     {
-        $m = $this->mulai('Surat Konfirmasi Company '.$q['nomor']);
+        $m = $preview ? null : $this->mulai('Surat Konfirmasi Company '.$q['nomor']);
         $t = function ($k) use ($in) {
             return trim((string) ($in[$k] ?? ''));
         };
@@ -540,14 +567,16 @@ class QuotationPdf
         }
         $tbl .= '</table>';
         $hal1 = '<div class="title">Konfirmasi Keikutsertaan Perusahaan (In-House)</div><div style="text-align:center;" class="small">Quotation '.$this->e($q['nomor']).' · '.$this->e($q['nama_paket'] ?? '').'</div><br>'.$tbl.'<br>'
-            .'<p>Dengan ini menyatakan:</p><ol class="small"><li>Mengikutsertakan <b>'.count($peserta).' peserta</b> (daftar terlampir) pada kegiatan <b>'.$this->e($q['nama_paket'] ?? '').'</b> tanggal '.$this->e($rg)
+            .'<p>Dengan ini menyatakan:</p><ol class="small"><li>Mengikutsertakan <b>'.($preview ? '..........' : count($peserta)).' peserta</b> (daftar terlampir) pada kegiatan <b>'.$this->e($q['nama_paket'] ?? '').'</b> tanggal '.$this->e($rg)
             .', pukul '.$this->e(($q['waktu'] ?? '') !== '' ? $q['waktu'] : '..........').', '.(int) $q['durasi_hari'].' hari, di '.$this->e(($q['lokasi'] ?? '') !== '' ? $q['lokasi'] : '—').'.</li>'
             .'<li>Telah <b><u>membaca</u></b> dan <b><u>menyetujui</u></b> syarat &amp; ketentuan LabMania, termasuk ketentuan biaya peserta di atas '.$maks.' orang sesuai quotation.</li></ol><br>'
             .'<div style="text-align:right;">..........., '.$this->e($this->tgl(today()->toDateString())).'<br>Hormat kami,<br><br><br><br><br>'.$this->e($t('pic_nama')).'<br><b>Jabatan:</b> '.$this->e($t('pic_jabatan')).'<br><span class="mut">tanda tangan dan cap perusahaan</span></div><br>'
             .'<div class="small"><b><u>Catatan :</u></b><ul><li>Nama lengkap pada lampiran menjadi acuan penulisan di sertifikat.</li>'
             .'<li>Harga paket mencakup s.d. '.$maks.' peserta; peserta ke-'.($maks + 1).' dan seterusnya dikenakan tambahan '.$this->rp($tarif).'/orang.</li>'
             .'<li>Perubahan daftar peserta hubungi sales quotation: '.$this->e($sales['nm_lengkap'] ?? '—').', '.$this->e($sales['email'] ?? '—').', '.$this->e($sales['telp'] ?? '—').'.</li></ul></div>';
-        $this->page($m, $hal1, $this->foot('[kode dokumen menyusul]', '{PAGENO} dari {nbpg}', '—'));
+        if (! $preview) {
+            $this->page($m, $hal1, $this->foot('[kode dokumen menyusul]', '{PAGENO} dari {nbpg}', '—'));
+        }
 
         $lab = ['jabatan' => 'Jabatan', 'email' => 'Email', 'wa' => 'WhatsApp', 'nik' => 'NIK'];
         $head = '<th width="8%">No</th><th>Nama Lengkap</th>';
@@ -564,6 +593,12 @@ class QuotationPdf
         }
         $hal2 = '<div class="title">Lampiran: Daftar Peserta</div><div style="text-align:center;" class="small">'.$this->e($t('nama_perusahaan')).' · '.$this->e($q['nomor']).' · '.$this->e($q['nama_paket'] ?? '').' · '.$this->e($rg).'</div><br>'
             .'<table class="tbl participant-list"><thead><tr>'.$head.'</tr></thead><tbody>'.$body.'</tbody></table>';
+        if ($preview) {
+            return $this->previewPages([
+                ['body' => $hal1, 'footer' => $this->foot('[kode dokumen menyusul]', '1 dari 2', '—')],
+                ['body' => $hal2, 'footer' => $this->foot('[kode dokumen menyusul]', '2 dari 2', '—')],
+            ]);
+        }
         $this->page($m, $hal2, $this->foot('[kode dokumen menyusul]', '{PAGENO} dari {nbpg}', '—'));
 
         return $this->selesai($m);
