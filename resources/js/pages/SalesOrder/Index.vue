@@ -3,12 +3,14 @@ import { appUrl } from '../../composables/appUrl';
 import PageHead from '../../components/PageHead.vue';
 import ServerTable from '../../components/ServerTable.vue';
 import ActionMenu from "../../components/ActionMenu.vue";
-import { onBeforeUnmount, reactive, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, reactive, watch } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import { money, type PageRows, type Program } from '../../types/salesOrder';
 type Row = Program & { judul: string; jumlah_so: number; peserta_deal: number; nilai_so: string; statuses: Record<string, number>; program_nomor?: string; status?: string; tanggal?: string; facts?: { judul: string; program: Program; trainer: { nama: string; bidang_keahlian: string }; asisten: { nama: string } } | null };
 const props = defineProps<{ rows: PageRows<Row>; filters: Record<string, string>; tab: string; counts: { so: number; batal: number; surat: number }; years?: number[] }>();
+const page = usePage();
+const canViewHistory = computed(() => ((page.props.permissions as Record<string, string[]>)?.penjualan_program ?? []).includes('View'));
 const f = reactive({ q: '', jenis: '', tahun: '', bulan: '', ...props.filters, tab: props.tab });
 // Filter langsung berlaku (mockup tanpa tombol Terapkan); kata kunci ditunda 300 ms.
 const search = () => router.get(appUrl('/sales-order'), Object.fromEntries(Object.entries(f).filter(([k, v]) => v !== '' && v !== null && !(k === 'tab' && v === 'so'))), { preserveState: true, preserveScroll: true, replace: true });
@@ -46,7 +48,7 @@ const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => 
                 <template #cell-2="{ row: p }"><b>{{ p.jumlah_so }}</b> SO<small>{{ statusText(p) }}</small></template>
                 <template #cell-3="{ row: p }">{{ p.peserta_deal }}</template>
                 <template #cell-4="{ row: p }">{{ money(p.nilai_so) }}</template>
-                <template #cell-5="{ row: p }"><ActionMenu><Link data-tour-next="soProg" :href="appUrl(`/sales-order/program/${p.id}`)">Lihat SO</Link></ActionMenu></template>
+                <template #cell-5="{ row: p }"><ActionMenu><Link data-tour-next="soProg" :href="appUrl(`/sales-order/program/${p.id}`)">Lihat SO</Link><a v-if="canViewHistory" :href="appUrl(`/penjualan-program/${p.id}/reschedule#riwayat-reschedule`)">Lihat riwayat</a></ActionMenu></template>
             </ServerTable>
             <ServerTable :keyword="filters.q || ''" v-else-if="tab === 'batal'" :url="appUrl('/sales-order/data')" label="SO Batal" :columns='[{"title":"No","orderable":false},{"title":"Nomor SO","orderable":true},{"title":"Quotation","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Dibatalkan","orderable":true},{"title":"Saat batal","orderable":false,"className":"dt-body-right"},{"title":"Diganti oleh","orderable":false},{"title":"Action","orderable":false}]'>
                 <template #cell-0="{ number }">{{ number }}</template>

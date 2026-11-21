@@ -1,0 +1,32 @@
+﻿import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { parse, compileScript } from '@vue/compiler-sfc';
+import ts from 'typescript';
+import { createRenderer, reactive } from 'vue';
+const file = new URL('../../resources/js/pages/SalesOrder/Index.vue', import.meta.url);
+const source = readFileSync(file, 'utf8');
+let code = ts.transpileModule(compileScript(parse(source).descriptor, { id: 'so-history' }).content, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 } }).outputText;
+code = code.replace(/import (\w+) from ['"][^'"]+\.vue['"];?/g, (_, name) => `const ${name}={};`);
+code = code.replace(/import \{ Head, Link, router, usePage \} from ['"]@inertiajs\/vue3['"];?/, 'const Head={}, Link={}, router={}; const usePage=()=>globalThis.__salesHistoryPage;');
+code = code.replace(/from (['"])([^'"]+)\1/g, (_, quote, path) => `from '${path.startsWith('.') ? new URL(path + '.ts', file).href : import.meta.resolve(path)}'`);
+const component = (await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)).default;
+component.render = () => null;
+const renderer = createRenderer({ patchProp() {}, insert() {}, remove() {}, createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {}, parentNode: () => null, nextSibling: () => null });
+globalThis.__salesHistoryPage = reactive({ props: { permissions: { sales_order: ['View'] } } });
+const app = renderer.createApp(component, { rows: { data: [] }, filters: {}, tab: 'so', counts: { so: 0, batal: 0, surat: 0 } });
+try {
+    const s = app.mount({}).$.setupState;
+    assert.equal(s.canViewHistory, false);
+    globalThis.__salesHistoryPage.props.permissions.penjualan_program = ['Manage'];
+    assert.equal(s.canViewHistory, false);
+    globalThis.__salesHistoryPage.props.permissions.penjualan_program = ['View'];
+    assert.equal(s.canViewHistory, true);
+    delete globalThis.__salesHistoryPage.props.permissions.penjualan_program;
+    assert.equal(s.canViewHistory, false);
+} finally { app.unmount(); delete globalThis.__salesHistoryPage; }
+assert.ok(source.includes('v-if="canViewHistory" :href="appUrl(`/penjualan-program/${p.id}/reschedule#riwayat-reschedule`)"'));
+const detail = readFileSync(new URL('../../resources/js/pages/SalesOrder/Show.vue', import.meta.url), 'utf8');
+assert.ok(detail.includes('v-if="allowed(\'penjualan_program\')" class="btn btn-outline" :href="appUrl(`/penjualan-program/${program.id}/reschedule#riwayat-reschedule`)"'));
+const target = readFileSync(new URL('../../resources/js/pages/Sales/Reschedule.vue', import.meta.url), 'utf8');
+assert.match(target, /id="riwayat-reschedule" class="panel rs-history" tabindex="-1"/);
+console.log('Sales Order history: gate View, identitas program dan target anchor riwayat lulus.');
