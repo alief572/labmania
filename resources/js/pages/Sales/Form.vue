@@ -156,7 +156,7 @@ function status(kind: 'finalkan') { return confirmation.form(transition, 'post',
                         <label>Tanggal mulai<input v-model="form.tgl_mulai" type="date" required /></label>
                         <label>Tanggal selesai<input v-model="form.tgl_selesai" type="date" :min="form.tgl_mulai" required /><small class="hint">durasi = selesai − mulai + 1 hari</small></label>
                         <label>Waktu<input v-model="form.waktu" maxlength="50" placeholder="mis. 09.00–15.15 WIB" /><small class="hint">Jam pelaksanaan; tercetak di Penawaran &amp; Formulir Konfirmasi</small></label>
-                        <label>Jam Pembelajaran<div class="input-unit"><input v-model="form.jam_pembelajaran" type="number" min="1" aria-label="Jam Pembelajaran" placeholder="mis. 16" /><span class="unit">JP</span></div></label>
+                        <label>Jam Pembelajaran<div class="input-unit"><input v-model="form.jam_pembelajaran" type="number" min="1" required aria-label="Jam Pembelajaran" placeholder="mis. 16" /><span class="unit">JP</span></div></label>
                         <label>Lokasi acara<input v-model="form.lokasi" maxlength="150" placeholder="mis. Offline Bekasi" /></label>
                         <label>Trainer<select v-model="form.id_trainer" required><option value="">— Pilih trainer aktif —</option><option v-for="t in trainers" :key="t.id" :value="t.id">{{ t.nama }}</option></select></label>
                         <label>Asisten trainer<select v-model="form.id_asisten" required><option value="">— Pilih asisten aktif —</option><option v-for="a in assistants" :key="a.id" :value="a.id">{{ a.nama }}{{ a.role ? ' · ' + a.role : '' }}</option></select></label>
