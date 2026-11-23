@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { appUrl } from '../../composables/appUrl';
+import FileLink from '../../components/FileLink.vue';
 import { computed, reactive, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
@@ -71,7 +72,7 @@ function save(){if(multi.value)(form as unknown as {masters:unknown}).masters=ch
 <td v-if="h.rincian?.length"><small v-for="d in h.rincian" :key="d.master_nomor"><span class="code">{{d.master_nomor}}</span> {{fmt(d.tgl_mulai_baru)}} – {{fmt(d.tgl_selesai_baru)}} · {{d.trainer_baru||'—'}} · {{d.asisten_baru||'—'}}</small></td>
 <td v-else>{{fmt(h.tgl_mulai_baru)}} – {{fmt(h.tgl_selesai_baru)}}<small>{{h.team?.trainer_baru||`Trainer ID ${h.id_trainer_baru}`}} · {{h.team?.asisten_baru||`Asisten ID ${h.id_asisten_baru}`}}</small></td>
 <td>{{h.alasan}}</td>
-<td><ul v-if="h.evidence.length" class="rs-history-evidence"><li v-for="f in h.evidence" :key="f.id"><a :href="appUrl(`/documents/reschedule/${f.id}`)">{{f.nama_file}}</a></li></ul><span v-else class="muted">—</span></td>
+<td><ul v-if="h.evidence.length" class="rs-history-evidence"><li v-for="f in h.evidence" :key="f.id"><FileLink :href="`/documents/reschedule/${f.id}`" :name="f.nama_file" /></li></ul><span v-else class="muted">—</span></td>
 <td><small v-for="q in h.revisions" :key="q.id">Quotation #{{q.id_quotation}} versi {{q.revisi}} tersimpan</small><small v-if="h.surat_baru">Surat Tugas #{{h.surat_lama}} diganti #{{h.surat_baru}}</small><a :href="appUrl(`/penjualan-program/${program.id}/reschedule/${h.id}/pdf`)" target="_blank" rel="noopener">PDF program sebelum perubahan</a></td></tr>
 </tbody></table></div></section>
 </AppLayout>

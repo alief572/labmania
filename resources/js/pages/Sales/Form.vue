@@ -75,6 +75,21 @@ const programResult = computed(() => {
     return { fixed, varPer, totalVar, hpp, pendapatan, profit, bep: kontribusi > 0 ? Math.max(1, Math.ceil(Math.round((fixed / kontribusi) * 1e6) / 1e6)) : null, hppPerPax: n > 0 ? hpp / n : 0, margin: pendapatan > 0 ? Math.round((profit / pendapatan) * 1000) / 10 : 0, price };
 });
 const programTarget = computed(() => liveParts.value.reduce((t, p) => t + rupiahInput(p.target_profit), 0));
+// Summary Nilai Program [SNP] (PJ-FR-35): hanya tampilan, memakai hitungan per Master Program yang sama dengan PJ-FR-32.
+const summaryRows = computed(() => liveParts.value.map((p) => {
+    const c = partCalc(p), tp = p.target_profit === '' || p.target_profit == null ? null : rupiahInput(p.target_profit);
+    return { p, c, harga: rupiahInput(p.harga_jual_peserta), tp };
+}));
+const summaryTotal = computed(() => {
+    const r = summaryRows.value, sum = (f: (x: (typeof r)[number]) => number) => r.reduce((t, x) => t + f(x), 0);
+    return { harga: sum((x) => x.harga), fixed: sum((x) => x.c.fixed), totalVar: sum((x) => x.c.totalVar), hpp: sum((x) => x.c.hpp), pendapatan: sum((x) => x.c.pendapatan), profit: sum((x) => x.c.profit), tp: r.some((x) => x.tp != null) ? sum((x) => x.tp ?? 0) : null };
+});
+const summarySchedule = computed(() => {
+    const mulai = liveParts.value.map((p) => p.tgl_mulai).filter(Boolean).sort(), selesai = liveParts.value.map((p) => p.tgl_selesai).filter(Boolean).sort();
+    return { mulai: mulai[0] ?? '', selesai: selesai[selesai.length - 1] ?? '', jp: liveParts.value.reduce((t, p) => t + (Number(p.jam_pembelajaran) || 0), 0) };
+});
+const margin = (profit: number, pendapatan: number) => (pendapatan > 0 ? `${(profit / pendapatan * 100).toFixed(1).replace('.', ',')}%` : '—');
+const partRange = (p: Part) => (p.tgl_mulai ? `${p.tgl_mulai} – ${p.tgl_selesai || '…'}` : '');
 const days = computed(() => Math.max(1, (Date.parse(form.tgl_selesai) - Date.parse(form.tgl_mulai)) / 86400000 + 1 || 1));
 const result = computed(() => calc(days.value, form.target_peserta, rupiahInput(form.harga_jual_peserta), form.biaya.map((b) => ({ ...b, harga: rupiahInput(b.harga), satuan: b.nama_satuan }))));
 const activeLabel = computed(() => (multi.value ? (masterById(form.id_master_program)?.nomor ?? '') : ''));
@@ -219,6 +234,40 @@ function status(kind: 'finalkan') { return confirmation.form(transition, 'post',
                     <p v-if="(multi ? programResult : result).profit < 0 || ((multi ? programResult : result).bep ?? Infinity) > Number(form.target_peserta)" class="notice">Target belum mencapai titik impas.</p>
                 </div>
             </details>
+
+            <details v-if="multi" class="csec step" open>
+                <summary id="sales-summary" class="csec-h">5. Summary Nilai Program<span class="step-sum">Profit program {{ rupiah(programResult.profit) }}</span></summary>
+                <div class="step-body">
+                    <p class="hint">Gabungan {{ parts.length }} Master Program: rincian per Master Program dan simulasi nilai program.</p>
+                    <dl class="sum-head">
+                        <div><dt>Jadwal program</dt><dd>{{ summarySchedule.mulai ? `${summarySchedule.mulai} – ${summarySchedule.selesai || '…'}` : '—' }} · {{ summarySchedule.jp }} JP</dd></div>
+                        <div><dt>Target peserta</dt><dd>{{ form.target_peserta }} peserta <span class="muted">(ikut semua Master Program)</span></dd></div>
+                        <div><dt>Harga jual / peserta di quotation</dt><dd>{{ rupiah(summaryTotal.harga) }}</dd></div>
+                    </dl>
+                    <div class="table-wrap">
+                        <table class="pj-sum">
+                            <caption class="sr-only">Rincian nilai per Master Program</caption>
+                            <thead><tr><th>Master Program</th><th>Jadwal</th><th class="money">Harga jual / peserta</th><th class="money">Fixed Cost</th><th class="money">Variable Cost</th><th class="money">HPP</th><th class="money">Pendapatan</th><th class="money">Profit</th><th class="money">Margin</th><th class="money">Target profit</th></tr></thead>
+                            <tbody>
+                                <tr v-for="r in summaryRows" :key="String(r.p.id_master_program)">
+                                    <td><span class="code">{{ masterById(r.p.id_master_program)?.nomor }}</span> {{ r.p.judul ?? masterById(r.p.id_master_program)?.judul }}</td>
+                                    <td class="nowrap"><template v-if="r.p.tgl_mulai">{{ partRange(r.p) }}</template><span v-else class="muted">—</span></td>
+                                    <td class="money">{{ rupiah(r.harga) }}</td><td class="money">{{ rupiah(r.c.fixed) }}</td><td class="money">{{ rupiah(r.c.totalVar) }}</td><td class="money">{{ rupiah(r.c.hpp) }}</td><td class="money">{{ rupiah(r.c.pendapatan) }}</td>
+                                    <td class="money" :class="{ neg: r.c.profit < 0 }">{{ rupiah(r.c.profit) }}</td><td class="money">{{ margin(r.c.profit, r.c.pendapatan) }}</td><td class="money"><template v-if="r.tp != null">{{ rupiah(r.tp) }}</template><span v-else class="muted">—</span></td>
+                                </tr>
+                            </tbody>
+                            <tfoot><tr>
+                                <th colspan="2">Total program <small>{{ parts.length }} Master Program</small></th>
+                                <td class="money"><b>{{ rupiah(summaryTotal.harga) }}</b></td><td class="money"><b>{{ rupiah(summaryTotal.fixed) }}</b></td><td class="money"><b>{{ rupiah(summaryTotal.totalVar) }}</b></td><td class="money"><b>{{ rupiah(summaryTotal.hpp) }}</b></td><td class="money"><b>{{ rupiah(summaryTotal.pendapatan) }}</b></td>
+                                <td class="money" :class="{ neg: summaryTotal.profit < 0 }"><b>{{ rupiah(summaryTotal.profit) }}</b></td><td class="money"><b>{{ margin(summaryTotal.profit, summaryTotal.pendapatan) }}</b></td><td class="money"><b>{{ summaryTotal.tp == null ? '—' : rupiah(summaryTotal.tp) }}</b></td>
+                            </tr></tfoot>
+                        </table>
+                    </div>
+                    <p class="hint">Fixed Cost dijumlah apa adanya dari tiap Master Program. Bila ada biaya yang dipakai bersama (mis. lokasi yang sama), sesuaikan nominalnya di Fixed Cost Master Program terkait (klik namanya di tabel atas).</p>
+                    <h3 class="csec-sub">Simulasi nilai program (gabungan)</h3>
+                    <CostingSimulation :result="programResult" :participants="form.target_peserta" :price="programResult.price" :target-profit="programTarget" />
+                </div>
+            </details>
             <p v-for="e in transition.errors" :key="e" class="error" role="alert">{{ e }}</p>
             <div class="form-actions page-actions">
                 <Link :href="appUrl('/penjualan-program')">{{ isNew ? 'Batal' : 'Kembali' }}</Link>
@@ -271,6 +320,13 @@ details:not([open]) > summary .step-sum { display: inline; }
 .pj-mps tr.on td { background: var(--navy-50); }
 .pj-mp-btn { display: block; width: 100%; border: 0; padding: 4px 0; background: transparent; text-align: left; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
 .pj-mps .tag { margin-top: 6px; }
+.sum-head { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 18px; margin: 0 0 14px; }
+.sum-head dt { color: var(--ink-70); font-size: 12.5px; }
+.sum-head dd { margin: 2px 0 0; font-weight: 600; }
+.pj-sum { min-width: 1100px; }
+.pj-sum .money { white-space: nowrap; text-align: right; }
+.pj-sum .nowrap { white-space: nowrap; }
+.pj-sum tfoot th, .pj-sum tfoot td { border-top: 2px solid var(--line); }
 .pj-mps-block > .pickrow { margin-top: 12px; margin-bottom: 0; }
 .table-wrap { box-shadow: none; }
 .cost-group + .cost-group { margin-top: 20px; padding-top: 0; border-top: 0; }
@@ -295,7 +351,7 @@ details:not([open]) > summary .step-sum { display: inline; }
 .totals { margin-top: 10px; font-size: 13.5px; }
 .page-actions { margin-top: 16px; }
 @media (max-width: 760px) {
-    .grid3, .grid4 { grid-template-columns: minmax(0, 1fr); }
+    .grid3, .grid4, .sum-head { grid-template-columns: minmax(0, 1fr); }
     .step-sum { width: 100%; margin-left: 26px; }
     .pickrow select { flex-basis: 100%; }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { appUrl } from '../composables/appUrl';
+import FileLink from './FileLink.vue';
 import { computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { money } from '../types/salesOrder';
@@ -66,7 +66,7 @@ const errors = (form: { errors: Record<string, string> }) => Object.values(form.
             <template v-if="refund.status === 'selesai'">
                 <p>Transfer {{ money(refund.nominal_refund || '0') }} melalui {{ refund.bank }}, {{ refund.no_rekening }}, a.n. {{ refund.atas_nama }}.</p>
                 <p v-if="refund.catatan">{{ refund.catatan }}</p>
-                <a :href="appUrl(`/documents/refund/${refund.id}`)">Unduh {{ refund.bukti_transfer_nama }}</a>
+                <FileLink :href="`/documents/refund/${refund.id}`" :name="refund.bukti_transfer_nama ?? 'bukti transfer'" />
             </template>
         </section>
         <p v-if="closed" class="notice">Program Closed; perubahan terkunci.</p>
