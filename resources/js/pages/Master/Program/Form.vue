@@ -15,7 +15,7 @@ const confirmation = useConfirmedMutation();
 const { pending: confirming } = confirmation;
 
 type Line = { id_rate: number | null; tipe: 'fixed' | 'variable'; item: string; satuan: string | null; id_satuan: number; harga: number | string; is_manual: boolean };
-type Program = { id: number | null; nomor: string | null; status: 'draft' | 'final' | 'batal'; paket: number[]; durasi_hari: number | string; jam_pembelajaran: number | string | null; target_peserta: number | string; harga_jual_peserta: number | string; target_profit: number | string; biaya: Line[] };
+type Program = { id: number | null; nomor: string | null; status: 'draft' | 'final' | 'batal'; paket: number | ''; durasi_hari: number | string; jam_pembelajaran: number | string | null; target_peserta: number | string; harga_jual_peserta: number | string; target_profit: number | string; biaya: Line[] };
 type Product = { id: number; nomor: string; judul: string; aktif: number; produk: string | null; bidang: string | null; varian: string | null; sertifikat: string | null };
 type Rate = { id: number; tipe: 'fixed' | 'variable'; item: string; id_satuan: number; default_cost: string | number; aktif: number; nama_satuan: string | null };
 const props = defineProps<{ program: Program; products: Product[]; rates: Rate[]; satuan: { fixed: Record<string, number>; variable: Record<string, number> }; can: { edit: boolean; approve: boolean; cancel: boolean } }>();
@@ -23,7 +23,7 @@ const props = defineProps<{ program: Program; products: Product[]; rates: Rate[]
 const draft = props.program.status === 'draft';
 const editable = draft && props.can.edit;
 const form = useForm({
-    paket: [...props.program.paket] as (number | '')[], durasi_hari: props.program.durasi_hari as number | string, jam_pembelajaran: (props.program.jam_pembelajaran ?? '') as number | string,
+    paket: props.program.paket as number | '', durasi_hari: props.program.durasi_hari as number | string, jam_pembelajaran: (props.program.jam_pembelajaran ?? '') as number | string,
     target_peserta: props.program.target_peserta as number | string, harga_jual_peserta: props.program.harga_jual_peserta as number | string, target_profit: props.program.target_profit as number | string,
     biaya: props.program.biaya.map((b) => ({ ...b })) as Line[],
 });
@@ -44,7 +44,6 @@ function addRate(g: (typeof groups)[number]) {
     pick.value[g.title] = '';
 }
 const addManual = (g: (typeof groups)[number]) => form.biaya.push({ id_rate: null, tipe: g.tipe, item: '', satuan: g.satuan, id_satuan: props.satuan[g.tipe][g.satuan], harga: '', is_manual: true });
-const productsLeft = computed(() => props.products.filter((p) => p.aktif || props.program.paket.includes(p.id)));
 function save() {
     return confirmation.form(form, props.program.id ? 'put' : 'post', props.program.id ? `/program/${props.program.id}` : '/program',
         { title: 'Simpan Draft Master Program?', text: props.program.nomor || 'Nomor dibuat otomatis saat disimpan.' }, { preserveScroll: true });
@@ -64,10 +63,8 @@ const statusLabel = { draft: 'Draft', final: 'Final', batal: 'Batal' } as const;
 const { ask, busy, error: transitionError } = useProgramTransition(confirmation);
 const isNew = !props.program.id;
 const back = () => router.get(appUrl('/program'));
-// Product terpilih sebagai daftar bernomor + satu pilihan "+ Tambah Product aktif…" (mockup bagian 1).
-const chosen = computed(() => form.paket.map((id) => props.products.find((p) => p.id === id)).filter((p): p is Product => !!p));
-const addable = computed(() => props.products.filter((p) => p.aktif && !form.paket.includes(p.id)));
-const addProduct = (event: Event) => { const el = event.target as HTMLSelectElement; if (el.value) form.paket.push(Number(el.value)); el.value = ''; };
+// Satu Product per Master Program (MP-FR-02, [MMB-1]); controller hanya mengirim Product aktif dan Product tersimpan.
+const chosen = computed(() => props.products.find((p) => p.id === form.paket));
 const lockText = computed(() => props.program.status === 'final'
     ? 'Master Program Final — terkunci dan tersedia di pilihan Penjualan Program. Penyesuaian harga/costing dilakukan di Penjualan Program. Master Program Final tidak dapat dibatalkan atau disalin; perubahan master: buat Master Program baru.'
     : props.program.status === 'batal' ? 'Master Program dibatalkan — tidak muncul lagi di pilihan Penjualan Program. Penjualan yang sudah terbentuk tidak terpengaruh.' : '');
@@ -88,19 +85,13 @@ const lockText = computed(() => props.program.status === 'final'
                 <div><strong>Status</strong><p><span class="badge" :class="`st-${program.status}`">{{ statusLabel[program.status] }}</span></p></div>
             </div></section>
             <section class="panel" aria-labelledby="sec-product"><h2 id="sec-product"><span class="section-number">1</span> Informasi Program</h2>
-                <div class="field">
-                    <span class="static-label">Product <span class="req" aria-hidden="true">*</span> <span class="muted">(boleh lebih dari satu)</span></span>
-                    <ol v-if="chosen.length" class="mp-prods">
-                        <li v-for="(p, i) in chosen" :key="p.id" class="mp-prod">
-                            <span><span class="code">{{ p.nomor }}</span> <b>{{ p.judul }}</b><small>Produk: {{ p.produk }} · Bidang: {{ p.bidang }} · Varian: {{ p.varian ?? '—' }} · Sertifikat: {{ p.sertifikat }}{{ p.aktif ? '' : ' · nonaktif' }}</small></span>
-                            <button v-if="editable" type="button" class="danger" :aria-label="`Hapus ${p.judul} dari Master Program`" @click="form.paket.splice(i, 1)">Hapus</button>
-                        </li>
-                    </ol>
-                    <p v-else class="muted">Belum ada Product dipilih.</p>
-                    <select v-if="editable" aria-label="Tambah Product" @change="addProduct"><option value="">+ Tambah Product aktif…</option><option v-for="p in addable" :key="p.id" :value="p.id">{{ p.nomor }} — {{ p.judul }} · {{ p.varian ?? '—' }} · {{ p.sertifikat }}</option></select>
-                    <small>Costing tetap satu untuk seluruh Master Program (bagian 2 – 4), berapa pun Product yang dipilih.</small>
-                    <p v-if="err('paket')" class="error" role="alert">{{ err('paket') }}</p>
-                </div>
+                <FormField id="paket" label="Product" :error="err('paket')" v-slot="{ describedBy, invalid }">
+                    <select id="paket" v-model="form.paket" :disabled="!editable" required :aria-invalid="invalid" :aria-describedby="describedBy">
+                        <option value="">Pilih Product aktif…</option>
+                        <option v-for="p in products" :key="p.id" :value="p.id">{{ p.nomor }} — {{ p.judul }} · {{ p.varian ?? '—' }} · {{ p.sertifikat }}{{ p.aktif ? '' : ' · nonaktif' }}</option>
+                    </select>
+                </FormField>
+                <small v-if="chosen" class="muted">Produk: {{ chosen.produk }} · Bidang: {{ chosen.bidang }} · Varian: {{ chosen.varian ?? '—' }} · Sertifikat: {{ chosen.sertifikat }}</small>
                 <div class="form-grid">
                     <FormField id="durasi" label="Durasi (hari)" :error="form.errors.durasi_hari" v-slot="{ describedBy, invalid }"><input id="durasi" v-model="form.durasi_hari" inputmode="numeric" :disabled="!editable" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>
                     <FormField id="jp" label="Jam Pembelajaran (JP)" hint="Wajib; nilai awal untuk Penjualan Program." :error="form.errors.jam_pembelajaran" v-slot="{ describedBy, invalid }"><input id="jp" v-model="form.jam_pembelajaran" inputmode="numeric" :disabled="!editable" required :aria-invalid="invalid" :aria-describedby="describedBy" /></FormField>

@@ -79,7 +79,7 @@ class ProductController extends Controller
         return response()->json([
             'product' => $row,
             'lingkup' => DB::table('paket_produk_lingkup')->where('id_paket_produk', $id)->orderBy('urutan')->pluck('lingkup'),
-            'dipakai' => DB::table('master_program_produk')->where('id_paket_produk', $id)->count(),
+            'dipakai' => DB::table('master_program')->where('id_paket_produk', $id)->count(),
         ]);
     }
 

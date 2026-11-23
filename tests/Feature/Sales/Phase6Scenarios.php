@@ -54,8 +54,7 @@ trait Phase6Scenarios
             $types[$t] = DB::table($t)->insertGetId(['kode' => 'F6-'.substr(md5($t), 0, 6), 'nama' => $name, 'aktif' => 1]);
         }
         $k = DB::table('paket_produk')->insertGetId(['nomor' => 'PC-6', 'judul' => 'Program Enam', 'id_jenis_produk' => $types['ms_jenis_produk'], 'id_jenis_bidang' => $types['ms_jenis_bidang'], 'id_jenis_sertifikasi' => $types['ms_jenis_sertifikasi'], 'id_varian_pelaksanaan' => $types['ms_varian_pelaksanaan'], 'aktif' => 1]);
-        $m = DB::table('master_program')->insertGetId(['nomor' => 'MP-6', 'status' => 'final', 'durasi_hari' => 2, 'target_peserta' => 10, 'harga_jual_peserta' => 100000]);
-        DB::table('master_program_produk')->insert(['id_master_program' => $m, 'id_paket_produk' => $k, 'urutan' => 1]);
+        $m = DB::table('master_program')->insertGetId(['nomor' => 'MP-6', 'id_paket_produk' => $k, 'status' => 'final', 'durasi_hari' => 2, 'target_peserta' => 10, 'harga_jual_peserta' => 100000]);
         $t = DB::table('ms_trainer')->insertGetId(['kode' => 'TR-6', 'nama' => 'Trainer Enam', 'aktif' => 1]);
         $s = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-6', 'nama' => 'Sales Enam', 'id_user' => $this->root6->id_user, 'aktif' => 1]);
         $this->program6 = DB::table('penjualan_program')->insertGetId(['nomor' => 'PJP-6', 'jenis' => 'public', 'id_master_program' => $m, 'id_trainer' => $t, 'id_asisten' => $s, 'durasi_hari' => 2, 'target_peserta' => 10, 'tgl_mulai' => '2026-11-10', 'tgl_selesai' => '2026-11-11', 'lokasi' => 'Bekasi', 'status' => 'final']);

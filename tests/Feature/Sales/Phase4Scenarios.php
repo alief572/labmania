@@ -25,8 +25,7 @@ trait Phase4Scenarios
         $this->login($this->admin());
         $ids = $this->seedAttributes();
         $k = DB::table('paket_produk')->insertGetId(['nomor' => 'PC-4', 'judul' => 'Program Fase Empat', 'id_jenis_produk' => $ids['ms_jenis_produk'], 'id_jenis_bidang' => $ids['ms_jenis_bidang'], 'id_jenis_sertifikasi' => $ids['ms_jenis_sertifikasi'], 'id_varian_pelaksanaan' => $ids['ms_varian_pelaksanaan'], 'aktif' => 1]);
-        $m = DB::table('master_program')->insertGetId(['nomor' => 'MP-4', 'status' => 'final', 'durasi_hari' => 2, 'target_peserta' => 10, 'harga_jual_peserta' => 1000000]);
-        DB::table('master_program_produk')->insert(['id_master_program' => $m, 'id_paket_produk' => $k, 'urutan' => 1]);
+        $m = DB::table('master_program')->insertGetId(['nomor' => 'MP-4', 'id_paket_produk' => $k, 'status' => 'final', 'durasi_hari' => 2, 'target_peserta' => 10, 'harga_jual_peserta' => 1000000]);
         $tr = DB::table('ms_trainer')->insertGetId(['kode' => 'TR-4', 'nama' => 'Trainer Fase Empat', 'aktif' => 1]);
         $a = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-4', 'nama' => 'Asisten Fase Empat', 'aktif' => 1]);
         $p = DB::table('penjualan_program')->insertGetId(['nomor' => 'PJ-4', 'jenis' => 'public', 'id_master_program' => $m, 'id_trainer' => $tr, 'id_asisten' => $a, 'tgl_mulai' => '2026-12-20', 'tgl_selesai' => '2026-12-21', 'waktu' => '08.00–16.00', 'lokasi' => 'Bekasi', 'status' => 'final']);

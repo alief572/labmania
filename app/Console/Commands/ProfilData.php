@@ -28,7 +28,7 @@ class ProfilData extends Command
 
         $report = [
             'database' => $db,
-            'jumlah_baris' => collect(['ms_jenis_produk', 'ms_jenis_sertifikasi', 'ms_jenis_bidang', 'ms_varian_pelaksanaan', 'paket_produk', 'paket_produk_lingkup', 'ms_peserta', 'master_customer', 'ms_rate', 'ms_trainer', 'ms_template_keterangan', 'ms_template_konfirmasi', 'ms_user_karyawan', 'users', 'groups', 'master_program', 'master_program_produk', 'master_program_biaya'])
+            'jumlah_baris' => collect(['ms_jenis_produk', 'ms_jenis_sertifikasi', 'ms_jenis_bidang', 'ms_varian_pelaksanaan', 'paket_produk', 'paket_produk_lingkup', 'ms_peserta', 'master_customer', 'ms_rate', 'ms_trainer', 'ms_template_keterangan', 'ms_template_konfirmasi', 'ms_user_karyawan', 'users', 'groups', 'master_program', 'master_program_biaya'])
                 ->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()])->all(),
             'perbaikan' => [
                 'product_tanpa_varian' => $count('SELECT COUNT(*) n FROM paket_produk WHERE id_varian_pelaksanaan IS NULL'),
@@ -40,7 +40,7 @@ class ProfilData extends Command
                 'peserta_belum_lengkap' => $count("SELECT COUNT(*) n FROM ms_peserta WHERE deleted_date IS NULL AND (nama IS NULL OR TRIM(nama)='' OR gender IS NULL OR instansi IS NULL OR TRIM(instansi)='' OR id_jenis_bidang IS NULL OR id_prov IS NULL OR id_kab IS NULL OR no_telp IS NULL OR TRIM(no_telp)='' OR email IS NULL OR TRIM(email)='')"),
                 'program_tanpa_jp' => $count('SELECT COUNT(*) n FROM master_program WHERE jam_pembelajaran IS NULL OR jam_pembelajaran < 1'),
                 'program_final_tanpa_jp' => $count("SELECT COUNT(*) n FROM master_program WHERE status = 'final' AND (jam_pembelajaran IS NULL OR jam_pembelajaran < 1)"),
-                'program_tanpa_product' => $count('SELECT COUNT(*) n FROM master_program mp WHERE NOT EXISTS (SELECT 1 FROM master_program_produk x WHERE x.id_master_program = mp.id)'),
+                'program_tanpa_product' => $count('SELECT COUNT(*) n FROM master_program WHERE id_paket_produk IS NULL'),
                 'program_tanpa_biaya' => $count('SELECT COUNT(*) n FROM master_program mp WHERE NOT EXISTS (SELECT 1 FROM master_program_biaya x WHERE x.id_master_program = mp.id)'),
                 'trainer_tanpa_akun' => $count('SELECT COUNT(*) n FROM ms_trainer WHERE id_user IS NULL'),
                 'user_tanpa_role' => $count('SELECT COUNT(*) n FROM ms_user_karyawan WHERE id_group IS NULL'),
@@ -50,8 +50,7 @@ class ProfilData extends Command
             'orphan' => [
                 'product_atribut_hilang' => $count('SELECT COUNT(*) n FROM paket_produk p WHERE NOT EXISTS (SELECT 1 FROM ms_jenis_produk x WHERE x.id = p.id_jenis_produk) OR NOT EXISTS (SELECT 1 FROM ms_jenis_bidang x WHERE x.id = p.id_jenis_bidang) OR NOT EXISTS (SELECT 1 FROM ms_jenis_sertifikasi x WHERE x.id = p.id_jenis_sertifikasi)'),
                 'lingkup_tanpa_product' => $count('SELECT COUNT(*) n FROM paket_produk_lingkup l WHERE NOT EXISTS (SELECT 1 FROM paket_produk p WHERE p.id = l.id_paket_produk)'),
-                'program_produk_tanpa_product' => $count('SELECT COUNT(*) n FROM master_program_produk x WHERE NOT EXISTS (SELECT 1 FROM paket_produk p WHERE p.id = x.id_paket_produk)'),
-                'program_produk_tanpa_program' => $count('SELECT COUNT(*) n FROM master_program_produk x WHERE NOT EXISTS (SELECT 1 FROM master_program m WHERE m.id = x.id_master_program)'),
+                'program_produk_tanpa_product' => $count('SELECT COUNT(*) n FROM master_program x WHERE NOT EXISTS (SELECT 1 FROM paket_produk p WHERE p.id = x.id_paket_produk)'),
                 'biaya_tanpa_program' => $count('SELECT COUNT(*) n FROM master_program_biaya b WHERE NOT EXISTS (SELECT 1 FROM master_program m WHERE m.id = b.id_master_program)'),
                 'peserta_company_hilang' => $count('SELECT COUNT(*) n FROM ms_peserta p WHERE p.id_customer IS NOT NULL AND NOT EXISTS (SELECT 1 FROM master_customer c WHERE c.id_customer = p.id_customer)'),
                 'trainer_akun_hilang' => $count('SELECT COUNT(*) n FROM ms_trainer t WHERE t.id_user IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id_user = t.id_user)'),

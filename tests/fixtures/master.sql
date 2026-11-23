@@ -215,6 +215,7 @@ CREATE UNIQUE INDEX "coa_master_nomor" ON "coa_master" ("no_perkiraan","kdcab","
 CREATE TABLE "master_program" (
   "id" INTEGER PRIMARY KEY AUTOINCREMENT,
   "nomor" TEXT NOT NULL,
+  "id_paket_produk" INTEGER NOT NULL,
   "durasi_hari" INTEGER NOT NULL DEFAULT 1,
   "jam_pembelajaran" INTEGER,
   "target_peserta" INTEGER NOT NULL DEFAULT 10,
@@ -231,17 +232,6 @@ CREATE TABLE "master_program" (
   "updated_date" TEXT
 );
 CREATE UNIQUE INDEX "master_program_nomor" ON "master_program" ("nomor");
-
-CREATE TABLE "master_program_produk" (
-  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "id_master_program" INTEGER NOT NULL,
-  "id_paket_produk" INTEGER NOT NULL,
-  "urutan" INTEGER NOT NULL,
-  "created_by" INTEGER,
-  "created_date" TEXT
-);
-CREATE UNIQUE INDEX "master_program_produk_uk_mpp_program_paket" ON "master_program_produk" ("id_master_program","id_paket_produk");
-CREATE UNIQUE INDEX "master_program_produk_uk_mpp_program_urutan" ON "master_program_produk" ("id_master_program","urutan");
 
 CREATE TABLE "master_program_biaya" (
   "id" INTEGER PRIMARY KEY AUTOINCREMENT,

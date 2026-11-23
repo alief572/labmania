@@ -55,7 +55,7 @@ class ParticipantController extends Controller
     {
         if ($term !== '') {
             $query->where(fn ($w) => $w->where('p.nomor', 'like', '%'.$term.'%')->orWhere('p.lokasi', 'like', '%'.$term.'%')
-                ->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('k.judul', 'like', '%'.$term.'%'))
+                ->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id', 'p.id_master_program')->where('k.judul', 'like', '%'.$term.'%'))
                 ->orWhereExists(fn ($z) => $z->selectRaw('1')->from('ms_trainer as t')->whereColumn('t.id', 'p.id_trainer')->where('t.nama', 'like', '%'.$term.'%'))
                 ->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_customer as c')->whereColumn('c.id_customer', 'p.id_customer')->where('c.name_customer', 'like', '%'.$term.'%')));
         }
@@ -104,7 +104,7 @@ class ParticipantController extends Controller
                 foreach (['master_peserta.kode', 'x.nama', 'x.instansi', 'x.no_wa', 'x.email', 'q.nomor', 'p.nomor', 'p.lokasi', 's.no_sertifikat', 's.no_sertifikat_bnsp', 's.lsp', 'u.nama'] as $col) {
                     $w->orWhere($col, 'like', '%'.$term.'%');
                 }
-                $w->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('k.judul', 'like', '%'.$term.'%'));
+                $w->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id', 'p.id_master_program')->where('k.judul', 'like', '%'.$term.'%'));
             });
         }
     }
@@ -114,8 +114,8 @@ class ParticipantController extends Controller
         $q = Participants::query();
         Sales::filter($q, $f);
         $this->searchPerson($q, $f['q'] ?? '');
-        $cert = fn ($w) => $w->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->join('ms_jenis_produk as j', 'j.id', '=', 'k.id_jenis_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('j.nama', 'like', '%Sertifikasi%');
-        $training = fn ($w) => $w->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->join('ms_jenis_produk as j', 'j.id', '=', 'k.id_jenis_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('j.nama', 'not like', '%Sertifikasi%');
+        $cert = fn ($w) => $w->selectRaw('1')->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->join('ms_jenis_produk as j', 'j.id', '=', 'k.id_jenis_produk')->whereColumn('m.id', 'p.id_master_program')->where('j.nama', 'like', '%Sertifikasi%');
+        $training = fn ($w) => $w->selectRaw('1')->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->join('ms_jenis_produk as j', 'j.id', '=', 'k.id_jenis_produk')->whereColumn('m.id', 'p.id_master_program')->where('j.nama', 'not like', '%Sertifikasi%');
         match ($f['tipe'] ?? '') {
             'Pelatihan' => $q->whereNotExists($cert), 'Sertifikasi' => $q->whereExists($cert)->whereNotExists($training),
             'Training & Sertifikasi' => $q->whereExists($cert)->whereExists($training), default => null,

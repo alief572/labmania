@@ -31,7 +31,7 @@ class SalesOrderController extends Controller
             $term = '%'.$f['q'].'%';
             $query->where(function ($w) use ($term, $tab) {
                 $w->where('p.nomor', 'like', $term)->orWhereExists(fn ($q) => $q->selectRaw('1')->from('sales_order as s')->join('quotation as q', 'q.id', '=', 's.id_quotation')->whereColumn('s.id_penjualan', 'p.id')->where(fn ($x) => $x->where('s.nomor', 'like', $term)->orWhere('q.nomor', 'like', $term)->orWhere('q.kepada_nama', 'like', $term)))
-                    ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('k.judul', 'like', $term));
+                    ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id', 'p.id_master_program')->where('k.judul', 'like', $term));
                 if ($tab === 'surat') {
                     $w->orWhere('st.nomor', 'like', $term)->orWhere('st.snapshot', 'like', $term);
                 }

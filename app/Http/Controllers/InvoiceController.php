@@ -38,7 +38,7 @@ class InvoiceController extends Controller
                 if ($done) {
                     $w->orWhere('i.nomor', 'like', $term)->orWhere('i.snapshot', 'like', $term);
                 } else {
-                    $w->orWhereExists(fn ($q) => $q->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('k.judul', 'like', $term));
+                    $w->orWhereExists(fn ($q) => $q->selectRaw('1')->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id', 'p.id_master_program')->where('k.judul', 'like', $term));
                 }
             });
         }

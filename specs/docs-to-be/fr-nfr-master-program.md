@@ -1,13 +1,13 @@
 # Kebutuhan Fungsional & Non-Fungsional — Modul Master Program Labmania
 
 - **Versi:** **TO BE** draf 1b — 13-11-2026 (berangkat dari as is draf 11b, `docs/fr-nfr-master-program.md`)
-- **Perubahan to be:** `input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/` — Master Program memilih **satu atau lebih Product** (menu Product Combine diganti nama **Product**, `docs-to-be/fr-nfr.md`); **costing tetap satu** per Master Program.
+- **Perubahan to be:** `input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/` — menu Product Combine diganti nama **Product** (`docs-to-be/fr-nfr.md`). Master Program memilih **satu Product** (diubah 13-11-2026 `[MMB-1]`; pilihan banyak Product 09-11-2026 gugur); **costing tetap satu** per Master Program.
 - **Sumber:** `input/Master - Buat Program/2026-10-23-requirements-3-modul/` (*Master Program - Labmania.xlsx*: sheet *Requirements Program*, *Cost Master*, *Simulasi Costing*), `input/Master - Buat Program/2026-10-23-klarifikasi-program/`, `input/Master - Buat Program/2026-10-23-konfirmasi-3-modul/`, `input/Master - Buat Program/2026-10-23-arah-penjualan-program/`, `input/Master - Buat Program/2026-10-23-revisi-rate-harga-simulasi/`, `input/Master - Buat Program/2026-10-23-simulasi-bep/`, `input/Master - Buat Program/2026-10-25-jalur-public-b2b/`, `input/Master - Buat Program/2026-10-28-input-simulasi-company-b2b/`, `input/Master - Buat Program/2026-10-28-konfirmasi-simulasi-company-b2b/`, `input/Master - Buat Program/2026-10-28-jawaban-pertanyaan-program/`, `input/Master - Buat Program/2026-10-23-layout-program-public/` (layout)
 - **Menggantikan:** `docs/fr-nfr-program-penjualan.md` draf 1 bagian Program/costing (backup: `input/backup/fr-nfr-program-penjualan_draf1_23-10-2026.md`)
 - **Status:** DRAF — pertanyaan terbuka di bagian 7
 - **Modul terkait:** hulu Master Data → `docs/fr-nfr.md` (Paket Produk, Master Rate); hilir Penjualan Program → `docs/fr-nfr-penjualan-program.md` (menarik Master Program Final)
 - **Use case kanonis:** `docs/workbook.xlsx` sheet *UC Non-BPMN*
-- **ERD:** `docs-to-be/diagrams/erd.drawio` halaman *ERD Master Program* (to be: tabel `master_program_produk`)
+- **ERD:** `docs-to-be/diagrams/erd.drawio` halaman *ERD Master Program* (to be: `master_program.id_paket_produk`, tabel `master_program_produk` dihapus)
 - **Mockup:** `ui-mockup/produk-to-be/Labmania.html` → modul Master Program (layout form mengikuti `input/Master - Buat Program/labmania.html`, hanya layout)
 
 Penomoran memakai awalan **MP-** agar tidak bentrok dengan dokumen lain. Kode UC satu urutan untuk seluruh workbook.
@@ -43,7 +43,7 @@ Penomoran memakai awalan **MP-** agar tidak bentrok dengan dokumen lain. Kode UC
 
 ## 1. Ringkasan Kebutuhan
 
-**Master Program** = program siap jual yang dibentuk dari **satu atau lebih Product** (Paket Produk; to be) +
+**Master Program** = program siap jual yang dibentuk dari **satu Product** (Paket Produk; to be) +
 **costing** (Fixed Cost & Variable Cost) `[MP-1]`. Program dibuat **secara umum**: tidak ada
 pemisahan Public/B2B, tidak ada customer, tidak ada tanggal dan lokasi acara `[MP-1]`, `[MP-4]`,
 `[USR-3M]`. Semua itu diisi di Penjualan Program, yang **menarik** Master Program
@@ -109,7 +109,7 @@ Menu: modul **Penjualan Program**, sub modul **Master Program** (sub modul perta
 
 | ID | Kebutuhan | Sumber |
 |---|---|---|
-| MP-FR-01 | **Daftar Master Program** menampilkan: No, Nomor, Judul (dari Product; bila lebih dari satu, judul digabung dengan "+", to be), Durasi, Target peserta, Harga jual standar / peserta, HPP, Status, Action (menu gear sesuai status: **Draft → Edit, Finalkan, Batalkan**; **Final → Lihat**; **Batal → Lihat**). Dapat disaring per status. | `[MP-1]`, `[OPS-1]` + `[USULAN]` (kolom daftar) |
+| MP-FR-01 | **Daftar Master Program** menampilkan: No, Nomor, Judul (dari Product), Durasi, Target peserta, Harga jual standar / peserta, HPP, Status, Action (menu gear sesuai status: **Draft → Edit, Finalkan, Batalkan**; **Final → Lihat**; **Batal → Lihat**). Dapat disaring per status. | `[MP-1]`, `[OPS-1]` + `[USULAN]` (kolom daftar) |
 | MP-FR-02 | Master Program berisi: (1) **Product** — **satu atau lebih** Product (Paket Produk) berstatus Aktif dari Master Data `input/Master - Buat Program/2026-11-09-product-multi-reschedule-evidence/`: dipilih satu per satu lewat "+ Tambah Product", tampil sebagai daftar (nomor, judul, Produk, Bidang, Varian, Sertifikat) dengan tombol Hapus; minimal satu, Product yang sama tidak dapat dipilih dua kali; **costing tetap satu** untuk seluruh Master Program (bukan per Product); (2) **Durasi (hari)**; (3) **Target peserta** (baseline) — terisi otomatis **10** saat program baru dibuat, dapat diedit; (4) **Harga jual standar / peserta** (baseline); (5) **Target profit** (opsional); (6) item costing Fixed Cost & Variable Cost. **Tidak ada** pilihan Public/B2B, customer, tanggal, atau lokasi acara. **To be 12-11-2026:** Master Program juga memuat **Jam Pembelajaran** (wajib, bilangan bulat > 0, satuan JP; kolom `master_program.jam_pembelajaran`) yang menjadi nilai awal Jam Pembelajaran di Penjualan Program (PJ-FR-29). **Diubah 13-11-2026** `[MMB-1]`: Master Program kembali berisi **satu Product** (pilihan banyak Product 09-11-2026 adalah salah paham); isian Product berupa satu pilihan Product aktif. Yang boleh lebih dari satu adalah **Master Program di dalam Penjualan Program** (`docs-to-be/fr-nfr-penjualan-program.md` PJ-FR-32). | `[MP-1]`, `[MP-3]`, `[MP-4]`, `[USR-3M]`, `[JLR-2]` (default 10), `[JPT-21]`, `[MMB-1]` |
 | MP-FR-03 | Master Program mendapat **Nomor Master Program** otomatis saat pertama disimpan. Format sementara `MP-YYMM-NNN`, nomor urut ulang tiap bulan (mis. MP-2610-001) `[JPP-10]`; format final Q-MP-02. Satu Paket Produk boleh dipakai lebih dari satu Master Program, dan satu Master Program boleh memuat lebih dari satu Paket Produk (to be). **Final 12-11-2026:** format `MP-YYMM-NNN` disetujui. | `[USULAN]`, `[JPT-18]` |
 | MP-FR-04 | Semua atribut hanya **dipilih** dari Master Data (Paket Produk, Master Rate), tidak diinput ulang. | `[MP-2]` |

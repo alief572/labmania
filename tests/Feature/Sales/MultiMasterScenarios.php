@@ -16,8 +16,7 @@ trait MultiMasterScenarios
     {
         $bidang = DB::table('ms_jenis_bidang')->insertGetId(['kode' => 'X-B2', 'nama' => 'Lingkungan', 'aktif' => 1, 'created_date' => now()]);
         $product = DB::table('paket_produk')->insertGetId(['nomor' => 'PC-DUA', 'judul' => 'Program Kedua', 'id_jenis_produk' => 1, 'id_jenis_bidang' => $bidang, 'id_jenis_sertifikasi' => 1, 'id_varian_pelaksanaan' => 1, 'aktif' => 1]);
-        $master = DB::table('master_program')->insertGetId(['nomor' => 'MP-DUA', 'status' => 'final', 'durasi_hari' => $days, 'jam_pembelajaran' => 24, 'target_peserta' => 10, 'harga_jual_peserta' => 2000000]);
-        DB::table('master_program_produk')->insert(['id_master_program' => $master, 'id_paket_produk' => $product, 'urutan' => 1]);
+        $master = DB::table('master_program')->insertGetId(['nomor' => 'MP-DUA', 'id_paket_produk' => $product, 'status' => 'final', 'durasi_hari' => $days, 'jam_pembelajaran' => 24, 'target_peserta' => 10, 'harga_jual_peserta' => 2000000]);
 
         return $master;
     }

@@ -37,8 +37,7 @@ class DashboardTest extends MasterTestCase
         }
         $ids = $this->seedAttributes();
         $product = DB::table('paket_produk')->insertGetId(['nomor' => 'PC-UJI', 'judul' => 'Program Uji', 'id_jenis_produk' => $ids['ms_jenis_produk'], 'id_jenis_bidang' => $ids['ms_jenis_bidang'], 'id_jenis_sertifikasi' => $ids['ms_jenis_sertifikasi'], 'id_varian_pelaksanaan' => $ids['ms_varian_pelaksanaan'], 'aktif' => 1]);
-        $this->master = DB::table('master_program')->insertGetId(['nomor' => 'MP-UJI', 'status' => 'final', 'durasi_hari' => 2, 'jam_pembelajaran' => 16, 'target_peserta' => 10, 'harga_jual_peserta' => 1000000]);
-        DB::table('master_program_produk')->insert(['id_master_program' => $this->master, 'id_paket_produk' => $product, 'urutan' => 1]);
+        $this->master = DB::table('master_program')->insertGetId(['nomor' => 'MP-UJI', 'id_paket_produk' => $product, 'status' => 'final', 'durasi_hari' => 2, 'jam_pembelajaran' => 16, 'target_peserta' => 10, 'harga_jual_peserta' => 1000000]);
         $this->unit = (int) DB::table('ms_satuan')->insertGetId(['category' => 'rate_fixed', 'code' => 'event', 'nama' => 'Event', 'deleted' => '0']);
         $this->trainer = DB::table('ms_trainer')->insertGetId(['kode' => 'TR-UJI', 'nama' => 'Trainer', 'aktif' => 1]);
         $this->employee = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-UJI', 'nama' => 'Asisten Uji', 'aktif' => 1]);
@@ -90,7 +89,7 @@ class DashboardTest extends MasterTestCase
         $this->sale('2026-12-25', '2026-12-26', false, 1000000, 100000, false);
         $past = $this->sale('2026-12-05', '2026-12-06', false, 1000000, 100000);
         DB::table('penjualan_program')->where('id', $past)->update(['tgl_mulai' => '2026-11-01', 'tgl_selesai' => '2026-11-02']);
-        DB::table('master_program')->insert(['nomor' => 'MP-DRAFT', 'status' => 'draft', 'durasi_hari' => 1, 'jam_pembelajaran' => 8, 'target_peserta' => 5, 'harga_jual_peserta' => 0]);
+        DB::table('master_program')->insert(['nomor' => 'MP-DRAFT', 'id_paket_produk' => DB::table('master_program')->where('id', $this->master)->value('id_paket_produk'), 'status' => 'draft', 'durasi_hari' => 1, 'jam_pembelajaran' => 8, 'target_peserta' => 5, 'harga_jual_peserta' => 0]);
 
         $this->get('/')->assertOk()->assertInertia(function ($p) use ($b2bFinal, $loss) {
             $p->where('kpi.final', 4)->where('kpi.public', 3)->where('kpi.b2b', 1)->where('kpi.peserta', 40)

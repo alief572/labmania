@@ -490,12 +490,9 @@ progress { accent-color: var(--gold); height: 8px; }
 .form-sec { grid-column: 1 / -1; margin-top: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--navy); }
 .hint-line.top { margin: 0 0 12px; }
 
-/* Form Master Program (mockup .pf-formbar, .mp-prods) */
+/* Form Master Program (mockup .pf-formbar) */
 .pf-formbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .pf-formbar h1 { margin: 0; font-size: 20px; }
-.mp-prods { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 6px; }
-.mp-prod { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: #F6F8FB; }
-.mp-prod small { display: block; color: var(--muted); }
 
 /* Quotation: pipeline status dan kotak "To be" (mockup .qtn-flow, .tobe-box) */
 .qtn-flow { display: flex; align-items: stretch; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }

@@ -227,6 +227,7 @@ CREATE TABLE `master_customer` (
 CREATE TABLE `master_program` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nomor` varchar(20) NOT NULL,
+  `id_paket_produk` int NOT NULL,
   `durasi_hari` int NOT NULL DEFAULT '1',
   `jam_pembelajaran` int unsigned DEFAULT NULL,
   `target_peserta` int NOT NULL DEFAULT '10',
@@ -242,7 +243,8 @@ CREATE TABLE `master_program` (
   `updated_by` int DEFAULT NULL,
   `updated_date` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `nomor` (`nomor`)
+  UNIQUE KEY `nomor` (`nomor`),
+  KEY `idx_mp_paket` (`id_paket_produk`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `master_program_biaya` (
@@ -256,18 +258,6 @@ CREATE TABLE `master_program_biaya` (
   `is_manual` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `master_program_produk` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `id_master_program` int NOT NULL,
-  `id_paket_produk` int NOT NULL,
-  `urutan` int NOT NULL,
-  `created_by` int DEFAULT NULL,
-  `created_date` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_mpp_program_paket` (`id_master_program`,`id_paket_produk`),
-  UNIQUE KEY `uk_mpp_program_urutan` (`id_master_program`,`urutan`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `migrations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,

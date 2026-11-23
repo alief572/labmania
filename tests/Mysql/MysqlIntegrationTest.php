@@ -93,13 +93,12 @@ class MysqlIntegrationTest extends MysqlTestCase
         DB::table('ms_trainer')->insert(['kode' => 'TR-4', 'nama' => 'D', 'aktif' => 1, 'id_user' => 5]);
     }
 
-    public function test_jp_nullable_untuk_data_lama_dan_unik_product_per_program(): void
+    public function test_jp_nullable_untuk_data_lama_dan_product_wajib(): void
     {
-        DB::table('master_program')->insert(['nomor' => 'MP-2601-001', 'durasi_hari' => 1, 'target_peserta' => 10, 'harga_jual_peserta' => 1, 'status' => 'draft']);
+        DB::table('master_program')->insert(['nomor' => 'MP-2601-001', 'id_paket_produk' => 5, 'durasi_hari' => 1, 'target_peserta' => 10, 'harga_jual_peserta' => 1, 'status' => 'draft']);
         $this->assertNull(DB::table('master_program')->value('jam_pembelajaran'));
-        DB::table('master_program_produk')->insert(['id_master_program' => 1, 'id_paket_produk' => 5, 'urutan' => 1]);
         $this->expectException(QueryException::class);
-        DB::table('master_program_produk')->insert(['id_master_program' => 1, 'id_paket_produk' => 5, 'urutan' => 2]);
+        DB::table('master_program')->insert(['nomor' => 'MP-2601-002', 'durasi_hari' => 1, 'target_peserta' => 10, 'harga_jual_peserta' => 1, 'status' => 'draft']);
     }
 
     public function test_kode_otomatis_berurutan_dan_unique_menjaga_bentrok(): void

@@ -26,7 +26,7 @@ class MigrationMysqlTest extends MysqlTestCase
         $this->assertSame(7, DB::table('migrations')->count());
         DB::table('groups')->insert(['id_group' => 1, 'nm_group' => 'admin', 'ket' => 'Legacy Superadmin']);
         $rootUser = $this->superadmin();
-        $master = DB::table('master_program')->insertGetId(['nomor' => 'MP-HISTORY', 'status' => 'final', 'jam_pembelajaran' => 8]);
+        $master = DB::table('master_program')->insertGetId(['nomor' => 'MP-HISTORY', 'id_paket_produk' => 1, 'status' => 'final', 'jam_pembelajaran' => 8]);
         $program = DB::table('penjualan_program')->insertGetId(['nomor' => 'PJP-HISTORY', 'id_master_program' => $master, 'jenis' => 'public']);
         $quotation = DB::table('quotation')->insertGetId(['nomor' => 'QTN-HISTORY', 'id_penjualan' => $program, 'tanggal' => '2025-01-02', 'status' => 'deal']);
         $so = DB::table('sales_order')->insertGetId(['nomor' => 'SO-HISTORY', 'id_quotation' => $quotation, 'id_penjualan' => $program, 'tanggal' => '2025-01-03']);

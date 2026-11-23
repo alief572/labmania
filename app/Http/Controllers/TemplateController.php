@@ -171,16 +171,15 @@ class TemplateController extends Controller
     }
 
     /**
-     * Contoh formulir: Penjualan Program Final terbaru dibaca lewat master_program_produk (bukan kolom id_paket_produk
-     * yang sudah dihapus). Preview tidak menyimpan data atau mengambil identitas peserta.
+     * Contoh formulir: Penjualan Program Final terbaru dibaca lewat master_program.id_paket_produk. Preview tidak menyimpan data atau mengambil identitas peserta.
      */
     public function contoh(int $id)
     {
         Gate::authorize('menu', ['master_data.template_konfirmasi', 'View']);
         $t = DB::table('ms_template_konfirmasi')->where('id', $id)->first() ?? abort(404);
         $pj = DB::table('penjualan_program as pj')->where('pj.status', 'final')->orderByDesc('pj.id')->first();
-        $judul = $pj ? DB::table('master_program_produk as mpp')->join('paket_produk as pp', 'pp.id', '=', 'mpp.id_paket_produk')
-            ->where('mpp.id_master_program', $pj->id_master_program)->orderBy('mpp.urutan')->pluck('pp.judul')->implode(' + ') : null;
+        $judul = $pj ? DB::table('master_program as mpp')->join('paket_produk as pp', 'pp.id', '=', 'mpp.id_paket_produk')
+            ->where('mpp.id', $pj->id_master_program)->value('pp.judul') : null;
 
         return response()->json([
             'template' => ['nama' => $t->nama, 'label_kegiatan' => $t->label_kegiatan, 'isian' => json_decode((string) $t->isian, true) ?: [], 'pernyataan' => $t->pernyataan, 'catatan' => $t->catatan],

@@ -37,7 +37,7 @@ class QuotationController extends Controller
         if (($f['q'] ?? '') !== '') {
             $like = '%'.$f['q'].'%';
             $query->where(fn ($w) => $w->where('p.nomor', 'like', $like)
-                ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('master_program_produk as mp')->join('paket_produk as pr', 'pr.id', '=', 'mp.id_paket_produk')->whereColumn('mp.id_master_program', 'p.id_master_program')->where('pr.judul', 'like', $like))
+                ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('master_program as mp')->join('paket_produk as pr', 'pr.id', '=', 'mp.id_paket_produk')->whereColumn('mp.id', 'p.id_master_program')->where('pr.judul', 'like', $like))
                 ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('quotation as q')->leftJoin('master_customer as c', 'c.id_customer', '=', 'q.id_customer')->leftJoin('quotation_peserta as x', 'x.id_quotation', '=', 'q.id')->whereColumn('q.id_penjualan', 'p.id')->where(fn ($s) => $s->where('q.nomor', 'like', $like)->orWhere('q.kepada_nama', 'like', $like)->orWhere('c.name_customer', 'like', $like)->orWhere('x.nama', 'like', $like))));
         }
         $stats = collect(['draft', 'terkirim', 'deal', 'batal'])->mapWithKeys(fn ($status) => [$status => ['status' => $status, 'jumlah' => 0, 'peserta' => 0, 'nilai' => 0]]);
@@ -181,7 +181,7 @@ class QuotationController extends Controller
             $master->nomor = Sales::display($master);
             $master->judul = Sales::title($master->id_master_program);
             $master->bep_harga = Costing::calculate($master->durasi_hari, $master->target_peserta, $master->harga_jual_peserta, Sales::costs($master->id))['hpp_per_pax'];
-            $master->id_jenis_produk = DB::table('master_program_produk as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')->where('m.id_master_program', $master->id_master_program)->orderBy('m.urutan')->value('p.id_jenis_produk');
+            $master->id_jenis_produk = DB::table('master_program as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')->where('m.id', $master->id_master_program)->value('p.id_jenis_produk');
         }
         $form = $q ? (array) $q : ['id' => null, 'nomor' => '', 'status' => 'draft', 'id_penjualan' => $programId ?? '', 'tanggal' => today()->toDateString(), 'berlaku_sampai' => now()->format('Y').'-12-31', 'id_sales' => '', 'sumber_info' => 'Sales',
             'tujuan' => $p?->jenis === 'b2b' ? 'company' : 'personal', 'id_customer' => $p?->id_customer ?? '', 'up_nama' => '', 'kepada_nama' => '', 'alamat' => '', 'kuota_peserta' => $p?->jenis === 'b2b' ? 10 : 1,

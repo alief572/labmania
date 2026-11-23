@@ -133,8 +133,8 @@ class DashboardController extends Controller
         if (($input['q'] ?? '') !== '') {
             $term = '%'.$input['q'].'%';
             $query->where(fn ($q) => $q->where('p.nomor', 'like', $term)->orWhereExists(fn ($sub) => $sub->selectRaw('1')
-                ->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')
-                ->whereColumn('m.id_master_program', $master ? 'p.id' : 'p.id_master_program')->where('k.judul', 'like', $term)));
+                ->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')
+                ->whereColumn('m.id', $master ? 'p.id' : 'p.id_master_program')->where('k.judul', 'like', $term)));
         }
         $filtered = clone $query;
         $columns = array_fill(0, $kpi === 'draft' ? 2 : ($kpi === 'final' ? 3 : ($kpi === 'pend' ? 5 : 9)), null);

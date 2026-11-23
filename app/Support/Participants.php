@@ -26,8 +26,8 @@ class Participants
 
     public static function type(int $master): string
     {
-        $names = DB::table('master_program_produk as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')
-            ->join('ms_jenis_produk as j', 'j.id', '=', 'p.id_jenis_produk')->where('m.id_master_program', $master)->pluck('j.nama');
+        $names = DB::table('master_program as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')
+            ->join('ms_jenis_produk as j', 'j.id', '=', 'p.id_jenis_produk')->where('m.id', $master)->pluck('j.nama');
         $cert = $names->contains(fn ($n) => str_contains(mb_strtolower($n), 'sertifikasi'));
         $training = $names->contains(fn ($n) => ! str_contains(mb_strtolower($n), 'sertifikasi'));
 
@@ -36,10 +36,10 @@ class Participants
 
     public static function enrichRows($rows)
     {
-        $masters = DB::table('master_program_produk as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')
+        $masters = DB::table('master_program as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')
             ->join('ms_jenis_produk as j', 'j.id', '=', 'p.id_jenis_produk')->leftJoin('ms_varian_pelaksanaan as v', 'v.id', '=', 'p.id_varian_pelaksanaan')
-            ->whereIn('m.id_master_program', $rows->pluck('id_master_program')->unique())->orderBy('m.urutan')
-            ->get(['m.id_master_program', 'p.judul', 'v.nama as varian', 'j.nama as jenis'])->groupBy('id_master_program')->map(function ($products) {
+            ->whereIn('m.id', $rows->pluck('id_master_program')->unique())
+            ->get(['m.id as id_master_program', 'p.judul', 'v.nama as varian', 'j.nama as jenis'])->groupBy('id_master_program')->map(function ($products) {
                 $cert = $products->contains(fn ($p) => str_contains(mb_strtolower($p->jenis), 'sertifikasi'));
                 $training = $products->contains(fn ($p) => ! str_contains(mb_strtolower($p->jenis), 'sertifikasi'));
 

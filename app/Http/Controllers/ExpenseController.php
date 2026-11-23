@@ -40,7 +40,7 @@ class ExpenseController extends Controller
         if (($f['q'] ?? '') !== '') {
             $v = '%'.$f['q'].'%';
             $base->where(function ($w) use ($v, $done) {
-                $w->where('p.nomor', 'like', $v)->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id_master_program', 'p.id_master_program')->where('k.judul', 'like', $v))
+                $w->where('p.nomor', 'like', $v)->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id', 'p.id_master_program')->where('k.judul', 'like', $v))
                     ->orWhereExists(fn ($z) => $z->selectRaw('1')->from('master_customer as c')->whereColumn('c.id_customer', 'p.id_customer')->where('c.name_customer', 'like', $v))
                     ->orWhereExists(fn ($z) => $z->selectRaw('1')->from('quotation as q')->join('ms_user_karyawan as s', 's.id', '=', 'q.id_sales')->whereColumn('q.id_penjualan', 'p.id')->where('q.status', 'deal')->where('s.nama', 'like', $v))
                     ->orWhereExists(fn ($z) => $z->selectRaw('1')->from('ms_trainer as t')->whereColumn('t.id', 'p.id_trainer')->where('t.nama', 'like', $v));

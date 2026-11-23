@@ -34,22 +34,21 @@ class MasterProgramController extends Controller
         $rows = $query
             ->when(in_array($f['status'] ?? 'all', self::STATUS, true), fn ($q) => $q->where('mp.status', $f['status']))
             ->when(($f['q'] ?? null) !== null, fn ($q) => $q->where(fn ($w) => $w->where('mp.nomor', 'like', '%'.$f['q'].'%')->orWhereExists(
-                fn ($e) => $e->select(DB::raw(1))->from('master_program_produk as x')->join('paket_produk as p', 'p.id', '=', 'x.id_paket_produk')
-                    ->whereColumn('x.id_master_program', 'mp.id')->where(fn ($m) => $m->where('p.judul', 'like', '%'.$f['q'].'%')->orWhere('p.nomor', 'like', '%'.$f['q'].'%')))))
+                fn ($e) => $e->select(DB::raw(1))->from('paket_produk as p')->whereColumn('p.id', 'mp.id_paket_produk')
+                    ->where(fn ($m) => $m->where('p.judul', 'like', '%'.$f['q'].'%')->orWhere('p.nomor', 'like', '%'.$f['q'].'%')))))
             ->orderByDesc('mp.id')->select('mp.*')->pipe(fn ($builder) => ServerDataTable::page($request, $builder, [null, 'mp.nomor', null, 'mp.durasi_hari', 'mp.target_peserta', 'mp.harga_jual_peserta', null, 'mp.status', null], 'mp.id'));
 
         $ids = $rows->pluck('id');
-        $products = DB::table('master_program_produk as x')->join('paket_produk as p', 'p.id', '=', 'x.id_paket_produk')
+        $products = DB::table('paket_produk as p')
             ->leftJoin('ms_varian_pelaksanaan as v', 'v.id', '=', 'p.id_varian_pelaksanaan')->leftJoin('ms_jenis_sertifikasi as s', 's.id', '=', 'p.id_jenis_sertifikasi')
-            ->whereIn('x.id_master_program', $ids)->orderBy('x.urutan')->get(['x.id_master_program', 'p.nomor', 'p.judul', 'v.nama as nama_varian', 's.nama as nama_sertifikasi'])->groupBy('id_master_program');
+            ->whereIn('p.id', $rows->pluck('id_paket_produk'))->get(['p.id', 'p.nomor', 'p.judul', 'v.nama as nama_varian', 's.nama as nama_sertifikasi'])->keyBy('id');
         $biaya = $this->biayaFor($ids->all())->groupBy('id_master_program');
         $rows->through(function ($r) use ($products, $biaya) {
-            $list = $products[$r->id] ?? collect();
-            $r->judul = $list->pluck('judul')->implode(' + ');
-            $r->nomor_product = $list->pluck('nomor')->implode(' + ');
-            // Atribut dari Product pertama, sama seperti paketOf() di mockup (gabungan = atribut Product pertama).
-            $r->nama_varian = $list->first()->nama_varian ?? null;
-            $r->nama_sertifikasi = $list->first()->nama_sertifikasi ?? null;
+            $p = $products[$r->id_paket_produk] ?? null;
+            $r->judul = $p->judul ?? '';
+            $r->nomor_product = $p->nomor ?? '';
+            $r->nama_varian = $p->nama_varian ?? null;
+            $r->nama_sertifikasi = $p->nama_sertifikasi ?? null;
             $r->hpp = Costing::calculate($r->durasi_hari, $r->target_peserta, $r->harga_jual_peserta, ($biaya[$r->id] ?? collect())->map(fn ($b) => (array) $b)->all())['total_hpp'];
 
             return $r;
@@ -81,7 +80,7 @@ class MasterProgramController extends Controller
         $fixed = DB::table('ms_rate as r')->leftJoin('ms_satuan as s', 's.id', '=', 'r.id_satuan')->where('r.tipe', 'fixed')->where('r.aktif', 1)->orderBy('r.id')->get(['r.id', 'r.item', 'r.id_satuan', 'r.default_cost', 's.nama as nama_satuan']);
         $biaya = $fixed->map(fn ($r) => ['id_rate' => (int) $r->id, 'tipe' => 'fixed', 'item' => $r->item, 'satuan' => $r->nama_satuan, 'id_satuan' => (int) $r->id_satuan, 'harga' => (int) round($r->default_cost), 'is_manual' => false])->all();
 
-        return $this->form(['id' => null, 'nomor' => null, 'status' => 'draft', 'paket' => [], 'durasi_hari' => 1, 'jam_pembelajaran' => '', 'target_peserta' => 10, 'harga_jual_peserta' => '', 'target_profit' => '', 'biaya' => $biaya], []);
+        return $this->form(['id' => null, 'nomor' => null, 'status' => 'draft', 'paket' => '', 'durasi_hari' => 1, 'jam_pembelajaran' => '', 'target_peserta' => 10, 'harga_jual_peserta' => '', 'target_profit' => '', 'biaya' => $biaya], 0);
     }
 
     public function show(int $id)
@@ -89,18 +88,18 @@ class MasterProgramController extends Controller
         Gate::authorize('menu', [self::MENU, 'View']);
         $mp = DB::table('master_program')->where('id', $id)->first() ?? abort(404);
         $biaya = $this->biayaFor([$id])->map(fn ($b) => ['id_rate' => $b->id_rate ? (int) $b->id_rate : null, 'tipe' => $b->tipe, 'item' => $b->item, 'satuan' => $b->nama_satuan, 'id_satuan' => (int) $b->id_satuan, 'harga' => (int) round($b->harga), 'is_manual' => (bool) $b->is_manual])->all();
-        $paket = $this->productIds($id);
+        $paket = (int) $mp->id_paket_produk;
 
         return $this->form(['id' => $mp->id, 'nomor' => $mp->nomor, 'status' => $mp->status, 'paket' => $paket, 'durasi_hari' => (int) $mp->durasi_hari, 'jam_pembelajaran' => $mp->jam_pembelajaran, 'target_peserta' => (int) $mp->target_peserta,
             'harga_jual_peserta' => (int) round($mp->harga_jual_peserta), 'target_profit' => $mp->target_profit > 0 ? (int) round($mp->target_profit) : '', 'biaya' => $biaya], $paket);
     }
 
-    private function form(array $program, array $usedProducts)
+    private function form(array $program, int $usedProduct)
     {
         $satuan = ['fixed' => RateController::satuans('fixed')->pluck('id', 'nama'), 'variable' => RateController::satuans('variable')->pluck('id', 'nama')];
         $products = DB::table('paket_produk as pp')->leftJoin('ms_jenis_produk as jp', 'jp.id', '=', 'pp.id_jenis_produk')->leftJoin('ms_jenis_bidang as jb', 'jb.id', '=', 'pp.id_jenis_bidang')
             ->leftJoin('ms_varian_pelaksanaan as vp', 'vp.id', '=', 'pp.id_varian_pelaksanaan')->leftJoin('ms_jenis_sertifikasi as js', 'js.id', '=', 'pp.id_jenis_sertifikasi')
-            ->where(fn ($q) => $q->where('pp.aktif', 1)->orWhereIn('pp.id', $usedProducts))->orderBy('pp.id')
+            ->where(fn ($q) => $q->where('pp.aktif', 1)->orWhere('pp.id', $usedProduct))->orderBy('pp.id')
             ->get(['pp.id', 'pp.nomor', 'pp.judul', 'pp.aktif', 'jp.nama as produk', 'jb.nama as bidang', 'vp.nama as varian', 'js.nama as sertifikat']);
         $rates = DB::table('ms_rate as r')->leftJoin('ms_satuan as s', 's.id', '=', 'r.id_satuan')->orderBy('r.id')->get(['r.id', 'r.tipe', 'r.item', 'r.id_satuan', 'r.default_cost', 'r.aktif', 's.nama as nama_satuan']);
 
@@ -111,16 +110,9 @@ class MasterProgramController extends Controller
         ]);
     }
 
-    private function productIds(int $id): array
+    private function productLabel(int $id): string
     {
-        return DB::table('master_program_produk')->where('id_master_program', $id)->orderBy('urutan')->pluck('id_paket_produk')->map(fn ($v) => (int) $v)->all();
-    }
-
-    private function productLabel(array $ids): string
-    {
-        $map = DB::table('paket_produk')->whereIn('id', $ids)->pluck('nomor', 'id');
-
-        return implode(' + ', array_map(fn ($i) => $map[$i] ?? '#'.$i, $ids));
+        return DB::table('paket_produk')->where('id', $id)->value('nomor') ?? '#'.$id;
     }
 
     // ---- Validasi ----
@@ -130,39 +122,29 @@ class MasterProgramController extends Controller
         $request->merge(collect($keys)->mapWithKeys(fn ($k) => [$k => is_string($request->input($k)) ? str_replace('.', '', trim($request->input($k))) : $request->input($k)])->all());
     }
 
-    /** @return array{0: array, 1: array, 2: array, 3: int} header, biaya bersih, id Product, jumlah item bernilai 0 yang dibuang */
+    /** @return array{0: array, 1: array, 2: int} header (termasuk id_paket_produk), biaya bersih, jumlah item bernilai 0 yang dibuang */
     private function validated(Request $request, ?object $old): array
     {
         // Titik pemisah ribuan hanya dibuang untuk kolom rupiah; durasi, JP, dan target peserta harus bilangan bulat apa adanya
         // (JP pecahan belum diputuskan BA, Q-PJ-25; "1.5" tidak boleh diam-diam menjadi 15).
         $this->whole($request, ['harga_jual_peserta', 'target_profit']);
         $in = $request->validate([
-            'paket' => 'required|array|min:1|max:20', 'paket.*' => 'integer', 'durasi_hari' => 'required|integer|min:1|max:3650', 'jam_pembelajaran' => 'required|integer|min:1|max:10000',
+            'paket' => 'required|integer', 'durasi_hari' => 'required|integer|min:1|max:3650', 'jam_pembelajaran' => 'required|integer|min:1|max:10000',
             'target_peserta' => 'required|integer|min:1|max:100000', 'harga_jual_peserta' => 'required|integer|min:0|max:9999999999999', 'target_profit' => 'nullable|integer|min:0|max:9999999999999',
             'biaya' => 'nullable|array|max:200',
         ], [
-            'paket.required' => 'Pilih minimal satu Product.', 'paket.min' => 'Pilih minimal satu Product.', 'durasi_hari.required' => 'Durasi bilangan bulat > 0.', 'durasi_hari.min' => 'Durasi bilangan bulat > 0.', 'durasi_hari.integer' => 'Durasi bilangan bulat > 0.',
+            'paket.required' => 'Pilih Product.', 'paket.integer' => 'Pilih Product.', 'durasi_hari.required' => 'Durasi bilangan bulat > 0.', 'durasi_hari.min' => 'Durasi bilangan bulat > 0.', 'durasi_hari.integer' => 'Durasi bilangan bulat > 0.',
             'jam_pembelajaran.required' => 'Jam Pembelajaran wajib diisi (bilangan bulat > 0).', 'jam_pembelajaran.min' => 'Jam Pembelajaran bilangan bulat > 0.', 'jam_pembelajaran.integer' => 'Jam Pembelajaran bilangan bulat > 0.',
             'target_peserta.required' => 'Target peserta bilangan bulat > 0.', 'target_peserta.min' => 'Target peserta bilangan bulat > 0.', 'target_peserta.integer' => 'Target peserta bilangan bulat > 0.',
             'harga_jual_peserta.required' => 'Harga jual / peserta wajib diisi.', 'target_profit.integer' => 'Target profit berupa angka rupiah ≥ 0.',
         ]);
         $errors = [];
-        $paketIds = array_values(array_unique(array_map('intval', $in['paket'])));
-        if (count($paketIds) !== count($in['paket'])) {
-            $errors['paket'] = 'Product yang sama tidak dapat dipilih dua kali.';
-        } else {
-            $oldIds = $old ? $this->productIds($old->id) : [];
-            $found = DB::table('paket_produk')->whereIn('id', $paketIds)->get()->keyBy('id');
-            foreach ($paketIds as $pid) {
-                if (! isset($found[$pid])) {
-                    $errors['paket'] = 'Product tidak ditemukan.';
-                    break;
-                }
-                if (! $found[$pid]->aktif && ! in_array($pid, $oldIds, true)) {
-                    $errors['paket'] = 'Product '.$found[$pid]->nomor.' harus berstatus Aktif.';
-                    break;
-                }
-            }
+        $paket = (int) $in['paket'];
+        $product = DB::table('paket_produk')->where('id', $paket)->first();
+        if (! $product) {
+            $errors['paket'] = 'Product tidak ditemukan.';
+        } elseif (! $product->aktif && (int) ($old->id_paket_produk ?? 0) !== $paket) {
+            $errors['paket'] = 'Product '.$product->nomor.' harus berstatus Aktif.';
         }
         [$biaya, $biayaErrors, $dropped] = Costing::cleanRows($in['biaya'] ?? [], $old ? DB::table('master_program_biaya')->where('id_master_program', $old->id)->pluck('id_rate')->filter()->map(fn ($v) => (int) $v)->all() : []);
         $errors += $biayaErrors;
@@ -170,21 +152,17 @@ class MasterProgramController extends Controller
             throw ValidationException::withMessages($errors);
         }
 
-        return [['durasi_hari' => (int) $in['durasi_hari'], 'jam_pembelajaran' => (int) $in['jam_pembelajaran'], 'target_peserta' => (int) $in['target_peserta'],
-            'harga_jual_peserta' => (float) $in['harga_jual_peserta'], 'target_profit' => (float) ($in['target_profit'] ?? 0)], $biaya, $paketIds, $dropped];
+        return [['id_paket_produk' => $paket, 'durasi_hari' => (int) $in['durasi_hari'], 'jam_pembelajaran' => (int) $in['jam_pembelajaran'], 'target_peserta' => (int) $in['target_peserta'],
+            'harga_jual_peserta' => (float) $in['harga_jual_peserta'], 'target_profit' => (float) ($in['target_profit'] ?? 0)], $biaya, $dropped];
     }
 
     // ---- Simpan ----
 
-    private function writeChildren(int $id, array $biaya, array $paketIds): void
+    private function writeBiaya(int $id, array $biaya): void
     {
         DB::table('master_program_biaya')->where('id_master_program', $id)->delete();
         foreach ($biaya as $b) {
             DB::table('master_program_biaya')->insert(['id_master_program' => $id] + $b);
-        }
-        DB::table('master_program_produk')->where('id_master_program', $id)->delete();
-        foreach ($paketIds as $n => $pid) {
-            DB::table('master_program_produk')->insert(['id_master_program' => $id, 'id_paket_produk' => $pid, 'urutan' => $n + 1, 'created_by' => Auth::id(), 'created_date' => now()]);
         }
     }
 
@@ -197,12 +175,12 @@ class MasterProgramController extends Controller
     {
         Gate::authorize('menu', [self::MENU, 'Add']);
         [$id, $nomor, $dropped] = DB::transaction(function () use ($request) {
-            [$header, $biaya, $paketIds, $dropped] = $this->validated($request, null);
+            [$header, $biaya, $dropped] = $this->validated($request, null);
             $nomor = CodeGenerator::next('master_program', 'MP-'.now()->format('ym'), 'nomor');
             $row = ['nomor' => $nomor, 'status' => 'draft', 'created_by' => Auth::id(), 'created_date' => now()] + $header;
             $id = DB::table('master_program')->insertGetId($row);
-            $this->writeChildren($id, $biaya, $paketIds);
-            write_log('Master Program', 'Tambah', 'Tambah Master Program '.$nomor, $header + ['product' => $this->productLabel($paketIds), 'jumlah_biaya' => count($biaya)], 'master_program', $id, $nomor);
+            $this->writeBiaya($id, $biaya);
+            write_log('Master Program', 'Tambah', 'Tambah Master Program '.$nomor, $header + ['product' => $this->productLabel($header['id_paket_produk']), 'jumlah_biaya' => count($biaya)], 'master_program', $id, $nomor);
 
             return [$id, $nomor, $dropped];
         });
@@ -219,16 +197,15 @@ class MasterProgramController extends Controller
             if ($old->status !== 'draft') {
                 throw ValidationException::withMessages(['program' => 'Hanya Master Program berstatus Draft yang dapat diubah.']);
             }
-            [$header, $biaya, $paketIds, $dropped] = $this->validated($request, $old);
+            [$header, $biaya, $dropped] = $this->validated($request, $old);
             $oldBiaya = DB::table('master_program_biaya')->where('id_master_program', $id)->orderBy('id')->get()->map(fn ($r) => (array) $r)->all();
-            $oldPaket = $this->productIds($id);
             $header += ['updated_by' => Auth::id(), 'updated_date' => now()];
             DB::table('master_program')->where('id', $id)->update($header);
-            $this->writeChildren($id, $biaya, $paketIds);
+            $this->writeBiaya($id, $biaya);
             $oldArr = (array) $old;
             write_log('Master Program', 'Edit', 'Update Master Program '.$old->nomor, [
-                'old' => array_merge($oldArr, ['product' => $this->productLabel($oldPaket)]),
-                'new' => array_merge($oldArr, $header, ['product' => $this->productLabel($paketIds)]),
+                'old' => array_merge($oldArr, ['product' => $this->productLabel((int) $old->id_paket_produk)]),
+                'new' => array_merge($oldArr, $header, ['product' => $this->productLabel($header['id_paket_produk'])]),
                 'detail_changes' => Costing::changes($oldBiaya, $biaya),
             ], 'master_program', $id, $old->nomor);
 
@@ -245,7 +222,7 @@ class MasterProgramController extends Controller
         $biaya = $this->biayaFor([$mp->id])->map(fn ($b) => (array) $b)->all();
         $calc = Costing::calculate($mp->durasi_hari, $mp->target_peserta, $mp->harga_jual_peserta, $biaya);
 
-        return ['id' => $mp->id, 'nomor' => $mp->nomor, 'status' => $mp->status, 'judul' => DB::table('master_program_produk as x')->join('paket_produk as p', 'p.id', '=', 'x.id_paket_produk')->where('x.id_master_program', $mp->id)->orderBy('x.urutan')->pluck('p.judul')->implode(' + '),
+        return ['id' => $mp->id, 'nomor' => $mp->nomor, 'status' => $mp->status, 'judul' => DB::table('paket_produk')->where('id', $mp->id_paket_produk)->value('judul') ?? '',
             'durasi' => (int) $mp->durasi_hari, 'target' => (int) $mp->target_peserta, 'harga' => (float) $mp->harga_jual_peserta, 'jp' => $mp->jam_pembelajaran, 'hpp' => $calc['total_hpp'], 'profit' => $calc['profit'],
             'bep_peserta' => $calc['bep_peserta'], 'warnings' => Costing::warnings($calc, $mp->target_peserta), 'jumlah_biaya' => count($biaya),
             'n_penjualan' => DB::table('penjualan_program')->where('id_master_program', $mp->id)->count()];
@@ -295,7 +272,7 @@ class MasterProgramController extends Controller
                 if ($summary['jumlah_biaya'] < 1) {
                     $missing[] = 'minimal satu item biaya';
                 }
-                if (! $this->productIds($id)) {
+                if (! $old->id_paket_produk) {
                     $missing[] = 'Product';
                 }
                 if ($missing) {

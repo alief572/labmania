@@ -153,7 +153,7 @@ class Quotation
     {
         $match = self::matchParticipant($p);
         $company = $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->first() : null;
-        $fields = DB::table('master_program_produk as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')->where('m.id_master_program', $program->id_master_program)->distinct()->pluck('p.id_jenis_bidang');
+        $fields = DB::table('master_program as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')->where('m.id', $program->id_master_program)->distinct()->pluck('p.id_jenis_bidang');
         $data = ['nama' => $p['nama'], 'nik' => $p['nik'] ?? null, 'email' => $p['email'] ?? null, 'no_telp' => ($p['no_wa'] ?? null) ?: ($p['no_hp'] ?? null),
             'instansi' => $company?->name_customer ?? ($p['instansi'] ?? null), 'id_customer' => $company?->id_customer, 'npwp_instansi' => $company?->npwp,
             'id_jenis_bidang' => $fields->count() === 1 ? $fields->first() : null, 'id_prov' => $company?->id_prov, 'provinsi' => $company?->provinsi, 'id_kab' => $company?->id_city, 'kabupaten' => $company?->kota];

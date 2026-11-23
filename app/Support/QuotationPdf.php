@@ -17,7 +17,7 @@ class QuotationPdf
     private function extra(array $q): array
     {
         $p = Sales::program($q['id_penjualan']);
-        $numbers = DB::table('master_program_produk as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')->where('m.id_master_program', $p->id_master_program)->orderBy('m.urutan')->pluck('p.nomor')->implode(', ');
+        $numbers = DB::table('master_program as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')->where('m.id', $p->id_master_program)->pluck('p.nomor')->implode(', ');
         $sales = DB::table('ms_user_karyawan')->where('id', $q['id_sales'])->first();
 
         return [['nomor' => $numbers, 'judul' => Sales::title($p->id_master_program)],

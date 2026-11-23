@@ -129,9 +129,9 @@ class Sales
 
     public static function titles(array $ids): array
     {
-        return DB::table('master_program_produk as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')
+        return DB::table('master_program as m')->join('paket_produk as p', 'p.id', '=', 'm.id_paket_produk')
             ->leftJoin('ms_varian_pelaksanaan as v', 'v.id', '=', 'p.id_varian_pelaksanaan')
-            ->whereIn('m.id_master_program', $ids)->orderBy('m.urutan')->get(['m.id_master_program', 'p.judul', 'v.nama as varian'])
+            ->whereIn('m.id', $ids)->get(['m.id as id_master_program', 'p.judul', 'v.nama as varian'])
             ->groupBy('id_master_program')->map(fn ($rows) => $rows->map(fn ($p) => $p->judul.($p->varian ? ' · '.$p->varian : ''))->implode(' + '))->all();
     }
 

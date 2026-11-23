@@ -15,10 +15,10 @@ class SalesOrder
 
     public static function programSnapshot(object $p): array
     {
-        $products = DB::table('master_program_produk as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')
+        $products = DB::table('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')
             ->leftJoin('ms_varian_pelaksanaan as v', 'v.id', '=', 'k.id_varian_pelaksanaan')
             ->leftJoin('ms_jenis_sertifikasi as s', 's.id', '=', 'k.id_jenis_sertifikasi')
-            ->where('m.id_master_program', $p->id_master_program)->orderBy('m.urutan')->get(['k.nomor', 'k.judul', 'v.nama as varian', 's.nama as sertifikat'])->all();
+            ->where('m.id', $p->id_master_program)->get(['k.nomor', 'k.judul', 'v.nama as varian', 's.nama as sertifikat'])->all();
         $trainer = DB::table('ms_trainer as t')->leftJoin('users as u', 'u.id_user', '=', 't.id_user')->where('t.id', $p->id_trainer)->first(['t.id', 't.nama', 't.bidang_keahlian', 't.no_telp', 't.alamat', 'u.email']);
         $assistant = DB::table('ms_user_karyawan')->where('id', $p->id_asisten)->first(['id', 'nama', 'jabatan', 'telp', 'email']);
         $company = $p->id_customer ? DB::table('master_customer')->where('id_customer', $p->id_customer)->first(['id_customer', 'name_customer', 'address_office', 'npwp', 'perlakuan_ppn']) : null;

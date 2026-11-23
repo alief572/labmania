@@ -33,7 +33,7 @@ class MasterProgramTest extends MasterTestCase
     private function payload(array $over = []): array
     {
         return $over + [
-            'paket' => [$this->paket], 'durasi_hari' => '3', 'jam_pembelajaran' => '16', 'target_peserta' => '10', 'harga_jual_peserta' => '2.500.000', 'target_profit' => '',
+            'paket' => $this->paket, 'durasi_hari' => '3', 'jam_pembelajaran' => '16', 'target_peserta' => '10', 'harga_jual_peserta' => '2.500.000', 'target_profit' => '',
             'biaya' => [
                 ['id_rate' => $this->rateFixed, 'tipe' => 'fixed', 'item' => 'Sewa Ruang', 'id_satuan' => $this->sat['day'], 'harga' => '1000000', 'is_manual' => false],
                 ['id_rate' => $this->rateVar, 'tipe' => 'variable', 'item' => 'Snack', 'id_satuan' => $this->sat['peserta_day'], 'harga' => '50000', 'is_manual' => false],
@@ -57,7 +57,7 @@ class MasterProgramTest extends MasterTestCase
         $this->assertSame(16, (int) $mp->jam_pembelajaran);
         $this->assertEquals(2500000, $mp->harga_jual_peserta);
         $this->assertSame(2, DB::table('master_program_biaya')->where('id_master_program', $id)->count());
-        $this->assertSame([$this->paket], DB::table('master_program_produk')->where('id_master_program', $id)->pluck('id_paket_produk')->map(fn ($v) => (int) $v)->all());
+        $this->assertSame($this->paket, (int) $mp->id_paket_produk);
         $this->assertSame('MP-'.now()->format('ym').'-002', DB::table('master_program')->where('id', $this->draft())->value('nomor'));
         $this->get("/program/$id/ringkasan")->assertJsonPath('hpp', 3000000 + 50000 * 3 * 10);
         $this->assertDatabaseHas('logs', ['action' => 'Tambah', 'ref_no' => $mp->nomor]);
@@ -71,23 +71,23 @@ class MasterProgramTest extends MasterTestCase
         $this->post('/program', $this->payload(['durasi_hari' => '0']))->assertSessionHasErrors('durasi_hari');
         $this->post('/program', $this->payload(['target_peserta' => '0']))->assertSessionHasErrors('target_peserta');
         $this->post('/program', $this->payload(['harga_jual_peserta' => '']))->assertSessionHasErrors('harga_jual_peserta');
-        $this->post('/program', $this->payload(['paket' => []]))->assertSessionHasErrors('paket');
+        $this->post('/program', $this->payload(['paket' => '']))->assertSessionHasErrors('paket');
         $this->post('/program', $this->payload(['paket' => [$this->paket, $this->paket]]))->assertSessionHasErrors('paket');
-        $this->post('/program', $this->payload(['paket' => [9999]]))->assertSessionHasErrors('paket');
+        $this->post('/program', $this->payload(['paket' => 9999]))->assertSessionHasErrors('paket');
         $this->assertSame(0, DB::table('master_program')->count());
     }
 
-    public function test_multi_product_satu_costing_dengan_urutan_dan_product_nonaktif_ditolak_untuk_baru(): void
+    public function test_satu_product_per_program_dan_product_nonaktif_ditolak_untuk_baru(): void
     {
         $kedua = DB::table('paket_produk')->insertGetId(['nomor' => 'PC-002', 'judul' => 'Lingkungan', 'id_jenis_produk' => 1, 'id_jenis_bidang' => 2, 'id_varian_pelaksanaan' => 1, 'id_jenis_sertifikasi' => 1, 'aktif' => 1]);
-        $id = $this->draft(['paket' => [$kedua, $this->paket]]);
-        $this->assertSame([$kedua, $this->paket], DB::table('master_program_produk')->where('id_master_program', $id)->orderBy('urutan')->pluck('id_paket_produk')->map(fn ($v) => (int) $v)->all());
+        $id = $this->draft(['paket' => $kedua]);
+        $this->assertSame($kedua, (int) DB::table('master_program')->where('id', $id)->value('id_paket_produk'));
         $this->assertSame(2, DB::table('master_program_biaya')->where('id_master_program', $id)->count());
-        $this->get('/program')->assertInertia(fn ($p) => $p->where('rows.data.0.judul', 'Lingkungan + K3 Umum'));
+        $this->get('/program')->assertInertia(fn ($p) => $p->where('rows.data.0.judul', 'Lingkungan'));
 
         DB::table('paket_produk')->where('id', $kedua)->update(['aktif' => 0]);
-        $this->put("/program/$id", $this->payload(['paket' => [$kedua]]))->assertSessionHasNoErrors();
-        $this->post('/program', $this->payload(['paket' => [$kedua]]))->assertSessionHasErrors('paket');
+        $this->put("/program/$id", $this->payload(['paket' => $kedua]))->assertSessionHasNoErrors();
+        $this->post('/program', $this->payload(['paket' => $kedua]))->assertSessionHasErrors('paket');
     }
 
     public function test_biaya_satuan_rate_ganda_nonaktif_dan_nominal_nol(): void
@@ -220,8 +220,7 @@ class MasterProgramTest extends MasterTestCase
 
     public function test_finalkan_ditolak_bila_isian_wajib_kosong_tetapi_peringatan_costing_tidak_memblokir(): void
     {
-        $lama = DB::table('master_program')->insertGetId(['nomor' => 'MP-2601-001', 'durasi_hari' => 2, 'target_peserta' => 10, 'harga_jual_peserta' => 100000, 'status' => 'draft', 'jam_pembelajaran' => null]);
-        DB::table('master_program_produk')->insert(['id_master_program' => $lama, 'id_paket_produk' => $this->paket, 'urutan' => 1]);
+        $lama = DB::table('master_program')->insertGetId(['nomor' => 'MP-2601-001', 'id_paket_produk' => $this->paket, 'durasi_hari' => 2, 'target_peserta' => 10, 'harga_jual_peserta' => 100000, 'status' => 'draft', 'jam_pembelajaran' => null]);
         DB::table('master_program_biaya')->insert(['id_master_program' => $lama, 'tipe' => 'fixed', 'item' => 'X', 'id_satuan' => $this->sat['event'], 'harga' => 9000000, 'is_manual' => 1]);
         $this->post("/program/$lama/finalkan")->assertSessionHasErrors('program');
         $this->assertSame('draft', DB::table('master_program')->where('id', $lama)->value('status'));

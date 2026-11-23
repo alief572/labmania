@@ -58,7 +58,7 @@ class ParticipantPdf
                     $m->WriteHTML('<div style="text-align:center;padding-top:20mm"><h1>DRAFT SERTIFIKAT PELATIHAN</h1><p>Pratinjau konfirmasi nama; tanpa nomor dan tanda tangan resmi.</p><p>Diberikan kepada</p><h1>'.e($x->nama_sertifikat ?: $x->nama).'</h1><p>'.e($x->instansi).'</p><h2>'.e($title).'</h2><p>'.e($p->tgl_mulai).' s.d. '.e($p->tgl_selesai).' · '.e($p->lokasi).'</p><p>'.e($p->jam_pembelajaran).' Jam Pembelajaran</p><p>Trainer: '.e(DB::table('ms_trainer')->where('id', $p->id_trainer)->value('nama')).'</p></div>');
                 }
             } else {
-                $variant = DB::table('master_program_produk as a')->join('paket_produk as b', 'b.id', '=', 'a.id_paket_produk')->join('ms_varian_pelaksanaan as v', 'v.id', '=', 'b.id_varian_pelaksanaan')->where('a.id_master_program', $p->id_master_program)->pluck('v.nama')->unique()->implode(' + ');
+                $variant = DB::table('master_program as a')->join('paket_produk as b', 'b.id', '=', 'a.id_paket_produk')->join('ms_varian_pelaksanaan as v', 'v.id', '=', 'b.id_varian_pelaksanaan')->where('a.id', $p->id_master_program)->pluck('v.nama')->unique()->implode(' + ');
                 $chunks = $people->chunk(10)->values();
                 for ($day = 0; $day < $p->durasi_hari; $day++) {
                     foreach ($chunks as $i => $chunk) {

@@ -33,8 +33,7 @@ trait Phase3Scenarios
         $this->travelTo(now()->setDate(2026, 11, 13)->startOfDay());
         $ids = $this->seedAttributes();
         $product = DB::table('paket_produk')->insertGetId(['nomor' => 'PC-UJI', 'judul' => 'Program Uji Sintetis', 'id_jenis_produk' => $ids['ms_jenis_produk'], 'id_jenis_bidang' => $ids['ms_jenis_bidang'], 'id_jenis_sertifikasi' => $ids['ms_jenis_sertifikasi'], 'id_varian_pelaksanaan' => $ids['ms_varian_pelaksanaan'], 'aktif' => 1]);
-        $this->master = DB::table('master_program')->insertGetId(['nomor' => 'MP-UJI', 'status' => 'final', 'durasi_hari' => 2, 'jam_pembelajaran' => 16, 'target_peserta' => 10, 'harga_jual_peserta' => 1000000]);
-        DB::table('master_program_produk')->insert(['id_master_program' => $this->master, 'id_paket_produk' => $product, 'urutan' => 1]);
+        $this->master = DB::table('master_program')->insertGetId(['nomor' => 'MP-UJI', 'id_paket_produk' => $product, 'status' => 'final', 'durasi_hari' => 2, 'jam_pembelajaran' => 16, 'target_peserta' => 10, 'harga_jual_peserta' => 1000000]);
         $this->unit = (int) (DB::table('ms_satuan')->where('category', 'rate_fixed')->where('code', 'event')->value('id')
             ?: DB::table('ms_satuan')->insertGetId(['category' => 'rate_fixed', 'code' => 'event', 'nama' => 'Event', 'deleted' => '0']));
         $this->trainer = DB::table('ms_trainer')->insertGetId(['kode' => 'TR-UJI', 'nama' => 'Trainer Sintetis', 'aktif' => 1]);

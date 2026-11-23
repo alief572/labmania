@@ -39,8 +39,7 @@ trait Phase5Scenarios
         config(['labmania.document_root' => $this->root5, 'labmania.legacy_document_root' => null]);
         $a = $this->seedAttributes();
         $k = DB::table('paket_produk')->insertGetId(['nomor' => 'PC-5', 'judul' => 'Program Lima', 'id_jenis_produk' => $a['ms_jenis_produk'], 'id_jenis_bidang' => $a['ms_jenis_bidang'], 'id_jenis_sertifikasi' => $a['ms_jenis_sertifikasi'], 'id_varian_pelaksanaan' => $a['ms_varian_pelaksanaan'], 'aktif' => 1]);
-        $m = DB::table('master_program')->insertGetId(['nomor' => 'MP-5', 'status' => 'final', 'durasi_hari' => 2, 'target_peserta' => 10, 'harga_jual_peserta' => 1000000]);
-        DB::table('master_program_produk')->insert(['id_master_program' => $m, 'id_paket_produk' => $k, 'urutan' => 1]);
+        $m = DB::table('master_program')->insertGetId(['nomor' => 'MP-5', 'id_paket_produk' => $k, 'status' => 'final', 'durasi_hari' => 2, 'target_peserta' => 10, 'harga_jual_peserta' => 1000000]);
         $tr = DB::table('ms_trainer')->insertGetId(['kode' => 'TR-5', 'nama' => 'Trainer Lima', 'aktif' => 1]);
         $as = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-5', 'nama' => 'Asisten Lima', 'aktif' => 1]);
         $p = DB::table('penjualan_program')->insertGetId(['nomor' => 'PJP-2611-001', 'jenis' => 'public', 'id_master_program' => $m, 'id_trainer' => $tr, 'id_asisten' => $as, 'tgl_mulai' => '2026-12-20', 'tgl_selesai' => '2026-12-21', 'durasi_hari' => 2, 'jam_pembelajaran' => 8, 'waktu' => '08.00', 'lokasi' => 'Bekasi', 'status' => 'final']);
