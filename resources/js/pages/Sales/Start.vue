@@ -14,7 +14,7 @@ const target = (jenis: 'public' | 'b2b') => appUrl(`/penjualan-program/create?ma
 </script>
 
 <template>
-    <Head title="Buat Penjualan Program" /><AppLayout title="Penjualan Program">
+    <Head title="Buat Penjualan Program" /><AppLayout title="Penjualan Program" full-width>
         <div class="pf-formbar"><Link class="kt-btn" :href="appUrl('/penjualan-program')">← Kembali</Link><h1>Buat Penjualan Program</h1><span class="ref">PJ-FR-02 · PJ-FR-03</span><TutorialButton /></div>
         <section class="panel" aria-labelledby="start-master"><h2 id="start-master"><span class="section-number">1</span> Pilih Master Program <span class="muted">hanya yang berstatus Final</span></h2>
             <label>Master Program
