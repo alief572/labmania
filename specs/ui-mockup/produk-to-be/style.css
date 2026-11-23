@@ -1612,3 +1612,10 @@ textarea.input { font-family: inherit; }
 .rs-geser .input-unit { max-width: 140px; }
 .rs-tbl td { vertical-align: top; }
 .rs-tbl .input { min-width: 140px; }
+
+/* Link unduh evidence / file unggahan (core.js fileLink) */
+.file-dl { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; cursor: pointer; }
+.file-dl:hover, .file-dl:focus-visible { text-decoration: underline; color: var(--accent, var(--navy)); }
+.file-dl svg { flex: none; opacity: .75; }
+.sk-riwayat { margin: 6px 0 10px; font-size: 12.5px; }
+.sk-riwayat li { margin: 2px 0; }
