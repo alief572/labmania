@@ -89,7 +89,7 @@
         ${sumRow('Invoice', `<span class="code">${esc(rf.inv)}</span> · sudah dibayar`)}${sumRow('Program', `<span class="code">${esc(pj.nomor)}</span> · ${pj.status === 'batal' ? 'program dibatalkan' : `jadwal ${fmtRange(pj.tglMulai, pj.tglSelesai)}`}`)}
         ${sumRow('Nominal tagihan', rp(rf.nominal))}${sumRow('Alasan', esc(rf.alasan))}
         ${(rf.riwayat || (a ? [Object.assign({ jenis: 'approval' }, a)] : [])).map(h => sumRow(h.jenis === 'perbaikan' ? 'Diajukan ulang' : 'Approval', h.jenis === 'perbaikan' ? `${esc(h.oleh)} · ${fmtStamp(h.waktu)} · ${esc(h.catatan)}` : `${h.hasil === 'disetujui' ? 'Disetujui' : 'Ditolak'} · ${esc(h.oleh)} · ${fmtStamp(h.waktu)}${h.catatan ? ` · ${esc(h.catatan)}` : ''}`)).join('')}
-        ${s ? sumRow('Transfer', `${rp(s.nominal)} · ${esc(s.bank)} ${esc(s.rek)} a.n. ${esc(s.an)} · bukti <span class="code">${esc(s.bukti)}</span>`) + sumRow('Diselesaikan', `${esc(s.oleh)} · ${fmtStamp(s.waktu)}`) + (s.catatan ? sumRow('Keterangan', esc(s.catatan)) : '') : ''}</div>` });
+        ${s ? sumRow('Transfer', `${rp(s.nominal)} · ${esc(s.bank)} ${esc(s.rek)} a.n. ${esc(s.an)} · bukti ${fileLink(s.bukti)}`) + sumRow('Diselesaikan', `${esc(s.oleh)} · ${fmtStamp(s.waktu)}`) + (s.catatan ? sumRow('Keterangan', esc(s.catatan)) : '') : ''}</div>` });
   }
   // Perbaiki & ajukan ulang (Sales/Marketing) refund yang ditolak ([JMR-5]): alasan penolakan tampil di atas;
   // yang dapat diperbaiki alasan refund dan nominal tagihan (maks. nilai invoice); catatan perbaikan wajib.
@@ -148,6 +148,7 @@
         if (!f.nominal.value.trim() || nominal > rf.nominal) ok = invalid(f.nominal, `Nominal 0 sampai ${rp(rf.nominal)}`);
         if (nominal < rf.nominal && !f.catatan.value.trim()) ok = invalid(f.catatan, 'Nominal kurang dari tagihan: isi keterangan potongan');
         ['bank', 'rek', 'an'].forEach(n => { if (!f[n].value.trim()) ok = invalid(f[n], 'Wajib diisi'); });
+        if (file) fileSimpan([file]);
         if (!file) ok = invalid(f.bukti, 'Unggah bukti transfer');
         else if (!['pdf', 'jpg', 'jpeg', 'png'].includes(file.name.split('.').pop().toLowerCase())) ok = invalid(f.bukti, 'Hanya PDF, JPG, atau PNG');
         else if (file.size > 5 * 1024 * 1024) ok = invalid(f.bukti, 'Lebih dari 5 MB');

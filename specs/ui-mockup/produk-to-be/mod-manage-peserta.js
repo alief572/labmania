@@ -314,7 +314,7 @@
     const x = monAll().find(r => r.p.id === p.id); if (!x) return;
     const s = x.s, bnsp = monSert(x.pj);
     const opt = (o, v) => Object.entries(o).map(([k, l]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${l}</option>`).join('');
-    const fileField = (name, cur) => `<label class="pb-drop"><input type="file" name="${name}" accept=".pdf,.jpg,.jpeg,.png" hidden><b>${cur ? 'Ganti file' : 'Pilih file'}</b><span class="hint">PDF, JPG, PNG · maks. 5 MB</span></label><div class="hint" data-file-out="${name}">${cur ? esc(cur) : 'Belum ada file'}</div>`;
+    const fileField = (name, cur) => `<label class="pb-drop"><input type="file" name="${name}" accept=".pdf,.jpg,.jpeg,.png" hidden><b>${cur ? 'Ganti file' : 'Pilih file'}</b><span class="hint">PDF, JPG, PNG · maks. 5 MB</span></label><div class="hint" data-file-out="${name}">${cur ? fileLink(cur) : 'Belum ada file'}</div>`;
     openModal({
       title: `${bnsp ? 'Pengiriman & Sertifikasi BNSP' : 'Pengiriman Sertifikat'}: ${p.nama}`, wide: true,
       body: `<div class="summary">${sumRow('Program', `<span class="code">${esc(x.pj.nomor)}</span> ${esc(mpJudul(x.pj))} · ${esc(monTipe(x.pj))}`)}${sumRow('Instansi', esc(pesertaCo(p)))}</div>
@@ -345,7 +345,7 @@
           if (!file) continue;
           if (!SERT_EXT.includes(file.name.split('.').pop().toLowerCase())) ok = invalid(f[name], `${file.name}: hanya PDF, JPG, atau PNG`);
           else if (file.size > 5 * 1024 * 1024) ok = invalid(f[name], `${file.name} lebih dari 5 MB`);
-          else baru[name] = file.name;
+          else { fileSimpan([file]); baru[name] = file.name; }
         }
         if (baru.kirim !== 'belum' && !baru.tglKirim) ok = invalid(f.tglKirim, 'Isi tanggal kirim');
         if (baru.kirim !== 'belum' && !s.noLatih) ok = invalid(f.kirim, 'Buat sertifikat dulu sebelum ditandai dikirim');

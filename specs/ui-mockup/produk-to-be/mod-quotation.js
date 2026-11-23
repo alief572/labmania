@@ -1178,8 +1178,11 @@
     if (f) return '<p class="sk-note">Berkas terlalu besar untuk disimpan di browser (mockup). Di aplikasi berkas tersimpan di server dan tampil di sini.</p>';
     return `<p class="sk-note">${isB2bQtn(k) ? 'PIC company belum mengirim daftar peserta dan surat konfirmasi.' : 'Peserta ini belum mengunggah surat konfirmasi.'}</p>`;
   }
-  const suratMeta = (k, p) => { const f = suratFile(k, p); return f ? `<span class="code">${esc(f.nama)}</span> · ${kbOf(f.ukuran)} · diunggah ${fmtStamp(suratTgl(k, p))} lewat link${isB2bQtn(k) && k.konfCo ? ` oleh PIC ${esc(k.konfCo.pic)}` : ''}` : 'Belum ada berkas'; };
-  const suratBlok = (k, p) => `<section class="sk-blok"><p class="sk-head"><b>${esc(isB2bQtn(k) ? kepadaOf(k) : p.nama)}</b> <span class="muted">${isB2bQtn(k) ? `${k.peserta.length} peserta` : esc(pesertaCo(p))} · ${suratMeta(k, p)}</span></p>${suratIsi(k, p)}</section>`;
+  const suratMeta = (k, p) => { const f = suratFile(k, p); return f ? `${fileLink(f.nama, suratUrl(f))} · ${kbOf(f.ukuran)} · diunggah ${fmtStamp(suratTgl(k, p))} lewat link${isB2bQtn(k) && k.konfCo ? ` oleh PIC ${esc(k.konfCo.pic)}` : ''}` : 'Belum ada berkas'; };
+  // Riwayat berkas surat yang diganti (konfirmasi ulang / ganti oleh Sales) tetap dapat diunduh.
+  const suratRiwayat = (k, p) => { const l = (isB2bQtn(k) ? (k.konfCo || {}).suratLama : p.suratLama) || [];
+    return l.length ? `<ul class="sk-riwayat"><span class="muted">Berkas sebelumnya:</span>${l.map(f => `<li>${fileLink(f.nama, suratUrl(f))} <span class="muted">· ${kbOf(f.ukuran)}${f.rev != null ? ` · jadwal rev${f.rev}` : ''}${f.diganti ? ` · diganti ${fmtStamp(f.diganti)}` : ''}</span></li>`).join('')}</ul>` : ''; };
+  const suratBlok = (k, p) => `<section class="sk-blok"><p class="sk-head"><b>${esc(isB2bQtn(k) ? kepadaOf(k) : p.nama)}</b> <span class="muted">${isB2bQtn(k) ? `${k.peserta.length} peserta` : esc(pesertaCo(p))} · ${suratMeta(k, p)}</span></p>${suratRiwayat(k, p)}${suratIsi(k, p)}</section>`;
   // Halaman Export PDF batch: gambar dicetak satu halaman; PDF unggahan digabung server di aplikasi.
   function suratPage(k, p) {
     const f = suratFile(k, p), url = suratUrl(f), siapa = isB2bQtn(k) ? kepadaOf(k) : p.nama;
@@ -1219,7 +1222,7 @@
     const d = k.dokumen || [];
     if (!d.length) return '<p class="dash-empty">Belum ada dokumen.</p>';
     return `${k.dokKet ? `<p class="dok-ket"><span class="muted">Keterangan:</span> ${esc(k.dokKet)}</p>` : ''}<div class="table-wrap"><table class="table"><thead><tr><th class="num">No</th><th>Nama file</th><th>Ukuran</th><th>Diunggah</th></tr></thead><tbody>
-      ${d.map((x, i) => `<tr><td class="num">${i + 1}</td><td><span class="code">${esc(x.nama)}</span></td><td class="nowrap">${x.ukuran ? `${Math.max(1, Math.round(x.ukuran / 1024))} KB` : '—'}</td><td class="nowrap">${esc(x.oleh || '—')}<br><span class="muted">${fmtStamp(x.tgl)}</span></td></tr>`).join('')}</tbody></table></div>`;
+      ${d.map((x, i) => `<tr><td class="num">${i + 1}</td><td>${fileLink(x.nama)}${x.ket ? `<br><span class="muted">${esc(x.ket)}</span>` : ''}</td><td class="nowrap">${x.ukuran ? `${Math.max(1, Math.round(x.ukuran / 1024))} KB` : '—'}</td><td class="nowrap">${esc(x.oleh || '—')}<br><span class="muted">${fmtStamp(x.tgl)}</span></td></tr>`).join('')}</tbody></table></div>`;
   }
   // Peserta Deal ke Master Peserta (QTN-FR-33, input/Master - Buat Program/2026-11-11-peserta-deal-ke-master-peserta/).
   // Cocok NIK, lalu email, lalu No. WA: hanya field kosong yang diisi. Tidak cocok: peserta baru (Belum lengkap bila ada yang kosong).
@@ -1304,7 +1307,7 @@
           : `<p class="dash-empty">Belum ada peserta di Data Peserta. Bagikan link Konfirmasi Kehadiran dahulu.</p>`}
         <div class="field" id="deal-err"></div>
         <div class="grid2 gap-t">
-          ${dokLama ? field('Dokumen dari Deal sebelumnya', `<ul class="dok-pick">${k.dokumen.map(x => `<li><span class="code">${esc(x.nama)}</span> <span class="muted">${esc(x.oleh || '')} ${esc(x.tgl || '')}</span></li>`).join('')}</ul><span class="hint">Tetap tersimpan; tidak perlu diunggah ulang.</span>`, '', 'span2') : ''}
+          ${dokLama ? field('Dokumen dari Deal sebelumnya', `<ul class="dok-pick">${k.dokumen.map(x => `<li>${fileLink(x.nama)} <span class="muted">${esc(x.oleh || '')} ${esc(x.tgl || '')}</span></li>`).join('')}</ul><span class="hint">Tetap tersimpan; tidak perlu diunggah ulang.</span>`, '', 'span2') : ''}
           ${field(`${dokLama ? 'Tambah dokumen dari customer' : 'Dokumen dari customer' + req}${QDOK}`, `<label class="pb-drop"><input type="file" name="dokumen" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" hidden><b>Pilih file dokumen</b><span class="hint">PO, SPK, surat penunjukan, bukti bayar, atau dokumen lain · PDF, JPG, PNG, DOC/DOCX, XLS/XLSX · maks. 5 MB per file · boleh lebih dari satu${dokLama ? ' · opsional' : ''}</span></label>
             <ul class="dok-pick" id="deal-files" aria-live="polite"><li class="hint">Belum ada file</li></ul>`, '', 'span2')}
           ${field('Keterangan dokumen', `<input class="input" name="dokKet" maxlength="200" placeholder="mis. PO No. 118/PO/X/2026">`, '', 'span2')}
@@ -1325,6 +1328,7 @@
         if (!on.length) return err(list.length ? `Centang minimal 1 peserta. Bila tidak ada yang ${ulang ? 'ikut jadwal baru' : 'deal'}, gunakan Batalkan.` : 'Belum ada peserta yang dapat ditandai Deal.');
         if (isB2bQtn(k) && on.length < B2B_MIN) return err(`Penjualan B2B minimal ${B2B_MIN} peserta deal (baru ${on.length}).`);
         const f = $('#modal-root form'), files = dealFiles.slice();
+        fileSimpan(files);
         const salah = files.find(x => !DOK_EXT.includes(x.name.split('.').pop().toLowerCase())), besar = files.find(x => x.size > DOK_MAX);
         if (!files.length && !dokLama) return invalid(f.elements.dokumen, 'Unggah minimal satu dokumen dari customer (mis. PO)');
         if (salah) return invalid(f.elements.dokumen, `${salah.name}: hanya PDF, JPG, PNG, DOC/DOCX, atau XLS/XLSX`);
@@ -1558,6 +1562,7 @@
         if (salah) return invalid(f.dokumen, `${salah.name}: hanya PDF, JPG, PNG, DOC/DOCX, atau XLS/XLSX`);
         if (besar) return invalid(f.dokumen, `${besar.name} lebih dari ${FILE_MB} MB`);
         const tgl = stampNow(), ket = f.ket.value.trim();
+        fileSimpan(files);
         k.dokumen = (k.dokumen || []).concat(files.map(x => ({ nama: x.name, ukuran: x.size, oleh: meName(), tgl, ket })));
         logAct('Quotation', 'Quotation', 'Edit', k.nomor, k.id, `Tambah ${files.length} dokumen customer ke ${k.nomor}${ket ? `: ${ket}` : ''}`);
         toast(`${files.length} dokumen ditambahkan ke ${k.nomor}`);
@@ -1580,6 +1585,7 @@
         if (fileSalah([x], /\.(pdf|jpe?g|png)$/i)) return invalid(f.surat, 'Hanya PDF, JPG, atau PNG');
         if (fileBesar([x])) return invalid(f.surat, `Berkas lebih dari ${FILE_MB} MB`);
         if (!alasan) return invalid(f.alasan, 'Isi alasan penggantian');
+        fileSimpan([x]);
         (p.suratLama = p.suratLama || []).push(Object.assign({ diganti: stampNow() }, p.surat));
         const lama = p.surat.nama;
         p.surat = { nama: x.name, ukuran: x.size, tipe: x.type, oleh: meName(), tgl: stampNow(), alasan };

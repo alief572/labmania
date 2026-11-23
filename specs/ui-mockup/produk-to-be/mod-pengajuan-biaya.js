@@ -267,7 +267,7 @@
     });
     form.addEventListener('change', e => {
       if (e.target.name === 'jenis') pbSetJenis(e.target.value);
-      else if (e.target.name === 'files') { d.files = [...e.target.files].map(f => f.name); $('#pb-files').textContent = d.files.join(', ') || 'Belum ada file'; }
+      else if (e.target.name === 'files') { d.files = fileSimpan([...e.target.files]).map(f => f.name); $('#pb-files').textContent = d.files.join(', ') || 'Belum ada file'; }
     });
     form.addEventListener('submit', e => {
       e.preventDefault();
@@ -353,7 +353,7 @@
     return `<div class="summary">${sumRow('No. Program', `${jenisTag(pj.jenis)} <span class="code">${esc(pj.nomor)}</span> · ${esc(paketOf(mpOf(pj)).judul)}`)}
       ${sumRow(isOb ? 'No. Overbudget' : 'No. Pengajuan', `<span class="code">${esc(r.nomor)}</span> ${isOb ? '' : pbJenisTag(r.jenis)} · ${PB_KAT[r.kat]}`)}${sumRow('Status', pbBadge(r.status, isOb))}${isOb ? '' : sumRow('Progres', pbProgress(r))}
       ${sumRow(isOb ? 'Alasan' : 'Deskripsi', esc(isOb ? r.alasan : r.desk))}${sumRow('Request By', esc(userName(r.by)))}
-      ${isOb ? '' : sumRow('Rekening tujuan', `${esc(r.bank)} · ${esc(r.norek)} · a.n. ${esc(r.nmRek)}`) + sumRow('Bukti', r.files.length ? esc(r.files.join(', ')) : '<span class="muted">—</span>')}
+      ${isOb ? '' : sumRow('Rekening tujuan', `${esc(r.bank)} · ${esc(r.norek)} · a.n. ${esc(r.nmRek)}`) + sumRow('Bukti', fileLinks(r.files))}
       ${sumRow(`Posisi budget ${PB_KAT[r.kat]}`, `Budget ${rp(s.budget)} · Aktual ${rp(s.used)} · Sisa ${rp(s.sisa)}`)}</div>
       <div class="table-wrap"><table class="table"><thead><tr><th>Item</th><th class="money">Qty</th><th class="money">Price / Unit</th><th class="money">Total</th></tr></thead><tbody>
       ${r.items.map(d => `<tr><td>${esc(d.item)}${d.baru ? ' <span class="tag tag-manual">item baru</span>' : ''}</td><td class="money">${fmtQty(d.qty)}</td><td class="money">${rp(d.harga)}</td><td class="money">${rp(d.total)}</td></tr>`).join('')}</tbody>

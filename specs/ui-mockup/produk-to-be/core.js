@@ -628,3 +628,53 @@
     setTimeout(() => el.remove(), 3600);
   }
 
+
+  // ---------- Evidence / file unggahan: unduh ----------
+  // Semua file yang diunggah (dokumen Deal, surat konfirmasi, evidence reschedule, bukti refund, bukti pengajuan biaya,
+  // lampiran trainer, sertifikat BNSP) dapat diunduh dari daftarnya. Mockup menyimpan berkas di memori browser
+  // (dikunci nama file) selama halaman terbuka; data contoh tanpa berkas asli diunduh sebagai berkas pengganti.
+  // Di aplikasi, berkas tersimpan di server dan diunduh lewat endpoint.
+  const FILE_BLOB = new Map();
+  const fileSimpan = files => { [...(files || [])].forEach(f => { if (f && f.name) FILE_BLOB.set(f.name, f); }); return files; };
+  const fileLink = (nama, url = '') => nama
+    ? `<a href="#" class="file-dl code" data-file-dl="${esc(nama)}"${url ? ` data-file-url="${esc(url)}"` : ''} title="Unduh ${esc(nama)}">${esc(nama)}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></a>`
+    : '<span class="muted">—</span>';
+  const fileLinks = (list, sep = '<br>') => (list || []).length ? list.map(n => fileLink(typeof n === 'string' ? n : n.nama, typeof n === 'string' ? '' : n.url || '')).join(sep) : '<span class="muted">—</span>';
+  // PDF satu halaman berisi teks (ASCII) untuk berkas pengganti data contoh.
+  function pdfMini(lines) {
+    const t = s => String(s).replace(/[^\x20-\x7e]/g, '?').replace(/[\()]/g, '\$&');
+    const stream = `BT /F1 12 Tf 56 780 Td 16 TL ${lines.map(l => `(${t(l)}) '`).join(' ')} ET`;
+    const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+      `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+    let out = '%PDF-1.4\n'; const off = [];
+    objs.forEach((o, i) => { off.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+    const x = out.length;
+    out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${off.map(o => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`;
+    return new Blob([out], { type: 'application/pdf' });
+  }
+  const fileSimpanAs = (blob, nama) => {
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = nama; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+  function fileUnduh(nama, url) {
+    const f = FILE_BLOB.get(nama);
+    if (f) { fileSimpanAs(f, nama); toast(`${nama} diunduh`); return; }
+    if (url) { const a = document.createElement('a'); a.href = url; a.download = nama; document.body.appendChild(a); a.click(); a.remove(); toast(`${nama} diunduh`); return; }
+    const ext = (nama.split('.').pop() || '').toLowerCase(), lines = ['Labmania - berkas pengganti (mockup)', '', `Nama berkas: ${nama}`, '',
+      'Data contoh: berkas asli tidak ada di mockup.', 'Di aplikasi, tombol ini mengunduh berkas yang diunggah user dari server.'];
+    const done = () => toast(`Data contoh: ${nama} diunduh sebagai berkas pengganti`, 'warn');
+    if (ext === 'pdf') { fileSimpanAs(pdfMini(lines), nama); done(); return; }
+    if (['jpg', 'jpeg', 'png'].includes(ext)) {
+      const c = document.createElement('canvas'); c.width = 800; c.height = 420; const g = c.getContext('2d');
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); g.strokeStyle = '#c9d1dd'; g.lineWidth = 4; g.strokeRect(2, 2, c.width - 4, c.height - 4);
+      g.fillStyle = '#1f3a5f'; g.font = '600 22px sans-serif'; lines.forEach((l, i) => g.fillText(l, 40, 70 + i * 40));
+      c.toBlob(b => { fileSimpanAs(b, nama); done(); }, ext === 'png' ? 'image/png' : 'image/jpeg', 0.9); return;
+    }
+    fileSimpanAs(new Blob([lines.join('\r\n')], { type: 'text/plain' }), `${nama}.txt`); done();
+  }
+  document.addEventListener('click', e => {
+    const a = e.target.closest('[data-file-dl]'); if (!a) return;
+    e.preventDefault(); e.stopPropagation(); fileUnduh(a.dataset.fileDl, a.dataset.fileUrl || '');
+  }, true);

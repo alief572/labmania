@@ -157,6 +157,7 @@
     }
     if (n === 2) return `Total ${rp(c.fixed)}`;
     if (n === 3) return `Total ${rp(c.totalVar)}`;
+    if (n === 5) { const g = calc(pfAgg()); return g.target && g.pendapatan ? `Profit program <b class="${g.profit < 0 ? 'neg' : 'pos'}">${rp(g.profit)}</b>` : '—'; }
     return c.target && c.pendapatan ? `Profit <b class="${c.profit < 0 ? 'neg' : 'pos'}">${rp(c.profit)}</b>` : '—';
   }
 
@@ -403,6 +404,27 @@
   const mpCalc = (p, m) => calc({ durasi: m.durasi, targetPeserta: p.targetPeserta, biaya: m.biaya, hargaJual: m.hargaJual });
   const mpJadwalTxt = m => `${fmtRange(m.tglMulai, m.tglSelesai)}${m.durasi ? ` · ${m.durasi} hari` : ''}${m.jamPembelajaran ? ` · ${m.jamPembelajaran} JP` : ''}`;
   const mpTimTxt = m => `${esc((trainerById(m.trainer) || {}).nama || 'Trainer —')} · ${esc(m.asisten ? asistenNama(m.asisten) : 'Asisten —')}`;
+  // Summary Nilai Program (input/Master - Buat Program/2026-11-16-summary-nilai-program/): khusus Penjualan Program
+  // berisi lebih dari satu Master Program. Rincian per Master Program + simulasi atas nilai gabungan (jumlah semua
+  // Master Program, PJ-FR-32); target peserta sama untuk semua Master Program.
+  const isMulti = () => !!(state.pf && state.pf.kind === 'qt' && pfStore().length > 1);
+  function sumProgram(p) {
+    const mps = pfStore(), cs = mps.map(m => mpCalc(p, m)), tot = k => cs.reduce((t, c) => t + (c[k] || 0), 0), agg = pfAgg();
+    const tpOf = m => (m.targetProfit === '' || m.targetProfit == null ? null : Number(m.targetProfit) || 0);
+    const tpTot = mps.some(m => tpOf(m) != null) ? mps.reduce((t, m) => t + (tpOf(m) || 0), 0) : null;
+    const pct = c => (c.pendapatan > 0 ? `${(c.profit / c.pendapatan * 100).toFixed(1).replace('.', ',')}%` : '—');
+    const ja = pjJadwalAgg({}, mps);
+    return `<div class="summary">${sumRow('Jadwal program', `${fmtRange(ja.tglMulai, ja.tglSelesai)} · ${ja.jamPembelajaran || 0} JP`)}${sumRow('Target peserta', `${nPeserta(p)} peserta <span class="muted">(ikut semua Master Program)</span>`)}${sumRow('Harga jual / peserta di quotation', rp(tot('harga')))}</div>
+      <div class="table-wrap gap-t"><table class="table pj-sum"><thead><tr><th>Master Program</th><th>Jadwal</th><th class="num">Harga jual / peserta</th><th class="num">Fixed Cost</th><th class="num">Variable Cost</th><th class="num">HPP</th><th class="num">Pendapatan</th><th class="num">Profit</th><th class="num">Margin</th><th class="num">Target profit</th></tr></thead><tbody>
+      ${mps.map((m, i) => { const mp = mprogById(m.mp), c = cs[i], tp = tpOf(m);
+        return `<tr><td><span class="code">${esc(mp.nomor)}</span> ${esc(paketOf(mp).judul)}</td><td class="nowrap">${mpJadwalTxt(m) || '<span class="muted">—</span>'}</td>
+          <td class="num">${rp(c.harga)}</td><td class="num">${rp(c.fixed)}</td><td class="num">${rp(c.totalVar)}</td><td class="num">${rp(c.hpp)}</td><td class="num">${rp(c.pendapatan)}</td>
+          <td class="num ${c.profit < 0 ? 'neg' : ''}">${rp(c.profit)}</td><td class="num">${pct(c)}</td><td class="num">${tp == null ? '<span class="muted">—</span>' : rp(tp)}</td></tr>`; }).join('')}
+      </tbody><tfoot><tr><td colspan="2"><b>Total program</b> <span class="muted">${mps.length} Master Program</span></td><td class="num"><b>${rp(tot('harga'))}</b></td><td class="num"><b>${rp(tot('fixed'))}</b></td><td class="num"><b>${rp(tot('totalVar'))}</b></td><td class="num"><b>${rp(tot('hpp'))}</b></td><td class="num"><b>${rp(tot('pendapatan'))}</b></td>
+        <td class="num ${tot('profit') < 0 ? 'neg' : ''}"><b>${rp(tot('profit'))}</b></td><td class="num"><b>${pct({ profit: tot('profit'), pendapatan: tot('pendapatan') })}</b></td><td class="num"><b>${tpTot == null ? '—' : rp(tpTot)}</b></td></tr></tfoot></table></div>
+      <p class="hint">Fixed Cost dijumlah apa adanya dari tiap Master Program. Bila ada biaya yang dipakai bersama (mis. lokasi yang sama), sesuaikan nominalnya di Fixed Cost Master Program terkait (klik namanya di tabel atas).</p>
+      <p class="qtn-h gap-t">Simulasi nilai program (gabungan)</p>${simView(agg)}`;
+  }
   function mpsTable(p, locked) {
     const mps = pfStore(), mi = state.pf.mi, cs = mps.map(m => mpCalc(p, m)), tot = k => cs.reduce((t, c) => t + (c[k] || 0), 0);
     return `<div class="table-wrap"><table class="table pj-mps"><thead><tr><th>Master Program</th><th>Jadwal &amp; tim</th><th class="num">Harga jual / peserta</th><th class="num">HPP</th><th class="num">Profit</th><th class="act"><span class="sr-only">Aksi</span></th></tr></thead><tbody>
@@ -484,6 +506,8 @@
     const s4 = step(4, 'Simulasi Hasil' + (qt ? mpAktifTag() : ''), 'apakah penjualan ini untung, dan berapa titik impasnya',
       simInputs(p, locked, E, 'sama dengan bagian 1 — ubah di sini atau di bagian 1, keduanya ikut berubah') + `<div id="pf-sim" class="gap-t">${simFor(p)}</div>`);
 
+    const s5 = qt && isMulti() ? step(5, 'Summary Nilai Program', `gabungan ${pfStore().length} Master Program: rincian per Master Program dan simulasi nilai program`, `<div id="pf-sum">${sumProgram(p)}</div>`) : '';
+
     let actions = `<button type="button" class="btn btn-ghost" data-act="pf-back">${isNew ? 'Batal' : 'Kembali'}</button>`;
     if (kind === 'mp') {
       if (p.status === 'draft') actions += `${isNew ? '' : `<button type="button" class="btn btn-outline" data-act="mp-cancel" data-id="${p.id}">Batalkan Program</button>`}
@@ -504,7 +528,7 @@
     return `<div class="pf-formbar"><button type="button" class="btn btn-ghost sm" data-act="pf-back">← Kembali</button><h2>${title}</h2><span class="ref">${ref}</span></div>
       ${lockInfo ? `<div class="alert">${lockInfo}</div>` : ''}
       <div id="pf-warn" class="alert ${warns.length ? '' : 'hidden'}">${warns.map(esc).join('<br>')}</div>
-      <div class="pub-form">${header}${qt ? mpsBlock(p, locked) : ''}${s1}${qt ? reschedHistory(p) : ""}${s2}${s3}${s4}</div>
+      <div class="pub-form">${header}${qt ? mpsBlock(p, locked) : ''}${s1}${qt ? reschedHistory(p) : ""}${s2}${s3}${s4}${s5}</div>
       <div class="form-actions">${actions}</div>`;
   }
 
@@ -527,7 +551,8 @@
     $('#pf-tot-fixed').innerHTML = totalsFixed(p);
     $('#pf-tot-var').innerHTML = totalsVar(p);
     $('#pf-sim').innerHTML = simFor(p);
-    [1, 2, 3, 4].forEach(n => { const el = $(`[data-sum="${n}"]`); if (el) el.innerHTML = stepSummary(n, p); });
+    [1, 2, 3, 4, 5].forEach(n => { const el = $(`[data-sum="${n}"]`); if (el) el.innerHTML = stepSummary(n, p); });
+    const sp = $('#pf-sum'); if (sp) sp.innerHTML = sumProgram(p);
     const mt = $('#pf-mps'); if (mt) mt.innerHTML = mpsTable(p, costLocked());
     const w = costWarnings(p), box = $('#pf-warn');
     box.innerHTML = w.map(esc).join('<br>');
@@ -706,7 +731,7 @@
       <div class="table-wrap"><table class="table"><thead><tr><th>Waktu</th><th>Oleh</th><th>Jadwal lama</th><th>Jadwal baru</th><th>Alasan</th><th>Evidence</th><th>Dampak</th></tr></thead><tbody>
       ${r.slice().reverse().map(x => `<tr><td class="nowrap">${esc(String(x.waktuUbah).replace('T', ' '))}${x.rev ? `<br><span class="code">rev${x.rev}</span>` : '<br><span class="muted">tanpa rev</span>'}</td><td>${esc(x.oleh)}</td>
         <td>${x.rincian ? x.rincian.map(r => `<span class="code">${esc(r.mp)}</span> ${jadwalTxt(r.lama.tglMulai, r.lama.tglSelesai, '', '', r.lama.trainer, r.lama.asisten)}`).join('<br>') : jadwalTxt(x.lama.tglMulai, x.lama.tglSelesai, x.lama.waktu, x.lama.lokasi, x.lama.trainer, x.lama.asisten)}</td>
-        <td>${x.rincian ? x.rincian.map(r => `<span class="code">${esc(r.mp)}</span> ${jadwalTxt(r.baru.tglMulai, r.baru.tglSelesai, '', '', r.baru.trainer, r.baru.asisten)}`).join('<br>') : jadwalTxt(x.baru.tglMulai, x.baru.tglSelesai, x.baru.waktu, x.baru.lokasi, x.baru.trainer, x.baru.asisten)}</td><td>${esc(x.alasan)}</td><td>${(x.evidence || []).length ? x.evidence.map(f => `<span class="code">${esc(f)}</span>`).join('<br>') : '<span class="muted">—</span>'}</td>
+        <td>${x.rincian ? x.rincian.map(r => `<span class="code">${esc(r.mp)}</span> ${jadwalTxt(r.baru.tglMulai, r.baru.tglSelesai, '', '', r.baru.trainer, r.baru.asisten)}`).join('<br>') : jadwalTxt(x.baru.tglMulai, x.baru.tglSelesai, x.baru.waktu, x.baru.lokasi, x.baru.trainer, x.baru.asisten)}</td><td>${esc(x.alasan)}</td><td>${(x.evidence || []).length ? fileLinks(x.evidence) : '<span class="muted">—</span>'}</td>
         <td>${(x.dampak || []).length ? x.dampak.map(esc).join('<br>') : '<span class="muted">Tidak ada dokumen turunan</span>'}</td></tr>`).join('')}
       </tbody></table></div></div></div>`;
   }
@@ -820,7 +845,7 @@
         ev.addEventListener('change', () => { list.textContent = [...ev.files].map(x => x.name).join(', ') || 'Belum ada file'; });
       },
       onSave: f => {
-        const j = baca(f), alasan = f.alasan.value.trim(), files = [...f.evidence.files];
+        const j = baca(f), alasan = f.alasan.value.trim(), files = fileSimpan([...f.evidence.files]);
         let ok = true;
         j.forEach(r => { const x = mps[r.i], el = f[`mulai${r.i}`]; if (el.disabled) return;
           if (!r.mulai) ok = invalid(el, 'Isi tanggal mulai');
@@ -869,7 +894,7 @@
         ev.addEventListener('change', () => { list.textContent = [...ev.files].map(x => x.name).join(', ') || 'Belum ada file'; });
       },
       onSave: f => {
-        const trainer = +f.trainer.value, asisten = +f.asisten.value, mulai = f.tglMulai.value, alasan = f.alasan.value.trim(), files = [...f.evidence.files];
+        const trainer = +f.trainer.value, asisten = +f.asisten.value, mulai = f.tglMulai.value, alasan = f.alasan.value.trim(), files = fileSimpan([...f.evidence.files]);
         let ok = true;
         if (!mulai) ok = invalid(f.tglMulai, 'Isi tanggal mulai baru');
         else if (mulai !== m.tglMulai && mulai < minTgl) ok = invalid(f.tglMulai, `Tanggal mulai baru paling cepat ${fmtTgl(minTgl)} (hari ini + ${RS_H} hari)`);

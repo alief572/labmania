@@ -967,7 +967,7 @@
       const L = TR_LISTS[tab], rows = d[tab];
       body = `<div class="table-wrap"><table class="table tr-table"><thead><tr><th class="num">No.</th>${L.cols.map(([, l, c]) => `<th class="${c || ''}">${l}</th>`).join('')}<th class="act"></th></tr></thead><tbody>
         ${rows.length ? rows.map((r, i) => `<tr class="${(E.rows || {})[`${tab}-${i}`] ? 'row-err' : ''}"><td class="num">${i + 1}</td>${L.cols.map(([k, l, c]) => `<td class="${c || ''}">${c === 'file'
-          ? `${r.file ? `<span class="code">${esc(r.file)}</span> ` : ''}<label class="btn btn-ghost sm file-btn">${r.file ? 'Ganti' : 'Unggah'}<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-tr="${tab}" data-i="${i}" data-k="file" hidden></label>`
+          ? `${r.file ? `${fileLink(r.file)} ` : ''}<label class="btn btn-ghost sm file-btn">${r.file ? 'Ganti' : 'Unggah'}<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-tr="${tab}" data-i="${i}" data-k="file" hidden></label>`
           : `<input class="input sm" data-tr="${tab}" data-i="${i}" data-k="${k}" value="${esc(r[k])}" aria-label="${l} baris ${i + 1}" ${c === 'yr' ? 'placeholder="mis. 2025"' : ''}>`}</td>`).join('')}
           <td class="act"><button type="button" class="btn btn-ghost sm" data-q="row-del" data-i="${i}" aria-label="Hapus baris">Hapus</button></td></tr>`).join('')
           : `<tr><td colspan="${L.cols.length + 2}" class="empty">Belum ada data. Klik + Tambah Baris.</td></tr>`}
@@ -996,7 +996,7 @@
         });
         form.addEventListener('change', e => {
           const t = e.target;
-          if (t.dataset.k === 'file' && t.files[0]) { d[t.dataset.tr][+t.dataset.i].file = t.files[0].name; redraw(); }
+          if (t.dataset.k === 'file' && t.files[0]) { fileSimpan([t.files[0]]); d[t.dataset.tr][+t.dataset.i].file = t.files[0].name; redraw(); }
         });
         form.addEventListener('click', e => {
           const b = e.target.closest('[data-q]'); if (!b) return;
