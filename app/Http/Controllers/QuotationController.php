@@ -154,7 +154,7 @@ class QuotationController extends Controller
         $summary['total'] = $summary['deal'] + $summary['menunggu'] + $summary['batal'] + $summary['keluar'];
         $summary['aktif'] = $summary['deal'] + $summary['menunggu'];
 
-        return Inertia::render('Quotation/Batch', ['summary' => $summary, 'program' => (array) $p + ['judul' => Sales::title($p->id_master_program)], 'quotations' => [], 'peserta' => [], 'hasParticipants' => $hasParticipants, 'dataTab' => $data, 'filters' => $f, 'canManage' => Gate::allows('menu', [self::MENU, 'Manage']),
+        return Inertia::render('Quotation/Batch', ['summary' => $summary, 'program' => (array) $p + ['judul' => Sales::title($p->id_master_program)], 'quotations' => [], 'peserta' => [], 'hasParticipants' => $hasParticipants, 'dataTab' => $data, 'filters' => $f, 'canManage' => Gate::allows('menu', [self::MENU, 'Manage']), 'canCancel' => ! $p->closed_date && Gate::allows('menu', [self::MENU, 'Delete']),
             'pesertaStatus' => $r->input('peserta_status', 'aktif'), 'canAdd' => $p->status === 'final' && ! $p->closed_date && Gate::allows('menu', [self::MENU, 'Add']) && ($p->jenis !== 'b2b' || ! DB::table('quotation')->where('id_penjualan', $id)->where('status', '!=', 'batal')->exists())]);
     }
 
