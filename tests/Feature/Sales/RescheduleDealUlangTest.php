@@ -67,6 +67,22 @@ class RescheduleDealUlangTest extends MasterTestCase
         $this->getJson('/sales-order/data?tab=batal')->assertOk()->assertJsonPath('recordsFiltered', 1);
     }
 
+    public function test_tab_so_batal_menerima_request_tabel_browser_dan_pencarian_judul(): void
+    {
+        $this->invoice5(false);
+        $this->runReschedule5();
+        $judul = DB::table('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')
+            ->where('m.id', Sales::program($this->ids5['p'])->id_master_program)->value('k.judul');
+        // Delapan kolom seperti tabel di SalesOrder/Index.vue.
+        $get = fn (string $cari) => $this->getJson('/sales-order/data?'.http_build_query(['tab' => 'batal', 'draw' => 1, 'start' => 0, 'length' => 25,
+            'columns' => array_fill(0, 8, ['search' => ['value' => '', 'regex' => 'false']]), 'order' => [['column' => 4, 'dir' => 'desc']], 'search' => ['value' => $cari, 'regex' => 'false']]))->assertOk();
+
+        $get('')->assertJsonPath('recordsFiltered', 1);
+        $get($judul)->assertJsonPath('recordsFiltered', 1);
+        $get('LMI/SO/11/26-001')->assertJsonPath('recordsFiltered', 1);
+        $get('tidak-ada-yang-cocok')->assertJsonPath('recordsFiltered', 0);
+    }
+
     public function test_reschedule_hanya_ganti_asisten_tidak_mengubah_deal_atau_so(): void
     {
         $this->invoice5(false);

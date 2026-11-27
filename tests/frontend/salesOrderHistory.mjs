@@ -5,6 +5,12 @@ import ts from 'typescript';
 import { createRenderer, reactive } from 'vue';
 const file = new URL('../../resources/js/pages/SalesOrder/Index.vue', import.meta.url);
 const source = readFileSync(file, 'utf8');
+// Tanpa `tab` di filter, server menganggap request sebagai tab Sales Order dan menolaknya (422).
+const tables = source.match(/<ServerTable .*/g);
+assert.equal(tables.length, 3);
+for (const table of tables) {
+    for (const attribute of [`:keyword="filters.q || ''"`,':filters="{ ...filters, tab }"', 'refresh-on-visit']) assert.ok(table.includes(attribute), `${table.match(/label="[^"]+"/)[0]} tanpa ${attribute}`);
+}
 let code = ts.transpileModule(compileScript(parse(source).descriptor, { id: 'so-history' }).content, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 } }).outputText;
 code = code.replace(/import (\w+) from ['"][^'"]+\.vue['"];?/g, (_, name) => `const ${name}={};`);
 code = code.replace(/import \{ Head, Link, router, usePage \} from ['"]@inertiajs\/vue3['"];?/, 'const Head={}, Link={}, router={}; const usePage=()=>globalThis.__salesHistoryPage;');

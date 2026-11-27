@@ -27,7 +27,8 @@ class SalesOrderController extends Controller
                 : DB::table('surat_kerja_trainer as st')->join('penjualan_program as p', 'p.id', '=', 'st.id_penjualan'));
         ServerDataTable::scope($r, $query);
         Sales::filter($query, $f);
-        if (($f['q'] ?? '') !== '') {
+        // Tab batal mencari per baris SO (di bawah); dua tab lain per Penjualan Program.
+        if (($f['q'] ?? '') !== '' && $tab !== 'batal') {
             $term = '%'.$f['q'].'%';
             $query->where(function ($w) use ($term, $tab) {
                 $w->where('p.nomor', 'like', $term)->orWhereExists(fn ($q) => $q->selectRaw('1')->from('sales_order as s')->join('quotation as q', 'q.id', '=', 's.id_quotation')->whereColumn('s.id_penjualan', 'p.id')->where(fn ($x) => $x->where('s.nomor', 'like', $term)->orWhere('q.nomor', 'like', $term)->orWhere('q.kepada_nama', 'like', $term)))
@@ -38,9 +39,13 @@ class SalesOrderController extends Controller
             });
         }
         if ($tab === 'batal') {
-            $query->where(fn ($w) => $w->where('so.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('q.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('p.nomor', 'like', '%'.($f['q'] ?? '').'%')->orWhere('q.kepada_nama', 'like', '%'.($f['q'] ?? '').'%'));
+            if (($f['q'] ?? '') !== '') {
+                $term = '%'.$f['q'].'%';
+                $query->where(fn ($w) => $w->where('so.nomor', 'like', $term)->orWhere('q.nomor', 'like', $term)->orWhere('p.nomor', 'like', $term)->orWhere('q.kepada_nama', 'like', $term)
+                    ->orWhereExists(fn ($x) => $x->selectRaw('1')->from('master_program as m')->join('paket_produk as k', 'k.id', '=', 'm.id_paket_produk')->whereColumn('m.id', 'p.id_master_program')->where('k.judul', 'like', $term)));
+            }
             $rows = $query->select('so.id', 'so.nomor', 'so.revisi', 'so.tanggal', 'so.updated_date as batal_date', 'so.batal_sebab', 'so.batal_revisi', 'so.batal_waktu', 'so.batal_peserta', 'so.batal_nilai', 'so.digantikan_oleh', 'p.id as id_penjualan', 'p.nomor as program_nomor', 'p.jenis', 'p.tgl_mulai', 'p.tgl_selesai', 'p.status as program_status', 'q.nomor as quotation_nomor', 'q.kepada_nama', 'q.status as quotation_status')
-                ->orderByDesc('so.updated_date')->orderByDesc('so.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'so.nomor', 'q.nomor', 'p.nomor', 'so.updated_date', null, null], 'so.id'));
+                ->orderByDesc('so.updated_date')->orderByDesc('so.id')->pipe(fn ($builder) => ServerDataTable::page($r, $builder, [null, 'so.nomor', 'q.nomor', 'p.nomor', 'so.updated_date', null, null, null], 'so.id'));
             $rows->through(function ($so) {
                 $so->nomor = Sales::display($so);
                 $so->sebab = ($so->batal_sebab ?? null) === 'program' || (($so->batal_sebab ?? null) === null && $so->program_status === 'batal') ? 'Program batal' : 'Reschedule rev'.($so->batal_revisi ?? $so->revisi);
