@@ -96,15 +96,15 @@ class UserOverrideTest extends MasterTestCase
         $this->assertSame([], $this->overrideRows());
     }
 
-    public function test_aktor_tanpa_hak_tidak_dapat_memberi_override_melebihi_haknya_dan_tidak_mengubah_milik_sendiri(): void
+    public function test_aktor_boleh_memberi_override_di_luar_haknya_tetapi_tidak_mengubah_milik_sendiri(): void
     {
         $manager = $this->account('manager');
         DB::table('user_groups')->insert(['id_user' => $manager->id_user, 'id_group' => 2]);
         $this->allow($manager, 'master_data.users', 'lihat', 'tambah', 'ubah');
         $this->login($manager);
-        // Aktor tidak punya hak apa pun pada master_data.company: tidak boleh memberikannya.
-        $this->put('/master/user/'.$this->emp, $this->body([$this->menu('master_data.company').':View']))->assertSessionHasErrors('override');
-        $this->assertSame([], $this->overrideRows());
+        // Aktor tidak punya hak apa pun pada master_data.company: tetap boleh memberikannya ke user lain.
+        $this->put('/master/user/'.$this->emp, $this->body([$this->menu('master_data.company').':View']))->assertSessionHasNoErrors();
+        $this->assertNotSame([], $this->overrideRows());
 
         // Mengubah override milik sendiri ditolak.
         $mine = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-009', 'nama' => 'Saya', 'id_group' => 2, 'aktif' => 1, 'id_user' => $manager->id_user]);

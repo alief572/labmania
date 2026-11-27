@@ -81,13 +81,8 @@ class UserController extends Controller
             throw ValidationException::withMessages(['id_group' => 'Role tidak ditemukan.']);
         }
         $actor = Auth::user();
-        if ($group !== $oldGroup) {
-            if ($old && $old->id_user && (int) $old->id_user === $actor->id_user) {
-                throw ValidationException::withMessages(['id_group' => 'Anda tidak dapat mengubah role Anda sendiri.']);
-            }
-            if (! Permissions::coversRole($actor, $group)) {
-                throw ValidationException::withMessages(['id_group' => 'Anda tidak dapat memberi role yang haknya melebihi hak Anda.']);
-            }
+        if ($group !== $oldGroup && $old && $old->id_user && (int) $old->id_user === $actor->id_user) {
+            throw ValidationException::withMessages(['id_group' => 'Anda tidak dapat mengubah role Anda sendiri.']);
         }
         $withAccount = ! empty($in['akun']) || $accountId !== null;
         if ($withAccount) {
@@ -174,7 +169,7 @@ class UserController extends Controller
         if ($actor->id_user === $idUser && $this->overrideDiffers($idUser, $in['override'])) {
             throw ValidationException::withMessages(['override' => 'Anda tidak dapat mengubah hak override Anda sendiri.']);
         }
-        Permissions::saveGrants('user', $idUser, $in['override'], $actor, 'override');
+        Permissions::saveGrants('user', $idUser, $in['override'], 'override');
 
         return ['override_sebelum' => $before, 'override_sesudah' => DB::table('ms_user_akses')->where('id_user', $idUser)->count(), 'override_dibuang_karena_role' => $pruned];
     }

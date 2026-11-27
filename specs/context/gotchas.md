@@ -201,7 +201,7 @@ Di mesin BA (13-11-2026) `C:\Program Files\draw.io\draw.io.exe` tidak ada (drawi
 CI3 (`users/setup_2fa`) membiarkan user yang sudah login password mendaftarkan autentikator sendiri. Di Laravel hal itu membuat 2FA tidak melindungi akun yang belum enroll atau habis reset: penyerang yang tahu password mendaftarkan autentikatornya sendiri. Keputusan pengguna 13-11-2026: admin dengan hak Manage Master User membuat token enroll sekali pakai (15 menit); tanpa token, login berhenti di halaman "hubungi admin".
 
 **Why:** hasil code review fase 1; plan di `.artifacts/perbaikan_fase1_review/`.
-**How to apply:** jangan port `setup_2fa` CI3 apa adanya ke Laravel; reset 2FA mandiri juga harus lewat jalur terkontrol. Delegasi hak: aktor non-Superadmin hanya boleh menambah grant yang ia punya dan tidak boleh mengubah override/role miliknya sendiri.
+**How to apply:** jangan port `setup_2fa` CI3 apa adanya ke Laravel; reset 2FA mandiri juga harus lewat jalur terkontrol. Aturan delegasi hak fase 1 sudah diganti: lihat entri 27-11-2026 "delegasi hak akses".
 
 ## Laravel: tes SQLite saja tidak cukup untuk SQL yang menyentuh MySQL
 
@@ -304,3 +304,13 @@ Backup `labmania:migrasi-operasi backup` berhasil dibuat dan terenkripsi, tetapi
 
 **Why:** gagal nyata pada rehearsal data asli 14-11-2026; sesudah perbaikan, restore ke target baru dan `CHECKSUM TABLE` 43 tabel identik dengan sumber, termasuk kolom generated yang dihitung ulang.
 **How to apply:** setiap perubahan skema yang menambah kolom generated harus lolos uji restore pada tabel berisi, bukan hanya tabel kosong. Saat restore gagal dengan pesan generik, reproduksi dump ke database scratch di container restore (bukan target) untuk melihat pesan SQL sebenarnya.
+
+## Laravel: delegasi hak akses — hanya diri sendiri yang dikunci
+
+- **type:** decision
+- **date:** 2026-11-27
+
+Keputusan pengguna 27-11-2026: pemegang hak di Role & Permission atau Master User boleh memberi hak apa pun ke role lain dan override user lain, serta memasang role apa pun (kecuali Superadmin) ke user lain, walau ia sendiri tidak punya hak itu. Tetap ditolak untuk non-Superadmin: mengubah hak role sendiri, override sendiri, mengganti role sendiri, dan menyentuh Superadmin. Ini menggantikan pembatasan "hanya boleh memberi grant yang dimiliki" dari review fase 1 (13-11-2026).
+
+**Why:** pembatasan lama tidak punya dasar di FR/NFR dan menghalangi pengelola hak mengatur role lain. Risiko yang diterima: pengelola bisa menaikkan haknya secara tidak langsung lewat role lain lalu akun baru atau reset password.
+**How to apply:** jangan pasang kembali pengecekan subset hak (`coversRole`, penolakan di `saveGrants`) tanpa keputusan baru. Belum diresmikan BA sebagai FR.

@@ -152,7 +152,7 @@ trait Phase6Scenarios
         $this->post('/manage-peserta/peserta/'.$this->person6.'/nama', ['nama_sertifikat' => 'Tidak boleh'])->assertNotFound();
     }
 
-    public function test_global_data_roles_cannot_be_delegated_by_staff(): void
+    public function test_staff_can_assign_global_data_roles_but_cannot_manage_them(): void
     {
         DB::table('groups')->where('id_group', 1)->update(['nm_group' => 'admin']);
         $admin = DB::table('groups')->where('nm_group', 'Admin')->where('id_group', '<>', 1)->value('id_group');
@@ -164,11 +164,11 @@ trait Phase6Scenarios
         $this->login6($staff);
         foreach (['Admin', 'Direktur'] as $role) {
             $id = DB::table('groups')->where('nm_group', $role)->where('id_group', '<>', 1)->value('id_group');
-            $this->post('/master/user', ['nama' => 'Tidak boleh', 'id_group' => $id])->assertSessionHasErrors('id_group');
+            $this->post('/master/user', ['nama' => 'User '.$role, 'id_group' => $id])->assertSessionHasNoErrors();
+            $this->assertDatabaseHas('ms_user_karyawan', ['nama' => 'User '.$role, 'id_group' => $id]);
             $this->post('/master/role', ['nama' => $role])->assertForbidden();
             $this->put('/master/role/'.$id, ['nama' => 'Nama lain'])->assertForbidden();
         }
-        $this->assertDatabaseMissing('ms_user_karyawan', ['nama' => 'Tidak boleh']);
     }
 
     public function test_bnsp_validation_upload_and_closed_administration(): void

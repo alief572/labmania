@@ -101,16 +101,17 @@ class UserRoleTest extends MasterTestCase
         $this->assertTrue($root->fresh()->active());
     }
 
-    public function test_tidak_bisa_memberi_role_yang_haknya_melebihi_hak_aktor_atau_mengubah_role_sendiri(): void
+    public function test_boleh_memberi_role_yang_lebih_kuat_tetapi_tidak_superadmin_atau_role_sendiri(): void
     {
         $manager = $this->manager();
         DB::table('groups')->insert(['id_group' => 3, 'nm_group' => 'Besar', 'ket' => '']);
         DB::table('ms_group_akses')->insert(['id_group' => 3, 'id_menu' => self::MENUS['master_program'], 'aksi' => 'approve']);
         DB::table('ms_group_akses')->insert(['id_group' => 2, 'id_menu' => self::MENUS['master_data.users'], 'aksi' => 'lihat']);
         $this->login($manager);
-        $this->post('/master/user', $this->payload(['id_group' => 3]))->assertSessionHasErrors('id_group');
+        $this->post('/master/user', $this->payload(['id_group' => 1]))->assertSessionHasErrors('id_group');
         $this->assertSame(0, DB::table('ms_user_karyawan')->count());
-        $this->post('/master/user', $this->payload(['id_group' => 2]))->assertSessionHasNoErrors();
+        $this->post('/master/user', $this->payload(['id_group' => 3]))->assertSessionHasNoErrors();
+        $this->assertSame(3, (int) DB::table('ms_user_karyawan')->value('id_group'));
 
         $mine = DB::table('ms_user_karyawan')->insertGetId(['kode' => 'USR-009', 'nama' => 'Saya', 'id_group' => 2, 'aktif' => 1, 'id_user' => $manager->id_user]);
         $this->put("/master/user/$mine", $this->payload(['id_group' => 3, 'username' => 'manager']))->assertSessionHasErrors('id_group');

@@ -46,9 +46,10 @@ class PermissionController extends Controller
         $codes = $menus->pluck('kode', 'id');
         $catalogue = Permissions::catalogue($menus);
         $total = collect($catalogue)->sum(fn ($a) => count($a));
+        $actor = $request->user();
 
-        return ServerDataTable::response($request, $base, clone $base, [null, 'nm_group', 'n_user', 'n_hak', null, null], ['id_group', 'nm_group', 'n_user', 'n_override', 'n_hak', 'hak', 'sistem', 'total'], 'id_group', ['nm_group'],
-            function ($row) use ($codes, $total) {
+        return ServerDataTable::response($request, $base, clone $base, [null, 'nm_group', 'n_user', 'n_hak', null, null], ['id_group', 'nm_group', 'n_user', 'n_override', 'n_hak', 'hak', 'sistem', 'total', 'own'], 'id_group', ['nm_group'],
+            function ($row) use ($codes, $total, $actor) {
                 $sistem = (int) $row->id_group === 1;
                 $grants = $sistem ? collect() : DB::table('ms_group_akses')->where('id_group', $row->id_group)->orderBy('id_menu')->orderBy('aksi')->get(['id_menu', 'aksi']);
                 $row->hak = $grants->map(function ($g) use ($codes) {
@@ -59,6 +60,7 @@ class PermissionController extends Controller
                 $row->n_hak = $sistem ? $total : count($row->hak);
                 $row->sistem = $sistem;
                 $row->total = $total;
+                $row->own = $this->ownsTarget($actor, 'role', (int) $row->id_group);
 
                 return $row;
             });
@@ -101,10 +103,13 @@ class PermissionController extends Controller
         $actor = request()->user();
         $manage = Gate::allows('menu', [$kind === 'role' ? 'permission_group' : 'master_data.users', 'Manage']);
 
+        $own = $this->ownsTarget($actor, $kind, (int) $id);
+
         $props = [
             'kind' => $kind, 'targetId' => $id, 'targetName' => $target?->nm_lengkap,
             'roles' => $roles, 'menus' => $menus, 'selected' => $selected, 'inherited' => $base,
-            'editable' => ! $locked && $manage && ! $this->ownsTarget($actor, $kind, (int) $id),
+            'editable' => ! $locked && $manage && ! $own,
+            'own' => $own,
             'users' => ! $json && Gate::allows('menu', ['master_data.users', 'Manage']) ? User::orderBy('nm_lengkap')->get(['id_user', 'nm_lengkap']) : [],
         ];
 
@@ -155,7 +160,7 @@ class PermissionController extends Controller
     private function save(Request $request, string $kind, int $id)
     {
         $input = $request->validate(['grants' => 'present|array|max:5000', 'grants.*' => 'required|string|distinct|max:80']);
-        Permissions::saveGrants($kind, $id, $input['grants'], $request->user());
+        Permissions::saveGrants($kind, $id, $input['grants']);
 
         return back()->with('success', 'Hak akses tersimpan.');
     }

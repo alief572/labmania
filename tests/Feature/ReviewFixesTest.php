@@ -74,12 +74,13 @@ class ReviewFixesTest extends TestCase
         $this->assertTrue(Permissions::allows($target, 'master_program', 'Approve'));
     }
 
-    public function test_actor_can_only_add_grants_they_hold(): void
+    public function test_actor_can_grant_others_rights_they_do_not_hold(): void
     {
         $actor = $this->manager();
         $target = $this->account('target');
-        $this->verified($actor)->put('/permissions/users/'.$target->id_user, ['grants' => ['3:Approve']])->assertSessionHasErrors('grants');
-        $this->assertDatabaseMissing('ms_user_akses', ['id_user' => $target->id_user, 'aksi' => 'approve']);
+        $this->assertFalse(Permissions::allows($actor, 'master_program', 'Approve'));
+        $this->verified($actor)->put('/permissions/users/'.$target->id_user, ['grants' => ['3:Approve']])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('ms_user_akses', ['id_user' => $target->id_user, 'aksi' => 'approve']);
         $this->put('/permissions/users/'.$target->id_user, ['grants' => ['3:Manage']])->assertRedirect();
         $this->assertDatabaseHas('ms_user_akses', ['id_user' => $target->id_user, 'id_menu' => 3, 'aksi' => 'ubah']);
         $this->put('/permissions/users/'.$target->id_user, ['grants' => []])->assertRedirect();

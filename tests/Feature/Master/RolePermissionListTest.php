@@ -51,4 +51,28 @@ class RolePermissionListTest extends MasterTestCase
         $this->getJson('/permissions/roles/999')->assertNotFound();
         $this->login($this->account('tanpa'))->getJson('/permissions/roles/2')->assertForbidden();
     }
+
+    public function test_pengelola_boleh_memberi_hak_apa_pun_ke_role_lain_tetapi_tidak_ke_role_sendiri(): void
+    {
+        DB::table('groups')->insert(['id_group' => 3, 'nm_group' => 'Lain', 'ket' => '']);
+        $actor = $this->account('pengelola');
+        DB::table('user_groups')->insert(['id_user' => $actor->id_user, 'id_group' => 2]);
+        $this->allow($actor, 'permission_group', 'lihat', 'ubah');
+        $grant = self::MENUS['master_data.company'].':View';
+        $this->login($actor);
+
+        $this->put('/permissions/roles/3', ['grants' => [$grant]])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('ms_group_akses', ['id_group' => 3, 'id_menu' => self::MENUS['master_data.company'], 'aksi' => 'lihat']);
+        $this->put('/permissions/roles/2', ['grants' => [$grant]])->assertForbidden();
+        $this->put('/permissions/roles/1', ['grants' => []])->assertForbidden();
+        $this->assertDatabaseMissing('ms_group_akses', ['id_group' => 2]);
+
+        $this->assertTrue($this->getJson('/permissions/roles/2')->json('own'));
+        $this->assertFalse($this->getJson('/permissions/roles/2')->json('editable'));
+        $this->assertFalse($this->getJson('/permissions/roles/3')->json('own'));
+        $this->assertTrue($this->getJson('/permissions/roles/3')->json('editable'));
+        $rows = collect($this->getJson('/permissions/data?draw=1&start=0&length=25')->json('data'))->keyBy('id_group');
+        $this->assertTrue($rows[2]['own']);
+        $this->assertFalse($rows[3]['own']);
+    }
 }

@@ -10,8 +10,8 @@ import ActionMenu from '../components/ActionMenu.vue';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
 import type { Menu } from '../types';
 
-type Row = { id_group: number; nm_group: string; n_user: number; n_override: number; n_hak: number; hak: string[]; sistem: boolean; total: number };
-type Detail = { menus: Menu[]; selected: string[]; editable: boolean; n_user: number };
+type Row = { id_group: number; nm_group: string; n_user: number; n_override: number; n_hak: number; hak: string[]; sistem: boolean; total: number; own: boolean };
+type Detail = { menus: Menu[]; selected: string[]; editable: boolean; own: boolean; n_user: number };
 defineProps<{ kpi: { roles: number; users: number; menus: number; hak: number }; superadmin: number; can: { manage: boolean } }>();
 
 const confirmation = useConfirmedMutation();
@@ -36,7 +36,7 @@ async function open(row: Row) {
         const response = await fetch(appUrl(`/permissions/roles/${row.id_group}`), { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
         if (!response.ok) throw new Error('Data hak akses gagal dimuat.');
         const json = await response.json();
-        detail.value = { menus: json.menus, selected: json.selected, editable: json.editable, n_user: json.n_user };
+        detail.value = { menus: json.menus, selected: json.selected, editable: json.editable, own: json.own, n_user: json.n_user };
         form.grants = [...json.selected];
     } catch (failure) { loadError.value = failure instanceof Error ? failure.message : 'Data hak akses gagal dimuat.'; }
 }
@@ -106,16 +106,17 @@ const save = () => confirmation.form(form, 'put', `/permissions/roles/${editing.
                 <span v-else-if="!row.hak.length" class="muted">—</span>
                 <div v-else class="chips"><span v-for="c in row.hak.slice(0, 3)" :key="c" class="chip code">{{ c }}</span><span v-if="row.hak.length > 3" class="chip">+{{ row.hak.length - 3 }} lagi</span></div>
             </template>
-            <template #cell-5="{ row }"><ActionMenu><button type="button" :disabled="confirming" @click="open(row)">{{ row.sistem || !can.manage ? 'Lihat' : 'Atur Akses' }}</button></ActionMenu></template>
+            <template #cell-5="{ row }"><ActionMenu><button type="button" :disabled="confirming" @click="open(row)">{{ row.sistem || row.own || !can.manage ? 'Lihat' : 'Atur Akses' }}</button></ActionMenu></template>
         </ServerTable>
         <p class="hint-line">Tambah, ubah nama, dan hapus role dilakukan di <a :href="appUrl('/master/role')">Master Role</a>; role baru belum punya hak sampai diatur di sini. <b>Superadmin</b> dibuat dari awal (bawaan sistem) dan tidak dapat ditambah lagi.</p>
 
-        <ConfirmDialog v-if="editing" :title="locked ? `Role ${editing.nm_group}` : `Atur Akses Role ${editing.nm_group}`" confirm-label="Simpan Role" :busy="form.processing || confirming" @confirm="save" @cancel="close">
+        <ConfirmDialog v-if="editing" :title="locked ? `Role ${editing.nm_group}` : `Atur Akses Role ${editing.nm_group}`" confirm-label="Simpan Role" :busy="form.processing || confirming" :info="locked" @confirm="save" @cancel="close">
             <p v-if="loadError" class="error" role="alert">{{ loadError }}</p>
             <p v-else-if="!detail" class="muted">Memuat hak akses…</p>
             <template v-else>
                 <div class="field"><span class="static-label">Nama Role</span><p class="static">{{ editing.nm_group }}</p><small>Dari Master Role; nama diubah di sana. {{ detail.n_user }} user memakai role ini.</small></div>
                 <p v-if="editing.sistem" class="notice"><b>Superadmin</b> (akun developer) — semua akses dan semua data; tidak dapat diubah.</p>
+                <p v-else-if="detail.own" class="notice">Anda tidak dapat mengubah hak role Anda sendiri.</p>
                 <p v-else-if="locked" class="notice">Hak akses ini hanya dapat dilihat.</p>
                 <p v-if="form.errors.grants" class="error" role="alert">{{ form.errors.grants }}</p>
                 <div class="ak-bar">

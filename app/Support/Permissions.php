@@ -49,32 +49,6 @@ class Permissions
         return $map;
     }
 
-    /**
-     * Apakah semua hak role ini sudah dimiliki aktor? Dipakai agar pemberi role tidak menaikkan hak lewat penugasan role
-     * (aturan delegasi fase 1). Superadmin selalu boleh; hak legacy di luar lima aksi UI (mis. cetak) tidak dihitung.
-     */
-    public static function coversRole(User $actor, int $groupId): bool
-    {
-        if (self::superadmin($actor)) {
-            return true;
-        }
-        // Role ini memberi cakupan data semua program meski grant menu kosong.
-        if (DB::table('groups')->where('id_group', $groupId)->whereIn('nm_group', ['Admin', 'Direktur'])->exists()) {
-            return false;
-        }
-        $map = self::map($actor);
-        $codes = DB::table('ms_menu')->pluck('kode', 'id');
-        foreach (DB::table('ms_group_akses')->where('id_group', $groupId)->get(['id_menu', 'aksi']) as $grant) {
-            foreach (self::ACTIONS as $ui => $legacy) {
-                if (in_array($grant->aksi, $legacy, true) && ! in_array($ui, $map[$codes[$grant->id_menu] ?? ''] ?? [], true)) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
     public static function allows(User $user, string $menu, string $action): bool
     {
         return in_array($action, self::map($user)[$menu] ?? [], true);
@@ -112,10 +86,11 @@ class Permissions
 
     /**
      * Simpan hak akses satu role (kind=role) atau satu override user (kind=user). Dipakai Role & Permission dan form Master User.
-     * Aksi selain View otomatis menyertakan View. Aktor non-Superadmin hanya boleh memberi hak yang ia miliki. Membuka transaksi sendiri.
+     * Aksi selain View otomatis menyertakan View. Membuka transaksi sendiri.
+     * Boleh memberi hak yang tidak dimiliki aktor; larangan mengubah hak diri sendiri dijaga pemanggil.
      * Override hanya menambah: hak yang sudah dimiliki role user tidak disimpan ulang.
      */
-    public static function saveGrants(string $kind, int $id, array $grants, User $actor, string $errorKey = 'grants'): void
+    public static function saveGrants(string $kind, int $id, array $grants, string $errorKey = 'grants'): void
     {
         $menus = DB::table('ms_menu')->where('aktif', 1)->get(['id', 'kode']);
         $catalogue = self::catalogue($menus);
@@ -138,9 +113,8 @@ class Permissions
         $selected = array_values(array_unique($selected));
         $table = $kind === 'role' ? 'ms_group_akses' : 'ms_user_akses';
         $key = $kind === 'role' ? 'id_group' : 'id_user';
-        $actorMap = self::superadmin($actor) ? null : self::map($actor);
         $raw = self::rawActions();
-        DB::transaction(function () use ($kind, $id, $table, $key, $menus, $selected, $actorMap, $catalogue, $raw, $errorKey) {
+        DB::transaction(function () use ($kind, $id, $table, $key, $menus, $selected, $catalogue, $raw) {
             $owner = DB::table($kind === 'role' ? 'groups' : 'users')->where($key, $id)->lockForUpdate()->first();
             abort_unless($owner, 404);
             $inherited = $kind === 'user' ? self::map(User::findOrFail($id), false) : [];
@@ -154,9 +128,6 @@ class Permissions
                     if ($has && ! $want) {
                         (clone $query)->where('id_menu', $menu->id)->whereIn('aksi', self::ACTIONS[$action])->delete();
                     } elseif ($want && ! $has && ! in_array($action, $inherited[$menu->kode] ?? [], true)) {
-                        if ($actorMap !== null && ! in_array($action, $actorMap[$menu->kode] ?? [], true)) {
-                            throw ValidationException::withMessages([$errorKey => 'Anda tidak dapat memberi hak yang tidak Anda miliki: '.$menu->kode.' - '.$action.'.']);
-                        }
                         $name = $action === 'Manage' && ! in_array('ubah', $raw[$menu->id] ?? [], true) ? 'aktif' : self::ACTIONS[$action][0];
                         DB::table($table)->insert([$key => $id, 'id_menu' => (int) $menu->id, 'aksi' => $name]);
                     }
