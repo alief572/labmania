@@ -85,7 +85,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', resized));
         <aside id="sidebar" ref="sidebar" class="sidebar" :class="{ 'is-open': open }" :inert="collapsed && !open" @keydown="trapFocus">
             <Link class="brand" :href="appUrl('/')"><span class="brand-mark">L</span><span><strong>Labmania</strong><small>ERP · Modul Program</small></span></Link>
             <button ref="closeButton" class="mobile-close" type="button" @click="closeMenu">Tutup menu</button>
-            <button class="nav-hide" type="button" aria-controls="sidebar" aria-label="Sembunyikan menu" title="Sembunyikan menu" @click="collapsed = true; nextTick(() => toggleButton?.focus())"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6M20 4v16" /></svg></button>
+            <button class="nav-hide" type="button" aria-controls="sidebar" aria-label="Sembunyikan menu" title="Sembunyikan menu" @click="collapsed = true; nextTick(() => toggleButton?.focus())"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M9 3v18" /><path d="m16 9-3 3 3 3" /></svg></button>
             <label class="nav-search"><span class="sr-only">Cari menu</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg><input v-model="search" type="search" placeholder="Cari menu…" @keydown="searchKey" /></label>
             <nav aria-label="Menu utama">
                 <template v-for="section in menus" :key="section.key">
@@ -113,7 +113,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', resized));
         </aside>
         <button v-if="open" type="button" tabindex="-1" class="scrim" aria-label="Tutup menu" @click="closeMenu"></button>
         <div class="main-panel" :inert="open">
-            <header class="topbar"><button ref="toggleButton" class="menu-toggle" type="button" :aria-expanded="mobile ? open : !collapsed" aria-controls="sidebar" @click="showMenu" aria-label="Menu" title="Menu"><span></span><span></span><span></span></button><span class="crumb"><span v-for="(label, index) in breadcrumb" :key="index">{{ label }} / </span><b>{{ title }}</b></span><span class="pill">Labmania ERP</span></header>
+            <header class="topbar"><button ref="toggleButton" class="menu-toggle" type="button" :aria-expanded="mobile ? open : !collapsed" aria-controls="sidebar" @click="showMenu" aria-label="Menu" title="Menu"><template v-if="mobile"><span></span><span></span><span></span></template><svg v-else viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M9 3v18" /><path d="m14 9 3 3-3 3" /></svg></button><span class="crumb"><span v-for="(label, index) in breadcrumb" :key="index">{{ label }} / </span><b>{{ title }}</b></span><span class="pill">Labmania ERP</span></header>
             <main id="main" tabindex="-1" class="content" :class="{ 'content--fluid': fullWidth }">
                 <slot />
             </main>

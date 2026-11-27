@@ -107,11 +107,16 @@ summary { min-height: 44px; padding: 8px 0; color: #14304F; }
 .menu-toggle { flex-direction: column; justify-content: center; gap: 4px; flex: none; width: 44px; padding: 0 12px; }
 .menu-toggle span { display: block; height: 2px; border-radius: 2px; background: var(--navy); }
 .menu-toggle:hover { background: var(--navy-50); }
+.menu-toggle svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: var(--navy); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .nav-hide { position: absolute; top: 20px; right: 14px; display: grid; place-items: center; width: 32px; min-height: 32px; height: 32px; padding: 0; color: rgb(255 255 255 / .8); background: transparent; border-color: rgb(255 255 255 / .18); }
 .nav-hide:hover { background: rgb(255 255 255 / .1); color: white; }
 @media (min-width: 901px) {
-    .app-shell.nav-hidden { grid-template-columns: minmax(0, 1fr); }
-    .nav-hidden .sidebar { display: none; }
+    /* Kolom dan sidebar bergerak dengan durasi sama supaya tepinya tetap menempel pada konten. */
+    .app-shell { transition: grid-template-columns 260ms ease; }
+    .sidebar { width: 252px; transition: transform 260ms ease; }
+    .app-shell.nav-hidden { grid-template-columns: 0px minmax(0, 1fr); }
+    /* visibility ditunda hanya saat menutup; saat membuka harus langsung terlihat agar bisa menerima fokus. */
+    .nav-hidden .sidebar { transform: translateX(-100%); visibility: hidden; transition: transform 260ms ease, visibility 0s 260ms; }
     .nav-hidden .menu-toggle { display: inline-flex; }
     .nav-hidden .content, .nav-hidden .content--fluid { max-width: none; }
 }
