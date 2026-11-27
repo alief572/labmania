@@ -55,6 +55,7 @@ class ActivityLogController extends Controller
 
         $props = [
             'logs' => $logs, 'filters' => $filters,
+            'menus' => DB::table('ms_menu')->pluck('judul', 'kode'),
             ...Cache::remember('logs.filters', 300, fn () => [
                 'modules' => DB::table('logs')->distinct()->orderBy('module')->pluck('module'),
                 'actions' => DB::table('logs')->distinct()->orderBy('action')->pluck('action'),

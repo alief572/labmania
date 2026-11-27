@@ -190,7 +190,7 @@ class FoundationTest extends TestCase
             'data' => json_encode(['old' => ['password' => 'secret-old', 'qty' => '0.00'], 'new' => ['password' => 'secret-new', 'qty' => 0]]),
         ]);
         $this->get('/activity-log?to=2026-11-13&ref_no=UJI-1')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('ActivityLog')->where('logs.total', 1)->where('logs.data.0.data.old', ['password' => '[REDACTED]'])
+            ->component('ActivityLog')->has('menus')->where('logs.total', 1)->where('logs.data.0.data.old', ['password' => '[REDACTED]'])
             ->where('modules', ['Uji'])->missing('auth.password')->missing('auth.ga_secret'));
         $this->get('/activity-log?from=2026-11-13&to=2026-11-12')->assertSessionHasErrors('to');
         $this->get('/activity-log?ref_no=UNKNOWN')->assertOk()->assertInertia(fn (Assert $page) => $page->where('logs.total', 0));
