@@ -69,12 +69,38 @@ watch(() => props.keyword, (value) => {
     keywordTimer = setTimeout(() => { const api = instance.value?.dt; if (api && api.search() !== (value ?? '')) api.search(value ?? '').draw(); }, 300);
 });
 const removeVisit = props.refreshOnVisit ? router.on('success', () => reload()) : undefined;
-onBeforeUnmount(() => { disposed = true; clearTimeout(keywordTimer); pending?.abort(); removeVisit?.(); });
+onBeforeUnmount(() => { disposed = true; clearTimeout(keywordTimer); clearTimeout(resizeTimer); observer?.disconnect(); pending?.abort(); removeVisit?.(); });
 defineExpose({ reload });
+
+// Dengan scrollX, header dan isi adalah dua tabel terpisah berlebar piksel. DataTables tidak memantau ukuran saat autoWidth mati,
+// jadi sesuaikan sendiri ketika lebar wadah berubah (mis. sidebar ditutup). Ditunda agar tidak dihitung di tiap frame animasi.
+const root = ref<HTMLElement | null>(null);
+let observer: ResizeObserver | undefined;
+let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+function fitColumns() {
+    const api = instance.value?.dt;
+    if (!api) return;
+    // DataTables mengunci tiap kolom dengan width/min-width piksel; tanpa dilepas dulu tabel bisa melebar tapi tidak bisa menyempit.
+    api.table().node().querySelectorAll<HTMLElement>(':scope > colgroup > col').forEach((col) => { col.style.width = ''; col.style.minWidth = ''; });
+    api.columns.adjust();
+}
+watch(root, (element) => {
+    observer?.disconnect();
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    let width = 0;
+    observer = new ResizeObserver(([entry]) => {
+        const next = Math.round(entry.contentRect.width);
+        if (!next || next === width) return;
+        width = next;
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(fitColumns, 60);
+    });
+    observer.observe(element);
+});
 </script>
 
 <template>
-    <section data-tour="table" class="server-table" :aria-label="label" :data-own-search="keyword !== undefined ? '' : undefined">
+    <section ref="root" data-tour="table" class="server-table" :aria-label="label" :data-own-search="keyword !== undefined ? '' : undefined">
         <p v-if="error" class="error table-error" role="alert">{{ error }} <button type="button" @click="reload()">Coba lagi</button></p>
         <DataTable ref="instance" :columns="columns" :ajax="load" :options="options" class="display" style="width: 100%">
             <caption class="sr-only">{{ label }}</caption>

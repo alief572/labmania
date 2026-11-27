@@ -93,8 +93,26 @@ try {
     await nextTick();
     assert.deepEqual(reloads, [true, true], 'Perubahan field pada objek filter tetap terpantau.');
 
+    // Lebar wadah berubah (sidebar ditutup/dibuka): kolom disesuaikan sekali setelah perubahan berhenti.
+    let adjusted = 0, resized, disconnected = false;
+    const originalObserver = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class { constructor(callback) { resized = width => callback([{ contentRect: { width } }]); } observe() {} disconnect() { disconnected = true; } };
+    const col = { style: { width: '90px', minWidth: '90px' } };
+    state.instance = { dt: { table: () => ({ node: () => ({ querySelectorAll: () => [col] }) }), columns: { adjust: () => { assert.deepEqual(col.style, { width: '', minWidth: '' }, 'Lebar lama dilepas sebelum dihitung ulang.'); adjusted++; } } } };
+    state.root = {};
+    await nextTick();
+    const settle = () => new Promise(resolve => setTimeout(resolve, 120));
+    resized(900); resized(1000); resized(1100);
+    await settle();
+    assert.equal(adjusted, 1);
+    resized(1100); resized(0);
+    await settle();
+    assert.equal(adjusted, 1, 'Lebar sama atau tabel tersembunyi tidak dihitung ulang.');
+    globalThis.ResizeObserver = originalObserver;
+
     const leaving = state.load({ draw: 5 }, data => received.push(data));
     app.unmount();
+    assert.equal(disconnected, true, 'Pemantau ukuran dilepas saat unmount.');
     requests[4].resolve(result(5));
     await leaving;
     await nextTick();
