@@ -58,7 +58,7 @@ const statusText = (p: Row) => Object.entries(p.statuses ?? {}).map(([s, n]) => 
                 <template #cell-4="{ row: s }"><span class="badge st-batal">{{ s.sebab }}</span><small>{{ fmt(s.batal_date) }}</small></template>
                 <template #cell-5="{ row: s }">{{ s.batal_peserta ?? 0 }} peserta<small>{{ money(s.batal_nilai ?? 0) }}</small></template>
                 <template #cell-6="{ row: s }"><template v-if="s.diganti"><Link :href="appUrl(`/sales-order/${s.diganti.id}`)" class="code">{{ s.diganti.nomor }}</Link><small>Deal ulang {{ fmt(s.diganti.tanggal) }}</small></template><span v-else-if="s.menunggu_deal_ulang" class="muted">Menunggu Deal ulang</span><span v-else class="muted">—</span></template>
-                <template #cell-7="{ row: s }"><ActionMenu><Link :href="appUrl(`/sales-order/program/${s.id_penjualan}`)">View</Link></ActionMenu></template>
+                <template #cell-7="{ row: s }"><ActionMenu><Link :href="appUrl(`/sales-order/${s.id}`)">View</Link><a :href="appUrl(`/sales-order/${s.id}/pdf`)" target="_blank" rel="noopener">Print Out SO</a></ActionMenu></template>
             </ServerTable>
             <ServerTable :keyword="filters.q || ''" v-else :url="appUrl('/sales-order/data')" label="Surat Kerja Trainer" :columns='[{"title":"No","orderable":false},{"title":"Nomor Surat","orderable":true},{"title":"Status","orderable":true},{"title":"Penjualan Program","orderable":true},{"title":"Trainer & Asisten","orderable":false},{"title":"Peserta deal","orderable":false,"className":"dt-body-right"},{"title":"Action","orderable":false}]' :filters="{ ...filters, tab }" refresh-on-visit>
                 <template #cell-0="{ number }">{{ number }}</template>

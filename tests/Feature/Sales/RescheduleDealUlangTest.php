@@ -83,6 +83,17 @@ class RescheduleDealUlangTest extends MasterTestCase
         $get('tidak-ada-yang-cocok')->assertJsonPath('recordsFiltered', 0);
     }
 
+    public function test_so_batal_bisa_dilihat_dan_tidak_membuat_daftar_so_program_gagal(): void
+    {
+        $this->invoice5(false);
+        $this->runReschedule5();
+
+        $this->getJson('/sales-order/program/'.$this->ids5['p'].'/data')->assertOk()->assertJsonPath('recordsTotal', 0)->assertJsonPath('data', []);
+        $this->get('/sales-order/'.$this->ids5['so'])->assertOk()->assertInertia(fn ($page) => $page->where('so.status_tampil', 'Batal'));
+        $this->post('/sales-order/'.$this->ids5['so'].'/siap-invoice')->assertSessionHasErrors('so');
+        $this->assertSame('batal', DB::table('sales_order')->where('id', $this->ids5['so'])->value('status'));
+    }
+
     public function test_reschedule_hanya_ganti_asisten_tidak_mengubah_deal_atau_so(): void
     {
         $this->invoice5(false);

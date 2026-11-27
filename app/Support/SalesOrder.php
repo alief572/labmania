@@ -51,7 +51,7 @@ class SalesOrder
         $facts = self::programSnapshot($p);
         $facts['company'] = $q->id_customer ? DB::table('master_customer')->where('id_customer', $q->id_customer)->first(['id_customer', 'name_customer', 'address_office', 'npwp', 'perlakuan_ppn']) : null;
 
-        return ['so' => array_replace((array) $so, ['nomor' => Sales::display($so)]) + ['status_tampil' => $complete ? 'Invoiced' : ($so->status === 'siap' ? 'Siap invoice' : 'Belum siap invoice'),
+        return ['so' => array_replace((array) $so, ['nomor' => Sales::display($so)]) + ['status_tampil' => $so->status === 'batal' ? 'Batal' : ($complete ? 'Invoiced' : ($so->status === 'siap' ? 'Siap invoice' : 'Belum siap invoice')),
             'siap_nama' => $so->siap_by ? DB::table('users')->where('id_user', $so->siap_by)->value('nm_lengkap') : null],
             'quotation' => $q, ...$facts, 'closed' => $p->closed_date !== null,
             'pendingReconfirmation' => Reconfirmation::pending($q),
@@ -72,6 +72,9 @@ class SalesOrder
             $p = Sales::program($read->id_penjualan, true);
             Sales::open($p);
             $old = self::row($id, true);
+            if ($old->status === 'batal') {
+                throw ValidationException::withMessages(['so' => 'SO batal tidak dapat ditandai siap invoice.']);
+            }
             if ($old->status === 'siap') {
                 return;
             }

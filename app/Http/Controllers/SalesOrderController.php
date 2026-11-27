@@ -143,7 +143,7 @@ class SalesOrderController extends Controller
         if ($request->route('datatable')) {
             ServerDataTable::prepare($request);
             $f = $request->validate(['q' => 'nullable|string|max:100']);
-            $query = DB::table('sales_order as so')->join('quotation as q', 'q.id', '=', 'so.id_quotation')->where('so.id_penjualan', $id);
+            $query = DB::table('sales_order as so')->join('quotation as q', 'q.id', '=', 'so.id_quotation')->where('so.id_penjualan', $id)->where('so.status', '!=', 'batal');
             ServerDataTable::scope($request, $query);
             if (($f['q'] ?? '') !== '') {
                 $like = '%'.$f['q'].'%';
